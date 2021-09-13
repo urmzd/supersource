@@ -8,6 +8,10 @@ A collection of various solutions to various puzzles using various structures.
 
 ## Usage
 
+## Testing
+
+## Contributing
+
 ## Data Structures
 
 ## Algorithms
