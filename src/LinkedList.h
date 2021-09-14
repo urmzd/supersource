@@ -7,5 +7,7 @@ typedef struct Node {
 } node;
 
 extern node *node_new(void *data);
+extern node *node_insert(node *head, void *data);
+extern node *node_free(node *node);
 
 #endif
