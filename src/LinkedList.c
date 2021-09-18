@@ -3,15 +3,18 @@
 
 #include "LinkedList.h"
 
-extern int node_free(node *node) { return 0; }
+extern int Node_free(Node *node) { return 0; }
 
-extern node *node_append(node *head, void *data, node_new_fn *node_new_fn) {
+extern Node *Node_append(Node *head, Node *node_to_append) {
+  if (head == NULL) {
+    return node_to_append;
+  }
 
-  return NULL;
+  return Node_append(head->next, node_to_append);
 }
 
-extern node *node_new(void *data) {
-  node *new_node = malloc(sizeof(node));
+extern Node *Node_new(void *data) {
+  Node *new_node = malloc(sizeof(Node));
   new_node->data = data;
   return new_node;
 }
