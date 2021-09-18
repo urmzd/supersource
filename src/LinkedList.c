@@ -5,7 +5,7 @@
 
 extern int node_free(node *node) { return 0; }
 
-extern node *node_insert(node *head, void *data, node_new_fn *node_new_fn) {
+extern node *node_append(node *head, void *data, node_new_fn *node_new_fn) {
 
   return NULL;
 }
