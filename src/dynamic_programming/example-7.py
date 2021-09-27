@@ -117,7 +117,7 @@ class AVLTree:
             in duplicates to be deleted.
 
             For the solutions sake, assume this works correctly.
-            For testing, DO NOT ADD DUPLICATEs.
+            For testing, DO NOT ADD DUPLICATES.
         """
         self.root = self._insert(data, previous_data, self.root)
 
