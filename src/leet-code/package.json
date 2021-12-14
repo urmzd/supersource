@@ -1,0 +1,12 @@
+{
+  "name": "leet-code",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Leet Code (javascript)",
+  "main": "add-two-numbers.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Urmzd Mukhammadnaim",
+  "license": "ISC"
+}
