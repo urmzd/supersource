@@ -11,5 +11,5 @@ var reverseBits = function(n) {
         n >>>= 1
     }
     
-    return out
+    return out >>> 0
 };
