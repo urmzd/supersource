@@ -1,0 +1,177 @@
+# justfile for /Users/urmzd/Documents/github/puzzles
+# Use `just --parallel <recipe> ...` to run multiple recipes concurrently.
+
+set shell := ["bash", "-cu"]
+
+help:
+  @just --list
+
+# Verb-noun style entrypoints
+run target:
+  @just "run-{{target}}"
+
+run-parallel +targets:
+  @recipes=""
+  @for t in {{targets}}; do recipes="$recipes run-$t"; done
+  @just --parallel $recipes
+
+# ---------- Per-folder run recipes (verb-noun style) ----------
+
+run-01-arrays-hashing:
+  command -v node >/dev/null
+  node 01-arrays-hashing/contains-duplicate.js
+  node 01-arrays-hashing/missing-number.js
+  node 01-arrays-hashing/product-of-array-expect-self.js
+  node 01-arrays-hashing/two-sum.js
+
+run-02-two-pointers-sliding-window:
+  command -v node >/dev/null
+  node 02-two-pointers-sliding-window/3sum.js
+  node 02-two-pointers-sliding-window/container-with-most-water.js
+
+run-03-binary-search:
+  command -v node >/dev/null
+  node 03-binary-search/find-minimum-in-rotated-sorted-array.js
+  node 03-binary-search/liss.js
+  node 03-binary-search/search-in-rotated-sorted-array.js
+
+run-04-linked-lists:
+  command -v node >/dev/null
+  node 04-linked-lists/add-two-numbers.js
+
+run-05-trees:
+  command -v python3 >/dev/null
+  python3 05-trees/example-7.py
+
+run-06-graphs:
+  command -v node >/dev/null
+  node 06-graphs/clone-graph.js
+  node 06-graphs/course-schedule.js
+  node 06-graphs/number-of-islands.js
+  if command -v ts-node >/dev/null; then \
+    ts-node 06-graphs/pacific-atlantic-water-flow.ts; \
+  else \
+    echo "ts-node not installed; run: ts-node 06-graphs/pacific-atlantic-water-flow.ts"; \
+  fi
+
+run-07-dynamic-programming:
+  command -v node >/dev/null
+  node 07-dynamic-programming/change-coin.js
+  node 07-dynamic-programming/climbing-stairs.js
+  node 07-dynamic-programming/decode-ways.js
+  node 07-dynamic-programming/house-robber.js
+  node 07-dynamic-programming/lcs.js
+  node 07-dynamic-programming/maximum-product-subarray.js
+  node 07-dynamic-programming/maximum-subarray.js
+  node 07-dynamic-programming/rob-houses-pt-2.js
+  node 07-dynamic-programming/unique-paths.js
+  node 07-dynamic-programming/word-break.js
+  command -v python3 >/dev/null
+  python3 07-dynamic-programming/example-1.py
+  python3 07-dynamic-programming/example-2.py
+  python3 07-dynamic-programming/example-3.py
+  python3 07-dynamic-programming/example-4.py
+  python3 07-dynamic-programming/example-6.py
+  # C examples require input; compile/run manually if desired.
+  echo "C examples: cc 07-dynamic-programming/example-5.c -o /tmp/example-5 && /tmp/example-5"
+  echo "C examples (requires input): cc 07-dynamic-programming/example-8.c -o /tmp/example-8 && /tmp/example-8"
+
+run-08-greedy:
+  command -v node >/dev/null
+  node 08-greedy/best-time-to-buy-and-sell-stock.js
+  node 08-greedy/jump-game.js
+  command -v python3 >/dev/null
+  python3 08-greedy/example-1.py
+  python3 08-greedy/example-2.py
+  python3 08-greedy/example-3.py
+
+run-09-backtracking:
+  command -v node >/dev/null
+  node 09-backtracking/combination-sum.js
+  command -v python3 >/dev/null
+  python3 09-backtracking/example-2.py
+
+run-10-math-bit:
+  command -v node >/dev/null
+  node 10-math-bit/count-number-of-bits.js
+  node 10-math-bit/number-of-1-bits.js
+  node 10-math-bit/reverse-bits.js
+  node 10-math-bit/sum-of-two-integers.js
+
+run-11-recursion-divide-conquer:
+  command -v python3 >/dev/null
+  python3 11-recursion-divide-conquer/example-1.py
+  python3 11-recursion-divide-conquer/example-3.py
+
+run-12-concurrency-systems:
+  make -C 12-concurrency-systems/miner
+  cd 12-concurrency-systems && \
+    for cfg in tests/test.*.cfg; do \
+      id=${cfg##*/}; id=${id#test.}; id=${id%.cfg}; \
+      ./tests/test.sh "$id"; \
+    done
+
+run-13-functional-programming:
+  echo "Scheme files; run with a Scheme interpreter (e.g., racket or guile)."
+  echo "Example: racket 13-functional-programming/Factors.scm"
+
+run-14-ml-statistics:
+  echo "Use subcommands: run-14-ml-statistics-nlp or run-14-ml-statistics-r-exercises"
+
+run-14-ml-statistics-nlp:
+  echo "Python: python3 14-ml-statistics/nlp/hmm_tagger.py"
+  echo "Prolog: swipl -s 14-ml-statistics/nlp/dcg.pl"
+  echo "Perl: perl 14-ml-statistics/nlp/a1q4.pl"
+
+run-14-ml-statistics-r-exercises:
+  echo "R: Rscript 14-ml-statistics/r-exercises/exercise-1/q4.r"
+
+run-machine-learning:
+  echo "Python scripts (may require packages like numpy/torch):"
+  echo "python3 machine-learning/linear-regression.py"
+
+run-machine-learning-notebooks:
+  echo "Jupyter: jupyter lab (then open machine-learning/notebooks/*.ipynb)"
+
+# ---------- Aggregate recipes ----------
+
+run-all: \
+  run-01-arrays-hashing \
+  run-02-two-pointers-sliding-window \
+  run-03-binary-search \
+  run-04-linked-lists \
+  run-05-trees \
+  run-06-graphs \
+  run-07-dynamic-programming \
+  run-08-greedy \
+  run-09-backtracking \
+  run-10-math-bit \
+  run-11-recursion-divide-conquer \
+  run-12-concurrency-systems \
+  run-13-functional-programming \
+  run-14-ml-statistics \
+  run-14-ml-statistics-nlp \
+  run-14-ml-statistics-r-exercises \
+  run-machine-learning \
+  run-machine-learning-notebooks
+
+run-all-parallel:
+  @just --parallel \
+    run-01-arrays-hashing \
+    run-02-two-pointers-sliding-window \
+    run-03-binary-search \
+    run-04-linked-lists \
+    run-05-trees \
+    run-06-graphs \
+    run-07-dynamic-programming \
+    run-08-greedy \
+    run-09-backtracking \
+    run-10-math-bit \
+    run-11-recursion-divide-conquer \
+    run-12-concurrency-systems \
+    run-13-functional-programming \
+    run-14-ml-statistics \
+    run-14-ml-statistics-nlp \
+    run-14-ml-statistics-r-exercises \
+    run-machine-learning \
+    run-machine-learning-notebooks
