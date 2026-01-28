@@ -1,0 +1,12 @@
+{
+  "name": "leet-code",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Algorithm solutions (JavaScript/TypeScript)",
+  "main": "04-linked-lists/add-two-numbers.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Urmzd Mukhammadnaim",
+  "license": "ISC"
+}
