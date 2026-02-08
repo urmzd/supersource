@@ -5,7 +5,7 @@
 # Section 1: Notebook
 # ==============================================================================
 
-# <a href="https://colab.research.google.com/github/urmzd/school/blob/main/year-four/CSCI4155/assignments/a1/Assignment1-Step2-Students.ipynb" target="parent"<img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/</a
+# Colab source: CSCI4155 Assignment 1 Step 2 (see previous commit machine-learning/learn-pytorch.ipynb)
 
 # ==============================================================================
 # Section 2: Step 2
@@ -297,6 +297,11 @@ for index in range(ROWS * COLUMNS):
 # ==============================================================================
 # Section 9: Reasoning
 # ==============================================================================
+
+# Most misclassifications are visually plausible. For example:
+# - A "6" with a broken loop can resemble a "5".
+# - A "9" can resemble a "4".
+# - A "7" can be mistaken for a "9".
 
 # ==============================================================================
 # Section 10: Question 5 (6505 only)
