@@ -5,9 +5,9 @@
 # Section 1: Notebook
 # ==============================================================================
 
-# <center <h1CSCI3151 - Foundations of Machine Learning</h1 <h1Assignment 2</h1 Summer 2021 </center
-
-# <center <b Due on: 25 June 2021, 23:30 ADT </b </center
+# CSCI3151 - Foundations of Machine Learning
+# Assignment 2 (Summer 2021)
+# Due: 25 June 2021, 23:30 ADT
 
 # Your assignment is to be submitted as a single .ipynb file (please do not zip it when submitting to brightspace) including your answers to both the math and the experimental questions, in the correct order, on Brightspace. Use [markdown syntax](https://www.markdownguide.org/cheat-sheet/) to format your answers
 
@@ -274,6 +274,9 @@ ax.grid()
 # Section 5: Analysis
 # ==============================================================================
 
+# Using the ROC curves above, the model with 2 features outperforms the model
+# with 3 features on this dataset.
+
 # ==============================================================================
 # Section 6: 2. Multi-class classification using neural networks
 # ==============================================================================
@@ -447,6 +450,9 @@ nn_plot("Batch Size",
 # Section 9: Analysis
 # ==============================================================================
 
+# L2 regularization provides the best overall accuracy among the tested
+# regularizers and outperforms the other options used here.
+
 # ==============================================================================
 # Section 10: 3. Computational graph (no code involved)
 # ==============================================================================
@@ -586,3 +592,6 @@ nn_2_plot("Iteration No.", x_vals=[(i+1) for i in range(4)], no_of_nodes=[[600]*
 # ==============================================================================
 # Section 13: Answer
 # ==============================================================================
+
+# Yes. Using an ensemble of neural networks can improve test performance when
+# training data is limited.
