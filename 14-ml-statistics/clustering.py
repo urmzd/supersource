@@ -5,11 +5,13 @@
 # Section 1: Notebook
 # ==============================================================================
 
-# <a href="https://colab.research.google.com/github/urmzd/school/blob/main/year-four/CSCI4155/assignments/a2/Assignment2.ipynb" target="parent"<img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/</a
+# Colab source: CSCI4155 Assignment 2 (see previous commit machine-learning/clustering.ipynb)
 
 # ==============================================================================
 # Section 2: Assignment 2
 # ==============================================================================
+
+# Assignment 2: clustering exercises and analysis.
 
 # ==============================================================================
 # Section 3: Part 1: Synthetic dataset
@@ -171,3 +173,8 @@ for _ in range(5):
 # ==============================================================================
 # Section 7: Conclusion
 # ==============================================================================
+
+# The model clusters the points relatively well. Confusion appears mainly where
+# clusters overlap, but the predicted cluster shapes resemble the true clusters.
+#
+# Rerunning the algorithm does not significantly change the cluster shapes.
