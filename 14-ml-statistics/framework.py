@@ -5,7 +5,7 @@
 # Section 1: Notebook
 # ==============================================================================
 
-# <a href="https://colab.research.google.com/github/urmzd/school/blob/main/year-four/CSCI4155/assignments/a1/Assignment1-Students.ipynb" target="parent"<img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/</a
+# Colab source: CSCI4155 Assignment 1 (see previous commit machine-learning/framework.ipynb)
 
 # ==============================================================================
 # Section 2: Assignment 1
@@ -21,9 +21,16 @@ drive.mount('/content/drive')
 # Section 3: Step 1: Fully-connected neural networks
 # ==============================================================================
 
+# Implement forward/backward passes for activations and layers, plus a loss and
+# optimizers needed to train a fully-connected network.
+
 # ==============================================================================
 # Section 4: General comments
 # ==============================================================================
+
+# The forward pass is straightforward: each layer outputs an array passed to the
+# next layer. The backward pass is more involved; keep track of inputs/gradients
+# and store parameter gradients inside each layer.
 
 # %% Cell 1
 import matplotlib.pyplot as plt
@@ -33,9 +40,25 @@ import numpy as np
 # Section 5: 1.
 # ==============================================================================
 
+# Implement Sigmoid and Tanh activations (ReLU is provided as an example).
+# Defining __call__ should delegate to forward so you can call ReLU(x) rather
+# than ReLU.forward(x).
+
 # ==============================================================================
 # Section 6: ReLu
 # ==============================================================================
+
+# ReLU:
+#   f(x) = max(0, x)
+#   df/dx = 1 if x >= 0 else 0
+#
+# Sigmoid:
+#   f(x) = 1 / (1 + e^-x)
+#   df/dx = f(x) * (1 - f(x))
+#
+# Tanh:
+#   f(x) = tanh(x)
+#   df/dx = 1 - tanh(x)^2
 
 # %% Cell 2
 import abc
@@ -101,9 +124,20 @@ class Tanh(Activations):
 # Section 7: 2.
 # ==============================================================================
 
+# Implement SoftmaxCrossLoss:
+# - If y_true is provided, behave like CrossEntropyLoss (softmax + CE).
+# - If y_true is None, return softmax only (no backward pass needed).
+
 # ==============================================================================
 # Section 8: Softmax
 # ==============================================================================
+
+# Softmax:
+#   S_i = e^{x_i} / sum_j e^{x_j}
+#   dS/dx_i = S_i * (1 - S_i) for i==j, else -S_i * S_j
+#
+# Cross-Entropy:
+#   E = -sum_i y_i * log(S_i)
 
 # %% Cell 3
 class SoftMaxCrossLoss(Activations):
@@ -141,9 +175,17 @@ class SoftMaxCrossLoss(Activations):
 # Section 9: 3.
 # ==============================================================================
 
+# Implement layers with forward/backward passes:
+# - AffineLayer: Y = X W^T + b
+# - Inverted Dropout: keep probability p
+# - (6505 only) BatchNorm
+
 # ==============================================================================
 # Section 10: Affine Layer
 # ==============================================================================
+
+# Affine forward: Y = X W^T + b
+# Gradients: dY/dX = W^T, dY/db = 1, dY/dW = X
 
 # %% Cell 4
 class Layers(metaclass=abc.ABCMeta):
