@@ -5,9 +5,9 @@
 # Section 1: Notebook
 # ==============================================================================
 
-# <center <h1CSCI3151 - Foundations of Machine Learning</h1 <h1Assignment 3</h1 Summer 2021 </center
-
-# <center <b Due on: 12 July 2021, 23:30 ADT </b </center
+# CSCI3151 - Foundations of Machine Learning
+# Assignment 3 (Summer 2021)
+# Due: 12 July 2021, 23:30 ADT
 
 # Submit your assignment as a single .ipynb file (please do not zip it when submitting to brightspace) including your answers to both the math and the experimental questions, in the correct order. Use markdown syntax to format your answers.
 
