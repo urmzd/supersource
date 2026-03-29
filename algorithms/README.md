@@ -6,6 +6,17 @@ Interview-style algorithms organized by priority, with specialized tracks.
 
 See [Study Plan](../STUDY-PLAN.md) for the 21-day algorithm study plan.
 
+## Core References
+
+| Book | Access | Use For |
+|------|--------|---------|
+| *Introduction to Algorithms* (CLRS), 4th ed. -- Cormen, Leiserson, Rivest, Stein | Owned (MIT Press) | Comprehensive reference for all algorithm topics; formal proofs, correctness arguments |
+| *Competitive Programmer's Handbook* -- Antti Laaksonen | [Free PDF](https://cses.fi/book/book.pdf) | Concise implementations, contest techniques, advanced topics (segment trees, FFT) |
+| *Codeless Data Structures and Algorithms* | Owned | Conceptual understanding, visual intuition |
+| *Algorithm Design Manual* -- Skiena | Recommended | War stories, practical algorithm selection |
+
+CLRS chapter references are noted in each topic README where applicable. For competition-focused study, see the [Competitive Programming](../competitive-programming/) track.
+
 ## Topics
 
 | # | Topic | Problems | Lang | README |
