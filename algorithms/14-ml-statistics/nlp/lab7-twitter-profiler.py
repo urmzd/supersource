@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # File: lab7-twitter-profiler.py
 # Twitter Profiler app. This is a simple script to configure the Twitter API
-import tweepy # https://github.com/tweepy/tweepy
+import tweepy  # https://github.com/tweepy/tweepy
 import time
 
 consumer_key = "FC1HCyMBei**********"
@@ -11,6 +11,8 @@ consumer_secret = "lLXBeSYowLHHDCJS***********"
 access_key = "2841901529-MAFxKe**********************"
 # access_secret is Access Token Secret
 access_secret = "6QcxzJR**********************"
+
+
 # this function collects a twitter profile request and returns a
 # Twitter object
 def get_profile(screen_name):
@@ -22,6 +24,7 @@ def get_profile(screen_name):
     except:
         user_profile = "broken"
     return user_profile
+
 
 s = get_profile("DalhousieU")
 # print(s)

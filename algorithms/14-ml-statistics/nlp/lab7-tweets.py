@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # File: lab7-tweets.py
-# Retrieving user tweets 
-import tweepy # https://github.com/tweepy/tweepy
+# Retrieving user tweets
+import tweepy  # https://github.com/tweepy/tweepy
 import time
 
 consumer_key = "FC1HCyMBei**********"
@@ -11,6 +11,8 @@ consumer_secret = "lLXBeSYowLHHDCJS***********"
 access_key = "2841901529-MAFxKe**********************"
 # access_secret is Access Token Secret
 access_secret = "6QcxzJR**********************"
+
+
 # this function collects a twitter profile request and returns a
 # Twitter object
 def get_profile(screen_name):
@@ -22,6 +24,7 @@ def get_profile(screen_name):
     except:
         user_profile = "broken"
     return user_profile
+
 
 # this function collects twitter profile tweets and returns a Tweet
 # object
@@ -37,7 +40,8 @@ def get_tweets(screen_name):
         tweets = "broken"
     return tweets
 
+
 t = get_tweets("DalhousieU")
-#print(t)
+# print(t)
 for tweet in t:
     print(tweet._json["text"] + "\n")

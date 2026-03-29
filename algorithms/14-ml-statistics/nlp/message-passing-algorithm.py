@@ -7,6 +7,7 @@ InnerFTable = dict[str, float]
 FTable = dict[str, InnerFTable]
 Words = list[str]
 
+
 def parse_stdin(path: str) -> tuple[Words, InnerFTable, FTable, FTable]:
     with open(path, "r") as file:
         words = []
@@ -63,6 +64,8 @@ def parse_stdin(path: str) -> tuple[Words, InnerFTable, FTable, FTable]:
 """
     @todo: Generalize algorthm
 """
+
+
 class Node(ABC):
     def __init__(
         self,
@@ -166,7 +169,7 @@ printr("M15", m15)
 # Rule #2
 t4 = {k: m13[k] * m15[k] for k in m13}
 t4_max = max(t4, key=lambda k: t4[k])
-t4a = {k: t4[t4_max] if k == t4_max else 0. for k in t4}
+t4a = {k: t4[t4_max] if k == t4_max else 0.0 for k in t4}
 
 # F -> V -> F
 m16 = {k: t4a[k] for k in t4a}
@@ -179,7 +182,7 @@ printr("M17", m17)
 # Rule #3
 t3 = {k: m17[k] * m9[k] * m11[k] for k in m17}
 t3_max = max(t3, key=lambda x: t3[x])
-t3a =  {k: t3[t3_max] if k == t3_max else 0. for k in t3}
+t3a = {k: t3[t3_max] if k == t3_max else 0.0 for k in t3}
 
 m18 = {k: m17[k] * m11[k] for k in m17}
 printr("M18", m18)
@@ -189,7 +192,7 @@ printr("M19", m19)
 
 t2 = {k: m19[k] * m5[k] * m7[k] for k in m19}
 t2_max = max(t2, key=lambda x: t2[x])
-t2a = {k: t2[t2_max] if k == t2_max else 0. for k in t2}
+t2a = {k: t2[t2_max] if k == t2_max else 0.0 for k in t2}
 
 m20 = {k: m7[k] * m19[k] for k in m7}
 printr("M20", m20)
@@ -199,8 +202,10 @@ printr("M21", m21)
 
 t1 = {k: m21[k] * m3[k] * m1[k] for k in m21}
 t1_max = max(t1, key=lambda x: t1[x])
-t1a = {k: t1[t1_max] if k == t1_max else 0. for k in t1}
+t1a = {k: t1[t1_max] if k == t1_max else 0.0 for k in t1}
 
 
 print(f"<--------- Part C ---------->")
-print(f"T1 = {t1_max.upper()}, T2 = {t2_max.upper()}, T3 = {t3_max.upper()}, T4 = {t4_max.upper()}")
+print(
+    f"T1 = {t1_max.upper()}, T2 = {t2_max.upper()}, T3 = {t3_max.upper()}, T4 = {t4_max.upper()}"
+)

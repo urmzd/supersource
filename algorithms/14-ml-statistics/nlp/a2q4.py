@@ -6,6 +6,7 @@ from tabulate import tabulate
 results = [1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0]
 truth = [1] * 25
 
+
 def precision(tp: int, fp: int) -> float:
     """
     Calculate precision given the number of true and false positive results in a model.
@@ -89,7 +90,12 @@ def plot_precision_recall_curve(
     plt.plot(recall_values, precision_values)
     plt.xlabel("Recall")
     plt.ylabel("Precision" if not interpolated else "Interpolated Precision")
-    plt.savefig("images/precision_recall_curve.png" if not interpolated else "images/interpolated_precison_recall_curve.png")
+    plt.savefig(
+        "images/precision_recall_curve.png"
+        if not interpolated
+        else "images/interpolated_precison_recall_curve.png"
+    )
+
 
 plot_precision_recall_curve(pc_0)
 plot_precision_recall_curve(pc_1)

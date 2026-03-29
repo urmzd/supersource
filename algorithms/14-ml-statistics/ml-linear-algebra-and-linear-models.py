@@ -59,22 +59,23 @@ import plotly.express as px
 # In this question we are going to learn first hand how gradient descent works in the context of a toy dataset. Note that we are not making use of a validation strategy here by using a test set or cross-fold validation—which is something that would be otherwise generally recommended. This exercise focuses on the inner workings of gradient descent applied to the quadratic cost function that was learned in the Linear regression class. Note : It’s important that the code provided is well documented and that no other external package is used (pandas, numpy are ok).
 
 # %% Cell 1
-X,y = datasets.make_regression(100,2,random_state= 42)
-print(f'X shape: {X.shape}\ny shape:{y.shape}')
+X, y = datasets.make_regression(100, 2, random_state=42)
+print(f"X shape: {X.shape}\ny shape:{y.shape}")
 
 # a) Given the values of X, we want to fit a linear regression model to predict the y values. We will implement a vectorized version of the gradient descent algorithm. Input (X) and target (y) are provided as arguments. X is modified (Xb) to account for the bias. The coefficients (theta) have been initialized for you. The shape of the variables X, y, b have been given, use this as a guide to output appropriate shape.
 
 # Fill in the missing variables inside the gradient descent iteration loop and return the updated costlist and parameters.
+
 
 # %% Cell 2
 def LR(X, y, lr, iterations):
     # Initializations
 
     # Adding 1 column in X for bias
-    b = np.ones((len(X), 1))             # shape : (N,1)
-    X_b = np.append(X, b, axis=1)        # Shape : (N, features+1)
+    b = np.ones((len(X), 1))  # shape : (N,1)
+    X_b = np.append(X, b, axis=1)  # Shape : (N, features+1)
     theta = np.zeros((X_b.shape[1], 1))  # shape : (features+1 ,1)
-    y = y.reshape(-1, 1)                 # shape : (N,1)
+    y = y.reshape(-1, 1)  # shape : (N,1)
     cost_list = []
 
     # Gradient Descent
@@ -99,16 +100,21 @@ def LR(X, y, lr, iterations):
 
     return cost_list, theta
 
+
 # %% Cell 3
 # You can modify learning_rate and number of iterations as required.
-cost_list,theta = LR(X,y,0.002,4500) # 
+cost_list, theta = LR(X, y, 0.002, 4500)  #
+
 
 # %% Cell 4
 def plot_losses(cost_list):
-  """This function plots the cost_list"""
-  fig = px.line(y= cost_list)
-  fig.update_layout(title= "Loss vs Iteration",xaxis_title='Iteration',yaxis_title='Cost')
-  return fig
+    """This function plots the cost_list"""
+    fig = px.line(y=cost_list)
+    fig.update_layout(
+        title="Loss vs Iteration", xaxis_title="Iteration", yaxis_title="Cost"
+    )
+    return fig
+
 
 # %% Cell 5
 # Run this cell to view how loss changes with iterations
@@ -116,25 +122,30 @@ plot_losses(cost_list)
 
 # Below is a function that takes as input the parameters($\theta$) and Input (X). Fill in the missing code to output the y value using the input parameters.
 
+
 # %% Cell 6
 # theta shape : (features+1 ,1)
 def predict(theta, x):
-  return x.dot(theta)
+    return x.dot(theta)
+
 
 # b) Compare this model with a solution computed in closed form. Input (X) and target (y) are provided as arguments. X is modified (Xb) to account for the bias. The function should return the optimum parameters($\theta$).
 
 # %% Cell 7
 from numpy.linalg import inv
-def linear_direct(X,y):
 
-  #initializations
-  b = np.ones((len(X),1)) # shape : (N,1)
-  X_b = np.append(X,b,axis=1) # Shape : (N, features+1)
-  
-  # Fill code below
-  theta = np.linalg.inv(X_b.T.dot(X_b)).dot(X_b.T).dot(y)
 
-  return theta
+def linear_direct(X, y):
+
+    # initializations
+    b = np.ones((len(X), 1))  # shape : (N,1)
+    X_b = np.append(X, b, axis=1)  # Shape : (N, features+1)
+
+    # Fill code below
+    theta = np.linalg.inv(X_b.T.dot(X_b)).dot(X_b.T).dot(y)
+
+    return theta
+
 
 # c) Discuss how the choice of learningrate and number of iterations in part (a) affects the fitting of the model?
 
@@ -165,22 +176,25 @@ plot_losses(cost_list_3).show()
 # In this question, you will experiment with different classification algorithms from Sklearn API on the [Wine dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/wine/).
 
 # %% Cell 9
-X,y = datasets.load_wine(return_X_y=True)
+X, y = datasets.load_wine(return_X_y=True)
 
 # %% Cell 10
-#Uncomment to know more about the dataset
-#print(datasets.load_wine().DESCR)
+# Uncomment to know more about the dataset
+# print(datasets.load_wine().DESCR)
 
 # %% Cell 11
 import matplotlib.pyplot as plt
 import pandas as pd
- # This shows the counts of labels 
+
+
+# This shows the counts of labels
 def plot_distribution(y):
     plt.hist(y)
-    plt.xticks([0,1,2],['Class_0','Class_1','Class_2'])
-    plt.title('Distribution of labels')
+    plt.xticks([0, 1, 2], ["Class_0", "Class_1", "Class_2"])
+    plt.title("Distribution of labels")
     plt.ylabel("frequency")
     plt.show()
+
 
 plot_distribution(y)
 
@@ -194,21 +208,37 @@ pd.DataFrame(y).value_counts()
 # %% Cell 13
 from sklearn import model_selection
 
-def return_splits(X,y)-> (tuple):
-  """This function should return three tuples, one for each split.
-     where each tuple should contain (X_split,y_split) respectively. """
 
-  # Code below
-  train_set_x, test_set_x, train_set_y, test_set_y = model_selection.train_test_split(X, y, test_size=0.2, random_state=1, stratify=y);
-  train_set_x, validation_set_x, train_set_y, validation_set_y = model_selection.train_test_split(train_set_x, train_set_y, test_size=(1/8), random_state=1, stratify=train_set_y)
-  train_set,validation_set,test_set = [(train_set_x, train_set_y), (validation_set_x, validation_set_y), (test_set_x, test_set_y)]
+def return_splits(X, y) -> tuple:
+    """This function should return three tuples, one for each split.
+    where each tuple should contain (X_split,y_split) respectively."""
 
-  return train_set,validation_set,test_set
+    # Code below
+    train_set_x, test_set_x, train_set_y, test_set_y = model_selection.train_test_split(
+        X, y, test_size=0.2, random_state=1, stratify=y
+    )
+    train_set_x, validation_set_x, train_set_y, validation_set_y = (
+        model_selection.train_test_split(
+            train_set_x,
+            train_set_y,
+            test_size=(1 / 8),
+            random_state=1,
+            stratify=train_set_y,
+        )
+    )
+    train_set, validation_set, test_set = [
+        (train_set_x, train_set_y),
+        (validation_set_x, validation_set_y),
+        (test_set_x, test_set_y),
+    ]
+
+    return train_set, validation_set, test_set
+
 
 # %% Cell 14
-#Run this cell to get your splits and plot the distribution of labels for each split.
+# Run this cell to get your splits and plot the distribution of labels for each split.
 
-train_set,validation_set,test_set = return_splits(X,y)
+train_set, validation_set, test_set = return_splits(X, y)
 
 # The 3 plots should look similar.
 plot_distribution(train_set[1])
@@ -220,7 +250,7 @@ plot_distribution(validation_set[1])
 # Note: Since, here we would use k-fold cross validation. You do not need to use the splits defined in the previous question.
 
 # %% Cell 15
-X,y = datasets.load_wine(return_X_y=True)
+X, y = datasets.load_wine(return_X_y=True)
 
 # b) For the SVM classifier, use the default parameters, and 5-fold cross validation, and report the overall accuracy and confusion matrix, as well as accuracy and confusion matrix for each fold. What is the standard deviation of accuracy over the folds?
 
@@ -229,39 +259,42 @@ from sklearn import pipeline, preprocessing, svm, metrics
 
 svm_clf = pipeline.make_pipeline(preprocessing.StandardScaler(), svm.SVC(gamma="auto"))
 
-def get_k_cv(X, y, clf, k = 5, print_individual = False):
-  skf = model_selection.StratifiedKFold(n_splits=k)
 
-  no_of_labels = len(np.unique(y))
-  accuracy_scores = np.empty(shape=(k, ))
-  confusion_matrix_total = np.zeros(shape=(no_of_labels, no_of_labels))
-  
-  fold = 0;
-  for train_index, test_index in skf.split(X, y):
-    X_train, X_test = X[train_index], X[test_index]
-    y_train, y_test = y[train_index], y[test_index]
+def get_k_cv(X, y, clf, k=5, print_individual=False):
+    skf = model_selection.StratifiedKFold(n_splits=k)
 
-    clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    accuracy_score = metrics.accuracy_score(y_test, y_pred)
-    confusion_matrix = metrics.confusion_matrix(y_test, y_pred)
-    confusion_matrix_total += confusion_matrix
-    accuracy_scores[fold] = accuracy_score
+    no_of_labels = len(np.unique(y))
+    accuracy_scores = np.empty(shape=(k,))
+    confusion_matrix_total = np.zeros(shape=(no_of_labels, no_of_labels))
 
-    if print_individual:
-        print(f'Fold {fold+1}:')
-        print(f'Confusion Matrix\n', confusion_matrix)
-        print(f'Accuracy Score\n', accuracy_score)
-        print("------------------------------")
-    
-    fold += 1
+    fold = 0
+    for train_index, test_index in skf.split(X, y):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
 
-  return (confusion_matrix_total, accuracy_scores)
+        clf.fit(X_train, y_train)
+        y_pred = clf.predict(X_test)
+        accuracy_score = metrics.accuracy_score(y_test, y_pred)
+        confusion_matrix = metrics.confusion_matrix(y_test, y_pred)
+        confusion_matrix_total += confusion_matrix
+        accuracy_scores[fold] = accuracy_score
 
-def print_total(confusion_matrix_total, accuracy_scores, folds = 5) -> None:
-  print(f'Confusion Matrix Mean: \n{confusion_matrix_total / folds} \n')
-  print(f'Accuracy Mean: \n{accuracy_scores.mean():.2f}')
-  print(f'Accuracy Standard Deviation: \n{accuracy_scores.std():.2f}')
+        if print_individual:
+            print(f"Fold {fold + 1}:")
+            print(f"Confusion Matrix\n", confusion_matrix)
+            print(f"Accuracy Score\n", accuracy_score)
+            print("------------------------------")
+
+        fold += 1
+
+    return (confusion_matrix_total, accuracy_scores)
+
+
+def print_total(confusion_matrix_total, accuracy_scores, folds=5) -> None:
+    print(f"Confusion Matrix Mean: \n{confusion_matrix_total / folds} \n")
+    print(f"Accuracy Mean: \n{accuracy_scores.mean():.2f}")
+    print(f"Accuracy Standard Deviation: \n{accuracy_scores.std():.2f}")
+
 
 print_total(*get_k_cv(X, y, svm_clf, print_individual=True))
 
@@ -282,7 +315,9 @@ clf_parameters = {
     "min_impurity_decrease": [0.1, 0.2, 5, 2, 3, 100],
 }
 
-clf_search = model_selection.GridSearchCV(estimator=tree.DecisionTreeClassifier(), param_grid=clf_parameters)
+clf_search = model_selection.GridSearchCV(
+    estimator=tree.DecisionTreeClassifier(), param_grid=clf_parameters
+)
 clf_search.fit(X, y)
 
 dt_clf = tree.DecisionTreeClassifier(**clf_search.best_params_)
@@ -302,42 +337,56 @@ print_total(*get_k_cv(X, y, dt_clf))
 # %% Cell 18
 from sklearn import linear_model
 
+
 def plot_learning_curve(clf, X, y, degree):
-  X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, train_size=0.8, random_state=2)
-  no_iterations = len(X_train)
-  train_error, test_error = np.empty(shape=(no_iterations,)), np.empty(shape=(no_iterations,))
+    X_train, X_test, y_train, y_test = model_selection.train_test_split(
+        X, y, train_size=0.8, random_state=2
+    )
+    no_iterations = len(X_train)
+    train_error, test_error = (
+        np.empty(shape=(no_iterations,)),
+        np.empty(shape=(no_iterations,)),
+    )
 
-  # Gather training and testing error based on different set cardinalities.
-  for train_size in range(1, no_iterations):
-    X_train_act, y_train_act = X_train[:train_size], y_train[:train_size]
-    clf.fit(X_train_act, y_train_act)
-    y_train_pred, y_test_pred = clf.predict(X_train_act), clf.predict(X_test)
-    train_error[train_size-1] = metrics.mean_squared_error(y_train_act, y_train_pred)
-    test_error[train_size-1] = metrics.mean_squared_error(y_test, y_test_pred)
-  
-  # Plotting.
-  fig, ax = plt.subplots()
-  fig.set_size_inches(10, 12)
-  ax.plot(np.sqrt(train_error), "r-+", linewidth=2, label="Training error")
-  ax.plot(np.sqrt(test_error), "b-", linewidth=3, label="Testing Error")
-  ax.set_xlabel("Training set size")
-  ax.set_ylabel("RSME")
-  ax.set_title(f'Polynomial Regree Degree {degree}')
-  ax.legend()
-  ax.set_ylim([0, 50])
- 
-  return fig
+    # Gather training and testing error based on different set cardinalities.
+    for train_size in range(1, no_iterations):
+        X_train_act, y_train_act = X_train[:train_size], y_train[:train_size]
+        clf.fit(X_train_act, y_train_act)
+        y_train_pred, y_test_pred = clf.predict(X_train_act), clf.predict(X_test)
+        train_error[train_size - 1] = metrics.mean_squared_error(
+            y_train_act, y_train_pred
+        )
+        test_error[train_size - 1] = metrics.mean_squared_error(y_test, y_test_pred)
 
-X,y = datasets.load_boston(return_X_y=True)
+    # Plotting.
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 12)
+    ax.plot(np.sqrt(train_error), "r-+", linewidth=2, label="Training error")
+    ax.plot(np.sqrt(test_error), "b-", linewidth=3, label="Testing Error")
+    ax.set_xlabel("Training set size")
+    ax.set_ylabel("RSME")
+    ax.set_title(f"Polynomial Regree Degree {degree}")
+    ax.legend()
+    ax.set_ylim([0, 50])
+
+    return fig
+
+
+X, y = datasets.load_boston(return_X_y=True)
 preprocessing.Normalizer().transform(X)
 
 for degree in range(1, 6):
-  clf = pipeline.Pipeline([
-                         ("poly_features", preprocessing.PolynomialFeatures(degree, include_bias=True)), 
-                         ("lin_reg", linear_model.LinearRegression())
-                      ])
-  
-  plot_learning_curve(clf, X, y, degree).show()
+    clf = pipeline.Pipeline(
+        [
+            (
+                "poly_features",
+                preprocessing.PolynomialFeatures(degree, include_bias=True),
+            ),
+            ("lin_reg", linear_model.LinearRegression()),
+        ]
+    )
+
+    plot_learning_curve(clf, X, y, degree).show()
 
 # b)Discuss the interpretation of the results. Use visualizations of appropriate quantities to make sense of the results and support your interpretation.
 

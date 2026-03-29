@@ -11,6 +11,8 @@ consumer_secret = "lLXBeSYowLHHDCJS***********"
 access_key = "2841901529-MAFxKe**********************"
 # access_secret is Access Token Secret
 access_secret = "6QcxzJR**********************"
+
+
 # this function collects a twitter profile request and returns a
 # Twitter object
 def get_profile(screen_name):
@@ -49,7 +51,6 @@ with open("lab7-tweets.csv", "w") as outfile:
     for profile in profiles:
         t = get_tweets(profile)
         for tweet in t:
-
             writer.writerow(
                 [
                     tweet.id,

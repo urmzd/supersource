@@ -46,6 +46,7 @@ n_gram(lambda x, _: (x + 1) / (voc_len + phrase_len), "b) Laplace Add One Smooth
 
 ## Question 3 - Unigram (Witten-Bell Smoothing)
 
+
 def witten_bell():
     unique_tokens = set(phrase)
     unique_tokens_len = len(unique_tokens)
