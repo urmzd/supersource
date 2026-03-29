@@ -336,9 +336,7 @@ np.warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 # a) As we load the data from the built-in keras function, it splits them into two subsets; however, it is recommended to split the data into three subsets such as:  70% train, 15% val, 15% test. 80% train, 10% val, 10% test. 60% train, 20% val, 20% test.  Use the mentioned ratios to split the data and train the model using these portions. For each one of your experiments, train the model and report the loss and accuracy of model on the training and validation set. (for more information check this [link](https://scikit-learn.org/stable/modules/learningcurve.html#::text=2.-,Learning%20curve,error%20or%20a%20bias%20error.))
 
 # %% Cell 8
-from sklearn import model_selection
 from keras import (
-    models,
     Sequential,
     layers,
     preprocessing,
@@ -347,8 +345,6 @@ from keras import (
     metrics,
 )
 from tensorflow.keras import utils as np_utils
-import pandas as pd
-from IPython.display import display
 
 
 def nn_init(train_size=0.7, validation_size=0.15, test_size=0.15):

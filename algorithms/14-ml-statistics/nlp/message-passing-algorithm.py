@@ -103,7 +103,7 @@ def printr(title: str, *d: dict):
             print(f"{k:<20}{v:<20}")
 
 
-print(f"<--------- Part B ---------->")
+print("<--------- Part B ---------->")
 words, f1, f2, f3 = parse_stdin("input.txt")
 # Rule #1 -> (Single) No-N-F -> V
 m1 = {k: v for k, v in f1.items()}
@@ -205,7 +205,7 @@ t1_max = max(t1, key=lambda x: t1[x])
 t1a = {k: t1[t1_max] if k == t1_max else 0.0 for k in t1}
 
 
-print(f"<--------- Part C ---------->")
+print("<--------- Part C ---------->")
 print(
     f"T1 = {t1_max.upper()}, T2 = {t2_max.upper()}, T3 = {t3_max.upper()}, T4 = {t4_max.upper()}"
 )

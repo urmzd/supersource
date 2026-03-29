@@ -1,6 +1,5 @@
 #!/bin/python3.9
 from typing import Iterator
-from functools import reduce
 import sys
 
 
