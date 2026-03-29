@@ -114,7 +114,6 @@ plotLinearData(
 """
 
 import numpy as np
-from matplotlib import pyplot as plt
 from typing import Literal
 
 LOSS_TYPE = Literal["absolute", "squared"]
@@ -176,7 +175,7 @@ def plot_cost(
     ax.set_title(
         f"Cost as a Product of Weight ({lossType.title()} Loss Function, {noiseType.title()} Distribution)"
     )
-    ax.set_xlabel(f"Weight")
+    ax.set_xlabel("Weight")
     ax.set_ylabel("Cost")
     plt.show()
 
@@ -202,7 +201,6 @@ plot_cost(4, uniform_dataset, "square")
   @description Solution of Q3a for CSCI 4155's A0.
 """
 import numpy as np
-from matplotlib import pyplot as plt
 
 
 def plot_3d_graph(
@@ -529,7 +527,6 @@ print(w, W6[-1], b, B6[-1], E6[-1], "WTRUE, WPRED, BTRUE, BPRED, COST")
 
 # %% Cell 16
 import numpy as np
-import matplotlib.pyplot as plt
 
 x, y = np.load("dataset_cos.npy")
 print(x, y)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords  # We imported auxiliary corpus
 
 # provided with NLTK

@@ -6,7 +6,6 @@
 # @purpose: Provides functionality to determine class-level precision, recall and F1-measure.
 #           Additionally, this file contains utility helper to determine macro-averages.
 
-from os import linesep
 import re
 from typing import List, Dict, Union
 

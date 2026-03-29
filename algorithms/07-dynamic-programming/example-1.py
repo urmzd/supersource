@@ -1,5 +1,4 @@
 #!/bin/python3.9
-from typing import Union
 from math import ceil
 from pprint import pprint
 import sys

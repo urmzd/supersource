@@ -2,7 +2,8 @@
 # File: lab7-tweets.py
 # Save tweets to a csv file
 
-import tweepy, time, csv
+import tweepy
+import csv
 
 consumer_key = "FC1HCyMBei**********"
 # consumer_secret is API Key Secret

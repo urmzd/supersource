@@ -1,5 +1,4 @@
 #!/bin/python3.9
-from typing import Union
 import sys
 
 # Define definitions.

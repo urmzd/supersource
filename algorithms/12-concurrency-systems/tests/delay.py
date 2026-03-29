@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
-import sys, time, random
+import sys
+import time
+import random
 
 events = {"END", "EPOCH", "MINE", "TRX", "BLK"}
 count = 0
