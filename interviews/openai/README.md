@@ -2,6 +2,8 @@
 
 Comprehensive preparation for OpenAI engineering roles, with focus on AI infrastructure and full-stack development.
 
+> **Preparation resources**: [OpenAI Interview Guide](https://openai.com/interview-guide/) (official), [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/) (OpenAI's own RL curriculum), [Deep Learning track](../../ml/02-deep-learning/), [Reinforcement Learning track](../../ml/03-reinforcement-learning/)
+
 ## Interview Process Overview
 
 Timeline: **3-5 weeks**, **5-6 rounds**
