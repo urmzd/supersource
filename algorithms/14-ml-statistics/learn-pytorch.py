@@ -46,7 +46,9 @@ logger.add(sys.stderr, level=LOGGER_LEVEL)
 # %% Cell 2
 transformer = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
-mnist_dataset = torchvision.datasets.MNIST("/tmp/mnist", download=True, transform=transformer)
+mnist_dataset = torchvision.datasets.MNIST(
+    "/tmp/mnist", download=True, transform=transformer
+)
 total_dataset_size = len(mnist_dataset)
 logger.trace(total_dataset_size)
 
@@ -65,6 +67,7 @@ logger.info(f"CUDA: {torch.cuda.is_available()}")
 
 # Define a network with the following architecture:  Conv2d (input channels=1, output channels = 15,kernel size = 5) $\rightarrow$ MaxPool (kernel size = 2) $\rightarrow$ ReLU $\rightarrow$ Conv2d (input channels=15, output channels = 30,kernel size = 5) $\rightarrow$ Dropout2d (p = 0.5) $\rightarrow$ MaxPool (kernel size = 2) $\rightarrow$ ReLU $\rightarrow$ Linear(input dimension = 480, hidden units = 64) $\rightarrow$ ReLU $\rightarrow$ Dropout (p=0.5) $\rightarrow$ Linear(input dimension = 64, hidden units = 10) $\rightarrow$ LogSoftMax
 
+
 # %% Cell 3
 class Print(torch.nn.Module):
     def __init__(self):
@@ -74,9 +77,10 @@ class Print(torch.nn.Module):
         logger.trace(x.shape)
         return x
 
+
 conv_net = torch.nn.Sequential(
     Print(),
-    torch.nn.Conv2d(in_channels=1, out_channels=15,kernel_size=5),
+    torch.nn.Conv2d(in_channels=1, out_channels=15, kernel_size=5),
     Print(),
     torch.nn.MaxPool2d(kernel_size=2),
     Print(),
@@ -92,7 +96,7 @@ conv_net = torch.nn.Sequential(
     Print(),
     torch.nn.Flatten(start_dim=1),
     Print(),
-    torch.nn.Linear(in_features=480,out_features=64),
+    torch.nn.Linear(in_features=480, out_features=64),
     Print(),
     torch.nn.ReLU(),
     Print(),
@@ -100,7 +104,7 @@ conv_net = torch.nn.Sequential(
     Print(),
     torch.nn.Linear(in_features=64, out_features=10),
     Print(),
-    torch.nn.LogSoftmax() 
+    torch.nn.LogSoftmax(),
 )
 
 # ==============================================================================
@@ -115,128 +119,151 @@ learning_rate = 0.001
 conv_net.to(dev)
 opt = torch.optim.SGD(conv_net.parameters(), lr=learning_rate, momentum=momentum)
 
-def calculate_loss_and_update(model, loss_fn, opt, x, y: torch.Tensor, fgsm_attack = None):
-  x_true = x.to(dev)
-  y_true = y.to(dev)
 
-  if fgsm_attack is not None:
+def calculate_loss_and_update(
+    model, loss_fn, opt, x, y: torch.Tensor, fgsm_attack=None
+):
+    x_true = x.to(dev)
+    y_true = y.to(dev)
 
-    x_true.requires_grad = True
+    if fgsm_attack is not None:
+        x_true.requires_grad = True
 
-  y_preds = model(x_true)
+    y_preds = model(x_true)
 
-  loss = loss_fn(y_preds, y_true)
-  y_pred = torch.argmax(y_preds, dim=1)
+    loss = loss_fn(y_preds, y_true)
+    y_pred = torch.argmax(y_preds, dim=1)
 
-  if opt is not None or fgsm_attack is not None:
-    loss.backward()
+    if opt is not None or fgsm_attack is not None:
+        loss.backward()
 
-  if opt is not None:
-    opt.step()
-    # Reset optimizer
-    opt.zero_grad()
+    if opt is not None:
+        opt.step()
+        # Reset optimizer
+        opt.zero_grad()
 
-  perturbed_pred = None
-  perturbed_loss = None
-  perturbed_data = None
-  if fgsm_attack is not None:
-    # Get correctly labelled data
-    grad_data = x_true.grad.data
+    perturbed_pred = None
+    perturbed_loss = None
+    perturbed_data = None
+    if fgsm_attack is not None:
+        # Get correctly labelled data
+        grad_data = x_true.grad.data
 
-    # Transform to ensure misclassification
-    perturbed_data = fgsm_attack(data=x_true, data_grad=grad_data)
-    perturbed_preds = model(perturbed_data)
-    perturbed_pred = torch.argmax(perturbed_preds, dim=1)
-    perturbed_loss = loss_fn(perturbed_preds, y_true).item()
+        # Transform to ensure misclassification
+        perturbed_data = fgsm_attack(data=x_true, data_grad=grad_data)
+        perturbed_preds = model(perturbed_data)
+        perturbed_pred = torch.argmax(perturbed_preds, dim=1)
+        perturbed_loss = loss_fn(perturbed_preds, y_true).item()
 
-  # return scalar
-  return loss.item(), y_pred.cpu(), (perturbed_loss, perturbed_pred, perturbed_data)
+    # return scalar
+    return loss.item(), y_pred.cpu(), (perturbed_loss, perturbed_pred, perturbed_data)
+
 
 def fgsm_attack(data, epsilon, data_grad):
-  sign = data_grad.sign()
-  perturbed_image = data + epsilon * sign
-  return torch.clamp(perturbed_image, 0, 1)
+    sign = data_grad.sign()
+    perturbed_image = data + epsilon * sign
+    return torch.clamp(perturbed_image, 0, 1)
+
 
 def get_loss_and_accuracy(losses, preds, true_set):
-  total_count = len(true_set)
-  correct_count = 0
+    total_count = len(true_set)
+    correct_count = 0
 
-  true_set_tensor = torch.as_tensor(true_set)
-  preds_tensor = torch.as_tensor(preds)
-  correct_count += (preds_tensor == true_set_tensor).sum().item()
-  logger.debug(f"Predictions: {preds_tensor}")
-  logger.debug(f"Ground Truth: {true_set_tensor}")
-  logger.debug(correct_count)
-  logger.debug(total_count)
+    true_set_tensor = torch.as_tensor(true_set)
+    preds_tensor = torch.as_tensor(preds)
+    correct_count += (preds_tensor == true_set_tensor).sum().item()
+    logger.debug(f"Predictions: {preds_tensor}")
+    logger.debug(f"Ground Truth: {true_set_tensor}")
+    logger.debug(correct_count)
+    logger.debug(total_count)
 
-  error = np.array(losses).mean()
-  accuracy =  correct_count / total_count 
-  return accuracy, error
+    error = np.array(losses).mean()
+    accuracy = correct_count / total_count
+    return accuracy, error
+
 
 def fit(epochs, model, opt, train_set, loss_fn, val_set=None):
-  train_accuracies = []
-  train_errors = []
-  val_accuracies = []
-  val_errors = []
+    train_accuracies = []
+    train_errors = []
+    val_accuracies = []
+    val_errors = []
 
-  for _ in range(epochs):
-    model.train()
+    for _ in range(epochs):
+        model.train()
 
-    train_losses = []
-    train_preds = []
-    training_ys = []
-    
-    for x,y in train_set:
-      loss, pred, _ = calculate_loss_and_update(model, loss_fn, opt, x, y)
-      training_ys.extend(y.detach())
-      train_losses.append(loss)
-      train_preds.extend(pred.detach().tolist())
+        train_losses = []
+        train_preds = []
+        training_ys = []
 
-    train_accuracy, train_loss = get_loss_and_accuracy(train_losses, train_preds, training_ys)
-    train_accuracies.append(train_accuracy)
-    train_errors.append(train_loss)
+        for x, y in train_set:
+            loss, pred, _ = calculate_loss_and_update(model, loss_fn, opt, x, y)
+            training_ys.extend(y.detach())
+            train_losses.append(loss)
+            train_preds.extend(pred.detach().tolist())
 
-    if val_set is not None:
-      val_accuracy, val_loss, *_ = evaluate(model, val_set, loss_fn)
-      val_accuracies.append(val_accuracy)
-      val_errors.append(val_loss)
+        train_accuracy, train_loss = get_loss_and_accuracy(
+            train_losses, train_preds, training_ys
+        )
+        train_accuracies.append(train_accuracy)
+        train_errors.append(train_loss)
 
-  return train_accuracies, train_errors, val_accuracies, val_errors
+        if val_set is not None:
+            val_accuracy, val_loss, *_ = evaluate(model, val_set, loss_fn)
+            val_accuracies.append(val_accuracy)
+            val_errors.append(val_loss)
 
-def evaluate(model, val_set, loss_fn, fgsm_attack = None):
-  model.eval()
+    return train_accuracies, train_errors, val_accuracies, val_errors
 
-  val_losses = []
-  val_preds = []
-  val_ys = []
 
-  fgsm_losses = []
-  fgsm_preds = []
-  fgsm_images = []
+def evaluate(model, val_set, loss_fn, fgsm_attack=None):
+    model.eval()
 
-  for x,y in val_set:
-    loss, pred, fgsm_data = calculate_loss_and_update(model, loss_fn, None, x, y, fgsm_attack)
+    val_losses = []
+    val_preds = []
+    val_ys = []
+
+    fgsm_losses = []
+    fgsm_preds = []
+    fgsm_images = []
+
+    for x, y in val_set:
+        loss, pred, fgsm_data = calculate_loss_and_update(
+            model, loss_fn, None, x, y, fgsm_attack
+        )
+
+        if fgsm_attack:
+            fgsm_loss, fgsm_pred, fgsm_image = fgsm_data
+            fgsm_losses.append(fgsm_loss)
+            fgsm_preds.extend(fgsm_pred.detach())
+            fgsm_images.extend(fgsm_image.detach())
+
+        val_ys.extend(y.detach())
+        val_losses.append(loss)
+        val_preds.extend(pred.detach())
+
+    val_accuracy, val_loss = get_loss_and_accuracy(val_losses, val_preds, val_ys)
+    fgsm_accuracy, fgsm_loss = None, None
 
     if fgsm_attack:
-      fgsm_loss, fgsm_pred, fgsm_image = fgsm_data
-      fgsm_losses.append(fgsm_loss)
-      fgsm_preds.extend(fgsm_pred.detach())
-      fgsm_images.extend(fgsm_image.detach())
+        fgsm_accuracy, fgsm_loss = get_loss_and_accuracy(
+            fgsm_losses, fgsm_preds, val_ys
+        )
 
-    val_ys.extend(y.detach())
-    val_losses.append(loss)
-    val_preds.extend(pred.detach())
-  
-  val_accuracy, val_loss = get_loss_and_accuracy(val_losses, val_preds, val_ys)
-  fgsm_accuracy, fgsm_loss = None, None
+    return (
+        val_accuracy,
+        val_loss,
+        fgsm_accuracy,
+        fgsm_loss,
+        fgsm_images,
+        fgsm_preds,
+        val_ys,
+    )
 
-  if fgsm_attack:
-    fgsm_accuracy, fgsm_loss = get_loss_and_accuracy(fgsm_losses, fgsm_preds, val_ys)
 
-  return val_accuracy, val_loss, fgsm_accuracy, fgsm_loss, fgsm_images, fgsm_preds, val_ys
-
-NO_OF_EPOCHS=16
-train_accuracy, train_error, val_accuracy, val_error = fit(NO_OF_EPOCHS, conv_net, opt, train_dl, cross_entropy, val_dl)
+NO_OF_EPOCHS = 16
+train_accuracy, train_error, val_accuracy, val_error = fit(
+    NO_OF_EPOCHS, conv_net, opt, train_dl, cross_entropy, val_dl
+)
 
 # %% Cell 5
 import matplotlib.pyplot as plt
@@ -268,13 +295,22 @@ plt.plot(val_error)
 
 # %% Cell 6
 from functools import partial
+
 for epsilon in [0, 0.05, 0.15, 0.25]:
-  val_accuracy, val_loss, fgsm_accuracy, fgsm_loss, fgsm_images, fgsm_preds, val_ys = evaluate(conv_net, val_dl, cross_entropy, partial(fgsm_attack, epsilon=epsilon))
-  logger.info(f"EPSILON: {epsilon}")
-  logger.info(f"VAL MEAN ACCURACY: {val_accuracy}")
-  logger.info(f"VAL MEAN LOSS: {val_loss}")
-  logger.info(f"FGSM MEAN ACCURACY: {fgsm_accuracy}")
-  logger.info(f"FGSM MEAN ACCURACY: {fgsm_loss}")
+    (
+        val_accuracy,
+        val_loss,
+        fgsm_accuracy,
+        fgsm_loss,
+        fgsm_images,
+        fgsm_preds,
+        val_ys,
+    ) = evaluate(conv_net, val_dl, cross_entropy, partial(fgsm_attack, epsilon=epsilon))
+    logger.info(f"EPSILON: {epsilon}")
+    logger.info(f"VAL MEAN ACCURACY: {val_accuracy}")
+    logger.info(f"VAL MEAN LOSS: {val_loss}")
+    logger.info(f"FGSM MEAN ACCURACY: {fgsm_accuracy}")
+    logger.info(f"FGSM MEAN ACCURACY: {fgsm_loss}")
 
 # ==============================================================================
 # Section 8: Part 2
@@ -287,12 +323,12 @@ ROWS = 5
 COLUMNS = 4
 fig, ax = plt.subplots(nrows=ROWS, ncols=COLUMNS, figsize=(18, 18))
 for index in range(ROWS * COLUMNS):
-  sample_image = fgsm_images[index].cpu().detach().numpy()[0]
-  pred_label = fgsm_preds[index]
-  true_label = val_ys[index]
-  current_ax = ax.ravel()[index]
-  current_ax.imshow(sample_image)
-  current_ax.set_title(f"Prediction: {pred_label}, Ground Truth: {true_label}")
+    sample_image = fgsm_images[index].cpu().detach().numpy()[0]
+    pred_label = fgsm_preds[index]
+    true_label = val_ys[index]
+    current_ax = ax.ravel()[index]
+    current_ax.imshow(sample_image)
+    current_ax.set_title(f"Prediction: {pred_label}, Ground Truth: {true_label}")
 
 # ==============================================================================
 # Section 9: Reasoning

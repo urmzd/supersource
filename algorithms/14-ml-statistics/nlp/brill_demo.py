@@ -8,7 +8,7 @@ postag(num_sents=None, train=0.7665)
 # tested earlier. If we set train ratio to 0.7665, the train set will have
 # 3000 sentences, just like in previous taggers. The other params are default.
 
-# Accuracy: 0.9242 
+# Accuracy: 0.9242
 
 # Top 3 Rules:
 # NN->VB if Pos:-NONE-@[-2] & Pos:TO@[-1]

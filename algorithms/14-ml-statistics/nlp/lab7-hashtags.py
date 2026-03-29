@@ -24,5 +24,5 @@ with open("lab7-tweets.csv", "r") as infile:
 
     for k in unique:
         print(f"{k}:")
-        print(f'unique tokens: {",".join(unique[k])}')
-        print(f'hashtags: {",".join(hashtags[k])}')
+        print(f"unique tokens: {','.join(unique[k])}")
+        print(f"hashtags: {','.join(hashtags[k])}")

@@ -28,11 +28,13 @@ class Solution:
 
         return sum_subarray
 
-    def get_max_crossing_subarray(self, array: list[int], low: int, mid: int, high: int) -> tuple[int, int, int]:
+    def get_max_crossing_subarray(
+        self, array: list[int], low: int, mid: int, high: int
+    ) -> tuple[int, int, int]:
         total_sum = 0
 
         left_index = right_index = 0
-        left_sum = right_sum = -(10**(5)) - 1
+        left_sum = right_sum = -(10 ** (5)) - 1
 
         index = mid
         while index >= low:
@@ -58,7 +60,9 @@ class Solution:
 
         return (left_sum + right_sum, left_index, right_index)
 
-    def get_max_subarray(self, array: list[int], low: int, high: int) -> tuple[int, int, int]:
+    def get_max_subarray(
+        self, array: list[int], low: int, high: int
+    ) -> tuple[int, int, int]:
         if high == low:
             return (array[low], low, high)
 
@@ -74,7 +78,6 @@ class Solution:
 # Execute test case
 # Run python q5.py %name_of_input_file_here%
 if __name__ == "__main__":
-
     file = open(sys.argv[1], "r")
     array = [int(x) for x in file.read().split(",")]
 

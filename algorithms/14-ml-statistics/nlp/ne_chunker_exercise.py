@@ -13,5 +13,4 @@ word_fd = FreqDist(
 )
 print("Three most common named entities are: ")
 for token, freq in word_fd.most_common(3):
-
     print("%s : %d" % (token, freq))

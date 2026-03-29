@@ -5,16 +5,17 @@ import sys
 
 
 class Node:
-    def __init__(self,
-                 data,
-                 previous_node=None,
-                 left: 'Node' = None,
-                 right: 'Node' = None,
-                 comparator=None,
-                 data_key=None,
-                 range_key=None,
-                 index_key=None
-                 ):
+    def __init__(
+        self,
+        data,
+        previous_node=None,
+        left: "Node" = None,
+        right: "Node" = None,
+        comparator=None,
+        data_key=None,
+        range_key=None,
+        index_key=None,
+    ):
         self.data = data
         self.previous_node = previous_node
 
@@ -100,11 +101,7 @@ class Node:
 
 
 class AVLTree:
-    def __init__(self,
-                 comparator=None,
-                 range_key=None,
-                 data_key=None,
-                 index_key=None):
+    def __init__(self, comparator=None, range_key=None, data_key=None, index_key=None):
         self.root = None
         self.comparator = comparator
         self.range_key = range_key
@@ -113,19 +110,23 @@ class AVLTree:
 
     def insert(self, data, previous_data=None) -> None:
         """
-            The following implementation has a bug in it which results
-            in duplicates to be deleted.
+        The following implementation has a bug in it which results
+        in duplicates to be deleted.
 
-            For the solutions sake, assume this works correctly.
-            For testing, DO NOT ADD DUPLICATES.
+        For the solutions sake, assume this works correctly.
+        For testing, DO NOT ADD DUPLICATES.
         """
         self.root = self._insert(data, previous_data, self.root)
 
     def _insert(self, data, previous_data=None, parent: Optional[Node] = None):
         if not parent:
-            return Node(data, previous_node=previous_data, comparator=self.comparator,
-                        data_key=self.data_key,
-                        range_key=self.range_key)
+            return Node(
+                data,
+                previous_node=previous_data,
+                comparator=self.comparator,
+                data_key=self.data_key,
+                range_key=self.range_key,
+            )
 
         if parent.compare(data) > 0:
             parent.right = self._insert(data, previous_data, parent.right)
@@ -159,11 +160,11 @@ class AVLTree:
 
     def _range_max(self, start, end, parent: Optional[Node]) -> Optional[Node]:
         """
-            The following can be done in O(log(n)) time by
-            augmenting this tree to include the highest range at 
-            within each node.
+        The following can be done in O(log(n)) time by
+        augmenting this tree to include the highest range at
+        within each node.
 
-            The current solution is in O(n) due to poor implementation.
+        The current solution is in O(n) due to poor implementation.
         """
 
         if not parent:
@@ -174,14 +175,12 @@ class AVLTree:
         in_range = after_start and before_end
 
         if in_range:
-            arr = [parent,
-                   self._range_max(start, end, parent.left),
-                   self._range_max(start, end, parent.right)
-                   ]
-            return max(
-                filter(lambda x: x, arr),
-                key=lambda x: x.data[self.range_key]
-            )
+            arr = [
+                parent,
+                self._range_max(start, end, parent.left),
+                self._range_max(start, end, parent.right),
+            ]
+            return max(filter(lambda x: x, arr), key=lambda x: x.data[self.range_key])
 
         return None
 
@@ -204,19 +203,19 @@ def compare_fn(x, y, keying):
 
 
 def calculate_cost(S):
-    """ 
-        IMPLEMENTATION Bugs: 
-            1: Duplicates are being deleted.
-            2. range_max is being done in O(n) time instead of O(log(n))
+    """
+    IMPLEMENTATION Bugs:
+        1: Duplicates are being deleted.
+        2. range_max is being done in O(n) time instead of O(log(n))
 
-        For more: Take a look at AVLTree.insert() function and 
-            AVLTree.range_max() function.
+    For more: Take a look at AVLTree.insert() function and
+        AVLTree.range_max() function.
     """
     tree = AVLTree(data_key=0, range_key=1, index_key=2, comparator=compare_fn)
     length = len(S)
 
     for i in range(length):
-        range_max: Optional[Node] = tree.range_max(S[i]-3, S[i])
+        range_max: Optional[Node] = tree.range_max(S[i] - 3, S[i])
 
         if range_max:
             y_h = range_max.data[1]

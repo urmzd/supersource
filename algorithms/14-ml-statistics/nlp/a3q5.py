@@ -5,6 +5,7 @@ from tabulate import tabulate
 from typing import Union, Dict
 from functools import reduce
 
+
 # Utils
 def mapr(x: bool) -> int:
     return 0 if x else 1
@@ -22,6 +23,7 @@ def concat_sum(cpt: np.ndarray, axis, transpose=False):
 
     return np.concatenate((cpt, sums), axis=axis)
 
+
 # Fully Independent Tasks
 def fi_evaluate(df: pd.DataFrame, c, d, e, f):
     total_articles = df["articles"].sum()
@@ -31,8 +33,10 @@ def fi_evaluate(df: pd.DataFrame, c, d, e, f):
     c_p = df[df["C"] == c]["articles"].sum() / total_articles
     return product(d_p, e_p, f_p, c_p)
 
+
 def fi_conditioning(df: pd.DataFrame, c, d, e, f):
     return fi_evaluate(df, c, d, e, f)
+
 
 # Joint Probability Tasks
 def jp_evaluate(df: pd.DataFrame, d: bool, e: bool, f: bool, c: bool = None):
@@ -134,13 +138,9 @@ def nb_generate_cpt(
 
         # Convert columns to probabilities.
         if prob:
-            cpt[:2,] /= cpt[
-                -1,
-            ]
+            cpt[:2,] /= cpt[-1,]
 
-        cpt = cpt[
-            :2,
-        ]
+        cpt = cpt[:2,]
 
         print(
             tabulate(
@@ -159,6 +159,7 @@ def nb_generate_cpt(
         print("\n")
 
     return cpt
+
 
 if __name__ == "__main__":
     df = pd.read_csv("a3q5.in", sep=" ")

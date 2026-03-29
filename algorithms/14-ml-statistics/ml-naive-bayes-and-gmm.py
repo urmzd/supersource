@@ -22,7 +22,7 @@
 # %% Cell 0
 # !pip install TeX
 # !pip install LaTeX
-# ! sudo apt-get install texlive-latex-recommended 
+# ! sudo apt-get install texlive-latex-recommended
 # ! sudo apt install texlive-latex-extra
 # ! sudo apt install dvipng
 # ! sudo apt install cm-super
@@ -40,40 +40,61 @@ import numpy as np
 
 np.random.seed(42)
 
-def get_model(mean=(5.4, 4.2), std=(0.28,0.2), split=(0.4, 0.6), population=10000, get_total=False):
+
+def get_model(
+    mean=(5.4, 4.2),
+    std=(0.28, 0.2),
+    split=(0.4, 0.6),
+    population=10000,
+    get_total=False,
+):
     assert len(mean) == len(std) == len(split), "Size of input tuples must be same."
-    
-    distributions = [np.random.normal(mean[i], std[i], round(population * split[i])) for i in range(len(mean))]
-    
+
+    distributions = [
+        np.random.normal(mean[i], std[i], round(population * split[i]))
+        for i in range(len(mean))
+    ]
+
     if get_total:
         return np.concatenate(distributions)
-    
+
     return distributions
+
 
 # b) Generate a population of 10,000 individuals and plot the joint histogram.
 
 # %% Cell 2
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.rcParams['text.usetex'] = True
+
+matplotlib.rcParams["text.usetex"] = True
+
 
 def model_plot(distributions=get_model(), no_of_bins=100, labels=("Male", "Female")):
     fig, ax = plt.subplots()
-    
+
     assert len(labels) == len(distributions), "Not enough labels."
-    
-    ax.hist(distributions, no_of_bins, density=False, label=labels, histtype="step", linewidth=3.14)
-        
+
+    ax.hist(
+        distributions,
+        no_of_bins,
+        density=False,
+        label=labels,
+        histtype="step",
+        linewidth=3.14,
+    )
+
     total_distribution = np.concatenate(distributions)
     total_label = "Total"
-    
+
     ax.hist(total_distribution, no_of_bins, density=False, label=total_label)
-    ax.legend(loc='best')
-    
+    ax.legend(loc="best")
+
     ax.set_xlabel(r"No. of Red Blood Cells ($\frac{10^7}{\mu{L}}$)")
     ax.set_ylabel("No. of People")
     ax.set_title("No. of Red Blood Cell in Males and Females")
-    
+
+
 model_plot()
 
 # ==============================================================================
@@ -88,20 +109,24 @@ model_plot()
 from sklearn.datasets import fetch_20newsgroups
 import numpy as np
 
+
 def get_data_set(subset="train", peek=False, cats=False):
-    newsgroups = fetch_20newsgroups(remove=('headers','footers','quotes'),subset=subset)
+    newsgroups = fetch_20newsgroups(
+        remove=("headers", "footers", "quotes"), subset=subset
+    )
     remove_ws = lambda x: " ".join(x.split())
-    X = list(map(remove_ws,newsgroups.data))
+    X = list(map(remove_ws, newsgroups.data))
     y = newsgroups.target
-    categories = newsgroups.target_names 
-      
-    if peek: 
+    categories = newsgroups.target_names
+
+    if peek:
         print(newsgroups.DESCR)
-    
+
     if cats:
-      return X, y, categories
+        return X, y, categories
 
     return X, y
+
 
 # a) First you will build a classifier on the above training set. You will be using [Multinomial Naive Bayes](https://scikit-learn.org/stable/modules/generated/sklearn.naivebayes.MultinomialNB.html#sklearn-naive-bayes-multinomialnb) from sklearn for this task. Make sure you account for the zero counts (smoothing), so that a prediction is not penalized just because it uses a word that is not present in the training set.
 
@@ -109,13 +134,15 @@ def get_data_set(subset="train", peek=False, cats=False):
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
+
 # Train X, Train y, Test X, Test y respectively.
 def get_vectorized_data(X_0, y_0, X_1, y_1, categories):
     vectorizer = TfidfVectorizer()
     X_0 = vectorizer.fit_transform(X_0)
     X_1 = vectorizer.transform(X_1)
-    
+
     return X_0, y_0, X_1, y_1, categories, vectorizer
+
 
 # %% Cell 5
 def get_trained_model(X_0, y_0):
@@ -124,12 +151,14 @@ def get_trained_model(X_0, y_0):
 
     return clf
 
+
 # How well does the classifier fits the training set ?
 
 # %% Cell 6
 from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
 from math import floor
+
 
 def show_metrics(
     clf,
@@ -138,11 +167,11 @@ def show_metrics(
     categories,
     title="Confusion Matrix",
     x_label="Actual",
-    y_label="Predicted"
-):  
+    y_label="Predicted",
+):
     y_pred = clf.predict(X)
     report = classification_report(y, y_pred, output_dict=True)
-    cm = confusion_matrix(y, y_pred, normalize='true')
+    cm = confusion_matrix(y, y_pred, normalize="true")
 
     fig, ax = plt.subplots(figsize=(20, 20))
     ax = sns.heatmap(cm, ax=ax, annot=True, fmt=".2f")
@@ -153,19 +182,21 @@ def show_metrics(
     x_ticks = [categories[floor(i)] for i in ax.get_xticks()]
     y_ticks = [categories[floor(i)] for i in ax.get_yticks()]
 
-    ax.set_xticklabels(x_ticks,rotation=45)
+    ax.set_xticklabels(x_ticks, rotation=45)
     ax.set_yticklabels(y_ticks, rotation=45)
 
     print("=============== Metrics ===============")
 
     for title, value in report["macro avg"].items():
-      print(f"{title}: {value:.2f}")
+        print(f"{title}: {value:.2f}")
 
     print("======================================")
-    
+
 
 # Confusion matrix for training test.
-X_0, y_0, X_1, y_1, categories, vectorizer = get_vectorized_data(*(*get_data_set(), *get_data_set("test", cats=True)))
+X_0, y_0, X_1, y_1, categories, vectorizer = get_vectorized_data(
+    *(*get_data_set(), *get_data_set("test", cats=True))
+)
 clf = get_trained_model(X_0, y_0)
 show_metrics(clf, X_0, y_0, categories, title="Confusion Matrix for Training Set")
 
@@ -183,14 +214,16 @@ show_metrics(clf, X_1, y_1, categories, title="Confusion Matrix for Testing Set"
 
 # Report the top-10 most representative words or features for that category ie. top-10 words with the highest $P(X{i}|category)$ . We'll use the getfeaturenames() method of [TfidfVectorizer](https://scikit-learn.org/stable/modules/generated/sklearn.featureextraction.text.TfidfVectorizer.html) and featurelogprob attribute of [Multinomial Naive Bayes](https://scikit-learn.org/stable/modules/generated/sklearn.naivebayes.MultinomialNB.html#sklearn-naive-bayes-multinomialnb) to answer this question.These have been combined in the "showtop10" function below. You are encouraged to find out how this function works and use it to answer the question.
 
+
 # %% Cell 8
 def show_top10(classifier, vectorizer, categories, peek=True):
-  "Returns the top 10 most representative features for each class"
-  feature_names = np.asarray(vectorizer.get_feature_names())
-  for i, category in enumerate(categories):
-    top10 = np.argsort(classifier.feature_log_prob_[i])[-10:]
-    if peek:
-      print("%s: %s" % (category, " ".join(feature_names[top10])))
+    "Returns the top 10 most representative features for each class"
+    feature_names = np.asarray(vectorizer.get_feature_names())
+    for i, category in enumerate(categories):
+        top10 = np.argsort(classifier.feature_log_prob_[i])[-10:]
+        if peek:
+            print("%s: %s" % (category, " ".join(feature_names[top10])))
+
 
 # %% Cell 9
 show_top10(clf, vectorizer, categories)
@@ -201,17 +234,27 @@ show_top10(clf, vectorizer, categories)
 # Set Seed.
 np.random.seed(42)
 
-def predict_top_2(clf,  X, vectorizer, categories, n_samples=2):
-  rand_indices = [np.random.randint(0, X.shape[0]) for i in range(n_samples)]
-  rand_X = [X[i] for i in rand_indices]
-  prob_indices = np.array([np.argsort(clf.predict_proba(x), axis=1).reshape(-1,)[-2:] for x in rand_X])
-  prob_categories = [list(map(lambda x: categories[x], classes)) for classes in prob_indices]
+
+def predict_top_2(clf, X, vectorizer, categories, n_samples=2):
+    rand_indices = [np.random.randint(0, X.shape[0]) for i in range(n_samples)]
+    rand_X = [X[i] for i in rand_indices]
+    prob_indices = np.array(
+        [
+            np.argsort(clf.predict_proba(x), axis=1).reshape(
+                -1,
+            )[-2:]
+            for x in rand_X
+        ]
+    )
+    prob_categories = [
+        list(map(lambda x: categories[x], classes)) for classes in prob_indices
+    ]
+
+    for i, x in enumerate(rand_indices):
+        print(f"Sample {x}'s top-2 news categories are {prob_categories[i]}\n")
 
 
-  for i,x in enumerate(rand_indices):
-    print(f"Sample {x}'s top-2 news categories are {prob_categories[i]}\n")
-
-(predict_top_2(clf, X_1,  vectorizer, categories))
+(predict_top_2(clf, X_1, vectorizer, categories))
 
 # ==============================================================================
 # Section 4: 3. Gaussian Mixture Model (3 pts)
@@ -226,8 +269,11 @@ def predict_top_2(clf,  X, vectorizer, categories, n_samples=2):
 from google.colab import files
 import pandas as pd
 import io
+
 uploaded = files.upload()
-aliens = pd.read_csv(io.StringIO(uploaded['aliens.csv'].decode('utf-8')),names=['height','weight'])
+aliens = pd.read_csv(
+    io.StringIO(uploaded["aliens.csv"].decode("utf-8")), names=["height", "weight"]
+)
 
 # a) Run a [Gaussian Mixture Model](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html#sklearn-mixture-gaussianmixture), so that you can identify the different races in the civilization. Vary the number of components from 2 to 7. Use the [Akaike information criterion](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html#sklearn.mixture.GaussianMixture.aic) (AIC) to provide a metric of the goodness of the approximation for each. Indicate the most likely number of races.
 
@@ -235,50 +281,69 @@ aliens = pd.read_csv(io.StringIO(uploaded['aliens.csv'].decode('utf-8')),names=[
 # Plot AIC as a function of number of componenets
 from sklearn.mixture import GaussianMixture
 
-def get_classifier_using_aic(data_set, component_range=(2,8), peek=True, plot=True):
-  aics = [GaussianMixture(i, random_state=42).fit(data_set).aic(data_set) for i in range(*component_range)]
-  print(aics)
-  
-  for i in range(len(aics)):
-    print(f"AIC of model with component {i+2} is {aics[i]:.2f}")
 
-  if plot:
-    fig, ax = plt.subplots()
-    ax.plot(np.arange(*component_range), aics, "-o")
-    ax.set_xlabel("Number of Clusters")
-    ax.set_ylabel("AIC")
+def get_classifier_using_aic(data_set, component_range=(2, 8), peek=True, plot=True):
+    aics = [
+        GaussianMixture(i, random_state=42).fit(data_set).aic(data_set)
+        for i in range(*component_range)
+    ]
+    print(aics)
 
-  print(f"There most likely exists {np.argmin(np.array(aics)) + 2} alien races.")
+    for i in range(len(aics)):
+        print(f"AIC of model with component {i + 2} is {aics[i]:.2f}")
+
+    if plot:
+        fig, ax = plt.subplots()
+        ax.plot(np.arange(*component_range), aics, "-o")
+        ax.set_xlabel("Number of Clusters")
+        ax.set_ylabel("AIC")
+
+    print(f"There most likely exists {np.argmin(np.array(aics)) + 2} alien races.")
+
 
 get_classifier_using_aic(aliens)
 
 # b) Using the most probable number of races (# gaussians) based on AIC, plot in a scatter plot of all your points (heights and weights) where the color of each point is defined by the Gaussian with the highest posterior probability.
 
+
 # %% Cell 13
 def make_model(data_set, plot=True, n=5, explain=False):
-  clf = GaussianMixture(n, random_state=42).fit(data_set)
-  pred = clf.predict(data_set)
+    clf = GaussianMixture(n, random_state=42).fit(data_set)
+    pred = clf.predict(data_set)
 
-  if plot:
-    fig, ax = plt.subplots()
-    sp = ax.scatter(data_set["height"], data_set["weight"], s=7, c=pred, edgecolors="k", linewidths=0.5, alpha=0.5)
-    ax.legend(handles=sp.legend_elements()[0], labels=list(range(n+1)), loc="best")
-    ax.set_xlabel("Height (m)")
-    ax.set_ylabel("Weight (kg)")
-    ax.grid(True)
-    fig.colorbar(sp)
+    if plot:
+        fig, ax = plt.subplots()
+        sp = ax.scatter(
+            data_set["height"],
+            data_set["weight"],
+            s=7,
+            c=pred,
+            edgecolors="k",
+            linewidths=0.5,
+            alpha=0.5,
+        )
+        ax.legend(
+            handles=sp.legend_elements()[0], labels=list(range(n + 1)), loc="best"
+        )
+        ax.set_xlabel("Height (m)")
+        ax.set_ylabel("Weight (kg)")
+        ax.grid(True)
+        fig.colorbar(sp)
 
-  if explain:
-    print("====== MEAN =====")
-    averages = clf.means_
-    for i in range(n):
-      print(f"Class {i} has an average height of {averages[i][0]:.2f} and an average weight of {averages[i][1]:.2f}")
+    if explain:
+        print("====== MEAN =====")
+        averages = clf.means_
+        for i in range(n):
+            print(
+                f"Class {i} has an average height of {averages[i][0]:.2f} and an average weight of {averages[i][1]:.2f}"
+            )
 
-    print("===== VARIANCE =====")
-    variances = clf.covariances_
-    print(variances.shape)
-    for i in range(n):
-      print(f"Class {i} has {variances[i]}")
+        print("===== VARIANCE =====")
+        variances = clf.covariances_
+        print(variances.shape)
+        for i in range(n):
+            print(f"Class {i} has {variances[i]}")
+
 
 make_model(aliens, explain=False)
 

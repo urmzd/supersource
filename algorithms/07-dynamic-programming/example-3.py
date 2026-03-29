@@ -19,8 +19,8 @@ import sys
 
 
 def maximum_subarray(nums: list[int]) -> int:
-    high_max = -10 ** 5 - 1
-    current_max = -10 ** 5 - 1
+    high_max = -(10**5) - 1
+    current_max = -(10**5) - 1
 
     for index in range(len(nums)):
         current_max = max(nums[index], current_max + nums[index])
