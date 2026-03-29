@@ -1,5 +1,5 @@
 def main():
-    print("Hello from superpowers!")
+    print("Hello from supersource!")
 
 
 if __name__ == "__main__":
