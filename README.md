@@ -1,4 +1,4 @@
-# Superpowers
+# Supersource
 
 A free, self-paced curriculum from undergraduate foundations through PhD-level depth and Staff/Principal engineer expertise. Every primary resource is open-access.
 
@@ -61,6 +61,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 |-------|-----------|------|
 | [Competitive Programming](competitive-programming/) | [CP Handbook](https://cses.fi/book/book.pdf) (free) + CSES Problem Set | 6-8 weeks |
 | [Information Theory](information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
+| [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) | 3-4 weeks |
 
 ## Prerequisite Graph
 
@@ -111,39 +112,61 @@ Company-specific guides for 19 companies. See [`interviews/README.md`](interview
 - **Quant & Trading**: [Jane Street](interviews/jane-street/), [Citadel](interviews/citadel/), [Two Sigma](interviews/two-sigma/), [HRT](interviews/hrt/), [Renaissance](interviews/renaissance-technologies/)
 - **Frontier**: [SpaceX](interviews/spacex/)
 
-## Practice
+## Polyglot Practice
 
-- [K-Means Clustering](practice/k_means.py) -- from-scratch implementation
-- [TF-IDF Vector Search](practice/tf_idf_vector_search.py) -- text similarity search
+Retain and sharpen coding skills across 9 languages. See [`practice/README.md`](practice/README.md) for full details.
 
-## Books Referenced
+| Tier | Languages | Focus |
+|------|-----------|-------|
+| **Systems** | [C](practice/systems/c/), [C++](practice/systems/cpp/), [Rust](practice/systems/rust/), [Zig](practice/systems/zig/) | Memory management, performance, hardware awareness |
+| **Cloud** | [Go](practice/cloud/go/), [Scala](practice/cloud/scala/), [Java](practice/cloud/java/) | Distributed systems, concurrency, JVM/runtime |
+| **General** | [Python](practice/general/python/), [TypeScript](practice/general/typescript/) | Rapid prototyping, type systems, full-stack |
 
-Technical books integrated into this curriculum. Owned books are in `~/Documents/books/`.
+Each language has 10 graded exercises covering data structures, algorithms, concurrency, and language-specific idioms.
 
-| Book | Track | Location |
-|------|-------|----------|
-| *Introduction to Algorithms* (CLRS) 4th ed. | Algorithms | [`~/Documents/books/The.MIT.Press.Introduction.to.Algorithms.4th.edition.026204630X.pdf`](~/Documents/books/The.MIT.Press.Introduction.to.Algorithms.4th.edition.026204630X.pdf) |
-| *Competitive Programmer's Handbook* | Competitive Programming | [`~/Documents/books/Competitive Programmer's. Handbook.pdf`](~/Documents/books/Competitive%20Programmer's.%20Handbook.pdf) + [Free online](https://cses.fi/book/book.pdf) |
-| *Introduction to Statistical Learning* (ISLR) | ML/AI | [`~/Documents/books/Introduction to Statistical Learning.pdf`](~/Documents/books/Introduction%20to%20Statistical%20Learning.pdf) + [Free online](https://www.statlearning.com/) |
-| *Deep Learning* (Goodfellow et al.) | ML/AI | [Free online](https://www.deeplearningbook.org/) |
-| *RL: An Introduction* (Sutton & Barto) | ML/AI | [Free online](http://incompleteideas.net/book/the-book-2nd.html) |
-| *Software Architecture Patterns* | Systems | [`~/Documents/books/Software-Architecture-Patterns.pdf`](~/Documents/books/Software-Architecture-Patterns.pdf) |
-| *Cloud Native DevOps with K8s* 2nd ed. | Systems | [`~/Documents/books/cloud-native-devops-k8s-2e[29826].pdf`](~/Documents/books/cloud-native-devops-k8s-2e%5B29826%5D.pdf) |
-| *Observability Engineering* | Systems | [`~/Documents/books/Honeycomb-OReilly-Book-on-Observability-Engineering.pdf`](~/Documents/books/Honeycomb-OReilly-Book-on-Observability-Engineering.pdf) |
-| *ByteByteGo System Design* | Systems | [`~/Documents/books/bytebytego-system-design.pdf.pdf`](~/Documents/books/bytebytego-system-design.pdf.pdf) |
-| *Student's Guide to Coding & Information Theory* | Information Theory | [`~/Documents/books/A Student_s Guide to Coding and Information Theory ( PDFDrive ).pdf`](~/Documents/books/A%20Student_s%20Guide%20to%20Coding%20and%20Information%20Theory%20%28%20PDFDrive%20%29.pdf) |
-| *Codeless Data Structures and Algorithms* | Algorithms | [`~/Documents/books/Codeless Data Structures and Algorithms.pdf`](~/Documents/books/Codeless%20Data%20Structures%20and%20Algorithms.pdf) |
-| *Neo4j Graph Algorithms* | Algorithms (Graphs) | [`~/Documents/books/Neo4j_Graph_Algorithms.pdf`](~/Documents/books/Neo4j_Graph_Algorithms.pdf) |
-| *Probability & Statistics for Engineering* (Devore) | Math | [`~/Documents/books/101_03_Devore_Probability-and-Statistics-for-Engineering-and-the-Sciences-2016.pdf`](~/Documents/books/101_03_Devore_Probability-and-Statistics-for-Engineering-and-the-Sciences-2016.pdf) |
-| *Linear Algebra* (local copy) | Math | [`~/Documents/books/LinearAlgebra.pdf`](~/Documents/books/LinearAlgebra.pdf) |
-| *OpenStax Calculus Vol 3* (local copy) | Math | [`~/Documents/books/CalculusVolume3-OP_mktoy8b.pdf`](~/Documents/books/CalculusVolume3-OP_mktoy8b.pdf) |
-| OpenStax Calculus Volumes 1-3 | Math | [Free online](https://openstax.org/) |
-| *Book of Proof* (Hammack) | Math | [Free online](https://people.vcu.edu/~rhammack/BookOfProof/) |
-| *Discrete Mathematics* (Levin) | Math | [Free online](https://discrete.openmathbooks.org/) |
-| *Linear Algebra* (Hefferon) | Math | [Free online](https://hefferon.net/linearalgebra/) |
-| *Intro to Probability* (Grinstead & Snell) | Math | [Free online](https://math.dartmouth.edu/~prob/prob/prob.pdf) |
-| *Info Theory, Inference, & Learning* (MacKay) | Information Theory | [Free online](http://www.inference.org.uk/mackay/itila/) |
+### From-Scratch Implementations
+
+- [K-Means Clustering](algorithms/14-ml-statistics/k-means.py) -- unsupervised learning
+- [TF-IDF Vector Search](algorithms/14-ml-statistics/tf-idf-vector-search.py) -- text similarity search
+
+## Books & Resources
+
+All primary textbooks are free. Recommended (non-free) books are marked with a price indicator.
+
+### Free Textbooks
+
+| Book | Track | Link |
+|------|-------|------|
+| OpenStax Calculus Volumes 1-3 | Math | [openstax.org](https://openstax.org/) |
+| *Book of Proof* -- Hammack | Math | [Free PDF](https://people.vcu.edu/~rhammack/BookOfProof/) |
+| *Discrete Mathematics: An Open Introduction* -- Levin | Math | [Free online](https://discrete.openmathbooks.org/) |
+| *Linear Algebra* -- Hefferon | Math | [Free PDF](https://hefferon.net/linearalgebra/) |
+| *Introduction to Probability* -- Grinstead & Snell | Math | [Free PDF](https://math.dartmouth.edu/~prob/prob/prob.pdf) |
+| *Competitive Programmer's Handbook* -- Laaksonen | Competitive Programming | [Free PDF](https://cses.fi/book/book.pdf) |
+| *Introduction to Statistical Learning* (ISLR) | ML/AI | [Free online](https://www.statlearning.com/) |
+| *Elements of Statistical Learning* (ESL) | ML/AI | [Free PDF](https://hastie.su.domains/ElemStatLearn/) |
+| *Deep Learning* -- Goodfellow, Bengio, Courville | ML/AI | [Free online](https://www.deeplearningbook.org/) |
+| *RL: An Introduction* -- Sutton & Barto | ML/AI | [Free online](http://incompleteideas.net/book/the-book-2nd.html) |
 | OpenAI Spinning Up in Deep RL | ML/AI (RL) | [Free online](https://spinningup.openai.com/en/latest/) |
+| *Info Theory, Inference, & Learning* -- MacKay | Information Theory | [Free online](http://www.inference.org.uk/mackay/itila/) |
+| *Software Engineering at Google* -- Winters, Manshreck, Wright | Software Craftsmanship | [Free online](https://abseil.io/resources/swe-book) |
+| Google SRE Book | Systems | [Free online](https://sre.google/sre-book/) |
+| System Design Primer | Systems | [Free on GitHub](https://github.com/donnemartin/system-design-primer) |
+
+### Recommended (non-free)
+
+| Book | Track | Why |
+|------|-------|-----|
+| *Introduction to Algorithms* (CLRS) 4th ed. | Algorithms | The definitive algorithms reference; formal proofs and correctness |
+| *The Pragmatic Programmer* -- Hunt & Thomas (20th Anniversary) | Software Craftsmanship | The foundational text on professional software development |
+| *Designing Data-Intensive Applications* -- Kleppmann | Systems | The industry bible for distributed systems |
+| *ByteByteGo System Design* | Systems | Visual system design walkthroughs |
+| *Software Architecture Patterns* -- Richards | Systems | Concise pattern catalog for architecture decisions |
+| *Cloud Native DevOps with Kubernetes* 2nd ed. | Systems | Hands-on K8s from dev through production |
+| *Observability Engineering* -- Majors et al. | Systems | Modern observability beyond the three pillars |
+| *Probability & Statistics for Engineering* -- Devore | Math | Rigorous engineering-focused probability |
+| *A Student's Guide to Coding and Information Theory* | Information Theory | Accessible introduction with worked examples |
+| *Neo4j Graph Algorithms* | Algorithms (Graphs) | Applied graph algorithms at scale |
 
 ## License
 
