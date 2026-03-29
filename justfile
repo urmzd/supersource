@@ -1,4 +1,4 @@
-# justfile for superpowers
+# justfile for supersource
 # Use `just --parallel <recipe> ...` to run multiple recipes concurrently.
 
 set shell := ["bash", "-cu"]
