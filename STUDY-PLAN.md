@@ -103,23 +103,125 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 
 ---
 
-## Combined Path (24 weeks)
+## ML & AI (14-19 weeks)
 
-For learners starting from scratch who want the full journey: math foundations through to interview readiness.
+~10-12 hours per week. Requires math foundations (linear algebra, calculus, probability).
+
+### Weeks 1-5: Statistical Learning
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 1 | Statistical learning framework, bias-variance | ISLR Ch 2 |
+| 2 | Linear regression, model selection | ISLR Ch 3 |
+| 3 | Classification (logistic regression, LDA, Naive Bayes) | ISLR Ch 4 |
+| 4 | Resampling, regularization (ridge, lasso) | ISLR Ch 5-6 |
+| 5 | Trees, random forests, boosting, SVMs, unsupervised | ISLR Ch 8-9, 12 |
+
+### Weeks 6-13: Deep Learning
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 6 | ML basics, feedforward networks, backpropagation | Goodfellow Ch 5-6 |
+| 7 | Regularization, optimization (SGD, Adam) | Goodfellow Ch 7-8 |
+| 8 | CNNs -- architectures (LeNet to ResNet), applications | Goodfellow Ch 9 |
+| 9 | RNNs, LSTMs, sequence-to-sequence | Goodfellow Ch 10 |
+| 10 | Practical methodology, debugging, hyperparameter tuning | Goodfellow Ch 11 |
+| 11 | Autoencoders, generative models (VAE, GAN) | Goodfellow Ch 14, 20 |
+| 12 | Transformers, attention, BERT, GPT, scaling laws | Beyond book -- papers |
+| 13 | Representation learning, self-supervised, transfer learning | Goodfellow Ch 15 + papers |
+
+### Weeks 14-19: Reinforcement Learning
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 14 | Bandits, MDPs, Bellman equations | Sutton & Barto Ch 2-3 |
+| 15 | DP, Monte Carlo, TD learning, Q-learning | Sutton & Barto Ch 4-6 |
+| 16 | Function approximation, DQN | Sutton & Barto Ch 9-10 |
+| 17 | Policy gradient, actor-critic, A2C/A3C | Sutton & Barto Ch 13 |
+| 18 | PPO, DDPG, TD3, SAC | Spinning Up |
+| 19 | RLHF, alignment, model-based RL | Research papers |
+
+---
+
+## Systems & Architecture (11-15 weeks)
+
+~8-10 hours per week.
+
+### Weeks 1-5: System Design
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 1 | Scalability, load balancing, caching, CDN | ByteByteGo |
+| 2 | Database design, SQL vs NoSQL, CAP theorem, replication | ByteByteGo + DDIA |
+| 3 | Distributed systems primitives (consensus, distributed transactions) | ByteByteGo |
+| 4 | Messaging, event systems, API design | ByteByteGo |
+| 5 | Classic problems (URL shortener, chat, news feed, etc.) | ByteByteGo |
+
+### Weeks 6-8: Software Architecture
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 6 | Layered, event-driven, microkernel patterns | Software Architecture Patterns |
+| 7 | Microservices, space-based architecture | Software Architecture Patterns |
+| 8 | ADRs, quality attributes, trade-off analysis | Software Architecture Patterns |
+
+### Weeks 9-12: Cloud Native
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 9 | Containers, Docker, multi-stage builds | Cloud Native DevOps with K8s |
+| 10 | Kubernetes fundamentals (pods, deployments, services) | Cloud Native DevOps with K8s |
+| 11 | Advanced K8s (StatefulSets, CRDs, operators, RBAC) | Cloud Native DevOps with K8s |
+| 12 | Helm, GitOps, CI/CD, service mesh | Cloud Native DevOps with K8s |
+
+### Weeks 13-15: Observability
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 13 | Observability vs monitoring, instrumentation, OpenTelemetry | Observability Engineering |
+| 14 | SLOs, error budgets, debugging with observability | Observability Engineering + SRE Book |
+| 15 | Production excellence, incident response, chaos engineering | Observability Engineering |
+
+---
+
+## Combined Path (40+ weeks)
+
+The full journey from foundations through PhD-level depth and Staff+ engineering expertise.
 
 | Weeks | Focus | Details |
 |-------|-------|---------|
-| 1-4 | Calculus 1 + Linear Algebra | Parallel math study (see Math plan above) |
+| 1-4 | Calculus 1 + Linear Algebra | Parallel math study |
 | 5-8 | Calculus 2 + Discrete Math 1 | Parallel math study |
 | 9-12 | Calculus 3 + Discrete Math 2 | Parallel math study |
 | 13 | Math review & catch-up | Revisit hardest topics |
 | 14-16 | Probability & Statistics | Completes math track |
-| 17-19 | Algorithm Mastery (21-day plan) | One week per study-plan week |
-| 20-22 | Practice & deep dives | From-scratch implementations, hard variants |
-| 23-24 | Interview preparation | Company-targeted study, mock interviews |
+| 17-19 | Algorithm Mastery | 21-day plan (one week per study-plan week) |
+| 20-21 | Competitive Programming | Advanced techniques, contest practice |
+| 22-26 | Statistical Learning + Deep Learning | ISLR then Goodfellow |
+| 27-30 | Deep Learning (continued) + Info Theory | Research-level depth |
+| 31-34 | Reinforcement Learning | Sutton & Barto + Spinning Up |
+| 35-39 | Systems & Architecture | System design through observability |
+| 40-42 | Interview preparation | Company-targeted study, mock interviews |
 
-### How to Use the Combined Path
+---
 
-1. Start with the math plan -- it builds the reasoning skills that make algorithms easier
-2. When you reach algorithms, the discrete math and probability background will make graph theory, DP recurrences, and probabilistic structures click immediately
-3. During interview prep, use the company guides to focus your final review
+## PhD Research Track (20+ weeks)
+
+For those pursuing research depth in ML/AI. Assumes math foundations and statistical learning are complete.
+
+| Weeks | Focus | Reading |
+|-------|-------|---------|
+| 1-8 | Deep Learning (full book) | Goodfellow Parts I-III, all 20 chapters |
+| 9-10 | Information Theory | MacKay -- entropy, KL divergence, channel coding |
+| 11-14 | Reinforcement Learning | Sutton & Barto full + Spinning Up key papers |
+| 15-17 | Transformer architectures | Attention Is All You Need, BERT, GPT, scaling laws papers |
+| 18-19 | Alignment & Safety | Constitutional AI, RLHF, DPO papers |
+| 20+ | Research exploration | Pick a subfield, read 10+ papers, implement one |
+
+### How to Use These Plans
+
+1. **Pick your starting point** -- if you have a math background, skip to algorithms or ML
+2. **Parallelize where possible** -- math topics are designed for parallel study
+3. **Don't skip the connections** -- the cross-references between tracks are where real understanding lives
+4. **Adjust the pace** -- these timelines assume ~10 hrs/week; scale up or down as needed
+5. **Use interview guides last** -- they're most effective after building deep understanding
