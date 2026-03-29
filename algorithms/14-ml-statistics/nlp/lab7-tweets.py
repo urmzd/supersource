@@ -2,7 +2,6 @@
 # File: lab7-tweets.py
 # Retrieving user tweets
 import tweepy  # https://github.com/tweepy/tweepy
-import time
 
 consumer_key = "<REDACTED>"
 # consumer_secret is API Key Secret

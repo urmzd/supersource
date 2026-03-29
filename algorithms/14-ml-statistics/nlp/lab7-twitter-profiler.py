@@ -2,7 +2,6 @@
 # File: lab7-twitter-profiler.py
 # Twitter Profiler app. This is a simple script to configure the Twitter API
 import tweepy  # https://github.com/tweepy/tweepy
-import time
 
 consumer_key = "<REDACTED>"
 # consumer_secret is API Key Secret

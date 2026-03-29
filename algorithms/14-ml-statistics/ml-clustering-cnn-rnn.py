@@ -62,9 +62,9 @@ for cls in (AgglomerativeClustering, KMeans):
     for i in range(2, 6):
         cluster = cluster_metrics(cls, X, y, n_clusters=i)
         print(f"-- {cls.__name__}, No. of Clusters = {cluster[0]} --")
-        print(f"-- Silhoutte Coefficient -- ")
+        print("-- Silhoutte Coefficient -- ")
         print(f"{cluster[1]}")
-        print(f"-- Adjusted Rand Index --")
+        print("-- Adjusted Rand Index --")
         print(f"{cluster[2]}")
         print()
 
@@ -141,8 +141,7 @@ plt.show()
 
 # %% Cell 7
 from keras.models import Sequential
-from keras.layers import Conv2D, Flatten, Dense, InputLayer
-from keras.optimizers import Adam
+from keras.layers import Conv2D, Flatten, Dense
 import numpy as np
 from tensorflow.keras.utils import to_categorical
 
@@ -312,7 +311,6 @@ plot_network(
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, SimpleRNN
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 
 

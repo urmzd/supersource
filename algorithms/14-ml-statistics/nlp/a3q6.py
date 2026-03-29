@@ -42,12 +42,12 @@ if __name__ == "__main__":
     while True:
         source = (input()).strip()
 
-        if re.match(f"END", source):
+        if re.match("END", source):
             break
 
         target = (input()).strip()
 
-        if re.match(f"END", target):
+        if re.match("END", target):
             break
         else:
             edit_distances.append(calculate_edit_distance(source, target))

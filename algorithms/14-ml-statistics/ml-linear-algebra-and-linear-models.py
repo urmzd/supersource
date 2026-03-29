@@ -132,7 +132,6 @@ def predict(theta, x):
 # b) Compare this model with a solution computed in closed form. Input (X) and target (y) are provided as arguments. X is modified (Xb) to account for the bias. The function should return the optimum parameters($\theta$).
 
 # %% Cell 7
-from numpy.linalg import inv
 
 
 def linear_direct(X, y):
@@ -281,8 +280,8 @@ def get_k_cv(X, y, clf, k=5, print_individual=False):
 
         if print_individual:
             print(f"Fold {fold + 1}:")
-            print(f"Confusion Matrix\n", confusion_matrix)
-            print(f"Accuracy Score\n", accuracy_score)
+            print("Confusion Matrix\n", confusion_matrix)
+            print("Accuracy Score\n", accuracy_score)
             print("------------------------------")
 
         fold += 1

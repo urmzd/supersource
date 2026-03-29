@@ -1,6 +1,5 @@
 #!/bin/python3.9
 from typing import Optional, Union
-from math import ceil
 import sys
 
 

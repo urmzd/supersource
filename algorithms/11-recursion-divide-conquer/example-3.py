@@ -1,5 +1,4 @@
 from typing import List
-from math import ceil
 import sys
 
 

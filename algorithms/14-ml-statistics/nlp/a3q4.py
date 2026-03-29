@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import string
 from tabulate import tabulate
-from typing import Optional, TypedDict, Callable
+from typing import TypedDict, Callable
 
 phrase = "to be or not to be"
 phrase_len = len(phrase)
