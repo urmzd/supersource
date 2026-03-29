@@ -10,7 +10,8 @@
 
 # Define vertices
 
-class Solution():
+
+class Solution:
     a1 = a2 = a3 = a4 = a5 = a6 = 0
     b1 = b2 = b3 = b4 = b5 = b6 = b7 = b8 = b9 = b10 = b11 = b12 = 0
     c1 = c2 = c3 = c4 = 0
@@ -33,21 +34,29 @@ class Solution():
                             for self.b9 in range(4):
                                 for self.d5 in range(4):
                                     for self.d6 in range(4):
-                                        if self.d5 not in [self.a5, self.d6, self.b7] and self.d6 not in [self.d5, self.b7]:
+                                        if self.d5 not in [
+                                            self.a5,
+                                            self.d6,
+                                            self.b7,
+                                        ] and self.d6 not in [self.d5, self.b7]:
                                             asia_count = self.count_asia()
-                                            north_america_count = self.count_north_america()
-                                            south_america_count = self.count_south_america()
+                                            north_america_count = (
+                                                self.count_north_america()
+                                            )
+                                            south_america_count = (
+                                                self.count_south_america()
+                                            )
                                             europe_count = self.count_europe()
                                             oceania_count = self.count_oceania()
                                             africa_count = self.count_africa()
 
                                             _count = (
-                                                asia_count *
-                                                north_america_count *
-                                                south_america_count *
-                                                europe_count *
-                                                oceania_count *
-                                                africa_count
+                                                asia_count
+                                                * north_america_count
+                                                * south_america_count
+                                                * europe_count
+                                                * oceania_count
+                                                * africa_count
                                             )
 
                                             count += _count
@@ -66,9 +75,18 @@ class Solution():
                                         for self.e8 in range(4):
                                             if self.e8 not in [self.e7, self.e5]:
                                                 for self.e4 in range(4):
-                                                    if self.e4 not in [self.e7, self.e8, self.e3]:
+                                                    if self.e4 not in [
+                                                        self.e7,
+                                                        self.e8,
+                                                        self.e3,
+                                                    ]:
                                                         for e9 in range(4):
-                                                            if e9 not in [self.e4, self.e2, self.e7, self.e3]:
+                                                            if e9 not in [
+                                                                self.e4,
+                                                                self.e2,
+                                                                self.e7,
+                                                                self.e3,
+                                                            ]:
                                                                 count += 1
 
         return count
@@ -97,7 +115,11 @@ class Solution():
                                 for self.a6 in range(4):
                                     if self.a6 not in [self.a4, self.a2]:
                                         for self.a1 in range(4):
-                                            if self.a1 not in [self.a5, self.a2, self.a6]:
+                                            if self.a1 not in [
+                                                self.a5,
+                                                self.a2,
+                                                self.a6,
+                                            ]:
                                                 count += 1
 
         return count
@@ -111,9 +133,19 @@ class Solution():
                         for self.d7 in range(4):
                             if self.d7 not in [self.a5, self.d1, self.d5]:
                                 for self.d3 in range(4):
-                                    if self.d3 not in [self.d1, self.d5, self.d6, self.d7]:
+                                    if self.d3 not in [
+                                        self.d1,
+                                        self.d5,
+                                        self.d6,
+                                        self.d7,
+                                    ]:
                                         for self.d4 in range(4):
-                                            if self.d4 not in [self.d1, self.d2, self.d3, self.d6]:
+                                            if self.d4 not in [
+                                                self.d1,
+                                                self.d2,
+                                                self.d3,
+                                                self.d6,
+                                            ]:
                                                 count += 1
 
         return count
@@ -149,11 +181,32 @@ class Solution():
                                                 for self.b12 in range(4):
                                                     if self.b12 != self.b6:
                                                         for self.b4 in range(4):
-                                                            if self.b4 not in [self.b6, self.b8, self.b12]:
-                                                                for self.b10 in range(4):
-                                                                    if self.b10 not in [self.b2, self.b4, self.b8, self.b12]:
-                                                                        for self.b11 in range(4):
-                                                                            if self.b11 not in [self.b1, self.b2, self.d6, self.b10]:
+                                                            if self.b4 not in [
+                                                                self.b6,
+                                                                self.b8,
+                                                                self.b12,
+                                                            ]:
+                                                                for self.b10 in range(
+                                                                    4
+                                                                ):
+                                                                    if self.b10 not in [
+                                                                        self.b2,
+                                                                        self.b4,
+                                                                        self.b8,
+                                                                        self.b12,
+                                                                    ]:
+                                                                        for (
+                                                                            self.b11
+                                                                        ) in range(4):
+                                                                            if (
+                                                                                self.b11
+                                                                                not in [
+                                                                                    self.b1,
+                                                                                    self.b2,
+                                                                                    self.d6,
+                                                                                    self.b10,
+                                                                                ]
+                                                                            ):
                                                                                 count += 1
 
         return count

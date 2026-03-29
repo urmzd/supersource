@@ -13,7 +13,8 @@
 
 # %% Cell 0
 from google.colab import drive
-drive.mount('/content/drive')
+
+drive.mount("/content/drive")
 
 # In this assignment you will be implementing some components of neural networks in numpy from scratch (all your code should be vectorized; and you shouldn’t use any library besides numpy and matplotlib). Base meta classes for the various activations, layers and optimizers are provided; all of your implementations must be classes that inherit from the appropriate base meta class. When implementing backwards passes, please include in Markdown an analytical derivation of the backwards pass.
 
@@ -62,6 +63,7 @@ import numpy as np
 
 # %% Cell 2
 import abc
+
 
 # Abstract base class for all activation classes
 class Activations(metaclass=abc.ABCMeta):
@@ -120,6 +122,7 @@ class Tanh(Activations):
     def __call__(self, x, mode=None):
         return self.forward(x)
 
+
 # ==============================================================================
 # Section 7: 2.
 # ==============================================================================
@@ -138,6 +141,7 @@ class Tanh(Activations):
 #
 # Cross-Entropy:
 #   E = -sum_i y_i * log(S_i)
+
 
 # %% Cell 3
 class SoftMaxCrossLoss(Activations):
@@ -171,6 +175,7 @@ class SoftMaxCrossLoss(Activations):
     def __call__(self, x, y=None, mode=None):
         return self.forward(x, y)
 
+
 # ==============================================================================
 # Section 9: 3.
 # ==============================================================================
@@ -186,6 +191,7 @@ class SoftMaxCrossLoss(Activations):
 
 # Affine forward: Y = X W^T + b
 # Gradients: dY/dX = W^T, dY/db = 1, dY/dW = X
+
 
 # %% Cell 4
 class Layers(metaclass=abc.ABCMeta):
@@ -251,9 +257,11 @@ class Dropout(Layers):
     def __call__(self, x, mode="test"):
         return self.forward(x, mode)
 
+
 # ==============================================================================
 # Section 11: 4.
 # ==============================================================================
+
 
 # %% Cell 5
 class FCNN:
@@ -291,9 +299,11 @@ class FCNN:
     def __call__(self, x, y=None, mode="test"):
         return self.forward(x, y, mode)
 
+
 # ==============================================================================
 # Section 12: 5.
 # ==============================================================================
+
 
 # %% Cell 6
 class Optimizer(metaclass=abc.ABCMeta):
@@ -314,22 +324,27 @@ class SGD(Optimizer):
         w_grad, b_grad = layer.grads
 
         batch_no = np.random.randint(b.shape[0])
-        
+
         w_grad_random_index = w_grad[batch_no]
         b_grad_random_index = b_grad[batch_no]
 
         if self.prev_m_w is None and self.prev_m_b is None:
-          self.prev_m_w = self.alpha * w_grad_random_index
-          self.prev_m_b = self.alpha * b_grad_random_index
+            self.prev_m_w = self.alpha * w_grad_random_index
+            self.prev_m_b = self.alpha * b_grad_random_index
         else:
-            self.prev_m_w = self.momentum * self.prev_m_w + self.alpha * w_grad_random_index
-            self.prev_m_b = self.momentum * self.prev_m_b + self.alpha * b_grad_random_index
+            self.prev_m_w = (
+                self.momentum * self.prev_m_w + self.alpha * w_grad_random_index
+            )
+            self.prev_m_b = (
+                self.momentum * self.prev_m_b + self.alpha * b_grad_random_index
+            )
 
         layer.parameters[0][batch_no] -= self.prev_m_w
         layer.parameters[1][batch_no] -= self.prev_m_b
 
     def __call__(self, layer):
         self.step(layer)
+
 
 # ==============================================================================
 # Section 13: 6.
@@ -342,9 +357,9 @@ from sklearn.preprocessing import OneHotEncoder
 
 def load_data():
     # Update prefix to be nothing on local machine.
-    prefix="/content/drive/MyDrive/"
+    prefix = "/content/drive/MyDrive/"
     train_data = np.load(prefix + "train.npz")["arr_0"]
-    train_targets = np.load(prefix +"train.npz")["arr_1"]
+    train_targets = np.load(prefix + "train.npz")["arr_1"]
 
     test_data = np.load(prefix + "test.npz")["arr_0"]
     test_targets = np.load(prefix + "test.npz")["arr_1"]
@@ -367,13 +382,16 @@ def load_data():
 
     return and_reshape
 
+
 # %% Cell 8
 import time
 
 np.seterr("ignore")
 
 
-def get_training_and_testing_accuracies_and_plot(layers, batch_size=32, n_epochs=4, mu=0.99):
+def get_training_and_testing_accuracies_and_plot(
+    layers, batch_size=32, n_epochs=4, mu=0.99
+):
 
     layers.insert(0, AffineLayer(784, batch_size))
     layers.append(SoftMaxCrossLoss())
@@ -382,8 +400,8 @@ def get_training_and_testing_accuracies_and_plot(layers, batch_size=32, n_epochs
 
     optimizers = []
     for layer in layers:
-      if isinstance(layer, AffineLayer):
-        optimizers.append((SGD(mu), layer))
+        if isinstance(layer, AffineLayer):
+            optimizers.append((SGD(mu), layer))
 
     print("-----------------------------------------------------")
     print()
@@ -397,36 +415,33 @@ def get_training_and_testing_accuracies_and_plot(layers, batch_size=32, n_epochs
     train_start = 0
     train_end = train_start + batch_size
 
-    
     start_time = time.time()
 
     total_error = []
     for epoch in range(n_epochs):
+        losses = []
+        while train_start < y_train.shape[0]:
+            # Forward Prop
+            x_batch = x_train[train_start:train_end]
+            y_batch = y_train[train_start:train_end]
+            loss = neural_net.forward(x_batch, y_batch, mode="train")
+            losses.append(loss)
 
-      losses = []
-      while train_start < y_train.shape[0]:
-          # Forward Prop
-          x_batch = x_train[train_start:train_end]
-          y_batch = y_train[train_start:train_end]
-          loss = neural_net.forward(x_batch, y_batch, mode="train")
-          losses.append(loss)
+            # Back Prop
+            neural_net.backward()
 
-          # Back Prop
-          neural_net.backward()
+            # Parameter Update
+            for optimizer in optimizers:
+                optimizer[0](optimizer[1])
 
-          # Parameter Update
-          for optimizer in optimizers:
-              optimizer[0](optimizer[1])
+            # Next Batch
+            train_start += batch_size
+            train_end += batch_size
 
-          # Next Batch
-          train_start += batch_size
-          train_end += batch_size
-
-
-      # RESTART
-      train_start = 0
-      train_end = batch_size
-      total_error.append(np.average(np.array(losses)))
+        # RESTART
+        train_start = 0
+        train_end = batch_size
+        total_error.append(np.average(np.array(losses)))
 
     end_time = time.time()
     print(f"TRAINING TIME FOR {n_epochs} EPOCHS: {end_time - start_time}")
@@ -434,9 +449,7 @@ def get_training_and_testing_accuracies_and_plot(layers, batch_size=32, n_epochs
 
     _, ax = plt.subplots()
 
-    ax.set_title(
-        f"Average Error Per Epoch, Batch Size = {batch_size}"
-    )
+    ax.set_title(f"Average Error Per Epoch, Batch Size = {batch_size}")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Average Error")
     ax.plot(total_error)
@@ -464,20 +477,19 @@ def get_training_and_testing_accuracies_and_plot(layers, batch_size=32, n_epochs
     end_time = time.time()
 
     print(f"TESTING TIME: {end_time - start_time}")
-    print(
-        f"AVERAGE TESTING ACCURACY: {np.array(testing_accuracies).mean()}"
-    )
+    print(f"AVERAGE TESTING ACCURACY: {np.array(testing_accuracies).mean()}")
+
 
 # %% Cell 9
 batch_sizes = [8 * i for i in range(1, 4)]
 
 for batch_size in batch_sizes:
-  layers=[
-        AffineLayer(batch_size, 128), 
-        ReLU(), 
-        AffineLayer(128, 10), 
-        ]
-  get_training_and_testing_accuracies_and_plot(batch_size=batch_size, layers=layers)
+    layers = [
+        AffineLayer(batch_size, 128),
+        ReLU(),
+        AffineLayer(128, 10),
+    ]
+    get_training_and_testing_accuracies_and_plot(batch_size=batch_size, layers=layers)
 
 # ==============================================================================
 # Section 14: 6.a) Effect of Varying Batch Sizes
@@ -485,21 +497,41 @@ for batch_size in batch_sizes:
 
 # %% Cell 10
 hidden_units_2_layer = [(32, 64), (64, 128), (128, 256), (256, 512), (512, 1024)]
-hidden_units_3_layer = [(32, 64, 64), (64, 128, 128), (128, 256, 256), (256, 512, 256), (512, 1024, 512)]
+hidden_units_3_layer = [
+    (32, 64, 64),
+    (64, 128, 128),
+    (128, 256, 256),
+    (256, 512, 256),
+    (512, 1024, 512),
+]
 
 print("----------------------------------")
 print("2 LAYERS")
 for hidden_unit in hidden_units_2_layer:
-  batch_size = 32
-  layers = [AffineLayer(batch_size, hidden_unit[0]), ReLU(), AffineLayer(hidden_unit[0], hidden_unit[1]), ReLU(), AffineLayer(hidden_unit[1], 10)]
-  get_training_and_testing_accuracies_and_plot(batch_size=batch_size, layers=layers)
+    batch_size = 32
+    layers = [
+        AffineLayer(batch_size, hidden_unit[0]),
+        ReLU(),
+        AffineLayer(hidden_unit[0], hidden_unit[1]),
+        ReLU(),
+        AffineLayer(hidden_unit[1], 10),
+    ]
+    get_training_and_testing_accuracies_and_plot(batch_size=batch_size, layers=layers)
 
 print("----------------------------------")
 print("3 LAYERS")
 for hidden_unit in hidden_units_3_layer:
-  batch_size = 32
-  layers = [AffineLayer(batch_size, hidden_unit[0]), ReLU(), AffineLayer(hidden_unit[0], hidden_unit[1]), ReLU(), AffineLayer(hidden_unit[1], hidden_unit[2]), ReLU(), AffineLayer(hidden_unit[2], 10)]
-  get_training_and_testing_accuracies_and_plot(batch_size=batch_size, layers=layers)
+    batch_size = 32
+    layers = [
+        AffineLayer(batch_size, hidden_unit[0]),
+        ReLU(),
+        AffineLayer(hidden_unit[0], hidden_unit[1]),
+        ReLU(),
+        AffineLayer(hidden_unit[1], hidden_unit[2]),
+        ReLU(),
+        AffineLayer(hidden_unit[2], 10),
+    ]
+    get_training_and_testing_accuracies_and_plot(batch_size=batch_size, layers=layers)
 
 
 # ==============================================================================
@@ -507,36 +539,38 @@ for hidden_unit in hidden_units_3_layer:
 # ==============================================================================
 
 # %% Cell 11
-batch_size=500
-def get_layers(new_dimensions, batch_size=batch_size, include_drop_outs:float=0.):
-  layers = [AffineLayer(batch_size, np.random.randint(batch_size)), ReLU()]
+batch_size = 500
 
-  index = -3 if include_drop_outs else -2
-  if include_drop_outs:
-    layers += [Dropout(include_drop_outs)]
 
-  for new_dimension in new_dimensions:
-    prev_layer = layers[index]
-    prev_dimension = prev_layer.parameters[1].shape[0]
-    current_layer_set = [
-        AffineLayer(prev_dimension, new_dimension),
-        ReLU()
-    ]
+def get_layers(new_dimensions, batch_size=batch_size, include_drop_outs: float = 0.0):
+    layers = [AffineLayer(batch_size, np.random.randint(batch_size)), ReLU()]
 
+    index = -3 if include_drop_outs else -2
     if include_drop_outs:
-      current_layer_set += [Dropout(include_drop_outs)]
+        layers += [Dropout(include_drop_outs)]
 
-    layers += current_layer_set
+    for new_dimension in new_dimensions:
+        prev_layer = layers[index]
+        prev_dimension = prev_layer.parameters[1].shape[0]
+        current_layer_set = [AffineLayer(prev_dimension, new_dimension), ReLU()]
 
-  layers += [AffineLayer(layers[index].parameters[1].shape[0], 10)]
-  return layers
+        if include_drop_outs:
+            current_layer_set += [Dropout(include_drop_outs)]
+
+        layers += current_layer_set
+
+    layers += [AffineLayer(layers[index].parameters[1].shape[0], 10)]
+    return layers
+
 
 # %% Cell 12
 dimensions_to_test = [(128, 128), (128, 128, 128), (128, 128, 128, 128)]
 
 for dimensions in dimensions_to_test:
-  layers_to_test = get_layers(new_dimensions=dimensions)
-  get_training_and_testing_accuracies_and_plot(layers=layers_to_test, batch_size=batch_size)
+    layers_to_test = get_layers(new_dimensions=dimensions)
+    get_training_and_testing_accuracies_and_plot(
+        layers=layers_to_test, batch_size=batch_size
+    )
 
 # ==============================================================================
 # Section 16: 6.c) Number of Layers
@@ -547,8 +581,10 @@ dimensions_to_test = [(128, 128), (128, 128, 128), (128, 128, 128, 128)]
 
 
 for dimensions in dimensions_to_test:
-  layers_to_test = get_layers(new_dimensions=dimensions, include_drop_outs=0.5)
-  get_training_and_testing_accuracies_and_plot(layers=layers_to_test, batch_size=batch_size)
+    layers_to_test = get_layers(new_dimensions=dimensions, include_drop_outs=0.5)
+    get_training_and_testing_accuracies_and_plot(
+        layers=layers_to_test, batch_size=batch_size
+    )
 
 # ==============================================================================
 # Section 17: 6.d) Dropout

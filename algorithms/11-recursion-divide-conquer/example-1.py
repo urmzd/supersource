@@ -1,14 +1,14 @@
 def max2(*S):
     """
-        @return: Two subtrees in S with the largest lengths.
+    @return: Two subtrees in S with the largest lengths.
     """
     return []
 
 
 def conquer(R, *S):
     """
-        Joins the subtrees *S with the root R. 
-        @return: A LinkedList containing *S's nodes and R. 
+    Joins the subtrees *S with the root R.
+    @return: A LinkedList containing *S's nodes and R.
     """
     # By selecting only two, we prevent revisiting nodes.
     largest_subtrees = max2(S)
@@ -17,22 +17,22 @@ def conquer(R, *S):
 
 def LLNode(node):
     """
-        @return: Node containing data and NULL pointer to next.
+    @return: Node containing data and NULL pointer to next.
     """
     return {}
 
 
 def LinkedList(node, *linkedlist):
     """
-        @return: LinkedList containing node and nodes in LinkedList.
+    @return: LinkedList containing node and nodes in LinkedList.
     """
     return []
 
 
 def divide(root, lp=None):
     """
-        Determines the longest monochromatic path in a rooted tree.
-        @return: The longest path as a iterable LinkedList.
+    Determines the longest monochromatic path in a rooted tree.
+    @return: The longest path as a iterable LinkedList.
     """
     if root == None:
         return lp

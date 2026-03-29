@@ -77,7 +77,6 @@ class NaiveKClustering:
     def fit(self, X: np.ndarray) -> None:
         prev_centroids = self.centroids
         for _ in range(self.n_iters):
-
             pred_clusters, distances = self.predict(
                 X, centroids=prev_centroids, return_distances=True
             )
@@ -92,8 +91,10 @@ class NaiveKClustering:
                 [
                     np.average(np.vstack(cluster), axis=0)
                     if len(cluster) > 0
-                    else np.zeros(2,)
-                    for cluster in(clusters)
+                    else np.zeros(
+                        2,
+                    )
+                    for cluster in (clusters)
                 ]
             )
 
@@ -116,47 +117,59 @@ class NaiveKClustering:
 
         return pred_clusters
 
+
 # Question 3: Use your clustering class on the synthetic dataset you created in Part 1. Comment on how well it clusters your dataset.
+
 
 # %% Cell 3
 @dataclass
 class RunData:
     final_centroids: np.ndarray
     inital_centroids: np.ndarray
-    cluster_1: np.ndarray 
-    cluster_2: np.ndarray 
-    cluster_3: np.ndarray 
+    cluster_1: np.ndarray
+    cluster_2: np.ndarray
+    cluster_3: np.ndarray
+
 
 def map_array_to_colours(X, colours=["red", "green", "blue"]):
-  return np.array(list(map(lambda index: colours[index], X)))
+    return np.array(list(map(lambda index: colours[index], X)))
+
 
 def run_instance() -> RunData:
-  model = NaiveKClustering()
-  intial_centroids = model.centroids
-  model.fit(all_clusters)
-  cluster_1_preds = model.predict(cluster_1)
-  cluster_2_preds = model.predict(cluster_2)
-  cluster_3_preds = model.predict(cluster_3)
+    model = NaiveKClustering()
+    intial_centroids = model.centroids
+    model.fit(all_clusters)
+    cluster_1_preds = model.predict(cluster_1)
+    cluster_2_preds = model.predict(cluster_2)
+    cluster_3_preds = model.predict(cluster_3)
 
-  run_data = RunData(
-    final_centroids= model.centroids,
-    inital_centroids= intial_centroids,
-    cluster_1 = cluster_1_preds,
-    cluster_2 = cluster_2_preds,
-    cluster_3 = cluster_3_preds
-  )
+    run_data = RunData(
+        final_centroids=model.centroids,
+        inital_centroids=intial_centroids,
+        cluster_1=cluster_1_preds,
+        cluster_2=cluster_2_preds,
+        cluster_3=cluster_3_preds,
+    )
 
-  return run_data 
+    return run_data
+
 
 def plot_run_instance(instance: RunData):
-  _, ax = plt.subplots()
-  print(f"INITIAL_CENTROIDS: {instance.inital_centroids}")
-  ax.scatter(cluster_1[..., 0], cluster_1[..., 1], c=map_array_to_colours(instance.cluster_1))
-  ax.scatter(cluster_2[..., 0], cluster_2[..., 1], c=map_array_to_colours(instance.cluster_2))
-  ax.scatter(cluster_3[..., 0], cluster_3[..., 1], c=map_array_to_colours(instance.cluster_3))
-  print(f"FINAL_CENTROIDS: {instance.final_centroids}")
-  print("\n")
-  
+    _, ax = plt.subplots()
+    print(f"INITIAL_CENTROIDS: {instance.inital_centroids}")
+    ax.scatter(
+        cluster_1[..., 0], cluster_1[..., 1], c=map_array_to_colours(instance.cluster_1)
+    )
+    ax.scatter(
+        cluster_2[..., 0], cluster_2[..., 1], c=map_array_to_colours(instance.cluster_2)
+    )
+    ax.scatter(
+        cluster_3[..., 0], cluster_3[..., 1], c=map_array_to_colours(instance.cluster_3)
+    )
+    print(f"FINAL_CENTROIDS: {instance.final_centroids}")
+    print("\n")
+
+
 plot_run_instance(run_instance())
 
 # ==============================================================================
@@ -167,8 +180,8 @@ plot_run_instance(run_instance())
 
 # %% Cell 4
 for _ in range(5):
-  instance = run_instance()
-  plot_run_instance(instance)
+    instance = run_instance()
+    plot_run_instance(instance)
 
 # ==============================================================================
 # Section 7: Conclusion

@@ -29,25 +29,29 @@ from sklearn.datasets import load_wine
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.preprocessing import StandardScaler
 
+
 def load_dataset():
-  scalar = StandardScaler()
-  wine_dataset = load_wine()
+    scalar = StandardScaler()
+    wine_dataset = load_wine()
 
-  X = scalar.fit_transform(wine_dataset.data)
-  y = wine_dataset.target
+    X = scalar.fit_transform(wine_dataset.data)
+    y = wine_dataset.target
 
-  return X, y
+    return X, y
+
 
 # a) Cluster the dataset using the [Agglomerative Clustering](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AgglomerativeClustering.html), and [k-Means](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html#sklearn.cluster.KMeans) clustering algorithm without using the class information as part of the features. Experiment with different numbers of clusters ranging from 2 to 5.
 
 # %% Cell 1
 from sklearn.metrics import silhouette_score, adjusted_rand_score
 
-def cluster_metrics(cls, X, y, n_clusters = 2):
-  pred = cls(n_clusters=n_clusters).fit_predict(X)
-  silhouette_cof = silhouette_score(X, pred)
-  adj_rand_index = adjusted_rand_score(y, pred)
-  return n_clusters, silhouette_cof, adj_rand_index
+
+def cluster_metrics(cls, X, y, n_clusters=2):
+    pred = cls(n_clusters=n_clusters).fit_predict(X)
+    silhouette_cof = silhouette_score(X, pred)
+    adj_rand_index = adjusted_rand_score(y, pred)
+    return n_clusters, silhouette_cof, adj_rand_index
+
 
 # b) What is the variability of the resulting clusters as a function of different initializations or parameterization? Use the Silhouette coefficient and Adjusted Rand Index as metrics for evaluation to discuss the stability of results.
 
@@ -55,14 +59,14 @@ def cluster_metrics(cls, X, y, n_clusters = 2):
 X, y = load_dataset()
 
 for cls in (AgglomerativeClustering, KMeans):
-  for i in range(2, 6):
-      cluster = cluster_metrics(cls, X, y, n_clusters=i)
-      print(f"-- {cls.__name__}, No. of Clusters = {cluster[0]} --")
-      print(f"-- Silhoutte Coefficient -- ")
-      print(f"{cluster[1]}")
-      print(f"-- Adjusted Rand Index --")
-      print(f"{cluster[2]}")
-      print()
+    for i in range(2, 6):
+        cluster = cluster_metrics(cls, X, y, n_clusters=i)
+        print(f"-- {cls.__name__}, No. of Clusters = {cluster[0]} --")
+        print(f"-- Silhoutte Coefficient -- ")
+        print(f"{cluster[1]}")
+        print(f"-- Adjusted Rand Index --")
+        print(f"{cluster[2]}")
+        print()
 
 # ==============================================================================
 # Section 3: Summary
@@ -81,15 +85,14 @@ import matplotlib.pyplot as plt
 X, y = load_dataset()
 
 fig, ax = plt.subplots()
-X_range = list(range(2,6))
+X_range = list(range(2, 6))
 for cls in (AgglomerativeClustering, KMeans):
+    data = [cluster_metrics(cls, X, y, n_clusters=i) for i in X_range]
+    sils = [d[1] for d in data]
+    rand = [d[2] for d in data]
 
-  data = [cluster_metrics(cls, X, y, n_clusters=i) for i in X_range] 
-  sils = [d[1] for d in data]
-  rand = [d[2] for d in data]
-
-  ax.plot(X_range, sils, label=f"{cls.__name__} Silhoutte Coefficient")
-  ax.plot(X_range, rand, label=f"{cls.__name__} Adjusted Rand Index")
+    ax.plot(X_range, sils, label=f"{cls.__name__} Silhoutte Coefficient")
+    ax.plot(X_range, rand, label=f"{cls.__name__} Adjusted Rand Index")
 
 
 ax.legend(bbox_to_anchor=(1.05, 1))
@@ -114,11 +117,13 @@ ax.legend(bbox_to_anchor=(1.05, 1))
 import tensorflow as tf
 from tensorflow.keras.datasets import fashion_mnist
 
-(x_train_original, y_train_original), (x_test_original, y_test_original) = fashion_mnist.load_data()
+(x_train_original, y_train_original), (x_test_original, y_test_original) = (
+    fashion_mnist.load_data()
+)
 
 # Normalize data.
-x_train = x_train_original/ 255.
-x_test = x_test_original / 255.
+x_train = x_train_original / 255.0
+x_test = x_test_original / 255.0
 
 # %% Cell 5
 print("Training data shape: ", x_train_original.shape)
@@ -128,6 +133,7 @@ print("Test labels shape: ", y_test_original.shape)
 
 # %% Cell 6
 import matplotlib.pyplot as plt
+
 imgplot = plt.imshow(x_test[64])
 plt.show()
 
@@ -140,82 +146,125 @@ from keras.optimizers import Adam
 import numpy as np
 from tensorflow.keras.utils import to_categorical
 
+
 def dataset_init():
-  (x_train_original, y_train_original), (x_test_original, y_test_original) = fashion_mnist.load_data()
+    (x_train_original, y_train_original), (x_test_original, y_test_original) = (
+        fashion_mnist.load_data()
+    )
 
-  Y_train = to_categorical(y_train_original)
-  Y_test = to_categorical(y_test_original)
+    Y_train = to_categorical(y_train_original)
+    Y_test = to_categorical(y_test_original)
 
-  X_train_norm = x_train_original.astype("float32") / 255.
-  X_test_norm = x_test_original.astype("float32") / 255.
-  
-  return X_train_norm, Y_train, X_test_norm, Y_test
+    X_train_norm = x_train_original.astype("float32") / 255.0
+    X_test_norm = x_test_original.astype("float32") / 255.0
+
+    return X_train_norm, Y_train, X_test_norm, Y_test
+
 
 def build_network(n_nodes, filter_size):
-  cnn = Sequential()
-  print(n_nodes, filter_size)
-  assert len(n_nodes) == len(filter_size), "No of nodes and filter size shape do not match."
+    cnn = Sequential()
+    print(n_nodes, filter_size)
+    assert len(n_nodes) == len(filter_size), (
+        "No of nodes and filter size shape do not match."
+    )
 
+    cnn.add(
+        Conv2D(n_nodes[0], filter_size[0], activation="relu", input_shape=(28, 28, 1))
+    )
+    cnn.add(Conv2D(n_nodes[1], filter_size[1], activation="relu"))
 
-  cnn.add(Conv2D(n_nodes[0], filter_size[0], activation="relu", input_shape=(28, 28, 1)))
-  cnn.add(Conv2D(n_nodes[1], filter_size[1], activation="relu"))
-  
-  cnn.add(Flatten())
-  cnn.add(Dense(10, activation="softmax"))
+    cnn.add(Flatten())
+    cnn.add(Dense(10, activation="softmax"))
 
-  cnn.compile(optimizer='adam',
-              loss=tf.keras.losses.categorical_crossentropy,
-              metrics=['accuracy'])
-  
-  return cnn;
+    cnn.compile(
+        optimizer="adam",
+        loss=tf.keras.losses.categorical_crossentropy,
+        metrics=["accuracy"],
+    )
+
+    return cnn
+
 
 def train_network(network: Sequential, X, y, X_test, y_test, epochs=10):
-  history = network.fit(np.expand_dims(X, -1), y, batch_size=1024, epochs=epochs, validation_data=(np.expand_dims(X_test, -1), y_test))
-  return history.history
-
-def plot_network(x_range, n_nodes, filter_size, epochs, X, y, X_test, y_test, title="Varying ..."):
-  fig, ax = plt.subplots()
-
-  assert len(n_nodes) == len(filter_size) == len(epochs) == len(x_range), "Shape of inputs not same."
-
-  networks = [build_network(n_nodes[i], filter_size[i]) for i in range(len(x_range))]
-  histories = [train_network(networks[i], X, y, X_test, y_test, epochs=epochs[i]) for i in range(len(x_range))]
-
-  losses = [np.mean(history["loss"]) for history in histories]
-  accuracies = [np.mean(history["accuracy"]) for history in histories]
-  val_losses = [np.mean(history["val_loss"]) for history in histories]
-  val_accuracies = [np.mean(history["val_accuracy"]) for history in histories]
+    history = network.fit(
+        np.expand_dims(X, -1),
+        y,
+        batch_size=1024,
+        epochs=epochs,
+        validation_data=(np.expand_dims(X_test, -1), y_test),
+    )
+    return history.history
 
 
-  _range = [str(_x_range) for _x_range in x_range]
-  print(losses, accuracies, val_losses, val_accuracies, range)
+def plot_network(
+    x_range, n_nodes, filter_size, epochs, X, y, X_test, y_test, title="Varying ..."
+):
+    fig, ax = plt.subplots()
 
-  assert len(_range) == len(losses), "Range != Losses"
+    assert len(n_nodes) == len(filter_size) == len(epochs) == len(x_range), (
+        "Shape of inputs not same."
+    )
 
-  ax.plot(_range, losses, label="Training Loss")
-  ax.plot(_range, accuracies, label="Training Accuracy")
-  ax.plot(_range, val_losses, label="Testing Loss")
-  ax.plot(_range, val_accuracies, label="Testing Accuracy")
+    networks = [build_network(n_nodes[i], filter_size[i]) for i in range(len(x_range))]
+    histories = [
+        train_network(networks[i], X, y, X_test, y_test, epochs=epochs[i])
+        for i in range(len(x_range))
+    ]
 
-  ax.legend(bbox_to_anchor=(1.05, 1))
-  ax.set_title(f"{title}")
+    losses = [np.mean(history["loss"]) for history in histories]
+    accuracies = [np.mean(history["accuracy"]) for history in histories]
+    val_losses = [np.mean(history["val_loss"]) for history in histories]
+    val_accuracies = [np.mean(history["val_accuracy"]) for history in histories]
+
+    _range = [str(_x_range) for _x_range in x_range]
+    print(losses, accuracies, val_losses, val_accuracies, range)
+
+    assert len(_range) == len(losses), "Range != Losses"
+
+    ax.plot(_range, losses, label="Training Loss")
+    ax.plot(_range, accuracies, label="Training Accuracy")
+    ax.plot(_range, val_losses, label="Testing Loss")
+    ax.plot(_range, val_accuracies, label="Testing Accuracy")
+
+    ax.legend(bbox_to_anchor=(1.05, 1))
+    ax.set_title(f"{title}")
 
 
 X_train, y_train, X_test, y_test = dataset_init()
 
-n_nodes_default = ((8,)*2,)*2
-filter_size_default = ((2,)*2,)*2
-epochs_default = (4,)*2
+n_nodes_default = ((8,) * 2,) * 2
+filter_size_default = ((2,) * 2,) * 2
+epochs_default = (4,) * 2
 
-n_nodes_increasing = ((8,)*2, (16,)*2)
-filter_size_increasing = ((2,)*2, (3,)*2)
+n_nodes_increasing = ((8,) * 2, (16,) * 2)
+filter_size_increasing = ((2,) * 2, (3,) * 2)
 
 print(len(n_nodes_default), n_nodes_default)
 print(len(filter_size_default), filter_size_default)
 print(len(epochs_default), epochs_default)
 
-plot_network(n_nodes_increasing, n_nodes_increasing, filter_size_default, epochs_default, X_train, y_train, X_test, y_test, "Varying number of nodes.")
-plot_network(filter_size_increasing, n_nodes_default, filter_size_increasing, epochs_default, X_train, y_train, X_test, y_test, "Varying number of filters.")
+plot_network(
+    n_nodes_increasing,
+    n_nodes_increasing,
+    filter_size_default,
+    epochs_default,
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+    "Varying number of nodes.",
+)
+plot_network(
+    filter_size_increasing,
+    n_nodes_default,
+    filter_size_increasing,
+    epochs_default,
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+    "Varying number of filters.",
+)
 
 # ==============================================================================
 # Section 6: Summary
@@ -227,10 +276,20 @@ plot_network(filter_size_increasing, n_nodes_default, filter_size_increasing, ep
 # ###b) For the hyperparameters for the layers that you determined in part (a), experiment with a higher number of epochs. Summarize your observations.
 
 # %% Cell 8
-n_nodes_optimal = ((16,)*2)*8
-filter_size_optimal = ((3,)*2,)*8
+n_nodes_optimal = ((16,) * 2) * 8
+filter_size_optimal = ((3,) * 2,) * 8
 epochs_increasing = (4 * i for i in range(1, 9))
-plot_network(filter_size_increasing, n_nodes_default, filter_size_increasing, epochs_default, X_train, y_train, X_test, y_test, "Varying number of Epochs.")
+plot_network(
+    filter_size_increasing,
+    n_nodes_default,
+    filter_size_increasing,
+    epochs_default,
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+    "Varying number of Epochs.",
+)
 
 # ==============================================================================
 # Section 7: Summary
@@ -256,76 +315,81 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-#sourced from this question description, transform data into matrix form
+
+# sourced from this question description, transform data into matrix form
 def putAsMatrix(data, length):
- X, Y =[], []
- for i in range(len(data)-length):
-  d=i+length  
-  X.append(data[i:d,])
-  Y.append(data[d,])
- return np.array(X), np.array(Y)
+    X, Y = [], []
+    for i in range(len(data) - length):
+        d = i + length
+        X.append(data[i:d,])
+        Y.append(data[d,])
+    return np.array(X), np.array(Y)
 
-def data_init(length=4,show_plot=True):
-  #get the data
-  N = 5000    
-  Tp = 800    
 
-  t=np.arange(0,N)
-  x=(np.sin(0.02*t)+2*np.random.rand(N))*(t/N)
-  df = pd.DataFrame(x)
-  print(df.head())
+def data_init(length=4, show_plot=True):
+    # get the data
+    N = 5000
+    Tp = 800
 
-  if show_plot:
-    plt.plot(df)
-    plt.show()
+    t = np.arange(0, N)
+    x = (np.sin(0.02 * t) + 2 * np.random.rand(N)) * (t / N)
+    df = pd.DataFrame(x)
+    print(df.head())
 
-  values=df.values
-  train,test = values[0:Tp,:], values[Tp:N,:]
+    if show_plot:
+        plt.plot(df)
+        plt.show()
 
-  # add length elements into train and test
-  test = np.append(test,np.repeat(test[-1,],length))
-  train = np.append(train,np.repeat(train[-1,],length))
-  
-  trainX,trainY =putAsMatrix(train,length)
-  testX,testY =putAsMatrix(test,length)
-  trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
-  testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
-  print(trainX.shape, trainY.shape)
+    values = df.values
+    train, test = values[0:Tp, :], values[Tp:N, :]
 
-  return trainX, trainY, testX, testY
+    # add length elements into train and test
+    test = np.append(test, np.repeat(test[-1,], length))
+    train = np.append(train, np.repeat(train[-1,], length))
+
+    trainX, trainY = putAsMatrix(train, length)
+    testX, testY = putAsMatrix(test, length)
+    trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
+    testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+    print(trainX.shape, trainY.shape)
+
+    return trainX, trainY, testX, testY
+
 
 # %% Cell 10
 trainX, trainY, testX, testY = data_init()
 
+
 # %% Cell 11
-def simpleRNN(units, length=4): #units is the number of recurrent nodes in your NN
-  model = Sequential()
-  #Include here the specification of your network
-  #**********************************************
-  #model.add(...)
-  model.add(SimpleRNN(units))
-  model.add(Dense(1))
-  #...
-  #**********************************************
-  model.compile(loss='mean_squared_error', optimizer='rmsprop')
-  model.fit(trainX, trainY, validation_data=(testX, testY))
-  model.summary()
+def simpleRNN(units, length=4):  # units is the number of recurrent nodes in your NN
+    model = Sequential()
+    # Include here the specification of your network
+    # **********************************************
+    # model.add(...)
+    model.add(SimpleRNN(units))
+    model.add(Dense(1))
+    # ...
+    # **********************************************
+    model.compile(loss="mean_squared_error", optimizer="rmsprop")
+    model.fit(trainX, trainY, validation_data=(testX, testY))
+    model.summary()
 
-  model.fit(trainX,trainY, epochs=50, batch_size=16)
-  trainPredict = model.predict(trainX)
-  testPredict= model.predict(testX)
-  predicted=np.concatenate((trainPredict,testPredict),axis=0)
+    model.fit(trainX, trainY, epochs=50, batch_size=16)
+    trainPredict = model.predict(trainX)
+    testPredict = model.predict(testX)
+    predicted = np.concatenate((trainPredict, testPredict), axis=0)
 
-  scores = model.evaluate(testX, testY, verbose=0)
-  print(scores)
+    scores = model.evaluate(testX, testY, verbose=0)
+    print(scores)
 
-  #the vertical red line shows the point where testing data starts
-  index = df.index.values
-  plt.plot(df)
-  plt.plot(index,predicted)
-  plt.axvline(df.index[Tp], c="r")
-  plt.title(f'Simple RNN with {units} RNN units with length {length}')
-  plt.show()
+    # the vertical red line shows the point where testing data starts
+    index = df.index.values
+    plt.plot(df)
+    plt.plot(index, predicted)
+    plt.axvline(df.index[Tp], c="r")
+    plt.title(f"Simple RNN with {units} RNN units with length {length}")
+    plt.show()
+
 
 # %% Cell 12
 simpleRNN(8)
@@ -345,10 +409,9 @@ simpleRNN(64)
 lengths = [4 * i for i in range(1, 9)]
 
 for length in lengths:
-  trainX, trainY, testX, testY = data_init(show_plot=False)
-  simpleRNN(64, length)
+    trainX, trainY, testX, testY = data_init(show_plot=False)
+    simpleRNN(64, length)
 
-  
 
 # ==============================================================================
 # Section 10: Summary
