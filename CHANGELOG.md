@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.1 (2026-04-16)
+
+### Bug Fixes
+
+- **ci**: migrate sr v4 to v7 for artifact and input support (#3) ([eefd537](https://github.com/urmzd/supersource/commit/eefd537226c35bd8615ea3a8bf65b1853929a6fd))
+
+### Misc
+
+- migrate sr config and action to v4 ([67a66c3](https://github.com/urmzd/supersource/commit/67a66c3c4b794d35623915ae7fad6dc7cbff98fd))
+- add linguist overrides to fix language stats ([8b0132f](https://github.com/urmzd/supersource/commit/8b0132fcce12972090b150d1c9fba18f289a60d6))
+- update sr action from v2 to v3 ([ce2dfb6](https://github.com/urmzd/supersource/commit/ce2dfb67d32a391a85f6103dc691effa4acb768e))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.2.0...v0.2.1)
+
+
 ## 0.2.0 (2026-03-30)
 
 ### Features
