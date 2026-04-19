@@ -1,6 +1,40 @@
-# Supersource
+<p align="center">
+  <h1 align="center">Supersource</h1>
+  <p align="center">
+    Free, self-paced curriculum from undergraduate foundations through PhD-level depth and Staff/Principal engineer expertise. Every primary resource is open-access.
+    <br /><br />
+    <a href="STUDY-PLAN.md">Study Plans</a>
+    &middot;
+    <a href="https://github.com/urmzd/superpowers/issues">Report Bug</a>
+    &middot;
+    <a href="#prerequisite-graph">Prerequisites</a>
+  </p>
+</p>
 
-A free, self-paced curriculum from undergraduate foundations through PhD-level depth and Staff/Principal engineer expertise. Every primary resource is open-access.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/superpowers" alt="License"></a>
+</p>
+
+## Contents
+
+- [Features](#features)
+- [Tracks](#tracks)
+- [Prerequisite Graph](#prerequisite-graph)
+- [Study Plans](#study-plans)
+- [Interviews](#interviews)
+- [Polyglot Practice](#polyglot-practice)
+- [Books and Resources](#books-and-resources)
+- [Agent Skill](#agent-skill)
+- [License](#license)
+
+## Features
+
+- **Free-first** every primary textbook links to an open-access source
+- **Graded depth** undergraduate foundations through PhD-level research topics
+- **Multi-track** math, algorithms, ML, systems, info theory, competitive programming
+- **Interview-ready** 19 company-specific guides across Big Tech, quant, and frontier
+- **Polyglot practice** 10 graded exercises each across 9 languages
+- **Prerequisite graph** mermaid diagram showing topic dependencies
 
 ## Tracks
 
@@ -43,7 +77,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | # | Topic | Textbook | Time |
 |---|-------|----------|------|
 | 01 | [Statistical Learning](ml/01-statistical-learning/) | ISLR (free) + ESL (free) | 4-5 weeks |
-| 02 | [Deep Learning](ml/02-deep-learning/) | Goodfellow et al. -- [deeplearningbook.org](https://www.deeplearningbook.org/) (free) | 6-8 weeks |
+| 02 | [Deep Learning](ml/02-deep-learning/) | Goodfellow et al. on [deeplearningbook.org](https://www.deeplearningbook.org/) (free) | 6-8 weeks |
 | 03 | [Reinforcement Learning](ml/03-reinforcement-learning/) | Sutton & Barto (free) + [Spinning Up](https://spinningup.openai.com/en/latest/) | 4-6 weeks |
 
 ### Systems & Architecture
@@ -96,25 +130,25 @@ graph TD
 
 See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 
-- **Math Foundations** -- 16 weeks, all 7 math topics
-- **Algorithm Mastery** -- 21 days, all 15 algorithm topics
-- **ML & AI** -- 14-19 weeks, statistical learning through RL
-- **Systems & Architecture** -- 11-15 weeks, system design through observability
-- **Combined Path** -- 40+ weeks, zero to Staff+ interview-ready
-- **PhD Research Track** -- deep learning research + information theory + RL
+- **Math Foundations** 16 weeks, all 7 math topics
+- **Algorithm Mastery** 21 days, all 15 algorithm topics
+- **ML & AI** 14-19 weeks, statistical learning through RL
+- **Systems & Architecture** 11-15 weeks, system design through observability
+- **Combined Path** 40+ weeks, zero to Staff+ interview-ready
+- **PhD Research Track** deep learning research + information theory + RL
 
 ## Interviews
 
 Company-specific guides for 19 companies. See [`interviews/README.md`](interviews/README.md).
 
-- **Big Tech & AI Labs**: [Anthropic](interviews/anthropic/), [Google](interviews/google/), [DeepMind](interviews/deepmind/), [OpenAI](interviews/openai/), [Meta](interviews/meta/), [Apple](interviews/apple/), [NVIDIA](interviews/nvidia/), [Moonshot](interviews/moonshot/)
-- **Infrastructure & Data**: [Netflix](interviews/netflix/), [Amazon](interviews/amazon/), [Databricks](interviews/databricks/), [Stripe](interviews/stripe/), [Palantir](interviews/palantir/)
-- **Quant & Trading**: [Jane Street](interviews/jane-street/), [Citadel](interviews/citadel/), [Two Sigma](interviews/two-sigma/), [HRT](interviews/hrt/), [Renaissance](interviews/renaissance-technologies/)
-- **Frontier**: [SpaceX](interviews/spacex/)
+- **Big Tech & AI Labs** [Anthropic](interviews/anthropic/), [Google](interviews/google/), [DeepMind](interviews/deepmind/), [OpenAI](interviews/openai/), [Meta](interviews/meta/), [Apple](interviews/apple/), [NVIDIA](interviews/nvidia/), [Moonshot](interviews/moonshot/)
+- **Infrastructure & Data** [Netflix](interviews/netflix/), [Amazon](interviews/amazon/), [Databricks](interviews/databricks/), [Stripe](interviews/stripe/), [Palantir](interviews/palantir/)
+- **Quant & Trading** [Jane Street](interviews/jane-street/), [Citadel](interviews/citadel/), [Two Sigma](interviews/two-sigma/), [HRT](interviews/hrt/), [Renaissance](interviews/renaissance-technologies/)
+- **Frontier** [SpaceX](interviews/spacex/)
 
 ## Polyglot Practice
 
-Retain and sharpen coding skills across 9 languages. See [`practice/README.md`](practice/README.md) for full details.
+Retain and sharpen coding skills across 9 languages. See [`practice/README.md`](practice/README.md).
 
 | Tier | Languages | Focus |
 |------|-----------|-------|
@@ -126,30 +160,30 @@ Each language has 10 graded exercises covering data structures, algorithms, conc
 
 ### From-Scratch Implementations
 
-- [K-Means Clustering](algorithms/14-ml-statistics/k-means.py) -- unsupervised learning
-- [TF-IDF Vector Search](algorithms/14-ml-statistics/tf-idf-vector-search.py) -- text similarity search
+- [K-Means Clustering](algorithms/14-ml-statistics/k-means.py) unsupervised learning
+- [TF-IDF Vector Search](algorithms/14-ml-statistics/tf-idf-vector-search.py) text similarity search
 
-## Books & Resources
+## Books and Resources
 
-All primary textbooks are free. Recommended (non-free) books are marked with a price indicator.
+All primary textbooks are free. Recommended (non-free) books are listed separately.
 
 ### Free Textbooks
 
 | Book | Track | Link |
 |------|-------|------|
 | OpenStax Calculus Volumes 1-3 | Math | [openstax.org](https://openstax.org/) |
-| *Book of Proof* -- Hammack | Math | [Free PDF](https://people.vcu.edu/~rhammack/BookOfProof/) |
-| *Discrete Mathematics: An Open Introduction* -- Levin | Math | [Free online](https://discrete.openmathbooks.org/) |
-| *Linear Algebra* -- Hefferon | Math | [Free PDF](https://hefferon.net/linearalgebra/) |
-| *Introduction to Probability* -- Grinstead & Snell | Math | [Free PDF](https://math.dartmouth.edu/~prob/prob/prob.pdf) |
-| *Competitive Programmer's Handbook* -- Laaksonen | Competitive Programming | [Free PDF](https://cses.fi/book/book.pdf) |
+| *Book of Proof* by Hammack | Math | [Free PDF](https://people.vcu.edu/~rhammack/BookOfProof/) |
+| *Discrete Mathematics: An Open Introduction* by Levin | Math | [Free online](https://discrete.openmathbooks.org/) |
+| *Linear Algebra* by Hefferon | Math | [Free PDF](https://hefferon.net/linearalgebra/) |
+| *Introduction to Probability* by Grinstead & Snell | Math | [Free PDF](https://math.dartmouth.edu/~prob/prob/prob.pdf) |
+| *Competitive Programmer's Handbook* by Laaksonen | Competitive Programming | [Free PDF](https://cses.fi/book/book.pdf) |
 | *Introduction to Statistical Learning* (ISLR) | ML/AI | [Free online](https://www.statlearning.com/) |
 | *Elements of Statistical Learning* (ESL) | ML/AI | [Free PDF](https://hastie.su.domains/ElemStatLearn/) |
-| *Deep Learning* -- Goodfellow, Bengio, Courville | ML/AI | [Free online](https://www.deeplearningbook.org/) |
-| *RL: An Introduction* -- Sutton & Barto | ML/AI | [Free online](http://incompleteideas.net/book/the-book-2nd.html) |
+| *Deep Learning* by Goodfellow, Bengio, Courville | ML/AI | [Free online](https://www.deeplearningbook.org/) |
+| *RL: An Introduction* by Sutton & Barto | ML/AI (RL) | [Free online](http://incompleteideas.net/book/the-book-2nd.html) |
 | OpenAI Spinning Up in Deep RL | ML/AI (RL) | [Free online](https://spinningup.openai.com/en/latest/) |
-| *Info Theory, Inference, & Learning* -- MacKay | Information Theory | [Free online](http://www.inference.org.uk/mackay/itila/) |
-| *Software Engineering at Google* -- Winters, Manshreck, Wright | Software Craftsmanship | [Free online](https://abseil.io/resources/swe-book) |
+| *Info Theory, Inference, & Learning* by MacKay | Information Theory | [Free online](http://www.inference.org.uk/mackay/itila/) |
+| *Software Engineering at Google* by Winters, Manshreck, Wright | Software Craftsmanship | [Free online](https://abseil.io/resources/swe-book) |
 | Google SRE Book | Systems | [Free online](https://sre.google/sre-book/) |
 | System Design Primer | Systems | [Free on GitHub](https://github.com/donnemartin/system-design-primer) |
 
@@ -157,17 +191,21 @@ All primary textbooks are free. Recommended (non-free) books are marked with a p
 
 | Book | Track | Why |
 |------|-------|-----|
-| *Introduction to Algorithms* (CLRS) 4th ed. | Algorithms | The definitive algorithms reference; formal proofs and correctness |
-| *The Pragmatic Programmer* -- Hunt & Thomas (20th Anniversary) | Software Craftsmanship | The foundational text on professional software development |
-| *Designing Data-Intensive Applications* -- Kleppmann | Systems | The industry bible for distributed systems |
+| *Introduction to Algorithms* (CLRS) 4th ed. | Algorithms | The definitive algorithms reference, formal proofs and correctness |
+| *The Pragmatic Programmer* by Hunt & Thomas (20th Anniversary) | Software Craftsmanship | The foundational text on professional software development |
+| *Designing Data-Intensive Applications* by Kleppmann | Systems | The industry bible for distributed systems |
 | *ByteByteGo System Design* | Systems | Visual system design walkthroughs |
-| *Software Architecture Patterns* -- Richards | Systems | Concise pattern catalog for architecture decisions |
+| *Software Architecture Patterns* by Richards | Systems | Concise pattern catalog for architecture decisions |
 | *Cloud Native DevOps with Kubernetes* 2nd ed. | Systems | Hands-on K8s from dev through production |
-| *Observability Engineering* -- Majors et al. | Systems | Modern observability beyond the three pillars |
-| *Probability & Statistics for Engineering* -- Devore | Math | Rigorous engineering-focused probability |
+| *Observability Engineering* by Majors et al. | Systems | Modern observability beyond the three pillars |
+| *Probability & Statistics for Engineering* by Devore | Math | Rigorous engineering-focused probability |
 | *A Student's Guide to Coding and Information Theory* | Information Theory | Accessible introduction with worked examples |
 | *Neo4j Graph Algorithms* | Algorithms (Graphs) | Applied graph algorithms at scale |
 
+## Agent Skill
+
+This repo's conventions are available as portable agent skills in [`skills/`](skills/).
+
 ## License
 
-[ISC](LICENSE)
+[Apache-2.0](LICENSE)
