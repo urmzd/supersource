@@ -5,14 +5,14 @@
     <br /><br />
     <a href="STUDY-PLAN.md">Study Plans</a>
     &middot;
-    <a href="https://github.com/urmzd/superpowers/issues">Report Bug</a>
+    <a href="https://github.com/urmzd/supersource/issues">Report Bug</a>
     &middot;
     <a href="#prerequisite-graph">Prerequisites</a>
   </p>
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/superpowers" alt="License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/supersource" alt="License"></a>
 </p>
 
 ## Contents
