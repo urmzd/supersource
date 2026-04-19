@@ -4,11 +4,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      force:
-        description: "Re-release the current tag"
-        type: boolean
-        default: false
 
 concurrency:
   group: release
@@ -42,7 +37,6 @@ jobs:
         id: sr
         with:
           github-token: ${{ steps.app-token.outputs.token }}
-          force: ${{ inputs.force || false }}
 
     outputs:
       released: ${{ steps.sr.outputs.released }}
