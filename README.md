@@ -12,6 +12,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/urmzd/supersource/actions/workflows/ci.yml"><img src="https://github.com/urmzd/supersource/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  &nbsp;
   <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/supersource" alt="License"></a>
 </p>
 
