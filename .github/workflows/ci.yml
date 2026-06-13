@@ -50,3 +50,57 @@ jobs:
       - name: Run tests
         run: uv run pytest || echo "No tests found, skipping"
         continue-on-error: true
+
+  book:
+    name: Book PDF
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pandoc, LaTeX, fonts, SVG support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pandoc \
+            texlive-xetex \
+            texlive-latex-recommended \
+            texlive-latex-extra \
+            texlive-fonts-recommended \
+            texlive-fonts-extra \
+            lmodern \
+            fonts-dejavu \
+            fonts-dejavu-extra \
+            librsvg2-bin
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Chrome for Mermaid rendering
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Install mermaid-filter
+        # mermaid-filter renders Mermaid fences via puppeteer; we point it at the
+        # Chrome above (so we skip puppeteer's bundled-Chromium download). If it
+        # still can't launch, build-book.sh falls back to code blocks.
+        run: npm install -g mermaid-filter
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+
+      - name: Build the curriculum PDF
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: ./scripts/build-book.sh --manifest outputs/build-manifest.json
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supersource-curriculum-pdf
+          path: |
+            outputs/supersource-curriculum.pdf
+            outputs/build-manifest.json
+          if-no-files-found: error
