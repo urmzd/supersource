@@ -1,0 +1,48 @@
+# C4 Level 3 -- Component view of the "Order Worker Pool" container.
+# Render: d2 c4-component.d2 c4-component.svg
+# Question this level answers: what are the major code structures inside one
+# container and how does a single message flow through them?
+
+direction: right
+
+classes: {
+  component: {
+    style: { fill: "#85bbf0"; font-color: "#000000"; stroke: "#5d82a8"; border-radius: 8 }
+  }
+  store: {
+    shape: cylinder
+    style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295" }
+  }
+  queue: {
+    shape: queue
+    style: { fill: "#d56b43"; font-color: "#ffffff"; stroke: "#95492e" }
+  }
+}
+
+orders_topic: "orders topic\n[Kafka]" { class: queue }
+settled_topic: "settlements topic\n[Kafka]" { class: queue }
+redis: "Redis" { class: store }
+pg: "PostgreSQL" { class: store }
+
+worker: "Order Worker [Container: Rust]" {
+  style: { stroke: "#2e6295"; stroke-dash: 4; fill: "transparent"; bold: true }
+
+  consumer: "Consume Loop\n[Component]\n\nPoll batch, track offsets,\nbackpressure on lag" { class: component }
+  idem: "Idempotency Guard\n[Component]\n\nSETNX on message key;\nskip if already processed" { class: component }
+  dispatcher: "Dispatcher\n[Component]\n\nRoutes by event type\nto a handler" { class: component }
+  handler: "Order Handler\n[Component]\n\nBusiness rules,\nstate transitions" { class: component }
+  repo: "Order Repository\n[Component]\n\nTransactional writes" { class: component }
+  producer: "Producer\n[Component]\n\nEmits downstream events;\noutbox + offset commit" { class: component }
+  metrics: "Telemetry\n[Component]\n\nLag, throughput,\nhandler latency" { class: component }
+}
+
+orders_topic -> worker.consumer: "poll()"
+worker.consumer -> worker.idem: "before handle"
+worker.idem -> redis: "SETNX key"
+worker.consumer -> worker.dispatcher: "decoded event"
+worker.dispatcher -> worker.handler: "OrderCreated"
+worker.handler -> worker.repo: "save(state)"
+worker.repo -> pg: "INSERT/UPDATE [tx]"
+worker.handler -> worker.producer: "emit settlement.requested"
+worker.producer -> settled_topic: "produce + commit offset"
+worker.consumer -> worker.metrics: "records"

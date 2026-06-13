@@ -1,0 +1,48 @@
+# C4 "Deployment" view -- how Streamflow containers map onto Kubernetes.
+# Render: d2 deployment-k8s.d2 deployment-k8s.svg
+# This is the bridge from the logical container view to the operational reality
+# taught in topic 04 (Kubernetes) and topic 05 (workers / Kafka).
+
+direction: down
+
+classes: {
+  node: { style: { fill: "#eef4fb"; stroke: "#2e6295"; border-radius: 8 } }
+  pod: { style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295"; border-radius: 8 } }
+  ctrl: { style: { fill: "#1168bd"; font-color: "#ffffff"; stroke: "#0b4884"; border-radius: 8; bold: true } }
+  ext: { style: { fill: "#999999"; font-color: "#ffffff"; stroke: "#6b6b6b"; border-radius: 8 } }
+  sts: { shape: cylinder; style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295" } }
+}
+
+internet: "Internet" { class: ext }
+
+cluster: "Kubernetes Cluster" {
+  style: { stroke: "#326ce5"; stroke-dash: 3; fill: "transparent"; bold: true }
+
+  cp: "Control Plane\n\napi-server + scheduler + controller-manager.\nReconciles actual state -> desired state in a loop." { class: ctrl }
+
+  ns: "namespace: streamflow" {
+    style: { stroke: "#326ce5"; fill: "transparent" }
+
+    ingress: "Ingress / LB Service" { class: pod }
+
+    api_dep: "Deployment: api (3 replicas)\n\nstateless, HPA on CPU/RPS" { class: pod }
+
+    worker_dep: "Deployment: order-worker (N replicas)\n\nstateless consumers; KEDA scales\nN on Kafka consumer-group lag" { class: pod }
+
+    keda: "KEDA ScaledObject\n\nreads lag -> sets replica count" { class: ctrl }
+
+    kafka: "StatefulSet: kafka\n(stable identity + PVC per broker)" { class: sts }
+    pg: "StatefulSet: postgres\n(PVC)" { class: sts }
+    redis: "Deployment: redis" { class: pod }
+  }
+}
+
+internet -> cluster.ns.ingress: "HTTPS"
+cluster.ns.ingress -> cluster.ns.api_dep: "routes"
+cluster.ns.api_dep -> cluster.ns.kafka: "produce"
+cluster.ns.kafka -> cluster.ns.worker_dep: "consume (pull)"
+cluster.ns.worker_dep -> cluster.ns.pg: "SQL"
+cluster.ns.worker_dep -> cluster.ns.redis: "idempotency"
+cluster.ns.keda -> cluster.ns.kafka: "queries lag"
+cluster.ns.keda -> cluster.ns.worker_dep: "sets desired replicas"
+cluster.cp -> cluster.ns: "reconciles all objects"

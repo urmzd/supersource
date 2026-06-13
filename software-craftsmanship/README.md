@@ -164,6 +164,7 @@ Software engineering is programming integrated over time. Google's lessons are a
 | DRY, orthogonality | [Software Architecture](../systems/02-software-architecture/) | Architecture patterns formalize these principles |
 | CI/CD, build systems | [Cloud Native](../systems/03-cloud-native/) | Practical implementation of these processes |
 | Deprecation, LSCs | [Observability](../systems/04-observability/) | Need observability to safely deprecate |
+| Docs, diagrams, testing as artifacts | [Diagramming & Operations](../diagramming-and-operations/) | The hands-on counterpart: produce the C4 models, ADRs, tests, and K8s/Kafka topologies these principles call for |
 
 ## Company Relevance
 

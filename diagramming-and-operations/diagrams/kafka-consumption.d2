@@ -1,0 +1,45 @@
+# Kafka consumption model -- partitions, consumer groups, and the competing-
+# consumers pattern that bounds worker parallelism.
+# Render: d2 kafka-consumption.d2 kafka-consumption.svg
+# Key invariant: within one group, each partition is owned by exactly one
+# consumer. Parallelism is capped at the partition count -- adding a worker
+# beyond that leaves it idle.
+
+direction: right
+
+classes: {
+  partition: { shape: queue; style: { fill: "#d56b43"; font-color: "#ffffff"; stroke: "#95492e" } }
+  consumer: { style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295"; border-radius: 8 } }
+  idle: { style: { fill: "#cfcfcf"; font-color: "#444444"; stroke: "#8a8a8a"; border-radius: 8; stroke-dash: 3 } }
+}
+
+topic: "Topic: orders (4 partitions)" {
+  style: { stroke: "#95492e"; fill: "transparent"; bold: true }
+  p0: "partition 0" { class: partition }
+  p1: "partition 1" { class: partition }
+  p2: "partition 2" { class: partition }
+  p3: "partition 3" { class: partition }
+}
+
+group: "Consumer group: order-workers" {
+  style: { stroke: "#2e6295"; fill: "transparent"; bold: true }
+  c0: "worker-0" { class: consumer }
+  c1: "worker-1" { class: consumer }
+  c2: "worker-2" { class: consumer }
+  c3: "worker-3" { class: consumer }
+  c4: "worker-4 (idle:\nno partition left)" { class: idle }
+}
+
+analytics: "Consumer group: analytics\n(independent offsets, reads same data)" {
+  style: { stroke: "#2e6295"; fill: "transparent" }
+  a0: "analytics-0" { class: consumer }
+}
+
+topic.p0 -> group.c0: "owned by"
+topic.p1 -> group.c1: "owned by"
+topic.p2 -> group.c2: "owned by"
+topic.p3 -> group.c3: "owned by"
+topic.p0 -> analytics.a0: "fan-out: separate group\nre-reads all partitions"
+topic.p1 -> analytics.a0
+topic.p2 -> analytics.a0
+topic.p3 -> analytics.a0
