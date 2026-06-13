@@ -23,6 +23,7 @@
 - [Tracks](#tracks)
 - [Prerequisite Graph](#prerequisite-graph)
 - [Study Plans](#study-plans)
+- [Read Offline (Single PDF)](#read-offline-single-pdf)
 - [Interviews](#interviews)
 - [Polyglot Practice](#polyglot-practice)
 - [Books and Resources](#books-and-resources)
@@ -37,6 +38,7 @@
 - **Interview-ready** 19 company-specific guides across Big Tech, quant, and frontier
 - **Polyglot practice** 10 graded exercises each across 9 languages
 - **Prerequisite graph** mermaid diagram showing topic dependencies
+- **Single-PDF book** the entire curriculum renders into one PDF in CI (build artifact + release asset)
 
 ## Tracks
 
@@ -160,6 +162,24 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **Diagramming & Operations** 4-6 weeks, C4 diagramming through Kubernetes and Kafka consumption models
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
+
+## Read Offline (Single PDF)
+
+The whole curriculum builds into one PDF -- every track and topic in learning
+order, with the C4 architecture diagrams and Mermaid diagrams rendered inline.
+
+- **From CI**: every run produces a `supersource-curriculum-pdf` build artifact.
+- **From a release**: `supersource-curriculum.pdf` is attached to each GitHub Release.
+- **Locally**:
+
+  ```bash
+  ./scripts/build-book.sh           # -> outputs/supersource-curriculum.pdf
+  ./scripts/build-book.sh --help    # options (--skip-mermaid, --no-toc, ...)
+  ```
+
+  Requires `pandoc` and a LaTeX engine (`xelatex`). For full fidelity also
+  install `librsvg` (embeds the C4 SVGs) and `mermaid-filter` (renders Mermaid);
+  without them the build still succeeds with diagrams shown as code.
 
 ## Interviews
 

@@ -5,3 +5,8 @@
 .env.*
 .DS_Store
 .idea/
+
+# Book build (PDF is a CI artifact / release asset, not committed)
+/outputs/
+.puppeteer.json
+mermaid-filter.err

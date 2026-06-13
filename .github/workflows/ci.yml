@@ -50,3 +50,43 @@ jobs:
       - name: Run tests
         run: uv run pytest || echo "No tests found, skipping"
         continue-on-error: true
+
+  book:
+    name: Book PDF
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pandoc, LaTeX, fonts, SVG support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pandoc \
+            texlive-xetex \
+            texlive-fonts-recommended \
+            texlive-fonts-extra \
+            fonts-dejavu \
+            fonts-dejavu-extra \
+            librsvg2-bin
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install mermaid-filter
+        # Pulls puppeteer + Chromium to render Mermaid fences to images.
+        # If Chromium can't launch, build-book.sh falls back to code blocks
+        # so the PDF still builds.
+        run: npm install -g mermaid-filter
+
+      - name: Build the curriculum PDF
+        run: ./scripts/build-book.sh --manifest outputs/build-manifest.json
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supersource-curriculum-pdf
+          path: |
+            outputs/supersource-curriculum.pdf
+            outputs/build-manifest.json
+          if-no-files-found: error
