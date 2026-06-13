@@ -37,10 +37,10 @@ quadrantChart
     title Diátaxis -- pick one per document
     x-axis Theoretical --> Practical
     y-axis Studying --> Working
-    quadrant-1 How-to guide: solve a problem
-    quadrant-2 Reference: look up exact facts
-    quadrant-3 Explanation: understand the why
-    quadrant-4 Tutorial: learn by doing
+    quadrant-1 How-to guide
+    quadrant-2 Reference
+    quadrant-3 Explanation
+    quadrant-4 Tutorial
 ```
 
 | Type | Reader's question | Voice | Failure if mixed |
