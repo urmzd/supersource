@@ -103,7 +103,7 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 
 ---
 
-## ML & AI (14-19 weeks)
+## ML & AI (18-25 weeks)
 
 ~10-12 hours per week. Requires math foundations (linear algebra, calculus, probability).
 
@@ -140,6 +140,17 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 | 17 | Policy gradient, actor-critic, A2C/A3C | Sutton & Barto Ch 13 |
 | 18 | PPO, DDPG, TD3, SAC | Spinning Up |
 | 19 | RLHF, alignment, model-based RL | Research papers |
+
+### Weeks 20-25: LLM Systems & Inference
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 20 | Transformer serving view, prefill vs decode, TTFT/TPOT | ML Systems + vLLM docs |
+| 21 | KV cache, PagedAttention, prefix caching | vLLM (PagedAttention) paper |
+| 22 | Continuous batching, FlashAttention, kernel optimization | TGI + FlashAttention papers |
+| 23 | Quantization (GPTQ/AWQ/FP8), speculative decoding | Lilian Weng inference blog |
+| 24 | Tensor/pipeline/expert parallelism, multi-GPU serving | TensorRT-LLM docs |
+| 25 | GPU clusters, K8s deployment, autoscaling, SLOs | K8s + KServe/Ray Serve docs |
 
 ---
 
@@ -181,6 +192,46 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 | 13 | Observability vs monitoring, instrumentation, OpenTelemetry | Observability Engineering |
 | 14 | SLOs, error budgets, debugging with observability | Observability Engineering + SRE Book |
 | 15 | Production excellence, incident response, chaos engineering | Observability Engineering |
+
+---
+
+## Data Engineering (10-14 weeks)
+
+~8-10 hours per week. Requires SQL and system design basics.
+
+### Weeks 1-3: Foundations
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 1 | Data engineering lifecycle, OLTP vs OLAP, ETL vs ELT | Data Engineering Cookbook + DDIA Ch 1-2 |
+| 2 | Storage formats (Parquet/Avro/Arrow), schemas, compression | Fundamentals of Data Engineering |
+| 3 | Build an end-to-end mini pipeline (ingest → store → transform → query) | Hands-on |
+
+### Weeks 4-7: Storage & Warehousing
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 4 | Storage engines (LSM vs B-tree), columnar execution | DDIA Ch 3 |
+| 5 | Warehouse / lake / lakehouse, separation of storage & compute | Iceberg/Delta docs |
+| 6 | Open table formats, partitioning, clustering, file sizing | Iceberg docs |
+| 7 | Dimensional modeling (star schema, grain, SCDs) | The Data Warehouse Toolkit |
+
+### Weeks 8-11: Batch & Streaming
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 8 | Distributed processing, partitioning, shuffle, Spark | Spark docs |
+| 9 | Kafka -- log, partitions, consumer groups, replay | Kafka docs |
+| 10 | Event time, watermarks, windowing, the Dataflow model | Streaming Systems |
+| 11 | Delivery semantics, exactly-once, checkpointing, Flink | Flink docs + DDIA Ch 11 |
+
+### Weeks 12-14: Orchestration & Modeling
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 12 | Orchestration (Airflow/Dagster), DAGs, idempotency, backfills | Airflow docs |
+| 13 | dbt -- models, ref(), tests, materializations, lineage | dbt docs |
+| 14 | Data quality, contracts, governance, data observability | Great Expectations docs |
 
 ---
 
