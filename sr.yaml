@@ -60,3 +60,8 @@ packages:
   - path: .
     version_files:
       - pyproject.toml
+    # The curriculum PDF is built by the CI "Book PDF" job and downloaded into
+    # outputs/ by the release workflow before sr runs; sr uploads it as a
+    # release asset. Must exist on disk before the tag is created.
+    artifacts:
+      - outputs/supersource-curriculum.pdf
