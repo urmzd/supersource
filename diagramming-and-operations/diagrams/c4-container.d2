@@ -1,0 +1,62 @@
+# C4 Level 2 -- Container view of "Streamflow".
+# Render: d2 c4-container.d2 c4-container.svg
+# Question this level answers: what are the separately deployable/runnable units,
+# how do they talk, and where does state live? This is the diagram that maps 1:1
+# onto the containerization (topic 04) and Kafka consumption (topic 05) material.
+
+direction: right
+
+classes: {
+  person: {
+    shape: person
+    style: { fill: "#08427b"; font-color: "#ffffff"; stroke: "#052e56"; bold: true }
+  }
+  container: {
+    style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295"; border-radius: 8 }
+  }
+  store: {
+    shape: cylinder
+    style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295" }
+  }
+  queue: {
+    shape: queue
+    style: { fill: "#d56b43"; font-color: "#ffffff"; stroke: "#95492e" }
+  }
+  external: {
+    style: { fill: "#999999"; font-color: "#ffffff"; stroke: "#6b6b6b"; border-radius: 8 }
+  }
+}
+
+customer: "Customer\n[Person]" { class: person }
+payments: "Payment Gateway\n[External]" { class: external }
+notifier: "Notification Provider\n[External]" { class: external }
+
+streamflow: "Streamflow [System Boundary]" {
+  style: { stroke: "#1168bd"; stroke-dash: 4; fill: "transparent"; font-color: "#1168bd"; bold: true }
+
+  api: "API Gateway\n[Container: Go]\n\nValidates requests, authenticates,\nproduces order events" { class: container }
+  ingest: "Ingest Service\n[Container: Go]\n\nWrites events to Kafka,\nassigns idempotency keys" { class: container }
+
+  orders_topic: "orders\n[Kafka topic, 12 partitions]" { class: queue }
+  settled_topic: "settlements\n[Kafka topic, 6 partitions]" { class: queue }
+  dlq: "orders.DLQ\n[Kafka topic]" { class: queue }
+
+  workers: "Order Worker Pool\n[Container: Rust]\n\nKafka consumer group; one replica\nper N partitions; the unit we scale" { class: container }
+  settler: "Settlement Worker\n[Container: Python]\n\nConsumes settlements,\ncalls payment gateway" { class: container }
+
+  pg: "PostgreSQL\n[Order state]" { class: store }
+  redis: "Redis\n[Idempotency + cache]" { class: store }
+}
+
+customer -> streamflow.api: "[HTTPS/JSON]"
+streamflow.api -> streamflow.ingest: "Forwards validated order [gRPC]"
+streamflow.ingest -> streamflow.orders_topic: "Produces order.created\n[Kafka, keyed by order_id]"
+streamflow.orders_topic -> streamflow.workers: "Consumes (pull)\n[consumer group]"
+streamflow.workers -> streamflow.redis: "Checks/sets idempotency key"
+streamflow.workers -> streamflow.pg: "Persists order state [SQL]"
+streamflow.workers -> streamflow.settled_topic: "Produces settlement.requested"
+streamflow.workers -> streamflow.dlq: "Routes poison messages"
+streamflow.settled_topic -> streamflow.settler: "Consumes (pull)"
+streamflow.settler -> payments: "Authorize & capture\n[HTTPS/REST]"
+streamflow.settler -> notifier: "Send confirmation\n[HTTPS/REST]"
+notifier -> customer: "Email / SMS"

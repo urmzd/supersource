@@ -1,0 +1,31 @@
+# KEDA ScaledObject -- event-driven autoscaling for the order-worker on
+# Kafka consumer-group LAG (the right signal for a queue worker).
+#
+# Requires KEDA installed in the cluster (https://keda.sh).
+# KEDA owns the Deployment's replica count; do not set spec.replicas there.
+#
+# Apply:  kubectl apply -f keda-scaledobject.yaml
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: order-worker
+  namespace: streamflow
+spec:
+  scaleTargetRef:
+    name: order-worker          # the Deployment in deployment.yaml
+  pollingInterval: 15           # how often KEDA checks lag (seconds)
+  cooldownPeriod: 120           # wait before scaling to zero
+  minReplicaCount: 1
+  # CAVEAT: capped at the partition count of the `orders` topic. A consumer
+  # group can have at most one consumer per partition -- replica #13 on a
+  # 12-partition topic would sit idle. Scale partitions, not pods, beyond this.
+  maxReplicaCount: 12
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.streamflow.svc:9092
+        consumerGroup: order-workers
+        topic: orders
+        # Add a replica for roughly every 1000 messages of lag.
+        lagThreshold: "1000"
+        offsetResetPolicy: latest

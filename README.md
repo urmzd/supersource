@@ -109,6 +109,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | [Competitive Programming](competitive-programming/) | [CP Handbook](https://cses.fi/book/book.pdf) (free) + CSES Problem Set | 6-8 weeks |
 | [Information Theory](information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
 | [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) | 3-4 weeks |
+| [Diagramming & Operations](diagramming-and-operations/) | [C4 model](https://c4model.com/) + [D2](https://d2lang.com/)/[Mermaid](https://mermaid.js.org/) + [K8s](https://kubernetes.io/docs/)/[Kafka](https://kafka.apache.org/documentation/) docs (free) | 4-6 weeks |
 
 ## Prerequisite Graph
 
@@ -142,6 +143,9 @@ graph TD
     DL --> LLM
     SYS --> LLM
     DE --> LLM
+
+    SYS --> DGO[Diagramming & Operations]
+    DE --> DGO
 ```
 
 ## Study Plans
@@ -153,6 +157,7 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **ML & AI** 18-30 weeks, statistical learning through RL, LLM serving, and foundation models
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
+- **Diagramming & Operations** 4-6 weeks, C4 diagramming through Kubernetes and Kafka consumption models
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
 
@@ -209,6 +214,11 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | *Software Engineering at Google* by Winters, Manshreck, Wright | Software Craftsmanship | [Free online](https://abseil.io/resources/swe-book) |
 | Google SRE Book | Systems | [Free online](https://sre.google/sre-book/) |
 | System Design Primer | Systems | [Free on GitHub](https://github.com/donnemartin/system-design-primer) |
+| The C4 model by Simon Brown | Diagramming & Operations | [Free online](https://c4model.com/) |
+| Diátaxis documentation framework | Diagramming & Operations | [Free online](https://diataxis.fr/) |
+| Google Technical Writing Courses | Diagramming & Operations | [Free online](https://developers.google.com/tech-writing) |
+| Kubernetes Documentation | Diagramming & Operations / Systems | [Free online](https://kubernetes.io/docs/) |
+| Apache Kafka Documentation | Diagramming & Operations / Data Engineering | [Free online](https://kafka.apache.org/documentation/) |
 
 ### Recommended (non-free)
 
