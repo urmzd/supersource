@@ -1,0 +1,32 @@
+# C4 Level 1 -- System Context for "Streamflow", an event-driven order platform.
+# Render: d2 c4-context.d2 c4-context.svg
+# Question this level answers: who uses the system, and what does it depend on?
+
+direction: down
+
+classes: {
+  person: {
+    shape: person
+    style: { fill: "#08427b"; font-color: "#ffffff"; stroke: "#052e56"; bold: true }
+  }
+  system: {
+    style: { fill: "#1168bd"; font-color: "#ffffff"; stroke: "#0b4884"; bold: true; border-radius: 8 }
+  }
+  external: {
+    style: { fill: "#999999"; font-color: "#ffffff"; stroke: "#6b6b6b"; border-radius: 8 }
+  }
+}
+
+customer: "Customer\n[Person]\n\nPlaces and tracks orders" { class: person }
+ops: "Platform Operator\n[Person]\n\nWatches dashboards, scales workers" { class: person }
+
+streamflow: "Streamflow\n[Software System]\n\nIngests order events, processes them\nasynchronously, settles payments" { class: system }
+
+payments: "Payment Gateway\n[External System]\n\nStripe / Adyen" { class: external }
+notifier: "Notification Provider\n[External System]\n\nEmail / SMS / push" { class: external }
+
+customer -> streamflow: "Places orders, checks status\n[HTTPS/JSON]"
+ops -> streamflow: "Configures, observes\n[HTTPS]"
+streamflow -> payments: "Authorizes & captures\n[HTTPS/REST]"
+streamflow -> notifier: "Sends confirmations\n[HTTPS/REST]"
+notifier -> customer: "Delivers email / SMS"

@@ -1,0 +1,72 @@
+# Streamflow order-worker Deployment + PodDisruptionBudget.
+# Demonstrates the topic-04 caveats in YAML: requests=limits, a readiness probe
+# that checks ONLY the pod, no dependency-coupled liveness, and a graceful
+# shutdown window long enough to finish in-flight Kafka messages.
+#
+# Apply:  kubectl apply -f deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-worker
+  namespace: streamflow
+  labels: { app: order-worker }
+spec:
+  # Replica count is OWNED by KEDA (see keda-scaledobject.yaml), not set here.
+  # KEDA will never exceed the partition count (12) -- a 13th pod would be idle.
+  selector:
+    matchLabels: { app: order-worker }
+  template:
+    metadata:
+      labels: { app: order-worker }
+    spec:
+      # CAVEAT: default is 30s. A worker must finish in-flight messages and
+      # commit offsets within this window or it's SIGKILLed mid-message
+      # (-> reprocessing). Set it >= your max single-message processing time.
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: order-worker
+          # CAVEAT: pin by digest, never :latest -- :latest is non-deterministic
+          # across nodes and cannot be rolled back.
+          image: streamflow/order-worker@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          env:
+            - name: KAFKA_BROKERS
+              valueFrom: { configMapKeyRef: { name: streamflow-config, key: kafka.brokers } }
+            - name: KAFKA_GROUP_ID
+              value: order-workers
+          resources:
+            # CAVEAT: exceeding the memory LIMIT is an instant OOMKill (not a
+            # throttle). Set requests == limits for memory so the scheduler
+            # reserves exactly what the pod can use -- predictable, no surprise kills.
+            requests: { cpu: "250m", memory: "256Mi" }
+            limits: { memory: "256Mi" }   # no CPU limit: avoid throttling latency
+          # READINESS only: "can I take traffic?" Failing it removes the pod
+          # from the Service but does NOT restart it. Checks the pod itself.
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # LIVENESS checks ONLY the local process (is the poll loop wedged?).
+          # CAVEAT: never check a downstream dependency here -- a Kafka blip
+          # would fail liveness on every pod and restart-loop the whole fleet.
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          lifecycle:
+            # Give the Service time to stop routing before we start draining.
+            preStop:
+              exec: { command: ["sleep", "5"] }
+---
+# Without a PDB, a node drain (upgrade / autoscale-down) can evict every
+# replica at once. This keeps at least half the workers serving during
+# voluntary disruptions.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-worker
+  namespace: streamflow
+spec:
+  minAvailable: 50%
+  selector:
+    matchLabels: { app: order-worker }
