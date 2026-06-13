@@ -165,6 +165,7 @@ Software engineering is programming integrated over time. Google's lessons are a
 | CI/CD, build systems | [Cloud Native](../systems/03-cloud-native/) | Practical implementation of these processes |
 | Deprecation, LSCs | [Observability](../systems/04-observability/) | Need observability to safely deprecate |
 | Docs, diagrams, testing as artifacts | [Diagramming & Operations](../diagramming-and-operations/) | The hands-on counterpart: produce the C4 models, ADRs, tests, and K8s/Kafka topologies these principles call for |
+| SDLC vs the LLM development lifecycle | [Foundation Models §7](../ml/05-foundation-models/) | Why building an LLM (grow weights from data) is a different discipline than the software SDLC -- and which practices still carry over |
 
 ## Company Relevance
 

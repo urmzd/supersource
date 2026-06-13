@@ -132,9 +132,12 @@ Deep learning succeeds because deep networks can learn hierarchical representati
 
 **Key ideas**:
 - **Transfer learning**: pretrain on large dataset, fine-tune on small target dataset; foundation of modern DL
-- **Self-supervised learning**: create labels from data itself (masked language modeling, contrastive learning)
+- **Self-supervised learning**: create labels from data itself (masked language modeling, contrastive learning) -- the paradigm that powers LLM pretraining ([Foundation Models §7](../05-foundation-models/))
 - **Domain adaptation**: train on source domain, deploy on target domain; distribution shift is the challenge
+- **Siamese / joint-embedding networks**: two weight-sharing encoders map two *views* of a datum to embeddings; loss pulls matching pairs together, pushes others apart. Backbone of contrastive (SimCLR, MoCo, CLIP) and metric learning (verification, retrieval)
 - **Contrastive learning**: SimCLR, CLIP -- learn representations by pulling similar pairs close, pushing different pairs apart
+- **Avoiding representation collapse** (the core difficulty of joint-embedding methods): negative pairs (SimCLR), momentum target encoder (BYOL, MoCo), stop-gradient + predictor (SimSiam), redundancy reduction (Barlow Twins, VICReg)
+- **JEPA (Joint-Embedding Predictive Architecture)**: LeCun's *non-generative* self-supervision -- predict the *representation* of a masked target from context in embedding space, not pixels/tokens. I-JEPA (images), V-JEPA / V-JEPA 2 (video, toward world models); asymmetric context/target encoder + EMA target avoid collapse
 
 ## 11. Transformers & Modern Architectures
 
