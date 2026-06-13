@@ -33,6 +33,15 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
+      # The CI "Book PDF" job (run via the reusable workflow above) built the
+      # PDF in this same run. Place it on disk so sr can upload it as a release
+      # asset (declared in sr.yaml packages[].artifacts).
+      - name: Download curriculum PDF
+        uses: actions/download-artifact@v4
+        with:
+          name: supersource-curriculum-pdf
+          path: outputs
+
       - uses: urmzd/sr@v8
         id: sr
         with:
@@ -41,24 +50,3 @@ jobs:
     outputs:
       released: ${{ steps.sr.outputs.released }}
       tag: ${{ steps.sr.outputs.tag }}
-
-  book:
-    name: Attach curriculum PDF
-    needs: [ci, release]
-    if: needs.release.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      # The PDF was already built by the reusable CI workflow's "Book PDF" job
-      # in this same run -- reuse it instead of rebuilding the LaTeX stack.
-      - name: Download PDF artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: supersource-curriculum-pdf
-
-      - name: Attach PDF to the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: gh release upload "${{ needs.release.outputs.tag }}" supersource-curriculum.pdf --clobber
