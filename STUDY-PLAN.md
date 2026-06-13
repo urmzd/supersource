@@ -103,7 +103,7 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 
 ---
 
-## ML & AI (18-25 weeks)
+## ML & AI (18-33 weeks)
 
 ~10-12 hours per week. Requires math foundations (linear algebra, calculus, probability).
 
@@ -161,6 +161,16 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 | 28 | Attention mechanisms (MHA/MQA/GQA/MLA, sliding-window, sparse) | DeepSeek + Mistral papers |
 | 29 | Modalities: text vs audio vs vision, multimodal fusion (CLIP, VLMs) | HF Transformers + Whisper/CLIP |
 | 30 | Diffusion models (DDPM, latent diffusion, DiT, flow matching) | HF Diffusers + Lilian Weng |
+
+### Weeks 31-33: Neural Architectures & DL History
+
+Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive each architecture from its math and code it from scratch.
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 31 | History (perceptron → XOR winter → backprop); foundational math; code perceptron + MLP backprop | CS231n + Rumelhart 1986 |
+| 32 | CNNs: convolution math, pooling, LeNet→AlexNet→VGG→ResNet; AlexNet deep dive | CS231n + AlexNet/ResNet papers |
+| 33 | RNNs, BPTT, vanishing gradients; LSTM/GRU gate equations; CNNs vs RNNs vs Transformers | LSTM paper + Goodfellow Ch 10 |
 
 ---
 
