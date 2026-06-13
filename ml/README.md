@@ -17,6 +17,8 @@ graph LR
     DL --> FM[Foundation Models]
     FM --> LLM[LLM Systems & Inference]
     DL --> LLM
+    DL --> NA[Neural Architectures]
+    NA --> LLM
 ```
 
 ## Topics
@@ -28,6 +30,7 @@ graph LR
 | 03 | [Reinforcement Learning](03-reinforcement-learning/) | [Sutton & Barto](http://incompleteideas.net/book/the-book-2nd.html) (free) + [Spinning Up](https://spinningup.openai.com/en/latest/) | 4-6 weeks |
 | 04 | [LLM Systems & Inference](04-llm-systems/) | [*ML Systems*](https://mlsysbook.ai/) (free) + [vLLM docs](https://docs.vllm.ai/) (free) | 4-6 weeks |
 | 05 | [Foundation Models & Architectures](05-foundation-models/) | *AI Engineering* (Huyen) + [aie-book](https://github.com/chiphuyen/aie-book) (free) | 4-5 weeks |
+| 06 | [Neural Architectures & DL History](06-neural-architectures/) | [CS231n](https://cs231n.github.io/) (free) + [AlexNet](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks)/[LSTM](https://www.bioinf.jku.at/publications/older/2604.pdf) papers (free) | 3-4 weeks |
 
 ## Quick Start
 
@@ -37,5 +40,6 @@ graph LR
 4. For quant/trading roles: Statistical Learning + RL (especially bandits and MDPs)
 5. For MLOps/infra roles: Deep Learning (transformers) → LLM Systems & Inference, pairs with [Cloud Native](../systems/03-cloud-native/) and [Data Engineering](../data-engineering/)
 6. For AI engineering / GenAI roles: Deep Learning → Foundation Models & Architectures (Chip Huyen) → LLM Systems & Inference
+7. For foundations / interviews: pair Deep Learning with [Neural Architectures & DL History](06-neural-architectures/) — backprop, CNNs, RNNs/LSTM, and AlexNet derived from the math and coded from scratch
 
 See [Study Plan](../STUDY-PLAN.md) for the 18-30 week ML/AI schedule.

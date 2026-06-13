@@ -4,6 +4,7 @@
 
 - **Primary reference**: *AI Engineering: Building Applications with Foundation Models* by Chip Huyen (O'Reilly, 2025) -- the definitive text on building *with* foundation models; free companion resources in [chiphuyen/aie-book](https://github.com/chiphuyen/aie-book)
 - **Supplementary**: Stanford CRFM [*On the Opportunities and Risks of Foundation Models*](https://arxiv.org/abs/2108.07258) (free, the paper that named the field), [HuggingFace Transformers](https://huggingface.co/docs/transformers) + [Diffusers](https://huggingface.co/docs/diffusers) docs (free), Jay Alammar's [*The Illustrated Transformer*](https://jalammar.github.io/illustrated-transformer/) (free), Karpathy's [*Let's build GPT*](https://www.youtube.com/watch?v=kCc8FmEb1nY) (free), Lilian Weng's [*What are Diffusion Models?*](https://lilianweng.github.io/posts/2021-07-11-diffusion-models/) (free)
+- **Lifecycle & training paradigms** (for §7): Karpathy's [*State of GPT*](https://www.youtube.com/watch?v=bZQun8Y4L2A) (free, the canonical pretraining → SFT → reward modeling → RLHF walkthrough) and [*Deep Dive into LLMs like ChatGPT*](https://www.youtube.com/watch?v=7xTGNNLPyMI) (free), HuggingFace [*TRL*](https://huggingface.co/docs/trl) docs (free, SFT/reward/PPO/DPO/GRPO trainers) and the [*Alignment Handbook*](https://github.com/huggingface/alignment-handbook) (free), the [*Llama 3 Herd of Models*](https://arxiv.org/abs/2407.21783) tech report (free, an end-to-end real pipeline), [*InstructGPT*](https://arxiv.org/abs/2203.02155) / [*DPO*](https://arxiv.org/abs/2305.18290) / [*Constitutional AI*](https://arxiv.org/abs/2212.08073) (free); contrast with the classic software SDLC in [*SWE at Google*](https://abseil.io/resources/swe-book) (free) -- see [Software Craftsmanship](../../software-craftsmanship/)
 - **Prerequisites**: [Deep Learning](../02-deep-learning/) (transformers, attention, generative models), [Linear Algebra](../../math/03-linear-algebra/), [Probability](../../math/07-probability-statistics/)
 - **Estimated time**: 4-5 weeks at 10-12 hrs/week
 
@@ -14,6 +15,7 @@
 - **Attention is the architectural battleground**: MHA → MQA → GQA → MLA trades quality for KV-cache size; sliding-window and sparse variants trade global context for linear cost
 - **Everything is tokens**: text (BPE), images (patches), and audio (neural-codec or spectrogram frames) all become token sequences a transformer consumes -- which is why one architecture went multimodal
 - **Diffusion** is the other foundation-model family: instead of autoregressive next-token prediction, it learns to *denoise*. Modern diffusion is a transformer too (DiT), trained with flow matching
+- **Building an LLM is not the software SDLC**: you don't *write* the behavior, you *grow* it from data through a pipeline of learning paradigms (self-supervised pretraining → supervised fine-tuning → preference optimization). Behavior is statistical and emergent, not specified -- which is why "testing" becomes *evals* and "bug fixes" become *more data and more alignment* (§7)
 
 ## How to Study
 
@@ -122,6 +124,63 @@ Before ~2020 you trained a model *per task*. Foundation models invert this: pret
 
 **How to read a model**: size + active params (dense vs MoE), context length, attention type (GQA/MLA/sliding), modality support, license, and the quantized GGUF/checkpoint availability ([Quantization](../04-llm-systems/quantization/)) that decides whether you can actually run it.
 
+## 7. The LLM Development Lifecycle -- and How It Differs from Software's SDLC
+
+**Karpathy *State of GPT* + Huyen *AI Engineering* + the Llama 3 tech report**
+
+In traditional software you *write* the behavior: a human encodes rules as deterministic code. In an LLM you *grow* the behavior: a pipeline of **learning paradigms** turns a corpus into weights, and the behavior is whatever statistically emerged. This is the deepest mental-model shift in the track -- treat the two lifecycles as genuinely different engineering disciplines, not the same one with a neural net swapped in.
+
+### The four learning paradigms
+
+The paradigms differ only in *where the training signal comes from*. Each owns a stage of the lifecycle:
+
+| Paradigm | Where the label comes from | Lifecycle stage | Deeper treatment |
+|----------|----------------------------|-----------------|------------------|
+| **Unsupervised** | no labels -- structure in the data itself (clustering, dedup, topic balance) | Corpus curation & data engineering | [Statistical Learning §8](../01-statistical-learning/) |
+| **Self-supervised** | labels *derived* from the data (predict the next token / a masked span / a held-out view) | **Pretraining** (the expensive 99%) | [Deep Learning §10](../02-deep-learning/) |
+| **Supervised** | curated human input→output pairs | **SFT / instruction tuning** | [Statistical Learning](../01-statistical-learning/) |
+| **RL from feedback** (RLHF / RLAIF / DPO / GRPO) | a *preference* or *reward* signal over whole outputs | **Preference optimization / alignment** | [Deep Learning §12](../02-deep-learning/), [RL](../03-reinforcement-learning/) |
+
+**Self-supervision is the engine** -- it's what let pretraining escape the labeling bottleneck and consume the internet. Two families worth naming specifically, because they show self-supervision is broader than "next-token prediction":
+
+- **Siamese / joint-embedding networks**: two (weight-sharing) encoder towers map two *views* of the same datum to embeddings; the loss pulls matching pairs together and pushes non-matching apart. This is the backbone of **contrastive** learning (SimCLR, MoCo, CLIP's dual-encoder) and **metric learning** (face verification, retrieval). The classic failure mode is **representation collapse** (everything maps to one point); the fixes define the field -- negative pairs (SimCLR), a momentum target encoder (BYOL/MoCo), or stop-gradient + predictor (SimSiam), and redundancy-reduction objectives (Barlow Twins, VICReg).
+- **JEPA (Joint-Embedding Predictive Architecture)**: LeCun's *non-generative* self-supervision -- instead of reconstructing pixels/tokens (generative, wastes capacity on noise), predict the *representation* of a masked target from a context, **in embedding space**. **I-JEPA** (images) and **V-JEPA / V-JEPA 2** (video, a step toward world models) avoid collapse with an asymmetric context/target encoder + EMA target and a predictor. The thesis: model the world in an abstract latent, not pixel-by-pixel -- contrast this with generative pretraining (§1) and diffusion (§5), which *do* reconstruct the input.
+
+### The lifecycle, stage by stage
+
+`data curation → pretraining → mid-training → SFT → preference optimization → evaluation → deployment → monitoring`, looping back on every iteration:
+
+1. **Data curation** (unsupervised): crawl, dedup, filter, decontaminate against evals, balance the mixture. *Data is the source code now* -- most quality lives here.
+2. **Pretraining** (self-supervised): next-token loss over trillions of tokens. Compute-dominant; governed by [scaling laws](../02-deep-learning/) (Chinchilla-optimal data:param ratios).
+3. **Mid-training / continued pretraining**: long-context extension, domain or code up-weighting, annealing on high-quality data.
+4. **SFT** (supervised): a smaller, curated set of instruction→response demonstrations teaches the *format* of being helpful.
+5. **Preference optimization** (RL from feedback): RLHF (reward model + PPO), or skip the reward model with **DPO**, or **RLAIF / Constitutional AI** (AI-generated preferences), or **GRPO** for reasoning. This is where helpfulness, harmlessness, and style are dialed in.
+6. **Evaluation**: not pass/fail tests -- *distributional* evals (MMLU, GPQA, SWE-bench, LMArena), behavioral red-teaming, and regression = a benchmark score *dropping*. See [Statistical Learning](../01-statistical-learning/) for honest evaluation.
+7. **Deployment**: the *artifact is the weights* -- quantize ([Quantization](../04-llm-systems/quantization/)), pick a runtime ([Frameworks](../04-llm-systems/frameworks/)), serve with a KV cache ([LLM Systems](../04-llm-systems/)).
+8. **Monitoring & iteration**: watch for drift, jailbreaks, and regressions; collect production preferences; feed them back into the next SFT/preference round.
+
+### LLM lifecycle vs the software SDLC
+
+| Stage | Traditional software SDLC | LLM development lifecycle |
+|-------|---------------------------|---------------------------|
+| Requirements | specs, user stories | capability target + **evals defined first** |
+| Design | architecture, modules, interfaces | data mixture, tokenizer, model architecture (§2) |
+| Implementation | humans **write** deterministic code | **pretraining** grows weights from data (self-supervised) |
+| Refinement | -- | SFT (supervised) + preference optimization (RLHF/DPO) |
+| Testing | unit/integration/e2e, **deterministic** pass/fail | **evals**: statistical, behavioral, red-team; "regression" = score drop |
+| Build artifact | a versioned binary | a set of **weights** (+ tokenizer + config) |
+| Deployment | CI/CD, blue-green | quantize → serve; same weights, many quantizations |
+| Maintenance | patch the buggy line | **can't patch a line** -- mitigate with more data, more alignment, guardrails, or a retrain |
+| Version control | git over source | git over source **+ data + weights + eval provenance** |
+
+**The four differences that matter**:
+- **Specified vs emergent**: code does exactly what's written; a model does what the data made statistically likely. You debug a distribution, not a line.
+- **Deterministic vs probabilistic fixes**: a software bug has a root-cause fix; a model failure is *reduced* (more SFT data, a preference pass, a guardrail), rarely eliminated.
+- **"It compiles" has no analog**: the closest signal is a loss curve plus eval scores -- success is graded, not binary.
+- **The source of truth moved**: in software the code is canonical; in an LLM the **data + the eval set** are canonical and the weights are a build output. Reproducibility means versioning data and experiments, not just code ([Pragmatic Programmer DRY/reversibility](../../software-craftsmanship/) still apply -- to your *data and pipeline*).
+
+> **Where this connects**: the *engineering practices* of the right column (review, testing-as-evals, reproducible builds, deprecation) are exactly the [Software Craftsmanship](../../software-craftsmanship/) track applied to ML. The two lifecycles diverge in *what* you build but converge on *how to build it responsibly*.
+
 ---
 
 ## Architecture Component Catalog
@@ -145,6 +204,8 @@ Before ~2020 you trained a model *per task*. Foundation models invert this: pret
 | candle/diffusers/transformers runtimes | [Inference Frameworks](../04-llm-systems/frameworks/) | Where they execute |
 | KL divergence, score, entropy | [Information Theory](../../information-theory/) | Diffusion + VAE objectives |
 | RLHF/DPO alignment | [Deep Learning §12](../02-deep-learning/) | Post-training foundation models |
+| Self-supervision, Siamese/contrastive, JEPA | [Deep Learning §10](../02-deep-learning/) | The pretraining objective (§7) |
+| LLM lifecycle vs software SDLC | [Software Craftsmanship](../../software-craftsmanship/) | Building responsibly (§7) |
 
 ## Company Relevance
 
