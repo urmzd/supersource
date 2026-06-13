@@ -85,6 +85,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | 03 | [Reinforcement Learning](ml/03-reinforcement-learning/) | Sutton & Barto (free) + [Spinning Up](https://spinningup.openai.com/en/latest/) | 4-6 weeks |
 | 04 | [LLM Systems & Inference](ml/04-llm-systems/) | [*ML Systems*](https://mlsysbook.ai/) (free) + [vLLM docs](https://docs.vllm.ai/) (free) | 4-6 weeks |
 | 05 | [Foundation Models & Architectures](ml/05-foundation-models/) | *AI Engineering* (Huyen) + [aie-book](https://github.com/chiphuyen/aie-book) (free) | 4-5 weeks |
+| 06 | [Neural Architectures & DL History](ml/06-neural-architectures/) | [CS231n](https://cs231n.github.io/) (free) + AlexNet/LSTM papers (free) | 3-4 weeks |
 
 ### Data Engineering
 
@@ -156,7 +157,7 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 
 - **Math Foundations** 16 weeks, all 7 math topics
 - **Algorithm Mastery** 21 days, all 15 algorithm topics
-- **ML & AI** 18-30 weeks, statistical learning through RL, LLM serving, and foundation models
+- **ML & AI** 18-33 weeks, statistical learning through RL, LLM serving, foundation models, and neural-architecture foundations
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
 - **Diagramming & Operations** 4-6 weeks, C4 diagramming through Kubernetes and Kafka consumption models
