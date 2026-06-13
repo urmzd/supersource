@@ -280,6 +280,8 @@ let scheme = QuantScheme::default()
 
 A runnable example (autodiff/NdArray backend, quantize → dequantize → measure MSE) is in [`code/burn_quantize.rs`](code/burn_quantize.rs). For production Rust inference, GGUF k-quant models also run through `llama.cpp` bindings (`llama-cpp-2`) and `candle`'s `quantized` module.
 
+> See [Inference Frameworks](../frameworks/) for the full cross-language runtime landscape (C/Python/Rust/Zig) that consumes these formats -- including a pure-Zig SIMD INT8 dot product ([`frameworks/code/quant_dot.zig`](../frameworks/code/quant_dot.zig)), the CPU twin of [`code/symmetric_quant.cu`](code/symmetric_quant.cu).
+
 ## Connections to Other Tracks
 
 | Concept | Connected Track | Application |

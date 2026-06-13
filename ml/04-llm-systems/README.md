@@ -5,6 +5,7 @@
 - **Primary reference**: [*Machine Learning Systems*](https://mlsysbook.ai/) by Vijay Janapa Reddi (free online) -- the systems-level companion to Goodfellow
 - **Supplementary**: [vLLM docs](https://docs.vllm.ai/) (free), Lilian Weng's [*Large Transformer Model Inference Optimization*](https://lilianweng.github.io/posts/2023-01-10-inference-optimization/) (free), [*The Full Stack LLM Bootcamp*](https://fullstackdeeplearning.com/llm-bootcamp/) (free), [HuggingFace TGI](https://huggingface.co/docs/text-generation-inference) + [NVIDIA TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/) docs
 - **Deep dive**: [Quantization: Math → Code](quantization/) -- the quantizer zoo (GPTQ/AWQ/SmoothQuant/NF4/GGUF/FP8/QuIP#/TurboQuant) with C/CUDA/Rust examples
+- **Deep dive**: [Inference Frameworks](frameworks/) -- the cross-language stack (llama.cpp, vLLM, candle, mistral.rs, ZML) with Rust + Zig examples
 - **Prerequisites**: [Deep Learning](../02-deep-learning/) (transformers, attention), [Cloud Native](../../systems/03-cloud-native/) (containers, K8s), [Concurrency & Systems](../../algorithms/12-concurrency-systems/)
 - **Estimated time**: 4-6 weeks at 10-12 hrs/week
 
@@ -126,7 +127,11 @@ Training is about *throughput over a fixed dataset*; inference is about *latency
 | **TGI** (HuggingFace) | Production HF ecosystem | Tensor parallel, token streaming, easy deploy |
 | **SGLang** | Complex/structured generation | RadixAttention prefix sharing, fast structured output |
 | **llama.cpp / Ollama** | Local, CPU/edge, GGUF | Runs quantized models on consumer hardware |
+| **candle / mistral.rs** (Rust) | Safe single static binary, edge/WASM | Pure-Rust kernels + runtime, ISQ, OpenAI server |
+| **ZML / llama.cpp.zig** (Zig) | Native compile, minimal deps, C interop | MLIR/XLA multi-vendor, or `@cImport` over llama.cpp |
 | **Ray Serve / KServe** | Orchestration layer | Autoscaling, multi-model, request routing on top of a runtime |
+
+> **Deep dive**: [**Inference Frameworks: The Cross-Language Landscape**](frameworks/) maps the full stack across C (llama.cpp/ggml), Python (vLLM/TGI/SGLang), Rust (candle/mistral.rs/burn/ratchet/luminal), and Zig (ZML/llama.cpp.zig) -- with runnable Rust and Zig examples.
 
 ## 10. Deployment: GPU Clusters & Kubernetes
 
