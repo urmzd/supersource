@@ -82,6 +82,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | 02 | [Deep Learning](ml/02-deep-learning/) | Goodfellow et al. on [deeplearningbook.org](https://www.deeplearningbook.org/) (free) | 6-8 weeks |
 | 03 | [Reinforcement Learning](ml/03-reinforcement-learning/) | Sutton & Barto (free) + [Spinning Up](https://spinningup.openai.com/en/latest/) | 4-6 weeks |
 | 04 | [LLM Systems & Inference](ml/04-llm-systems/) | [*ML Systems*](https://mlsysbook.ai/) (free) + [vLLM docs](https://docs.vllm.ai/) (free) | 4-6 weeks |
+| 05 | [Foundation Models & Architectures](ml/05-foundation-models/) | *AI Engineering* (Huyen) + [aie-book](https://github.com/chiphuyen/aie-book) (free) | 4-5 weeks |
 
 ### Data Engineering
 
@@ -130,13 +131,15 @@ graph TD
     C3 --> DL
     DL --> RL[Reinforcement Learning]
     PS --> RL
+    DL --> FM[Foundation Models]
 
     PS --> IT[Information Theory]
     LA --> IT
 
     ALG --> SYS[Systems & Architecture]
     SYS --> DE[Data Engineering]
-    DL --> LLM[LLM Systems & Inference]
+    FM --> LLM[LLM Systems & Inference]
+    DL --> LLM
     SYS --> LLM
     DE --> LLM
 ```
@@ -147,7 +150,7 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 
 - **Math Foundations** 16 weeks, all 7 math topics
 - **Algorithm Mastery** 21 days, all 15 algorithm topics
-- **ML & AI** 18-25 weeks, statistical learning through RL and LLM serving
+- **ML & AI** 18-30 weeks, statistical learning through RL, LLM serving, and foundation models
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
@@ -199,6 +202,8 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | *RL: An Introduction* by Sutton & Barto | ML/AI (RL) | [Free online](http://incompleteideas.net/book/the-book-2nd.html) |
 | OpenAI Spinning Up in Deep RL | ML/AI (RL) | [Free online](https://spinningup.openai.com/en/latest/) |
 | *Machine Learning Systems* by Reddi | ML/AI (LLM Systems) | [Free online](https://mlsysbook.ai/) |
+| *AI Engineering* companion (aie-book) by Huyen | ML/AI (Foundation Models) | [Free on GitHub](https://github.com/chiphuyen/aie-book) |
+| Stanford CRFM *Foundation Models* report | ML/AI (Foundation Models) | [Free PDF](https://arxiv.org/abs/2108.07258) |
 | *The Data Engineering Cookbook* by Kretz | Data Engineering | [Free on GitHub](https://github.com/andkret/Cookbook) |
 | *Info Theory, Inference, & Learning* by MacKay | Information Theory | [Free online](http://www.inference.org.uk/mackay/itila/) |
 | *Software Engineering at Google* by Winters, Manshreck, Wright | Software Craftsmanship | [Free online](https://abseil.io/resources/swe-book) |
@@ -216,6 +221,7 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | *The Data Warehouse Toolkit* by Kimball | Data Engineering | The canonical text on dimensional modeling |
 | *Streaming Systems* by Akidau et al. | Data Engineering | The Dataflow model that unifies batch and streaming |
 | *Designing Machine Learning Systems* by Huyen | ML/AI | Production ML from data to deployment and serving |
+| *AI Engineering* by Chip Huyen | ML/AI | Building applications with foundation models -- the AI-engineering bible |
 | *ByteByteGo System Design* | Systems | Visual system design walkthroughs |
 | *Software Architecture Patterns* by Richards | Systems | Concise pattern catalog for architecture decisions |
 | *Cloud Native DevOps with Kubernetes* 2nd ed. | Systems | Hands-on K8s from dev through production |

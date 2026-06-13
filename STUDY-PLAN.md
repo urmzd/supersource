@@ -152,6 +152,16 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 | 24 | Tensor/pipeline/expert parallelism, multi-GPU serving | TensorRT-LLM docs |
 | 25 | GPU clusters, K8s deployment, autoscaling, SLOs | K8s + KServe/Ray Serve docs |
 
+### Weeks 26-30: Foundation Models & Architectures
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 26 | Foundation models, the AI-engineering shift, adaptation ladder | Huyen *AI Engineering* Ch 1-2 |
+| 27 | Transformer architecture variants (RMSNorm, RoPE, SwiGLU, MoE) | Llama/Gemma tech reports |
+| 28 | Attention mechanisms (MHA/MQA/GQA/MLA, sliding-window, sparse) | DeepSeek + Mistral papers |
+| 29 | Modalities: text vs audio vs vision, multimodal fusion (CLIP, VLMs) | HF Transformers + Whisper/CLIP |
+| 30 | Diffusion models (DDPM, latent diffusion, DiT, flow matching) | HF Diffusers + Lilian Weng |
+
 ---
 
 ## Systems & Architecture (11-15 weeks)
