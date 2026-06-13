@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0 (2026-06-13)
+
+### Features
+
+- **ml**: Neural Architectures & the History of Deep Learning (#8) ([e3627d1](https://github.com/urmzd/supersource/commit/e3627d19e9240b2168f4f1de0881cae6fafbe935))
+
+### Misc
+
+- **ml**: add LLM development lifecycle section to Foundation Models (#9) ([d60bc49](https://github.com/urmzd/supersource/commit/d60bc49b463fdd0d16e8b9364f57bc9f0442e858))
+- attach curriculum PDF as a release asset via sr (#7) ([5ee5cc8](https://github.com/urmzd/supersource/commit/5ee5cc85cda4e80948045f8e2033ed7055139582))
+- build the whole curriculum into one learnable PDF (#6) ([ca2a1a6](https://github.com/urmzd/supersource/commit/ca2a1a62600211e318abc3d6b11b3bacd3aade4a))
+- add Diagramming & Operations track (#5) ([41074eb](https://github.com/urmzd/supersource/commit/41074eb134426d4102361a2e0c53709fd8bd9df4))
+- add data engineering track and LLM systems & inference topic (#4) ([d769f70](https://github.com/urmzd/supersource/commit/d769f70eaeb04a1930351851a840ff1c61d9ac06))
+- **ci**: bump sr to v8 ([b3ba9d3](https://github.com/urmzd/supersource/commit/b3ba9d383e8ea9f0586cf0796335c9e553ac1fa0))
+- **ci**: remove unused force input from release workflow ([90c4dc5](https://github.com/urmzd/supersource/commit/90c4dc57f51e76193bd7048e04bf6a2d22338d48))
+- **fix**: add CI badge to README ([4841e57](https://github.com/urmzd/supersource/commit/4841e57f8fa77ead1b6e6172b4cc882634f99000))
+- update internal references from superpowers to supersource ([559cba3](https://github.com/urmzd/supersource/commit/559cba3f901c603cc2f9670f8881eb91d1b5165b))
+- **community**: add GitHub community-health files ([0892131](https://github.com/urmzd/supersource/commit/08921314378366be496771e9f101ecee9c2670c5))
+- **fix**: rewrite README with standard structure ([ee66c07](https://github.com/urmzd/supersource/commit/ee66c07a757ea1d2fca44120a38af40bd03c8257))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.2.1...v0.3.0)
+
+
 ## 0.2.1 (2026-04-16)
 
 ### Bug Fixes
