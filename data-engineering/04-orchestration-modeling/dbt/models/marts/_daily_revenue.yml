@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: daily_revenue
+    description: "Revenue, order count, and unique customers per day and currency."
+    columns:
+      - name: order_date
+        data_tests:
+          - not_null
+      - name: revenue
+        data_tests:
+          - not_null

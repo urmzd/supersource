@@ -1,0 +1,21 @@
+version: 2
+
+# A "source" is dbt's declared handle on raw/landed data it did NOT build.
+# Here it points straight at the silver Parquet the Spark job (topic 03) wrote.
+# Declaring sources lets dbt track lineage back to the edge and check freshness.
+sources:
+  - name: silver
+    description: "Cleaned, deduped order events from the Spark bronze->silver job."
+    meta:
+      # dbt-duckdb reads the hive-partitioned parquet as if it were a table.
+      external_location: >-
+        read_parquet('{{ env_var('STREAMFLOW_SILVER', '../warehouse/silver') }}/orders/**/*.parquet',
+        hive_partitioning = true)
+    tables:
+      - name: orders
+        description: "One row per order (latest event), partitioned by order_date."
+        # Freshness: is the data recent? Airflow can gate the run on this.
+        loaded_at_field: event_ts
+        freshness:
+          warn_after: { count: 6, period: hour }
+          error_after: { count: 24, period: hour }
