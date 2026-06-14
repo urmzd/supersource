@@ -16,6 +16,7 @@
 
 ## How to Study
 
+- Run the annotated [`spark/orders_bronze_to_silver.py`](spark/orders_bronze_to_silver.py) job in this directory: it reads one day of raw Streamflow order events, dedupes them with a windowed shuffle, and writes a partitioned silver table. Re-run it for the same date and confirm the output doesn't duplicate (dynamic partition overwrite = idempotency)
 - Run a Spark job and a Kafka → consumer pipeline locally; watch partitioning and parallelism
 - For any streaming question, separate *event time* (when it happened) from *processing time* (when you saw it) -- most confusion comes from conflating them
 - Read the Dataflow paper -- it reframes everything and is the intellectual core of the field
@@ -44,6 +45,8 @@ All data processing is "take a collection of records, apply a transformation, pr
 - **Catalyst optimizer + Tungsten**: query optimization (predicate pushdown, join reordering) and code generation for CPU efficiency
 - **Wide vs narrow transformations**: narrow (map, filter) need no shuffle; wide (groupBy, join) do -- the boundary defines stages
 - **Structured Streaming**: streaming as an unbounded table; micro-batch (default) or continuous processing
+
+**Worked example**: [`spark/orders_bronze_to_silver.py`](spark/orders_bronze_to_silver.py) is a runnable bronze→silver batch job. It makes three of these ideas concrete -- the dedup is a *wide* transformation (a shuffle via `Window.partitionBy`), the output is columnar Parquet *partitioned by date*, and the write uses dynamic partition overwrite for *idempotent* re-runs and backfills. It produces the silver table the [dbt project](../04-orchestration-modeling/dbt/) builds its marts on.
 
 ## 3. Apache Kafka (The Log)
 

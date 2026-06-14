@@ -1,0 +1,13 @@
+# Copy to ~/.dbt/profiles.yml (or set DBT_PROFILES_DIR to this folder).
+# DuckDB is the zero-setup, free warehouse for local learning -- it reads the
+# Parquet that the Spark job wrote directly, so no separate load step is needed.
+streamflow:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # The DuckDB file that holds the views/tables dbt builds.
+      path: "{{ env_var('STREAMFLOW_DUCKDB', '../warehouse/streamflow.duckdb') }}"
+      # Load the parquet reader so sources can point straight at silver files.
+      extensions:
+        - parquet

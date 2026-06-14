@@ -33,6 +33,18 @@ graph LR
 - **Idempotency and exactly-once semantics** are the hardest and most important properties of any pipeline; design for replay and failure from the start
 - The lakehouse (open table formats over object storage) is collapsing the old lake/warehouse divide
 
+## Runnable Example
+
+A small end-to-end **Streamflow orders** pipeline runs through this track, so the concepts have working code, not just prose:
+
+| Stage | File | Topic |
+|-------|------|-------|
+| Transform raw → clean (Spark, bronze→silver) | [`spark/orders_bronze_to_silver.py`](03-batch-streaming/spark/orders_bronze_to_silver.py) | [03](03-batch-streaming/) |
+| Model clean → tested marts (dbt, silver→gold) | [`dbt/`](04-orchestration-modeling/dbt/) | [04](04-orchestration-modeling/) |
+| Orchestrate the whole DAG (Airflow) | [`airflow/streamflow_orders_dag.py`](04-orchestration-modeling/airflow/streamflow_orders_dag.py) | [04](04-orchestration-modeling/) |
+
+It uses the same Streamflow event-driven platform as the [Infrastructure](../infrastructure/) and [Diagramming](../diagramming-and-documentation/) tracks, and runs locally on DuckDB with no cloud setup.
+
 ## Quick Start
 
 1. **New to data**: start with Foundations, then Storage & Warehousing

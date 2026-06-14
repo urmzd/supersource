@@ -16,9 +16,11 @@
 
 ## How to Study
 
+- Read the runnable [`dbt/`](dbt/) project here: trace `source('silver','orders')` → `stg_orders` → `int_orders_enriched` → `daily_revenue` and notice you never wrote the run order down -- `ref()` builds the DAG. Then run `dbt build` (DuckDB, zero infra) and `dbt docs serve` to browse the lineage graph
+- Read the [`airflow/streamflow_orders_dag.py`](airflow/streamflow_orders_dag.py) DAG: it chains the Spark job to `dbt run` → `dbt test`, with retries, exponential backoff, and `{{ ds }}` date-partitioning for idempotent backfills
 - Build an Airflow (or Dagster) DAG with 3-4 dependent tasks, a failure, and a retry -- watch it recover
 - Convert a tangle of SQL scripts into a dbt project with `ref()`, tests, and a generated lineage graph
-- For every transformation, write the data-quality test *before* you trust the output
+- For every transformation, write the data-quality test *before* you trust the output (see [`tests/assert_daily_revenue_is_sane.sql`](dbt/tests/assert_daily_revenue_is_sane.sql))
 
 ---
 
@@ -36,6 +38,8 @@ A data platform is a graph of transformations that must run in the right order, 
 - **Retries & backoff**: transient failures retried with exponential backoff; permanent failures alert
 - **Idempotency & backfills**: re-running for a past date must overwrite cleanly, not duplicate -- partition by run date and write deterministically
 - **Observability**: task status, run history, SLAs, lineage, alerting on failure or lateness
+
+**Worked example**: [`airflow/streamflow_orders_dag.py`](airflow/streamflow_orders_dag.py) wires the whole pipeline as one DAG -- `bronze_to_silver` (Spark) → `check_source_freshness` → `dbt_run` → `dbt_test` -- with retries + exponential backoff in `default_args` and `{{ ds }}` slicing so `catchup` backfills are safe.
 
 ## 2. Orchestrators Compared
 
@@ -59,6 +63,8 @@ A data platform is a graph of transformations that must run in the right order, 
 - **Testing**: built-in tests (unique, not_null, accepted_values, relationships) + custom tests, run in CI
 - **Documentation & lineage**: auto-generated docs and a column-level lineage graph from the model DAG
 - **Why it mattered**: brought version control, modularity, testing, and CI/CD to analytics SQL -- the foundation of the "analytics engineering" role
+
+**Worked example**: the [`dbt/`](dbt/) project implements exactly this staging → intermediate → marts chain over the Spark-produced silver table, with built-in tests (`not_null`, `unique`, `accepted_values`), a source freshness check, and a custom singular test. See its [README](dbt/README.md) for the rendered DAG and run instructions.
 
 ## 4. Data Modeling for Consumption
 

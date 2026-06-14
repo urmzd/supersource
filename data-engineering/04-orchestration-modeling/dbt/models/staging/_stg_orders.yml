@@ -1,0 +1,25 @@
+version: 2
+
+# Schema tests live next to the model. dbt compiles each into a SELECT that
+# must return ZERO rows to pass -- run them in CI and a bad load fails the build
+# BEFORE the numbers reach a dashboard.
+models:
+  - name: stg_orders
+    description: "Cleaned order events, one row per order_id."
+    columns:
+      - name: order_id
+        description: "Natural key. Spark already deduped to the latest event."
+        data_tests:
+          - not_null
+          - unique
+      - name: customer_id
+        data_tests:
+          - not_null
+      - name: order_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ["completed", "pending", "cancelled", "refunded"]
+      - name: order_amount
+        data_tests:
+          - not_null

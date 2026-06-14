@@ -1,0 +1,27 @@
+# Streamflow analytics: turns the Spark-produced silver tables into tested,
+# business-facing marts. The whole point of dbt is in this one file plus the
+# models/ tree: SQL under version control, with a DAG, materializations, and
+# tests -- "the T in ELT" as software engineering.
+name: streamflow
+version: "1.0.0"
+config-version: 2
+
+# Which profile (warehouse connection) to use -- see profiles.example.yml.
+profile: streamflow
+
+model-paths: ["models"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+
+models:
+  streamflow:
+    # Medallion layering maps onto dbt folders:
+    #   staging      -> light clean/rename, one model per source  (silver)
+    #   intermediate -> reusable business logic, not exposed to BI
+    #   marts        -> business-facing, denormalized, materialized as tables (gold)
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table
