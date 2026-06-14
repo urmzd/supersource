@@ -1,0 +1,13 @@
+[package]
+name = "tantivy-example"
+version = "0.1.0"
+edition = "2021"
+description = "Tantivy (Rust, Lucene-inspired) BM25 search over a Streamflow corpus"
+
+# REQUIRES NETWORK TO BUILD: this is the one example with a real dependency.
+# `cargo build` must fetch tantivy from crates.io. In an offline sandbox the
+# fetch fails -- the from-scratch examples (../bm25_from_scratch.{py,rs}) have
+# NO dependencies and run anywhere; this one demonstrates the production engine.
+[dependencies]
+tantivy = "0.22"
+tempfile = "3"

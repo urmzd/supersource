@@ -1,5 +1,6 @@
 // Streamflow order-worker consumer (Go) -- the at-least-once + idempotent
-// pattern from topic 05, with graceful shutdown for Kubernetes (topic 04).
+// pattern for distributed workers, with graceful shutdown for Kubernetes
+// (Containers, Kubernetes & Workloads -- ../../01-containers-kubernetes/).
 //
 // Illustrative: needs github.com/confluentinc/confluent-kafka-go/v2 and a broker.
 //
@@ -24,7 +25,8 @@ import (
 )
 
 // idempotent reports whether this message key was already processed.
-// Real impl: Redis SETNX with a TTL (see the C4 component diagram in topic 01).
+// Real impl: Redis SETNX with a TTL (see the C4 component diagram in
+// ../../01-containers-kubernetes/).
 func idempotent(key string) bool { /* SETNX key -> false if it already existed */ return false }
 
 func handle(m *kafka.Message) error {

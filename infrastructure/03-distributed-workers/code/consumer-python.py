@@ -6,7 +6,8 @@ Illustrative: needs `confluent-kafka` (pip install confluent-kafka) and a broker
 
 Mirrors the Go and Rust examples: manual offset commit AFTER durable work
 (at-least-once), idempotency guard to absorb redeliveries, and clean SIGTERM
-handling so Kubernetes scale-down doesn't kill us mid-message (topic 04).
+handling so Kubernetes scale-down doesn't kill us mid-message
+(Containers, Kubernetes & Workloads -- ../../01-containers-kubernetes/).
 """
 
 from __future__ import annotations

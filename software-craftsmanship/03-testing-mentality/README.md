@@ -6,7 +6,7 @@
   - [*SWE at Google* -- Testing chapters (11-14)](https://abseil.io/resources/swe-book) -- free, testing at scale
   - [Google Testing Blog / Testing on the Toilet](https://testing.googleblog.com/) -- free, one-page lessons
 - **Supplementary**: [Hypothesis docs](https://hypothesis.readthedocs.io/) (property-based testing), [Principles of Chaos Engineering](https://principlesofchaos.org/) (free), Martin Fowler on [Contract Tests](https://martinfowler.com/bliki/ContractTest.html) (free), [*Foundations of Software Testing* notes]
-- **Prerequisites**: [Documentation & Technical Writing](../02-documentation-writing/) (tests are executable documentation)
+- **Prerequisites**: [Software Engineering at Google](../02-swe-at-google/) (the testing chapters), [Documentation & Technical Writing](../../diagramming-and-documentation/02-documentation-writing/) (tests are executable documentation)
 - **Estimated time**: 1 week at 4-6 hrs/week
 
 ## Key Takeaways
@@ -91,8 +91,8 @@ The mentality applies everywhere knowledge can be wrong:
 
 - **Infrastructure** -- `terraform plan` in CI, `kubeconform`/`kubeval` to validate manifests, policy tests (OPA/Conftest) for "no container runs as root." A misconfigured manifest is a bug.
 - **Data** -- pipeline tests with [Great Expectations](https://greatexpectations.io/) / dbt tests: "no nulls in `order_id`," "row count within 3σ of yesterday." Bad data is a production incident.
-- **Documentation** -- run the code samples (topic 02). An example that doesn't compile is a failing test.
-- **Diagrams** -- `d2 *.d2` in CI fails if a diagram no longer compiles (topic 01).
+- **Documentation** -- run the code samples ([Documentation & Technical Writing](../../diagramming-and-documentation/02-documentation-writing/)). An example that doesn't compile is a failing test.
+- **Diagrams** -- `d2 *.d2` in CI fails if a diagram no longer compiles ([Diagramming & the C4 Model](../../diagramming-and-documentation/01-diagramming-c4/)).
 
 ## 6. Testing in production (because you already are)
 
@@ -122,11 +122,11 @@ You cannot fully reproduce production, so test *against* it deliberately rather 
 
 | Concept | Connected Track | How |
 |---------|-----------------|-----|
-| Test pyramid, fakes, Hyrum's Law | [Software Craftsmanship](../../software-craftsmanship/) | Google's testing chapters are the source |
+| Test pyramid, fakes, Hyrum's Law | [Software Engineering at Google](../02-swe-at-google/) | Google's testing chapters are the source |
 | Property-based & fuzz testing | [Algorithms](../../algorithms/) | Invariants are properties of the algorithm |
 | Canary, SLOs, chaos | [Observability](../../systems/04-observability/) | You test in prod through telemetry |
 | Data quality tests | [Orchestration & Modeling](../../data-engineering/04-orchestration-modeling/) | dbt tests gate the pipeline |
-| Manifest/policy tests | [Containerization & Kubernetes](../04-containerization-kubernetes/) | Validate YAML before it reaches the cluster |
+| Manifest/policy tests | [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) | Validate YAML before it reaches the cluster |
 
 ## Company Relevance
 
