@@ -89,7 +89,9 @@ class Posting:
 @dataclass
 class InvertedIndex:
     # term -> postings list, sorted by doc_id (so AND/OR merges are linear).
-    postings: dict[str, list[Posting]] = field(default_factory=lambda: defaultdict(list))
+    postings: dict[str, list[Posting]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
     doc_len: dict[int, int] = field(default_factory=dict)  # |D| per doc
     docs: dict[int, str] = field(default_factory=dict)  # original text (for display)
     n_docs: int = 0
@@ -137,9 +139,7 @@ def bm25_search(
         idf = index.idf(term)
         for p in plist:  # walk the postings list (Lucene skips via skip-lists)
             dl = index.doc_len[p.doc_id]
-            tf_component = (p.tf * (k1 + 1)) / (
-                p.tf + k1 * (1 - b + b * dl / avgdl)
-            )
+            tf_component = (p.tf * (k1 + 1)) / (p.tf + k1 * (1 - b + b * dl / avgdl))
             scores[p.doc_id] += idf * tf_component
 
     return sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
