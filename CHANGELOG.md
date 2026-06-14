@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 (2026-06-14)
+
+### Features
+
+- **data-engineering**: add runnable Streamflow orders pipeline (Spark + dbt + Airflow) ([4e565e9](https://github.com/urmzd/supersource/commit/4e565e99c86b733c83c5cdff1111534c6b209e7e))
+
+### Misc
+
+- **data-engineering**: ruff-format Spark job and sync uv.lock to 0.4.0 ([b54e9cb](https://github.com/urmzd/supersource/commit/b54e9cb97f51baa746a7db7e2dce9cb72bb6b46a))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.4.0...v0.5.0)
+
+
 ## 0.4.0 (2026-06-14)
 
 ### Features
