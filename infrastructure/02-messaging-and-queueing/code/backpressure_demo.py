@@ -25,7 +25,7 @@ from __future__ import annotations
 
 TICKS = 20
 LAMBDA = 10.0  # arrivals per tick
-MU = 6.0       # the single worker's service rate per tick
+MU = 6.0  # the single worker's service rate per tick
 
 
 def simulate_push() -> tuple[int, int]:
@@ -46,9 +46,9 @@ def simulate_pull() -> tuple[int, int]:
     backlog = 0.0  # = integral of (arrival - service); this is consumer lag
     peak_backlog = 0.0
     for _ in range(TICKS):
-        backlog += LAMBDA            # producer appends to the log
-        pulled = min(backlog, MU)    # poll() asks only for what we can handle
-        backlog -= pulled            # rest stays in the log -> lag grows
+        backlog += LAMBDA  # producer appends to the log
+        pulled = min(backlog, MU)  # poll() asks only for what we can handle
+        backlog -= pulled  # rest stays in the log -> lag grows
         handled += int(pulled)
         peak_backlog = max(peak_backlog, backlog)
     return handled, int(peak_backlog)
@@ -63,7 +63,9 @@ def main() -> None:
     p_handled, p_dropped = simulate_push()
     l_handled, l_backlog = simulate_pull()
 
-    print(f"params: lambda={LAMBDA}/tick  mu={MU}/tick  ticks={TICKS}  (overload: lambda>mu)\n")
+    print(
+        f"params: lambda={LAMBDA}/tick  mu={MU}/tick  ticks={TICKS}  (overload: lambda>mu)\n"
+    )
 
     print("PUSH (broker sets the pace):")
     print(f"  handled durably : {p_handled}")
@@ -78,10 +80,14 @@ def main() -> None:
 
     # Little's Law: at steady state with avg service latency W, in-flight L = lambda*W.
     w = 1.0 / MU  # avg ticks to service one message
-    print(f"Little's Law  L = lambda * W = {LAMBDA} * {w:.3f} = "
-          f"{littles_law(LAMBDA, w):.2f} in-flight (steady-state estimate)")
-    print("queue depth(t) = integral_0^t (arrival(s) - service(s)) ds  ->  "
-          "lag is the running area between the two curves")
+    print(
+        f"Little's Law  L = lambda * W = {LAMBDA} * {w:.3f} = "
+        f"{littles_law(LAMBDA, w):.2f} in-flight (steady-state estimate)"
+    )
+    print(
+        "queue depth(t) = integral_0^t (arrival(s) - service(s)) ds  ->  "
+        "lag is the running area between the two curves"
+    )
     print("\nOK")
 
 
