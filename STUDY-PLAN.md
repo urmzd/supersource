@@ -255,6 +255,54 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 
 ---
 
+## AI Platform Engineering (10-15 weeks)
+
+~8-10 hours per week. Requires [Deep Learning](ml/02-deep-learning/) and [LLM Systems](ml/04-llm-systems/), plus [System Design](systems/01-system-design/) and [Data Engineering](data-engineering/) foundations (OLTP vs OLAP, replication).
+
+### Weeks 1-6: Training & Frameworks
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 1 | PyTorch deep-dive: eager, autograd, `nn.Module`, `torch.compile` | PyTorch docs |
+| 2 | JAX: `jit`/`grad`/`vmap`/`pmap`, Flax/Optax, PyTorch vs JAX | JAX docs |
+| 3 | Distributed training I: data parallel (DDP), all-reduce, mixed precision | PyTorch DDP + Ultra-Scale Playbook |
+| 4 | Distributed training II: FSDP/ZeRO, tensor/pipeline/expert parallelism, Megatron/DeepSpeed | FSDP tutorial + DeepSpeed docs |
+| 5 | Embedding models: contrastive fine-tuning, hosting (TEI), vector stores | Sentence-Transformers + pgvector |
+| 6 | Small language models: distillation, LoRA/QLoRA (PEFT), quantize, serve with vLLM | HF PEFT + vLLM docs |
+
+### Weeks 7-9: RPC & Protocols
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 7 | RPC model, partial failure, serialization formats (JSON/Protobuf/Avro/Thrift) | DDIA Ch 4 + protobuf.dev |
+| 8 | gRPC: HTTP/2, the four call types, streaming, interceptors, gateways | gRPC docs |
+| 9 | Schema evolution, choosing the protocol per boundary, Arrow Flight | Avro spec + gRPC docs |
+
+### Weeks 10-11: Streaming & SSE
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 10 | SSE protocol, `EventSource`, SSE vs WebSockets vs long-polling vs gRPC streaming | MDN SSE + HTML spec |
+| 11 | End-to-end token streaming, cancellation/backpressure, proxies and scaling | OpenAI streaming + vLLM docs |
+
+### Weeks 12-15: Distributed Data & Orchestration
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 12 | OLTP vs OLAP, sharding (hash/range/consistent hashing), hot shards, rebalancing | DDIA Ch 5-6 + Citus/Vitess |
+| 13 | Cassandra (LSM, ring, tunable consistency), replication & quorum | Cassandra docs + DDIA Ch 5 |
+| 14 | Durable orchestration: Temporal/Cadence (event-sourced replay), DBOS on Postgres | Temporal + DBOS docs |
+| 15 | Knowledge graphs (Neo4j, Apache AGE on Postgres, GraphRAG), bitemporal/temporal data | AGE + Neo4j docs |
+
+### Daily Routine (AI Platform Engineering)
+
+1. **Build, don't just read** — every topic has a hands-on (train it, shard it, stream it, orchestrate it)
+2. **Measure** — GPU memory, tokens/sec, bytes-on-wire, TTFT, query latency; numbers beat intuition
+3. **Connect to serving** — keep [LLM Systems](ml/04-llm-systems/) open; this track is the platform around it
+4. **Break it on purpose** — kill a worker mid-workflow, disconnect a stream, reuse a Protobuf tag; learn the failure modes
+
+---
+
 ## Diagramming & Operations (4-6 weeks)
 
 ~6-8 hours per week. Pairs with Software Craftsmanship (principles) and Systems (cloud native). Anchored to one running example -- the Streamflow event-driven platform.
@@ -313,7 +361,8 @@ The full journey from foundations through PhD-level depth and Staff+ engineering
 | 27-30 | Deep Learning (continued) + Info Theory | Research-level depth |
 | 31-34 | Reinforcement Learning | Sutton & Barto + Spinning Up |
 | 35-39 | Systems & Architecture | System design through observability |
-| 40-42 | Interview preparation | Company-targeted study, mock interviews |
+| 40-44 | AI Platform Engineering | Distributed training, RPC, streaming, distributed data & orchestration |
+| 45-47 | Interview preparation | Company-targeted study, mock interviews |
 
 ---
 

@@ -105,6 +105,17 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | 03 | [Cloud Native](systems/03-cloud-native/) | *Cloud Native DevOps with K8s* + K8s docs (free) | 3-4 weeks |
 | 04 | [Observability](systems/04-observability/) | *Observability Engineering* + Google SRE Book (free) | 2-3 weeks |
 
+### AI Platform Engineering
+
+| # | Topic | Reference | Time |
+|---|-------|-----------|------|
+| 01 | [Training & Frameworks](ai-platform-engineering/01-training-and-frameworks/) | [PyTorch](https://pytorch.org/docs/stable/index.html) + [JAX](https://jax.readthedocs.io/) + [vLLM](https://docs.vllm.ai/) docs (free) | 4-6 weeks |
+| 02 | [RPC & Protocols](ai-platform-engineering/02-rpc-and-protocols/) | [gRPC](https://grpc.io/docs/) + [Protocol Buffers](https://protobuf.dev/) docs (free) | 2-3 weeks |
+| 03 | [Streaming & SSE](ai-platform-engineering/03-streaming-sse/) | [HTML SSE spec](https://html.spec.whatwg.org/multipage/server-sent-events.html) + [MDN SSE](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) (free) | 1-2 weeks |
+| 04 | [Distributed Data & Orchestration](ai-platform-engineering/04-distributed-data-orchestration/) | [Temporal](https://docs.temporal.io/) + [DBOS](https://docs.dbos.dev/) + [Cassandra](https://cassandra.apache.org/doc/latest/) docs (free) + DDIA | 3-4 weeks |
+
+Covers distributed training (PyTorch/JAX, FSDP/ZeRO, Megatron/DeepSpeed), creating and hosting embedding models and small language models, gRPC and serialization formats, Server-Sent Events for token streaming, and distributed data — database shards, durable orchestration (Temporal/Cadence/DBOS), Cassandra, knowledge graphs (Apache AGE on Postgres), and OLAP vs OLTP.
+
 ### Specialized Tracks
 
 | Track | Reference | Time |
@@ -149,6 +160,10 @@ graph TD
 
     SYS --> DGO[Diagramming & Operations]
     DE --> DGO
+
+    LLM --> AIP[AI Platform Engineering]
+    SYS --> AIP
+    DE --> AIP
 ```
 
 ## Study Plans
@@ -160,6 +175,7 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **ML & AI** 18-33 weeks, statistical learning through RL, LLM serving, foundation models, and neural-architecture foundations
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
+- **AI Platform Engineering** 10-15 weeks, distributed training and frameworks through RPC, streaming, and distributed data
 - **Diagramming & Operations** 4-6 weeks, C4 diagramming through Kubernetes and Kafka consumption models
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
@@ -240,6 +256,10 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | Google Technical Writing Courses | Diagramming & Operations | [Free online](https://developers.google.com/tech-writing) |
 | Kubernetes Documentation | Diagramming & Operations / Systems | [Free online](https://kubernetes.io/docs/) |
 | Apache Kafka Documentation | Diagramming & Operations / Data Engineering | [Free online](https://kafka.apache.org/documentation/) |
+| PyTorch / JAX / vLLM Documentation | AI Platform Engineering | [PyTorch](https://pytorch.org/docs/stable/index.html) / [JAX](https://jax.readthedocs.io/) / [vLLM](https://docs.vllm.ai/) |
+| gRPC + Protocol Buffers Documentation | AI Platform Engineering | [grpc.io](https://grpc.io/docs/) / [protobuf.dev](https://protobuf.dev/) |
+| MDN Server-Sent Events + WHATWG HTML spec | AI Platform Engineering | [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) / [Spec](https://html.spec.whatwg.org/multipage/server-sent-events.html) |
+| Temporal / DBOS / Cassandra / Apache AGE Docs | AI Platform Engineering | [Temporal](https://docs.temporal.io/) / [DBOS](https://docs.dbos.dev/) / [Cassandra](https://cassandra.apache.org/doc/latest/) / [AGE](https://age.apache.org/) |
 
 ### Recommended (non-free)
 
