@@ -108,6 +108,7 @@ base_cmd=(
   --pdf-engine=xelatex
   --top-level-division=chapter
   --number-sections
+  -V secnumdepth=0
   --resource-path="$ROOT_DIR"
   --lua-filter="$SCRIPT_DIR/table-widths.lua"
   -V documentclass=report
@@ -118,7 +119,7 @@ base_cmd=(
   -V "author=github.com/urmzd/supersource"
   -V "date=$BUILD_DATE"
 )
-$WITH_TOC && base_cmd+=(--toc --toc-depth=2)
+$WITH_TOC && base_cmd+=(--toc --toc-depth=1)
 
 # Fonts (best-effort; pandoc uses LaTeX defaults if none found).
 mf="$(find_font SERIF_CANDIDATES)" && base_cmd+=(-V "mainfont=$mf")
