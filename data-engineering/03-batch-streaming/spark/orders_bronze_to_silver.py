@@ -87,7 +87,9 @@ def build_silver(spark: SparkSession, bronze_path: str, run_date: str):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Streamflow bronze->silver orders job")
-    parser.add_argument("--run-date", required=True, help="partition to process, YYYY-MM-DD")
+    parser.add_argument(
+        "--run-date", required=True, help="partition to process, YYYY-MM-DD"
+    )
     parser.add_argument("--bronze", required=True, help="bronze (raw JSON) root path")
     parser.add_argument("--silver", required=True, help="silver (Parquet) root path")
     args = parser.parse_args()
@@ -105,11 +107,7 @@ def main() -> None:
     # 4) STORE. Columnar + partitioned by order_date. The combination of
     #    overwrite + dynamic mode makes a re-run of any single day a no-op-safe
     #    replace -- the heart of safe backfills.
-    (
-        silver.write.mode("overwrite")
-        .partitionBy("order_date")
-        .parquet(args.silver)
-    )
+    (silver.write.mode("overwrite").partitionBy("order_date").parquet(args.silver))
 
     spark.stop()
 
