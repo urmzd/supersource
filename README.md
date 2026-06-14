@@ -105,6 +105,25 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | 03 | [Cloud Native](systems/03-cloud-native/) | *Cloud Native DevOps with K8s* + K8s docs (free) | 3-4 weeks |
 | 04 | [Observability](systems/04-observability/) | *Observability Engineering* + Google SRE Book (free) | 2-3 weeks |
 
+### AI Platform Engineering
+
+Taught as **patterns, not products** — like math, once you understand the fundamental patterns (cache-aside, consistent hashing, durable execution, the worker pool, retrieve-then-rerank, the complexity ladder of authorization, cross-entropy-as-compression), every trendy tool becomes a recognizable instance.
+
+| # | Topic | Reference | Time |
+|---|-------|-----------|------|
+| 01 | [Training & Frameworks](ai-platform-engineering/01-training-and-frameworks/) | [PyTorch](https://pytorch.org/docs/stable/index.html) + [JAX](https://jax.readthedocs.io/) + [vLLM](https://docs.vllm.ai/) docs (free) | 4-6 weeks |
+| 02 | [RPC & Protocols](ai-platform-engineering/02-rpc-and-protocols/) | [gRPC](https://grpc.io/docs/) + [Protocol Buffers](https://protobuf.dev/) docs (free) | 2-3 weeks |
+| 03 | [Streaming & SSE](ai-platform-engineering/03-streaming-sse/) | [HTML SSE spec](https://html.spec.whatwg.org/multipage/server-sent-events.html) + [MDN SSE](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) (free) | 1-2 weeks |
+| 04 | [Distributed Data & Caching](ai-platform-engineering/04-distributed-data-and-caching/) | [Redis](https://redis.io/docs/latest/) + [Cassandra](https://cassandra.apache.org/doc/latest/) docs (free) + DDIA | 3-4 weeks |
+| 05 | [Durable Orchestration & Workers](ai-platform-engineering/05-durable-orchestration-and-workers/) | [Temporal](https://docs.temporal.io/) + [DBOS](https://docs.dbos.dev/) docs (free) | 2-3 weeks |
+| 06 | [Coding & Design Patterns](ai-platform-engineering/06-coding-and-design-patterns/) | [Refactoring Guru](https://refactoring.guru/design-patterns) + [Mostly Adequate Guide](https://mostly-adequate.gitbook.io/mostly-adequate-guide/) (free) | 2-3 weeks |
+| 07 | [Retrieval & RAG](ai-platform-engineering/07-retrieval-and-rag/) | [RAG paper](https://arxiv.org/abs/2005.11401) + [BM25](https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf) + [pgvector](https://github.com/pgvector/pgvector) (free) | 3-4 weeks |
+| 08 | [Authorization & Access Control](ai-platform-engineering/08-authorization-and-access-control/) | [NIST RBAC/ABAC/NGAC](https://csrc.nist.gov/projects/role-based-access-control) + [Zanzibar](https://research.google/pubs/pub48190/) (free) | 2-3 weeks |
+| 09 | [LLM Evaluation](ai-platform-engineering/09-llm-evaluation/) | [MacKay](http://www.inference.org.uk/mackay/itila/) + [HELM](https://crfm.stanford.edu/helm/) + [Ragas](https://docs.ragas.io/) (free) | 2-3 weeks |
+| 10 | [Edge, Realtime & On-Device Inference](ai-platform-engineering/10-edge-realtime-inference/) | [llama.cpp](https://github.com/ggml-org/llama.cpp) + [Mistral 7B](https://arxiv.org/abs/2310.06825) + [Mamba](https://arxiv.org/abs/2312.00752) (free) | 2-3 weeks |
+
+Three distinct "distributed" problems kept apart on purpose: distributed **training** (parallelism — PyTorch/JAX, FSDP/ZeRO, Megatron, Ray Train; served with vLLM/TensorRT-LLM; plus embeddings and small language models), distributed **data** (sharding, replication, in-memory caching with Redis and cache-invalidation patterns, Cassandra, knowledge graphs via Apache AGE, OLAP vs OLTP), and distributed **orchestration** (durable execution and the worker pattern — Temporal/Cadence/DBOS — with distributed observability and profiling). Plus the connective tissue: gRPC and serialization, SSE token streaming, the coding/design patterns these systems are built from, production-grade **retrieval** (encoders, chunking, hybrid BM25 + vector + graph fusion, multimodal, metadata/permission filtering), **authorization** (RBAC/ABAC/NGAC and the pushdown-automata complexity ladder), **evaluation** (cross-entropy, perplexity, bits-per-byte, LLM-as-judge, RAG faithfulness), and **edge/realtime inference** (the end-to-end llama.cpp + GGUF local path, streaming speech encoders, and the efficiency architectures — sliding-window attention, GQA, MoE, Mamba/SSM — behind Mistral's models).
+
 ### Specialized Tracks
 
 | Track | Reference | Time |
@@ -149,6 +168,10 @@ graph TD
 
     SYS --> DGO[Diagramming & Operations]
     DE --> DGO
+
+    LLM --> AIP[AI Platform Engineering]
+    SYS --> AIP
+    DE --> AIP
 ```
 
 ## Study Plans
@@ -160,6 +183,7 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **ML & AI** 18-33 weeks, statistical learning through RL, LLM serving, foundation models, and neural-architecture foundations
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
+- **AI Platform Engineering** 23-33 weeks, patterns-first: training/frameworks, RPC, streaming, distributed data & caching, durable orchestration, coding/design patterns, retrieval & RAG, authorization, LLM evaluation, and edge/realtime inference
 - **Diagramming & Operations** 4-6 weeks, C4 diagramming through Kubernetes and Kafka consumption models
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
@@ -240,6 +264,18 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | Google Technical Writing Courses | Diagramming & Operations | [Free online](https://developers.google.com/tech-writing) |
 | Kubernetes Documentation | Diagramming & Operations / Systems | [Free online](https://kubernetes.io/docs/) |
 | Apache Kafka Documentation | Diagramming & Operations / Data Engineering | [Free online](https://kafka.apache.org/documentation/) |
+| PyTorch / JAX / vLLM Documentation | AI Platform Engineering | [PyTorch](https://pytorch.org/docs/stable/index.html) / [JAX](https://jax.readthedocs.io/) / [vLLM](https://docs.vllm.ai/) |
+| gRPC + Protocol Buffers Documentation | AI Platform Engineering | [grpc.io](https://grpc.io/docs/) / [protobuf.dev](https://protobuf.dev/) |
+| MDN Server-Sent Events + WHATWG HTML spec | AI Platform Engineering | [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) / [Spec](https://html.spec.whatwg.org/multipage/server-sent-events.html) |
+| Temporal / DBOS / Cassandra / Apache AGE Docs | AI Platform Engineering | [Temporal](https://docs.temporal.io/) / [DBOS](https://docs.dbos.dev/) / [Cassandra](https://cassandra.apache.org/doc/latest/) / [AGE](https://age.apache.org/) |
+| Redis Documentation | AI Platform Engineering | [Free online](https://redis.io/docs/latest/) |
+| RAG paper + BM25 review + pgvector | AI Platform Engineering | [RAG](https://arxiv.org/abs/2005.11401) / [BM25](https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf) / [pgvector](https://github.com/pgvector/pgvector) |
+| NIST RBAC/ABAC/NGAC + Google Zanzibar | AI Platform Engineering | [NIST](https://csrc.nist.gov/projects/role-based-access-control) / [Zanzibar](https://research.google/pubs/pub48190/) |
+| HELM + lm-evaluation-harness + Ragas | AI Platform Engineering | [HELM](https://crfm.stanford.edu/helm/) / [harness](https://github.com/EleutherAI/lm-evaluation-harness) / [Ragas](https://docs.ragas.io/) |
+| llama.cpp + GGUF + Ollama | AI Platform Engineering | [llama.cpp](https://github.com/ggml-org/llama.cpp) / [GGUF](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md) / [Ollama](https://github.com/ollama/ollama) |
+| Ray (Core / Train / Serve) Documentation | AI Platform Engineering | [Free online](https://docs.ray.io/) |
+| NVIDIA TensorRT-LLM + Triton Inference Server | AI Platform Engineering | [TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/) / [Triton](https://docs.nvidia.com/deeplearning/triton-inference-server/) |
+| Mistral 7B / Mixtral / Mamba papers | AI Platform Engineering | [Mistral 7B](https://arxiv.org/abs/2310.06825) / [Mixtral](https://arxiv.org/abs/2401.04088) / [Mamba](https://arxiv.org/abs/2312.00752) |
 
 ### Recommended (non-free)
 
