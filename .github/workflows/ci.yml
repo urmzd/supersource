@@ -17,9 +17,9 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v8
 
       - name: Set up Python
         run: uv python install
@@ -37,9 +37,9 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v8
 
       - name: Set up Python
         run: uv python install
@@ -55,7 +55,7 @@ jobs:
     name: Book PDF
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install pandoc, LaTeX, fonts, SVG support
         run: |
@@ -72,7 +72,7 @@ jobs:
             fonts-dejavu-extra \
             librsvg2-bin
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
 
@@ -97,7 +97,7 @@ jobs:
         run: ./scripts/build-book.sh --manifest outputs/build-manifest.json
 
       - name: Upload PDF artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: supersource-curriculum-pdf
           path: |

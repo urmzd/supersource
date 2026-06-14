@@ -22,13 +22,13 @@ jobs:
     steps:
       - name: Generate app token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.SR_RELEASER_APP_ID }}
           private-key: ${{ secrets.SR_RELEASER_PRIVATE_KEY }}
           repositories: ${{ github.event.repository.name }}
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
@@ -37,7 +37,7 @@ jobs:
       # PDF in this same run. Place it on disk so sr can upload it as a release
       # asset (declared in sr.yaml packages[].artifacts).
       - name: Download curriculum PDF
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: supersource-curriculum-pdf
           path: outputs
