@@ -91,7 +91,7 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 
 **Key tooling**:
 - **DeepSpeed** (ZeRO, offload to CPU/NVMe), **Megatron-LM** (TP/PP/sequence parallelism, the reference for large pretraining), **PyTorch FSDP**, **HuggingFace Accelerate** (one config, many backends), **Ray Train** (orchestration), **NCCL** (the GPU collective library underneath it all).
-- **Checkpointing**: distributed, sharded, asynchronous checkpoints so a multi-day run survives a node failure (connects to durable orchestration in [topic 04](../04-distributed-data-orchestration/)).
+- **Checkpointing**: distributed, sharded, asynchronous checkpoints so a multi-day run survives a node failure (the same checkpoint pattern as durable orchestration in [topic 05](../05-durable-orchestration-and-workers/)).
 - **Mixed precision** (bf16/fp16 + fp32 master weights) and **gradient/activation checkpointing** (recompute activations to save memory) are standard.
 
 ## 5. Creating & Hosting Embedding Models
@@ -107,7 +107,7 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 **Hosting**:
 - Embedding inference is **encoder-only and bidirectional** — no KV cache, no autoregressive decode. It's a throughput problem: big batches, short sequences, often fine on CPU or a small GPU.
 - Serve via TEI ([Text Embeddings Inference](https://huggingface.co/docs/text-embeddings-inference)), vLLM's embeddings endpoint, or a plain ONNX/Triton service. Normalize vectors; pin the model version (re-embedding the whole corpus on a model change is expensive).
-- **Write to a vector store** — pgvector (Postgres), Qdrant, Milvus, Weaviate, FAISS — with an ANN index (HNSW/IVF). This bridges to [topic 04](../04-distributed-data-orchestration/) (the store is sharded, durable data) and to RAG retrieval.
+- **Write to a vector store** — pgvector (Postgres), Qdrant, Milvus, Weaviate, FAISS — with an ANN index (HNSW/IVF). This bridges to [topic 04](../04-distributed-data-and-caching/) (the store is sharded, cached, durable data) and to RAG retrieval ([topic 07](../07-retrieval-and-rag/)).
 
 ## 6. Small Language Models & Training
 
@@ -127,7 +127,7 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 **Key ideas**:
 - **Lifecycle**: data versioning → training (distributed, checkpointed) → evaluation (held-out + task benchmarks) → **model registry** (versioned, signed weights) → serving (vLLM) → **monitoring** (drift, quality, cost) → back to data.
 - **Experiment tracking**: Weights & Biases / MLflow for runs, metrics, artifacts.
-- **Orchestration**: training and data pipelines are multi-step, long-running, and failure-prone — which is exactly what **durable orchestration** ([topic 04](../04-distributed-data-orchestration/)) is for.
+- **Orchestration**: training and data pipelines are multi-step, long-running, and failure-prone — which is exactly what **durable orchestration** ([topic 05](../05-durable-orchestration-and-workers/)) is for.
 - **Reproducibility**: pin data, seed, framework, and CUDA versions; a model you can't rebuild is a liability.
 
 ---
@@ -145,6 +145,16 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 | Cheap retrieval for RAG | Fine-tuned embedding model + vector store |
 | Cheap, fast, narrow task | SLM + QLoRA + quantization |
 
+## Patterns Worth Internalizing
+
+These outlive any framework version:
+
+- **"Distributed training" is a parallelism choice along a specific dimension** — split the batch (data), the matrix (tensor), the layers (pipeline), or the experts (expert). Name the dimension and the tool follows.
+- **Shard the most expensive thing.** FSDP/ZeRO shard optimizer state because that, not the weights, is what blows up memory — find the dominant cost before splitting.
+- **Freeze the base, train a small adapter** (LoRA) — the general pattern of "perturb a frozen pretrained artifact cheaply," reused across fine-tuning, prompt-tuning, and control.
+- **Eager for development, compiled for production** (`torch.compile` / `jit`) — the same staged-execution trade-off shows up in every numeric framework.
+- **Eval is part of the loop, not the end** — a model you can't measure is a model you can't improve (see [LLM Evaluation](../09-llm-evaluation/)).
+
 ## Connections to Other Tracks
 
 | Concept | Connected Track | Application |
@@ -153,11 +163,12 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 | Serving, KV cache, parallelism, quantization | [LLM Systems & Inference](../../ml/04-llm-systems/) | Deploying training output |
 | K8s, GPU scheduling, autoscaling | [Cloud Native](../../systems/03-cloud-native/) | The training/serving substrate |
 | All-reduce, collectives, memory bandwidth | [Concurrency & Systems](../../algorithms/12-concurrency-systems/) | Why distributed training communicates |
-| Vector stores, OLTP/OLAP, sharding | [Distributed Data & Orchestration](../04-distributed-data-orchestration/) | Where embeddings and data live |
-| Durable workflows, checkpointed pipelines | [Distributed Data & Orchestration](../04-distributed-data-orchestration/) | Crash-proof training pipelines |
+| Vector stores, OLTP/OLAP, sharding, caching | [Distributed Data & Caching](../04-distributed-data-and-caching/) | Where embeddings and data live |
+| Durable workflows, checkpointed pipelines | [Orchestration & Workers](../05-durable-orchestration-and-workers/) | Crash-proof training pipelines |
+| Embedding retrieval, chunking, RAG | [Retrieval & RAG](../07-retrieval-and-rag/) | What the embeddings are for |
 | Token streaming to clients | [Streaming & SSE](../03-streaming-sse/) | Delivering generated output |
 
-## Company Relevance
+## How Companies Apply These Patterns
 
 | Company | How This Appears | Difficulty |
 |---------|-----------------|------------|
@@ -168,4 +179,3 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 | Databricks / Mosaic | Training platform, distributed training as a product | Expert |
 | HuggingFace | Transformers/Accelerate/PEFT/TEI, the open stack | Expert |
 | Cohere / Voyage | Embedding models as a product (creating + hosting) | Expert |
-</content>

@@ -106,6 +106,14 @@ data: {"token": "!", "done": false}
 | Infra blocks SSE and WS | **Long-polling** (fallback) |
 | Need to cancel a generation | Propagate disconnect → evict from serving engine |
 
+## Patterns Worth Internalizing
+
+- **A result that arrives over time is a stream, not a value** — push the pieces as they're ready instead of buffering the whole answer.
+- **One-way vs two-way is the decision** — SSE when the server pushes and the client listens; WebSockets only when you truly need bidirectional/binary.
+- **Cancellation must propagate** — a client disconnect should free the upstream resource (the GPU slot), or you leak work.
+- **Backpressure is mandatory** — a held-open connection is a held resource; bound concurrency, time out, and shed load.
+- **Internal stream → edge stream** — gRPC server-streaming between services, SSE at the last mile; pick the transport per hop.
+
 ## Connections to Other Tracks
 
 | Concept | Connected Track | Application |
@@ -117,12 +125,11 @@ data: {"token": "!", "done": false}
 | Tail latency, TTFT measurement | [Observability](../../systems/04-observability/) | Instrumenting the stream |
 | Event streams, replay, delivery semantics | [Data Engineering](../../data-engineering/03-batch-streaming/) | Durable feeds vs ephemeral generation |
 
-## Company Relevance
+## How Companies Apply These Patterns
 
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| OpenAI / Anthropic | SSE token streaming is the public API surface | Expert |
-| Any GenAI product team | Streaming UX, cancellation, TTFT | Mid-Senior |
-| Vercel / Cloudflare | Edge streaming, SSE at the CDN, AI gateways | Expert |
-| Slack / Figma | WebSockets for real-time collab (the contrast case) | Expert |
-</content>
+| Company | The pattern they lean on | Instance |
+|---------|--------------------------|----------|
+| OpenAI / Anthropic | Server-push token streaming | SSE is the public API surface |
+| Any GenAI product team | Stream + cancel for TTFT-driven UX | SSE with stop-generation |
+| Vercel / Cloudflare | Edge streaming / AI gateway | SSE at the CDN |
+| Slack / Figma | Bidirectional real-time | WebSockets (the contrast case) |

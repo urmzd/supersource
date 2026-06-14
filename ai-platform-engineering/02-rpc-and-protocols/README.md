@@ -36,7 +36,7 @@ Two processes can only exchange bytes. A *protocol* is the agreement that turns 
 - **The model**: client invokes a method on a *stub*; the stub *marshals* (serializes) arguments, sends them, the server *unmarshals*, runs the method, and returns a result the same way. The network is hidden behind a function signature.
 - **Why it leaks**: a local call can't time out, lose the response, or partially execute — a remote one can. You must design for **partial failure**: timeouts, retries (with idempotency keys), backoff, deadlines/cancellation, and circuit breakers.
 - **The fallacies of distributed computing**: the network is *not* reliable, zero-latency, infinite-bandwidth, secure, or free. RPC frameworks paper over the syntax, not these realities.
-- **Idempotency**: because retries are unavoidable, write operations should be safe to apply more than once (connects to durable execution in [topic 04](../04-distributed-data-orchestration/)).
+- **Idempotency**: because retries are unavoidable, write operations should be safe to apply more than once (connects to durable execution in [topic 05](../05-durable-orchestration-and-workers/)).
 
 ## 2. Serialization Formats
 
@@ -112,6 +112,14 @@ Two processes can only exchange bytes. A *protocol* is the agreement that turns 
 | Zero-parse, latency-critical | FlatBuffers / Cap'n Proto |
 | Compact schemaless blob | MessagePack |
 
+## Patterns Worth Internalizing
+
+- **A network call is a function call that can fail halfway** — design every RPC for timeout, retry, and partial failure, not just the happy path.
+- **The schema is a versioned contract.** Identify fields by stable tags, only add (never reuse/retype), and you decouple producer and consumer deploys forever.
+- **Binary + schema inside, text + schemaless at the edge** — match the format to the boundary; never put JSON on a hot internal path or raw gRPC in a browser.
+- **Streaming is a first-class call shape, not a hack** — server-streaming is the right tool for tokens, results, and progress between services.
+- **Codegen the contract** — generate stubs from one source of truth so every language stays in sync.
+
 ## Connections to Other Tracks
 
 | Concept | Connected Track | Application |
@@ -120,10 +128,10 @@ Two processes can only exchange bytes. A *protocol* is the agreement that turns 
 | Services, APIs, load balancing, mesh | [System Design](../../systems/01-system-design/) | Where RPC fits in an architecture |
 | Containers, service mesh, mTLS | [Cloud Native](../../systems/03-cloud-native/) | Running gRPC services on K8s |
 | Tracing, deadlines, retries, RED metrics | [Observability](../../systems/04-observability/) | Instrumenting RPC calls |
-| Idempotency, retries, exactly-once | [Distributed Data & Orchestration](../04-distributed-data-orchestration/) | Surviving partial failure |
+| Idempotency, retries, exactly-once | [Orchestration & Workers](../05-durable-orchestration-and-workers/) | Surviving partial failure |
 | Streaming token delivery to clients | [Streaming & SSE](../03-streaming-sse/) | gRPC stream → SSE at the edge |
 
-## Company Relevance
+## How Companies Apply These Patterns
 
 | Company | How This Appears | Difficulty |
 |---------|-----------------|------------|
@@ -133,4 +141,3 @@ Two processes can only exchange bytes. A *protocol* is the agreement that turns 
 | Netflix / Uber | gRPC mesh, schema registries, streaming | Expert |
 | Anthropic / OpenAI | Internal inference RPC, streaming generation between tiers | Expert |
 | Confluent / Databricks | Avro + schema registry, Arrow Flight | Expert |
-</content>

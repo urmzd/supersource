@@ -255,9 +255,9 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 
 ---
 
-## AI Platform Engineering (10-15 weeks)
+## AI Platform Engineering (21-30 weeks)
 
-~8-10 hours per week. Requires [Deep Learning](ml/02-deep-learning/) and [LLM Systems](ml/04-llm-systems/), plus [System Design](systems/01-system-design/) and [Data Engineering](data-engineering/) foundations (OLTP vs OLAP, replication).
+~8-10 hours per week. **Patterns-first**: the goal is to internalize the fundamental patterns (like math, everything downstream is derivative) and treat each trendy tool as an instance. Requires [Deep Learning](ml/02-deep-learning/) and [LLM Systems](ml/04-llm-systems/), plus [System Design](systems/01-system-design/) and [Data Engineering](data-engineering/) foundations (OLTP vs OLAP, replication). Tip: [Coding & Design Patterns](ai-platform-engineering/06-coding-and-design-patterns/) can be read first as vocabulary.
 
 ### Weeks 1-6: Training & Frameworks
 
@@ -285,21 +285,45 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 | 10 | SSE protocol, `EventSource`, SSE vs WebSockets vs long-polling vs gRPC streaming | MDN SSE + HTML spec |
 | 11 | End-to-end token streaming, cancellation/backpressure, proxies and scaling | OpenAI streaming + vLLM docs |
 
-### Weeks 12-15: Distributed Data & Orchestration
+### Weeks 12-15: Distributed Data & Caching
 
 | Week | Focus | Reference |
 |------|-------|-----------|
 | 12 | OLTP vs OLAP, sharding (hash/range/consistent hashing), hot shards, rebalancing | DDIA Ch 5-6 + Citus/Vitess |
-| 13 | Cassandra (LSM, ring, tunable consistency), replication & quorum | Cassandra docs + DDIA Ch 5 |
-| 14 | Durable orchestration: Temporal/Cadence (event-sourced replay), DBOS on Postgres | Temporal + DBOS docs |
-| 15 | Knowledge graphs (Neo4j, Apache AGE on Postgres, GraphRAG), bitemporal/temporal data | AGE + Neo4j docs |
+| 13 | In-memory stores & caching patterns (cache-aside/through/back), invalidation | Redis docs + Scaling Memcache |
+| 14 | Caching failure modes (stampede, herd, penetration); Cassandra (LSM, ring, quorum) | Redis + Cassandra docs |
+| 15 | Knowledge graphs (Neo4j, Apache AGE on Postgres), bitemporal/temporal data | AGE + Neo4j docs |
+
+### Weeks 16-18: Durable Orchestration, Workers & Patterns
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 16 | Durable execution & checkpointing, event-sourced replay, the worker pattern | Temporal + DBOS docs |
+| 17 | Reliability patterns (idempotency, saga/compensation, outbox); distributed observability + profiling | Temporal docs + OpenTelemetry + Gregg |
+| 18 | Coding & design patterns: decorator, facade, closures, currying, composition | Refactoring Guru + Mostly Adequate Guide |
+
+### Weeks 19-25: Retrieval, Authorization & Evaluation
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 19 | Encoders (bi- vs cross-encoder), embedding retrieval, ANN/HNSW | RAG paper + HNSW + sbert |
+| 20 | Chunking patterns (fixed/recursive/semantic, parent-child), metadata | saige RAG + pgvector |
+| 21 | Lexical retrieval (BM25, bag-of-words, TF-IDF); hybrid fusion (RRF) + reranking | BM25 review + RRF paper |
+| 22 | Multimodal handling (Document→Section→Variant), GraphRAG, production retrieval | GraphRAG + saige |
+| 23 | Authorization: RBAC/ABAC/ReBAC/NGAC, the pushdown complexity ladder, Zanzibar | NIST + Zanzibar + OpenFGA |
+| 24 | Secure RAG (permission-filtered retrieval, multi-tenancy); PDP/PEP, policy-as-code | NIST ABAC + OPA |
+| 25 | LLM evaluation: cross-entropy, perplexity, **bits-per-byte**; benchmarks & contamination | MacKay + HELM + The Pile |
+
+### Optional deep dive (weeks 26-30)
+
+LLM-as-judge & Elo arenas, RAG metrics (faithfulness, context precision/recall, NDCG/MRR), agent metrics (TTFT/TTLT, tool success), and building a composable `Scorer` eval harness gated in CI. References: Ragas, Chatbot Arena, lm-evaluation-harness, saige `eval/`.
 
 ### Daily Routine (AI Platform Engineering)
 
-1. **Build, don't just read** — every topic has a hands-on (train it, shard it, stream it, orchestrate it)
-2. **Measure** — GPU memory, tokens/sec, bytes-on-wire, TTFT, query latency; numbers beat intuition
-3. **Connect to serving** — keep [LLM Systems](ml/04-llm-systems/) open; this track is the platform around it
-4. **Break it on purpose** — kill a worker mid-workflow, disconnect a stream, reuse a Protobuf tag; learn the failure modes
+1. **Name the pattern, then the tool** — for every tool, ask "what pattern is this an instance of?" That's the transferable knowledge.
+2. **Build, don't just read** — train it, shard it, cache it, stream it, orchestrate it, retrieve it, authorize it, score it.
+3. **Measure** — GPU memory, tokens/sec, bytes-on-wire, TTFT, cache hit rate, retrieval recall, bits-per-byte; numbers beat intuition.
+4. **Break it on purpose** — kill a worker mid-workflow, expire a hot cache key, reuse a Protobuf tag, leak a doc past an ACL; learn the failure modes.
 
 ---
 
@@ -361,8 +385,8 @@ The full journey from foundations through PhD-level depth and Staff+ engineering
 | 27-30 | Deep Learning (continued) + Info Theory | Research-level depth |
 | 31-34 | Reinforcement Learning | Sutton & Barto + Spinning Up |
 | 35-39 | Systems & Architecture | System design through observability |
-| 40-44 | AI Platform Engineering | Distributed training, RPC, streaming, distributed data & orchestration |
-| 45-47 | Interview preparation | Company-targeted study, mock interviews |
+| 40-46 | AI Platform Engineering | Patterns-first: training, RPC, streaming, data & caching, orchestration, design patterns, RAG, authorization, evaluation |
+| 47-49 | Interview preparation | Company-targeted study, mock interviews |
 
 ---
 
