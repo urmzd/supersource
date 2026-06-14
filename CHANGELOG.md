@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 (2026-06-14)
+
+### Features
+
+- **infrastructure**: split diagramming-and-operations into focused tracks ([abc2225](https://github.com/urmzd/supersource/commit/abc222582df212a63a58dfaa11cc9cdcf8226e55))
+
+### Misc
+
+- **infrastructure**: apply ruff format to demo code (#13) ([cefb6de](https://github.com/urmzd/supersource/commit/cefb6dedff0d6c1ad827408e74e112ab42e825e3))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.3.1...v0.4.0)
+
+
 ## 0.3.1 (2026-06-14)
 
 ### Bug Fixes
