@@ -61,6 +61,42 @@ def substitute_glyphs(text: str) -> str:
     return text
 
 
+def single_chapter(text: str) -> str:
+    """Demote every H1 after the first to H2 so each README is ONE chapter.
+
+    House-style READMEs use two H1s (the title, then "# Concepts & Techniques")
+    plus extra H1s like "# Part 1". Left alone, each becomes its own PDF chapter,
+    producing a redundant "Concepts & Techniques" chapter per topic. Keeping only
+    the first H1 as the chapter and demoting the rest to sections fixes the
+    ordering. Code-fence aware so `#` comments inside code blocks are untouched.
+    """
+    out: list[str] = []
+    in_fence = False
+    fence = ""
+    seen_h1 = False
+    for line in text.split("\n"):
+        marker = line.lstrip()[:3]
+        if in_fence:
+            if marker == fence:
+                in_fence = False
+            out.append(line)
+            continue
+        if marker in ("```", "~~~"):
+            in_fence = True
+            fence = marker
+            out.append(line)
+            continue
+        if line.startswith("# "):
+            if seen_h1:
+                out.append("#" + line)  # H1 -> H2
+            else:
+                seen_h1 = True
+                out.append(line)
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
 def is_remote_or_absolute(target: str) -> bool:
     return (
         target.startswith(("http://", "https://", "/"))
@@ -121,6 +157,7 @@ def assemble(root: Path) -> tuple[str, int]:
         chunks.append(part_divider(title))
         for path in files:
             text = path.read_text(encoding="utf-8")
+            text = single_chapter(text)
             text = substitute_glyphs(rewrite_images(text, path.parent))
             chunks.append(text)
             chunks.append("\n\n")
