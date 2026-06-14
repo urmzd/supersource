@@ -3,7 +3,7 @@
 ## Overview
 
 - **Primary references**: [PyTorch docs](https://pytorch.org/docs/stable/index.html) (free), [JAX docs](https://jax.readthedocs.io/) (free), [vLLM docs](https://docs.vllm.ai/) (free)
-- **Supplementary**: [HuggingFace Transformers](https://huggingface.co/docs/transformers) + [Accelerate](https://huggingface.co/docs/accelerate) + [PEFT](https://huggingface.co/docs/peft) docs (free), [DeepSpeed](https://www.deepspeed.ai/) + [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) (free), [PyTorch FSDP tutorial](https://pytorch.org/tutorials/intermediate/FSDP_tutorial.html), [Sentence-Transformers](https://www.sbert.net/) (free), [The Ultra-Scale Playbook](https://huggingface.co/spaces/nanotron/ultrascale-playbook) (free)
+- **Supplementary**: [HuggingFace Transformers](https://huggingface.co/docs/transformers) + [Accelerate](https://huggingface.co/docs/accelerate) + [PEFT](https://huggingface.co/docs/peft) docs (free), [DeepSpeed](https://www.deepspeed.ai/) + [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) (free), [Ray Train / Ray Serve](https://docs.ray.io/) (distributed training + serving, free), [NVIDIA TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/) + [Triton Inference Server](https://docs.nvidia.com/deeplearning/triton-inference-server/) (free), [PyTorch FSDP tutorial](https://pytorch.org/tutorials/intermediate/FSDP_tutorial.html), [Sentence-Transformers](https://www.sbert.net/) (free), [The Ultra-Scale Playbook](https://huggingface.co/spaces/nanotron/ultrascale-playbook) (free)
 - **Prerequisites**: [Deep Learning](../../ml/02-deep-learning/) (backprop, optimizers, transformers), [LLM Systems & Inference](../../ml/04-llm-systems/) (serving, parallelism)
 - **Estimated time**: 4-6 weeks at 10-12 hrs/week
 
@@ -67,9 +67,11 @@ A framework is a contract between the math and the hardware. You write a model a
 
 **Key ideas**:
 - **vLLM**: high-throughput inference engine — PagedAttention KV cache, continuous batching, tensor parallelism, prefix caching, an OpenAI-compatible server. The default for self-hosting LLMs.
-- **The serving layer sits on top of the framework**: PyTorch/JAX define the model; vLLM/TGI/TensorRT-LLM/SGLang *serve* it efficiently. (Full treatment in [LLM Systems & Inference](../../ml/04-llm-systems/).)
+- **The serving layer sits on top of the framework**: PyTorch/JAX define the model; vLLM/TGI/[TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/)/SGLang *serve* it efficiently. (Full treatment in [LLM Systems & Inference](../../ml/04-llm-systems/).)
+- **[NVIDIA TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/)**: ahead-of-time *compiles* the model into fused, hardware-specific kernels (FP8, in-flight batching) for max throughput/latency on NVIDIA GPUs — typically served behind [Triton Inference Server](https://docs.nvidia.com/deeplearning/triton-inference-server/). The trade vs vLLM: a build step and less flexibility for peak performance.
 - **Why a separate engine**: a naive `model.generate()` loop wastes the GPU; serving engines exist to keep it saturated under variable, concurrent traffic.
-- **Platform view**: the engine is one tier; around it sit a model registry, autoscaler (KEDA/Ray Serve/KServe), router, and observability — see [Cloud Native](../../systems/03-cloud-native/) and [Streaming & SSE](../03-streaming-sse/) for token delivery.
+- **[Ray](https://docs.ray.io/) as the orchestration layer**: **Ray Serve** wraps a serving engine (vLLM/TensorRT-LLM) with autoscaling, multi-model routing, and request batching across a cluster — the tier *above* the engine. (Ray Core's actor/task model is the distributed-compute substrate; **Ray Train** does the training side, below.)
+- **Platform view**: the engine is one tier; around it sit a model registry, autoscaler (KEDA / Ray Serve / KServe), router, and observability — see [Cloud Native](../../systems/03-cloud-native/) and [Streaming & SSE](../03-streaming-sse/) for token delivery.
 
 ## 4. Distributed Training
 
@@ -90,7 +92,7 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 - This is what lets you train a model far larger than any single GPU's memory without full tensor parallelism.
 
 **Key tooling**:
-- **DeepSpeed** (ZeRO, offload to CPU/NVMe), **Megatron-LM** (TP/PP/sequence parallelism, the reference for large pretraining), **PyTorch FSDP**, **HuggingFace Accelerate** (one config, many backends), **Ray Train** (orchestration), **NCCL** (the GPU collective library underneath it all).
+- **DeepSpeed** (ZeRO, offload to CPU/NVMe), **Megatron-LM** (TP/PP/sequence parallelism, the reference for large pretraining), **PyTorch FSDP**, **HuggingFace Accelerate** (one config, many backends), **[Ray Train](https://docs.ray.io/en/latest/train/train.html)** (orchestrates multi-node training over Ray Core — data loading, fault tolerance, and elastic scaling around PyTorch/DeepSpeed), **NCCL** (the GPU collective library underneath it all).
 - **Checkpointing**: distributed, sharded, asynchronous checkpoints so a multi-day run survives a node failure (the same checkpoint pattern as durable orchestration in [topic 05](../05-durable-orchestration-and-workers/)).
 - **Mixed precision** (bf16/fp16 + fp32 master weights) and **gradient/activation checkpointing** (recompute activations to save memory) are standard.
 
@@ -139,6 +141,8 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 | Research, max ecosystem, GPU | PyTorch (+ `torch.compile`) |
 | TPU, want `vmap`/`pmap` composability | JAX (+ Flax/Optax) |
 | Serve an LLM at high throughput | vLLM |
+| Max performance on NVIDIA (compiled) | TensorRT-LLM (+ Triton) |
+| Scale training or serving across a cluster | Ray (Ray Train / Ray Serve) |
 | Model fits on one GPU, want speed | Data parallel (DDP) |
 | Model won't fit, single node | FSDP / ZeRO-3 (shard optimizer state) |
 | Huge model across nodes | 3D parallelism (TP×PP×DP), Megatron |

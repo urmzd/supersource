@@ -88,6 +88,7 @@ A request lives for milliseconds; a *process* — fulfill an order, ingest and i
 - **Cadence** is the open-source ancestor Temporal forked from; same concepts, less active.
 - **DBOS** trades some power for simplicity: if you already run Postgres, you get durable execution without a separate system.
 - **vs schedulers**: Airflow/Dagster ([Data Engineering](../../data-engineering/04-orchestration-modeling/)) run *batch DAGs on a schedule*; Temporal/DBOS run *durable arbitrary code* with fine-grained, event-driven, long-lived state. Overlapping, distinct tools.
+- **vs distributed-compute frameworks**: **[Ray](https://docs.ray.io/)** (Core actors/tasks, Ray Train, Ray Serve) is the worker-pool pattern for *in-memory distributed ML compute* — fast task/actor scheduling across a cluster, but **not durable** (lose a node mid-task and the task reruns; lose the driver and the job dies). Temporal/DBOS persist progress; Ray maximizes throughput. Common pattern: Ray for the heavy parallel compute *inside* a step, a durable engine to orchestrate the steps reliably around it.
 
 ## 6. Distributed Observability
 

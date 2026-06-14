@@ -34,7 +34,7 @@ Two pressures push inference off the big cloud GPU. **Place**: latency, privacy,
 
 | Tier | Runtime | Hardware | Wins |
 |------|---------|----------|------|
-| **Datacenter serving** | vLLM, TensorRT-LLM, SGLang | Multi-GPU (H100/A100) | Max throughput, big models |
+| **Datacenter serving** | vLLM, TensorRT-LLM (+ Triton), SGLang, orchestrated by Ray Serve / KServe | Multi-GPU (H100/A100) | Max throughput, big models |
 | **Single-box / self-host** | **llama.cpp**, Ollama, candle/mistral.rs | One GPU or beefy CPU | Simplicity, cost, control |
 | **On-device / edge** | **MLX** (Apple), **ExecuTorch** (PyTorch), ONNX Runtime, llama.cpp | Phone, laptop, Jetson, browser (WASM) | Privacy, offline, zero latency to cloud |
 
