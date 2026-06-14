@@ -38,7 +38,8 @@ TRACKS: list[tuple[str, str]] = [
     ("data-engineering", "Data Engineering"),
     ("ai-platform-engineering", "AI Platform Engineering"),
     ("software-craftsmanship", "Software Craftsmanship"),
-    ("diagramming-and-operations", "Diagramming & Operations"),
+    ("diagramming-and-documentation", "Diagramming & Documentation"),
+    ("infrastructure", "Infrastructure"),
     ("competitive-programming", "Competitive Programming"),
 ]
 

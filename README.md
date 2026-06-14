@@ -131,7 +131,8 @@ Three distinct "distributed" problems kept apart on purpose: distributed **train
 | [Competitive Programming](competitive-programming/) | [CP Handbook](https://cses.fi/book/book.pdf) (free) + CSES Problem Set | 6-8 weeks |
 | [Information Theory](information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
 | [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) | 3-4 weeks |
-| [Diagramming & Operations](diagramming-and-operations/) | [C4 model](https://c4model.com/) + [D2](https://d2lang.com/)/[Mermaid](https://mermaid.js.org/) + [K8s](https://kubernetes.io/docs/)/[Kafka](https://kafka.apache.org/documentation/) docs (free) | 4-6 weeks |
+| [Diagramming & Documentation](diagramming-and-documentation/) | [C4 model](https://c4model.com/) + [D2](https://d2lang.com/)/[Mermaid](https://mermaid.js.org/) + [Diátaxis](https://diataxis.fr/) (free) | 2 weeks |
+| [Infrastructure](infrastructure/) | [K8s](https://kubernetes.io/docs/) + [Kafka](https://kafka.apache.org/documentation/) + [Lucene](https://lucene.apache.org/core/)/[Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html) + Apache docs (free) | 5-7 weeks |
 
 ## Prerequisite Graph
 
@@ -166,8 +167,8 @@ graph TD
     SYS --> LLM
     DE --> LLM
 
-    SYS --> DGO[Diagramming & Operations]
-    DE --> DGO
+    SYS --> INFRA[Infrastructure]
+    DE --> INFRA
 
     LLM --> AIP[AI Platform Engineering]
     SYS --> AIP
@@ -184,7 +185,8 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
 - **AI Platform Engineering** 23-33 weeks, patterns-first: training/frameworks, RPC, streaming, distributed data & caching, durable orchestration, coding/design patterns, retrieval & RAG, authorization, LLM evaluation, and edge/realtime inference
-- **Diagramming & Operations** 4-6 weeks, C4 diagramming through Kubernetes and Kafka consumption models
+- **Diagramming & Documentation** 2 weeks, C4 diagramming-as-code and docs-as-code
+- **Infrastructure** 5-7 weeks, containers and Kubernetes through messaging, workers, search, and the Apache stack
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
 
@@ -259,11 +261,12 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | *Software Engineering at Google* by Winters, Manshreck, Wright | Software Craftsmanship | [Free online](https://abseil.io/resources/swe-book) |
 | Google SRE Book | Systems | [Free online](https://sre.google/sre-book/) |
 | System Design Primer | Systems | [Free on GitHub](https://github.com/donnemartin/system-design-primer) |
-| The C4 model by Simon Brown | Diagramming & Operations | [Free online](https://c4model.com/) |
-| Diátaxis documentation framework | Diagramming & Operations | [Free online](https://diataxis.fr/) |
-| Google Technical Writing Courses | Diagramming & Operations | [Free online](https://developers.google.com/tech-writing) |
-| Kubernetes Documentation | Diagramming & Operations / Systems | [Free online](https://kubernetes.io/docs/) |
-| Apache Kafka Documentation | Diagramming & Operations / Data Engineering | [Free online](https://kafka.apache.org/documentation/) |
+| The C4 model by Simon Brown | Diagramming & Documentation | [Free online](https://c4model.com/) |
+| Diátaxis documentation framework | Diagramming & Documentation | [Free online](https://diataxis.fr/) |
+| Google Technical Writing Courses | Diagramming & Documentation | [Free online](https://developers.google.com/tech-writing) |
+| Kubernetes Documentation | Infrastructure / Systems | [Free online](https://kubernetes.io/docs/) |
+| Apache Kafka Documentation | Infrastructure / Data Engineering | [Free online](https://kafka.apache.org/documentation/) |
+| Apache Lucene & Elasticsearch Guide | Infrastructure | [Lucene](https://lucene.apache.org/core/) / [ES Guide](https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html) |
 | PyTorch / JAX / vLLM Documentation | AI Platform Engineering | [PyTorch](https://pytorch.org/docs/stable/index.html) / [JAX](https://jax.readthedocs.io/) / [vLLM](https://docs.vllm.ai/) |
 | gRPC + Protocol Buffers Documentation | AI Platform Engineering | [grpc.io](https://grpc.io/docs/) / [protobuf.dev](https://protobuf.dev/) |
 | MDN Server-Sent Events + WHATWG HTML spec | AI Platform Engineering | [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) / [Spec](https://html.spec.whatwg.org/multipage/server-sent-events.html) |

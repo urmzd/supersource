@@ -5,7 +5,8 @@
 //!
 //! Same contract as the Go/Python examples: manual commit AFTER durable work
 //! (at-least-once), an idempotency guard to absorb redeliveries, and a tokio
-//! SIGTERM handler so Kubernetes scale-down drains cleanly (topic 04).
+//! SIGTERM handler so Kubernetes scale-down drains cleanly
+//! (Containers, Kubernetes & Workloads -- ../../01-containers-kubernetes/).
 //!
 //! ```ignore
 //! cargo run --release

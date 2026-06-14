@@ -1,4 +1,7 @@
 /target
+**/target/
+__pycache__/
+*.pyc
 .claude/
 .vscode/
 .env

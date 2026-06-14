@@ -69,7 +69,7 @@ graph TD
 
 ### Level 2 -- Container
 
-Zoom into the system box. **This is the most useful diagram in practice** -- it maps 1:1 onto what you deploy (topic 04) and how data flows (topic 05).
+Zoom into the system box. **This is the most useful diagram in practice** -- it maps 1:1 onto what you deploy ([Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/)) and how data flows ([Distributed Workers](../../infrastructure/03-distributed-workers/)).
 
 ![Streamflow container view (C4 Level 2)](../diagrams/c4-container.svg)
 
@@ -85,11 +85,11 @@ Zoom into one container (here, the Order Worker) to show how a single message fl
 
 ### The "+1": a Deployment view
 
-C4 also defines a **deployment diagram** that maps logical containers onto infrastructure nodes. This is the bridge into topics 04-05 -- it shows the same containers living as Kubernetes objects.
+C4 also defines a **deployment diagram** that maps logical containers onto infrastructure nodes. This is the bridge into the [Infrastructure](../../infrastructure/) track -- it shows the same containers living as Kubernetes objects, so it is co-located with the workload it depicts:
 
-![Streamflow deployment on Kubernetes](../diagrams/deployment-k8s.svg)
+![Streamflow deployment on Kubernetes](../../infrastructure/01-containers-kubernetes/diagrams/deployment-k8s.svg)
 
-<sub>Source: [`diagrams/deployment-k8s.d2`](../diagrams/deployment-k8s.d2).</sub>
+<sub>Source: [`infrastructure/01-containers-kubernetes/diagrams/deployment-k8s.d2`](../../infrastructure/01-containers-kubernetes/diagrams/deployment-k8s.d2).</sub>
 
 ## 2. Diagrams-as-code: D2 vs Mermaid vs the rest
 
