@@ -107,6 +107,25 @@ This is what [Marlin](https://github.com/vllm-project/vllm) (Ampere/Ada W4A16) a
 
 > Rule: a quantizer is only as good as its kernel. INT4 with a slow Python dequant loop is *slower* than FP16. Always check there's a fused kernel (Marlin/Machete/CUTLASS/tinygemm) for your format on your GPU.
 
+## The Arc: How Quantization Evolved (and What Changed Each Time)
+
+The zoo below isn't a flat list — it's a *sequence of discoveries*, each fixing the failure of the last. Reading it chronologically is the fastest way to understand *why* each method exists.
+
+| When | Method (paper) | The problem it hit | What changed |
+|------|----------------|--------------------|--------------|
+| 2018 | **Integer-only PTQ/QAT** ([Jacob et al., 1712.05877](https://arxiv.org/abs/1712.05877)) | Floats are expensive on edge HW | Affine INT8, per-tensor/per-channel scales — the baseline everything refines |
+| Aug 2022 | **LLM.int8()** ([2208.07339](https://arxiv.org/abs/2208.07339)) | Naive INT8 *collapses* on >6.7B models | Found **activation outlier channels**; keep those few in FP16, rest INT8 (mixed-precision decomposition) |
+| Oct 2022 | **GPTQ** ([2210.17323](https://arxiv.org/abs/2210.17323)) | Want 3–4-bit *weights*, not just 8 | Second-order, **error-compensating** PTQ (minimize output error, not weight error) → INT4 weights become usable |
+| Nov 2022 | **SmoothQuant** ([2211.10438](https://arxiv.org/abs/2211.10438)) | Outliers still block full **W8A8** | **Migrate** outlier difficulty from activations into weights → both fit INT8 |
+| May 2023 | **QLoRA / NF4** ([2305.14314](https://arxiv.org/abs/2305.14314)) | Can't *fine-tune* a quantized model cheaply | **Quantile codebook** (NormalFloat) + double-quant → fine-tune a 4-bit base on one GPU |
+| Jun 2023 | **AWQ** ([2306.00978](https://arxiv.org/abs/2306.00978)) | GPTQ needs the Hessian; want simpler W4 | **Protect ~1% salient channels** (found via *activation* magnitude) by scaling — best W4A16 quality/speed |
+| 2023–24 | **FP8 (E4M3/E5M2)** | INT8 wastes range on near-zero weights | A float's **exponent** handles dynamic range; native Hopper/Ada tensor cores → W8A8 at near-INT8 speed, tiny loss |
+| Feb 2024 | **QuIP#** ([2402.04396](https://arxiv.org/abs/2402.04396)) | 2-bit is too lossy — outliers again | **Rotate outliers away** (Hadamard incoherence) + E8-lattice vector quant → usable 2-bit |
+| Jun 2024 | **QJL** ([2406.03482](https://arxiv.org/abs/2406.03482)) | KV cache can't be calibrated (unseen tokens) | **Data-oblivious** JL sign-sketch for keys → low-bit attention with unbiased scores |
+| Apr 2025 | **TurboQuant** ([2504.19874](https://arxiv.org/abs/2504.19874)) | Want optimal, online, no-calibration | Rotation → **known sphere marginals** → per-coordinate Lloyd–Max; provably near-optimal at 2.5–3.5 bit KV |
+
+**The two through-lines**: (1) the enemy is always **outliers** — successive methods *isolate* (LLM.int8), *migrate* (SmoothQuant), *protect* (AWQ), then *rotate away* (QuIP#/TurboQuant) them; (2) the field moved from **data-dependent calibration** toward **data-oblivious, provable** schemes, because the KV cache (the new bottleneck) can't be calibrated on tokens you haven't generated yet.
+
 ## 5. The Quantizer Zoo
 
 Each entry: the assumption, the math, the code translation.
