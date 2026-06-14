@@ -29,6 +29,8 @@ graph LR
     RAG --> AUTH[Authorization & Access Control]
     TF --> EVAL[LLM Evaluation]
     RAG --> EVAL
+    TF --> EDGE[Edge, Realtime & On-Device]
+    SSE --> EDGE
 ```
 
 ## The Split: Three Different "Distributed" Problems
@@ -54,6 +56,7 @@ A recurring confusion is that "distributed X" is one topic. It is three, and thi
 | 07 | [Retrieval & RAG](07-retrieval-and-rag/) | Encoders, chunking, hybrid fusion, multimodal | [RAG paper](https://arxiv.org/abs/2005.11401) + [BM25](https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf) + [pgvector](https://github.com/pgvector/pgvector) | 3-4 weeks |
 | 08 | [Authorization & Access Control](08-authorization-and-access-control/) | RBAC/ABAC/ReBAC/NGAC, the pushdown ladder | [NIST RBAC/ABAC/NGAC](https://csrc.nist.gov/projects/role-based-access-control) + [Zanzibar](https://research.google/pubs/pub48190/) | 2-3 weeks |
 | 09 | [LLM Evaluation](09-llm-evaluation/) | Cross-entropy/perplexity/bits-per-byte, judges | [MacKay](http://www.inference.org.uk/mackay/itila/) + [HELM](https://crfm.stanford.edu/helm/) + [Ragas](https://docs.ragas.io/) | 2-3 weeks |
+| 10 | [Edge, Realtime & On-Device Inference](10-edge-realtime-inference/) | Deployment spectrum, streaming encoders, efficiency architectures | [llama.cpp](https://github.com/ggml-org/llama.cpp) + [Mistral 7B](https://arxiv.org/abs/2310.06825) + [Mamba](https://arxiv.org/abs/2312.00752) | 2-3 weeks |
 
 ## Key Takeaways
 
@@ -66,6 +69,7 @@ A recurring confusion is that "distributed X" is one topic. It is three, and thi
 - **RAG is information retrieval wearing a neural coat.** Retrieve-then-generate; hybrid (dense + BM25 + graph) fused with RRF; bi-encode to find and cross-encode to rank. Retrieval quality — not the model — is the usual ceiling.
 - **Authorization is a complexity-ladder problem.** Flat RBAC is a lookup; nested groups and hierarchies are *graph reachability* (pushdown, not finite-state) — which is why ReBAC/Zanzibar exist, and why secure RAG filters by permission *during* retrieval.
 - **Evaluation starts in information theory.** Cross-entropy = bits to predict the next token = compression; perplexity and bits-per-byte are re-normalizations. Intrinsic loss steers training; extrinsic evals (benchmarks, judges, RAG faithfulness) decide if it's good.
+- **Inference is a spectrum from datacenter to phone, and "realtime" is an architecture choice.** llama.cpp + GGUF is the end-to-end local path; streaming encoders must be causal/chunked; and Mistral's SWA, GQA, MoE, and Mamba/SSM variants are four different escapes from the vanilla transformer's cost curve.
 
 ## How to Use This Track
 

@@ -167,6 +167,7 @@ These outlive any framework version:
 | Durable workflows, checkpointed pipelines | [Orchestration & Workers](../05-durable-orchestration-and-workers/) | Crash-proof training pipelines |
 | Embedding retrieval, chunking, RAG | [Retrieval & RAG](../07-retrieval-and-rag/) | What the embeddings are for |
 | Token streaming to clients | [Streaming & SSE](../03-streaming-sse/) | Delivering generated output |
+| llama.cpp/GGUF, edge, efficiency architectures | [Edge, Realtime & On-Device](../10-edge-realtime-inference/) | Running models off the GPU fleet |
 
 ## How Companies Apply These Patterns
 

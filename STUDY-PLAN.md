@@ -255,7 +255,7 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 
 ---
 
-## AI Platform Engineering (21-30 weeks)
+## AI Platform Engineering (23-33 weeks)
 
 ~8-10 hours per week. **Patterns-first**: the goal is to internalize the fundamental patterns (like math, everything downstream is derivative) and treat each trendy tool as an instance. Requires [Deep Learning](ml/02-deep-learning/) and [LLM Systems](ml/04-llm-systems/), plus [System Design](systems/01-system-design/) and [Data Engineering](data-engineering/) foundations (OLTP vs OLAP, replication). Tip: [Coding & Design Patterns](ai-platform-engineering/06-coding-and-design-patterns/) can be read first as vocabulary.
 
@@ -314,7 +314,15 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 | 24 | Secure RAG (permission-filtered retrieval, multi-tenancy); PDP/PEP, policy-as-code | NIST ABAC + OPA |
 | 25 | LLM evaluation: cross-entropy, perplexity, **bits-per-byte**; benchmarks & contamination | MacKay + HELM + The Pile |
 
-### Optional deep dive (weeks 26-30)
+### Weeks 26-28: Edge, Realtime & On-Device Inference
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 26 | The deployment spectrum; **llama.cpp + GGUF** end-to-end (convert → quantize → `llama-server`); Ollama; MLX/ExecuTorch on-device | llama.cpp + GGUF + Ollama |
+| 27 | Realtime/streaming encoders: offline vs causal/chunked; speech (Whisper offline, Conformer/RNN-T streaming); real-time factor | Whisper + Conformer papers |
+| 28 | Efficiency architectures (the Mistral clinic): sliding-window attention, GQA, Mixtral MoE, Codestral Mamba/SSM, Voxtral | Mistral 7B + Mixtral + Mamba papers |
+
+### Optional deep dive (weeks 29-33)
 
 LLM-as-judge & Elo arenas, RAG metrics (faithfulness, context precision/recall, NDCG/MRR), agent metrics (TTFT/TTLT, tool success), and building a composable `Scorer` eval harness gated in CI. References: Ragas, Chatbot Arena, lm-evaluation-harness, saige `eval/`.
 
