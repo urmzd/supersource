@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1 (2026-06-14)
+
+### Bug Fixes
+
+- **book**: one chapter per topic and single section numbering (#10) ([a6ed4a1](https://github.com/urmzd/supersource/commit/a6ed4a139fab15cadbc29724e571b596da1e9186))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.3.0...v0.3.1)
+
+
 ## 0.3.0 (2026-06-13)
 
 ### Features
