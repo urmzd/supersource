@@ -60,6 +60,10 @@ packages:
   - path: .
     version_files:
       - pyproject.toml
+    # Keep uv.lock's project version in sync with the pyproject bump so it
+    # doesn't drift after each release (which fails the next CI uv sync).
+    stage_files:
+      - uv.lock
     # The curriculum PDF is built by the CI "Book PDF" job and downloaded into
     # outputs/ by the release workflow before sr runs; sr uploads it as a
     # release asset. Must exist on disk before the tag is created.
