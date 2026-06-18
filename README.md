@@ -130,6 +130,7 @@ Three distinct "distributed" problems kept apart on purpose: distributed **train
 |-------|-----------|------|
 | [Competitive Programming](competitive-programming/) | [CP Handbook](https://cses.fi/book/book.pdf) (free) + CSES Problem Set | 6-8 weeks |
 | [Information Theory](information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
+| [Programming Languages](programming-languages/) | [*Types and Programming Languages* (Pierce)](https://www.cis.upenn.edu/~bcpierce/tapl/) + [PLFA](https://plfa.github.io/) (free) | 2-3 weeks |
 | [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) | 3-4 weeks |
 | [Diagramming & Documentation](diagramming-and-documentation/) | [C4 model](https://c4model.com/) + [D2](https://d2lang.com/)/[Mermaid](https://mermaid.js.org/) + [Diátaxis](https://diataxis.fr/) (free) | 2 weeks |
 | [Infrastructure](infrastructure/) | [K8s](https://kubernetes.io/docs/) + [Kafka](https://kafka.apache.org/documentation/) + [Lucene](https://lucene.apache.org/core/)/[Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html) + Apache docs (free) | 5-7 weeks |
@@ -148,6 +149,9 @@ graph TD
     D1 --> ALG[Algorithms]
     D2 --> ALG
     ALG --> CP[Competitive Programming]
+
+    D1 --> PL[Programming Languages]
+    ALG --> PL
 
     PS --> SL[Statistical Learning]
     LA --> SL
@@ -185,6 +189,7 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
 - **AI Platform Engineering** 23-33 weeks, patterns-first: training/frameworks, RPC, streaming, distributed data & caching, durable orchestration, coding/design patterns, retrieval & RAG, authorization, LLM evaluation, and edge/realtime inference
+- **Programming Languages** 2-3 weeks, type systems and polymorphism from the lambda-calculus ladder through Hindley-Milner inference, variance, and generics across five languages
 - **Diagramming & Documentation** 2 weeks, C4 diagramming-as-code and docs-as-code
 - **Infrastructure** 5-7 weeks, containers and Kubernetes through messaging, workers, search, and the Apache stack
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
@@ -258,6 +263,8 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | Stanford CRFM *Foundation Models* report | ML/AI (Foundation Models) | [Free PDF](https://arxiv.org/abs/2108.07258) |
 | *The Data Engineering Cookbook* by Kretz | Data Engineering | [Free on GitHub](https://github.com/andkret/Cookbook) |
 | *Info Theory, Inference, & Learning* by MacKay | Information Theory | [Free online](http://www.inference.org.uk/mackay/itila/) |
+| *Programming Language Foundations in Agda* (PLFA) by Wadler et al. | Programming Languages | [Free online](https://plfa.github.io/) |
+| *Software Foundations* (Vol. 1-2) by Pierce et al. | Programming Languages | [Free online](https://softwarefoundations.cis.upenn.edu/) |
 | *Software Engineering at Google* by Winters, Manshreck, Wright | Software Craftsmanship | [Free online](https://abseil.io/resources/swe-book) |
 | Google SRE Book | Systems | [Free online](https://sre.google/sre-book/) |
 | System Design Primer | Systems | [Free on GitHub](https://github.com/donnemartin/system-design-primer) |
@@ -285,6 +292,7 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | Book | Track | Why |
 |------|-------|-----|
 | *Introduction to Algorithms* (CLRS) 4th ed. | Algorithms | The definitive algorithms reference, formal proofs and correctness |
+| *Types and Programming Languages* (TAPL) by Pierce | Programming Languages | The definitive type-systems text: lambda calculus, System F, subtyping, inference |
 | *The Pragmatic Programmer* by Hunt & Thomas (20th Anniversary) | Software Craftsmanship | The foundational text on professional software development |
 | *Designing Data-Intensive Applications* by Kleppmann | Systems / Data Engineering | The industry bible for distributed systems |
 | *Fundamentals of Data Engineering* by Reis & Housley | Data Engineering | The definitive lifecycle-oriented introduction |
