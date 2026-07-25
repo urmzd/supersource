@@ -34,6 +34,21 @@ Languages for rapid prototyping, scripting, ML, and full-stack development.
 | [Python](general/python/) | Generators, decorators, data model, asyncio | CPython docs, Fluent Python |
 | [TypeScript](general/typescript/) | Type narrowing, generics, mapped types, runtime safety | TS Handbook (free) |
 
+## Predict-Then-Run
+
+[`predict/`](predict/) is the other half of practice: instead of building
+something, you write down the exact output you expect from a short snippet, then
+run it and diff. Twenty-four snippets across Go, Rust, Python, and TypeScript,
+each aimed at a belief that is common, load-bearing, and wrong.
+
+```bash
+cd predict && bin/lr predict go 01 && bin/lr check go 01
+```
+
+Building things tells you what you can do. Predicting output tells you what you
+only *think* you know, which is the faster of the two signals and the one that
+decays first when you switch languages for six months.
+
 ## How to Practice
 
 1. Pick a topic from the [algorithm curriculum](../algorithms/) or [math track](../math/)
