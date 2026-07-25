@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+# lr - the predict-then-run harness.
+#
+# The whole point: you write down what you think the code prints BEFORE you
+# run it. The diff between your prediction and reality is your gap ledger.
+# Nothing here grades style or teaches. It only tells you where your mental
+# model of the language is wrong.
+#
+#   lr list <lang>            show snippets and whether you've predicted them
+#   lr show <lang> <id>       print the source
+#   lr predict <lang> <id>    open your prediction file in $EDITOR
+#   lr check <lang> <id>      run it, diff your prediction against real output
+#   lr check <lang>           check everything you have predicted
+#   lr score <lang>           tally
+#   lr reveal <lang> <id>     just run it (burns the exercise)
+#   lr reset <lang> <id>      delete your prediction, start over
+
+set -uo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'; DIM=$'\033[2m'; BLD=$'\033[1m'; RST=$'\033[0m'
+[[ -t 1 ]] || { RED=; GRN=; YEL=; DIM=; BLD=; RST=; }
+
+die() { echo "${RED}error:${RST} $*" >&2; exit 1; }
+
+langs() { echo "go rust python ts"; }
+
+valid_lang() {
+  case "$1" in
+    go|rust|python|ts) ;;
+    *) die "unknown language '$1' (want: $(langs))" ;;
+  esac
+}
+
+# Path to a snippet's source, given lang + id prefix (e.g. "03").
+src_path() {
+  local lang="$1" id="$2" hit
+  case "$lang" in
+    go)     hit=$(find "$ROOT/go/predict" -maxdepth 1 -type d -name "${id}-*" | sort | head -1)
+            [[ -n "$hit" ]] && echo "$hit/main.go" ;;
+    rust)   hit=$(find "$ROOT/rust/predict/src/bin" -maxdepth 1 -name "${id}-*.rs" | sort | head -1)
+            echo "$hit" ;;
+    python) hit=$(find "$ROOT/python/predict" -maxdepth 1 -name "${id}-*.py" | sort | head -1)
+            echo "$hit" ;;
+    ts)     hit=$(find "$ROOT/ts/predict" -maxdepth 1 -name "${id}-*.ts" | sort | head -1)
+            echo "$hit" ;;
+  esac
+}
+
+# Bare snippet name, e.g. "03-defer-order".
+snippet_name() {
+  local lang="$1" p; p="$(src_path "$lang" "$2")"
+  [[ -n "$p" ]] || return 1
+  case "$lang" in
+    go) basename "$(dirname "$p")" ;;
+    *)  basename "$p" | sed 's/\.[^.]*$//' ;;
+  esac
+}
+
+all_ids() {
+  local lang="$1"
+  case "$lang" in
+    go)     find "$ROOT/go/predict" -maxdepth 1 -type d -name '[0-9][0-9]-*' -exec basename {} \; ;;
+    rust)   find "$ROOT/rust/predict/src/bin" -maxdepth 1 -name '[0-9][0-9]-*.rs' -exec basename {} .rs \; ;;
+    python) find "$ROOT/python/predict" -maxdepth 1 -name '[0-9][0-9]-*.py' -exec basename {} .py \; ;;
+    ts)     find "$ROOT/ts/predict" -maxdepth 1 -name '[0-9][0-9]-*.ts' -exec basename {} .ts \; ;;
+  esac | sort | cut -d- -f1
+}
+
+pred_file() {
+  local lang="$1" id="$2" name; name="$(snippet_name "$lang" "$id")" || return 1
+  echo "$ROOT/$lang/predictions/$name.txt"
+}
+
+# Run a snippet, merging stderr into stdout. Snippets are written to produce
+# deterministic output; anything nondeterministic is the snippet's own bug.
+run_snippet() {
+  local lang="$1" id="$2" name; name="$(snippet_name "$lang" "$id")" || return 1
+  case "$lang" in
+    go)     (cd "$ROOT/go"           && go run "./predict/$name" 2>&1) ;;
+    rust)   (cd "$ROOT/rust/predict" && cargo run --quiet --bin "$name" 2>&1) ;;
+    python) (cd "$ROOT/python"       && uv run --quiet python "predict/$name.py" 2>&1) ;;
+    ts)     (cd "$ROOT/ts"           && node "predict/$name.ts" 2>&1) ;;
+  esac
+}
+
+# Strip trailing whitespace and leading/trailing blank lines so that a correct
+# prediction is not marked wrong over an extra newline.
+normalize() { sed 's/[[:space:]]*$//' | awk 'NF{blank=0; for(i=0;i<held;i++) print ""; held=0; print; seen=1; next} seen{held++}' ; }
+
+cmd_list() {
+  local lang="$1"; valid_lang "$lang"
+  printf '%s\n' "${BLD}$lang${RST}"
+  local id name pf status
+  for id in $(all_ids "$lang"); do
+    name="$(snippet_name "$lang" "$id")"
+    pf="$(pred_file "$lang" "$id")"
+    if [[ -s "$pf" ]]; then status="${GRN}predicted${RST}"; else status="${DIM}empty${RST}"; fi
+    printf '  %-30s %s\n' "$name" "$status"
+  done
+}
+
+cmd_show() {
+  local lang="$1" id="$2"; valid_lang "$lang"
+  local p; p="$(src_path "$lang" "$id")"
+  [[ -n "$p" && -f "$p" ]] || die "no snippet $id in $lang"
+  echo "${BLD}${p#$ROOT/}${RST}"
+  echo
+  cat "$p"
+}
+
+cmd_predict() {
+  local lang="$1" id="$2"; valid_lang "$lang"
+  local pf; pf="$(pred_file "$lang" "$id")" || die "no snippet $id in $lang"
+  mkdir -p "$(dirname "$pf")"
+  [[ -f "$pf" ]] || : > "$pf"
+  cmd_show "$lang" "$id"
+  echo
+  echo "${YEL}Write the exact expected output into:${RST} ${pf#$ROOT/}"
+  "${EDITOR:-vi}" "$pf"
+}
+
+cmd_check_one() {
+  local lang="$1" id="$2" quiet="${3:-}"
+  local name pf; name="$(snippet_name "$lang" "$id")" || die "no snippet $id in $lang"
+  pf="$(pred_file "$lang" "$id")"
+  if [[ ! -s "$pf" ]]; then
+    [[ -n "$quiet" ]] || echo "${DIM}skip${RST} $name  (no prediction yet: lr predict $lang $id)"
+    return 2
+  fi
+  local actual expected
+  actual="$(run_snippet "$lang" "$id" | normalize)"
+  expected="$(normalize < "$pf")"
+  if [[ "$actual" == "$expected" ]]; then
+    echo "${GRN}PASS${RST} $name"
+    return 0
+  fi
+  echo "${RED}MISS${RST} $name"
+  if [[ -z "$quiet" ]]; then
+    diff -u --label "you predicted" <(printf '%s\n' "$expected") \
+            --label "actually printed" <(printf '%s\n' "$actual") \
+      | tail -n +1 | sed 's/^/    /'
+    echo "    ${YEL}Record this in LEDGER.md before you move on.${RST}"
+  fi
+  return 1
+}
+
+cmd_check() {
+  local lang="$1"; valid_lang "$lang"
+  if [[ $# -ge 2 ]]; then cmd_check_one "$lang" "$2"; return $?; fi
+  local id rc=0
+  for id in $(all_ids "$lang"); do
+    cmd_check_one "$lang" "$id" quiet || { [[ $? -eq 1 ]] && rc=1; }
+  done
+  return $rc
+}
+
+cmd_score() {
+  local lang="$1"; valid_lang "$lang"
+  local id pass=0 miss=0 todo=0
+  for id in $(all_ids "$lang"); do
+    cmd_check_one "$lang" "$id" quiet >/dev/null 2>&1
+    case $? in
+      0) pass=$((pass+1)) ;;
+      1) miss=$((miss+1)) ;;
+      *) todo=$((todo+1)) ;;
+    esac
+  done
+  local done_n=$((pass+miss))
+  printf '%s  %s%d passed%s  %s%d missed%s  %s%d not attempted%s' \
+    "${BLD}$lang${RST}" "$GRN" "$pass" "$RST" "$RED" "$miss" "$RST" "$DIM" "$todo" "$RST"
+  if [[ $done_n -gt 0 ]]; then printf '   (%d%% of attempted)' $(( pass * 100 / done_n )); fi
+  printf '\n'
+}
+
+cmd_reveal() {
+  local lang="$1" id="$2"; valid_lang "$lang"
+  run_snippet "$lang" "$id"
+}
+
+cmd_reset() {
+  local lang="$1" id="$2"; valid_lang "$lang"
+  local pf; pf="$(pred_file "$lang" "$id")" || die "no snippet $id in $lang"
+  rm -f "$pf" && echo "cleared ${pf#$ROOT/}"
+}
+
+usage() { sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; }
+
+[[ $# -ge 1 ]] || { usage; exit 1; }
+sub="$1"; shift
+case "$sub" in
+  list)    if [[ $# -eq 0 ]]; then for l in $(langs); do cmd_list "$l"; done; else cmd_list "$@"; fi ;;
+  show)    [[ $# -eq 2 ]] || die "usage: lr show <lang> <id>"; cmd_show "$@" ;;
+  predict) [[ $# -eq 2 ]] || die "usage: lr predict <lang> <id>"; cmd_predict "$@" ;;
+  check)   [[ $# -ge 1 ]] || die "usage: lr check <lang> [id]"; cmd_check "$@" ;;
+  score)   if [[ $# -eq 0 ]]; then for l in $(langs); do cmd_score "$l"; done; else cmd_score "$@"; fi ;;
+  reveal)  [[ $# -eq 2 ]] || die "usage: lr reveal <lang> <id>"; cmd_reveal "$@" ;;
+  reset)   [[ $# -eq 2 ]] || die "usage: lr reset <lang> <id>"; cmd_reset "$@" ;;
+  -h|--help|help) usage ;;
+  *)       die "unknown subcommand '$sub'" ;;
+esac

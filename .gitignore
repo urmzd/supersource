@@ -9,6 +9,10 @@ __pycache__/
 .DS_Store
 .idea/
 
+# Predict-then-run: your predictions are yours alone. Committing them would
+# spoil the exercise for the next reader.
+practice/predict/*/predictions/
+
 # Book build (PDF is a CI artifact / release asset, not committed)
 /outputs/
 .puppeteer.json

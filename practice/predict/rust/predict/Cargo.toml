@@ -1,0 +1,10 @@
+[package]
+name = "predict"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Every snippet is its own binary under src/bin/. This empty lib target only
+# exists so `cargo` has something to build when src/bin/ is empty.
+[lib]
+path = "src/lib.rs"
