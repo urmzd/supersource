@@ -14,6 +14,9 @@
 #   lr score <lang>           tally
 #   lr reveal <lang> <id>     just run it (burns the exercise)
 #   lr reset <lang> <id>      delete your prediction, start over
+#   lr verify [lang]          maintainer check: every snippet runs, three times,
+#                             with identical output. Prints no snippet output,
+#                             so it is safe to run before you have predicted.
 
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -79,8 +82,19 @@ run_snippet() {
   case "$lang" in
     go)     (cd "$ROOT/go"           && go run "./predict/$name" 2>&1) ;;
     rust)   (cd "$ROOT/rust/predict" && cargo run --quiet --bin "$name" 2>&1) ;;
-    python) (cd "$ROOT/python"       && uv run --quiet python "predict/$name.py" 2>&1) ;;
+    python) (cd "$ROOT/python"       && uv run --no-project --quiet python "predict/$name.py" 2>&1) ;;
     ts)     (cd "$ROOT/ts"           && node "predict/$name.ts" 2>&1) ;;
+  esac
+}
+
+# Compile ahead of time. Without this, a fresh checkout's first run mixes
+# compiler output into the snippet's stdout, which would show up as a diff
+# against your prediction and as false nondeterminism in `lr verify`.
+prepare_lang() {
+  case "$1" in
+    go)   (cd "$ROOT/go"           && go build ./... >/dev/null) ;;
+    rust) (cd "$ROOT/rust/predict" && cargo build --quiet --bins) ;;
+    *)    : ;;
   esac
 }
 
@@ -173,6 +187,45 @@ cmd_score() {
   printf '\n'
 }
 
+# Maintainer check, not a learning command. A snippet is only usable if it
+# exits cleanly, prints something, and prints the *same* something every time:
+# nondeterministic output makes prediction impossible. Three runs is enough to
+# catch the usual culprits (map iteration order, goroutine interleaving, clock
+# and address leakage) without being slow.
+#
+# Deliberately prints no snippet output, so running it does not burn exercises.
+cmd_verify() {
+  local lang="$1"; valid_lang "$lang"
+  if ! prepare_lang "$lang"; then
+    echo "${RED}FAIL${RST}  $lang (build failed)"
+    return 1
+  fi
+  local id name out first rc=0 i
+  for id in $(all_ids "$lang"); do
+    name="$(snippet_name "$lang" "$id")"
+    first=""
+    for i in 1 2 3; do
+      if ! out="$(run_snippet "$lang" "$id")"; then
+        echo "${RED}FAIL${RST}  $lang/$name (exited nonzero)"
+        rc=1; continue 2
+      fi
+      if [[ $i -eq 1 ]]; then
+        first="$out"
+      elif [[ "$out" != "$first" ]]; then
+        echo "${RED}FLAKY${RST} $lang/$name (run $i differed, so it is not predictable)"
+        rc=1; continue 2
+      fi
+    done
+    if [[ -z "$first" ]]; then
+      echo "${RED}EMPTY${RST} $lang/$name (printed nothing)"
+      rc=1; continue
+    fi
+    printf '%sOK%s    %s/%s (%s lines, stable over 3 runs)\n' \
+      "$GRN" "$RST" "$lang" "$name" "$(printf '%s\n' "$first" | wc -l | tr -d ' ')"
+  done
+  return $rc
+}
+
 cmd_reveal() {
   local lang="$1" id="$2"; valid_lang "$lang"
   run_snippet "$lang" "$id"
@@ -184,7 +237,15 @@ cmd_reset() {
   rm -f "$pf" && echo "cleared ${pf#$ROOT/}"
 }
 
-usage() { sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; }
+# Print the header comment block, however long it happens to be.
+usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "${BASH_SOURCE[0]}"; }
+
+# Run one command across every language, returning nonzero if any failed.
+for_each_lang() {
+  local fn="$1" l rc=0
+  for l in $(langs); do "$fn" "$l" || rc=1; done
+  return $rc
+}
 
 [[ $# -ge 1 ]] || { usage; exit 1; }
 sub="$1"; shift
@@ -194,6 +255,7 @@ case "$sub" in
   predict) [[ $# -eq 2 ]] || die "usage: lr predict <lang> <id>"; cmd_predict "$@" ;;
   check)   [[ $# -ge 1 ]] || die "usage: lr check <lang> [id]"; cmd_check "$@" ;;
   score)   if [[ $# -eq 0 ]]; then for l in $(langs); do cmd_score "$l"; done; else cmd_score "$@"; fi ;;
+  verify)  if [[ $# -eq 0 ]]; then for_each_lang cmd_verify; else cmd_verify "$@"; fi ;;
   reveal)  [[ $# -eq 2 ]] || die "usage: lr reveal <lang> <id>"; cmd_reveal "$@" ;;
   reset)   [[ $# -eq 2 ]] || die "usage: lr reset <lang> <id>"; cmd_reset "$@" ;;
   -h|--help|help) usage ;;

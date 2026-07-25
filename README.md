@@ -37,7 +37,7 @@
 - **Graded depth** undergraduate foundations through PhD-level research topics
 - **Multi-track** math, algorithms, ML, systems, info theory, competitive programming
 - **Interview-ready** 19 company-specific guides across Big Tech, quant, and frontier
-- **Polyglot practice** 10 graded exercises each across 9 languages
+- **Polyglot practice** 10 graded exercises each across 9 languages, plus a predict-then-run drill in 4
 - **Case studies** real builds generalized into runnable, dependency-free implementations that test themselves
 - **Prerequisite graph** mermaid diagram showing topic dependencies
 - **Single-PDF book** the entire curriculum renders into one PDF in CI (build artifact + release asset)
@@ -236,6 +236,8 @@ Retain and sharpen coding skills across 9 languages. See [`practice/README.md`](
 | **General** | [Python](practice/general/python/), [TypeScript](practice/general/typescript/) | Rapid prototyping, type systems, full-stack |
 
 Each language has 10 graded exercises covering data structures, algorithms, concurrency, and language-specific idioms.
+
+**[Predict-then-run](practice/predict/)** is the retention drill: 24 snippets across Go, Rust, Python, and TypeScript where you write the exact expected output *before* running, and the diff tells you which part of your mental model is wrong. Every snippet is checked for determinism by `lr verify`.
 
 ### From-Scratch Implementations
 

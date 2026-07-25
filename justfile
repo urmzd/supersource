@@ -130,6 +130,12 @@ run-15-probabilistic-structures:
   command -v python3 >/dev/null
   python3 algorithms/15-probabilistic-structures/bloom.py
 
+run-predict:
+  practice/predict/bin/lr verify
+
+run-predict-lang lang:
+  practice/predict/bin/lr verify {{lang}}
+
 # ---------- Aggregate recipes ----------
 
 run-all: \
