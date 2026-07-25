@@ -1,0 +1,6 @@
+{
+  "name": "predict-ts",
+  "private": true,
+  "type": "module",
+  "description": "Predict-then-run snippets. Node strips the types natively; no build step."
+}
