@@ -61,6 +61,45 @@ jobs:
             (cd "$(dirname "$file")" && uv run --no-project python "$(basename "$file")" >/dev/null)
           done
 
+  predict:
+    name: Predict Harness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: practice/predict/go/go.mod
+          # No third-party dependencies, so there is no go.sum to key a cache on.
+          cache: false
+
+      - uses: actions/setup-node@v6
+        with:
+          # Node 22.18+ strips TypeScript types natively; the snippets have no
+          # build step and no bundler.
+          node-version: 24
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install
+
+      # Rust comes preinstalled on the runner image; the snippets need edition
+      # 2024 (Rust 1.85+), which every current image satisfies.
+      - name: Show toolchain versions
+        run: go version && rustc --version && node --version && uv --version
+
+      # Every snippet must build, exit zero, print something, and print the
+      # same thing three runs in a row. Nondeterministic output cannot be
+      # predicted, so it fails the build.
+      - name: Verify snippets are runnable and deterministic
+        run: practice/predict/bin/lr verify
+
+      # Wall time and peak RSS against the ceilings in budgets.tsv. This
+      # catches a snippet that regressed into doing real work, not slow CI.
+      - name: Assert cost budgets
+        run: practice/predict/bin/lr bench --assert
+
   book:
     name: Book PDF
     runs-on: ubuntu-latest

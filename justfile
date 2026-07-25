@@ -136,6 +136,9 @@ run-predict:
 run-predict-lang lang:
   practice/predict/bin/lr verify {{lang}}
 
+run-predict-bench:
+  practice/predict/bin/lr bench --assert
+
 # ---------- Aggregate recipes ----------
 
 run-all: \
