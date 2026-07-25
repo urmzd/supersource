@@ -12,6 +12,7 @@ __pycache__/
 # Predict-then-run: your predictions are yours alone. Committing them would
 # spoil the exercise for the next reader.
 practice/predict/*/predictions/
+practice/predict/.bench/
 
 # Book build (PDF is a CI artifact / release asset, not committed)
 /outputs/

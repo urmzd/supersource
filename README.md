@@ -237,7 +237,7 @@ Retain and sharpen coding skills across 9 languages. See [`practice/README.md`](
 
 Each language has 10 graded exercises covering data structures, algorithms, concurrency, and language-specific idioms.
 
-**[Predict-then-run](practice/predict/)** is the retention drill: 24 snippets across Go, Rust, Python, and TypeScript where you write the exact expected output *before* running, and the diff tells you which part of your mental model is wrong. Every snippet is checked for determinism by `lr verify`.
+**[Predict-then-run](practice/predict/)** is the retention drill: 24 snippets across Go, Rust, Python, and TypeScript where you write the exact expected output *before* running, and the diff tells you which part of your mental model is wrong. Every snippet is checked in CI for determinism, wall time, and peak memory.
 
 ### From-Scratch Implementations
 

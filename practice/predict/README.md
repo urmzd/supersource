@@ -40,6 +40,7 @@ toolchains themselves.
 | `lr reveal <lang> <id>` | Just run it, burning the exercise |
 | `lr reset <lang> <id>` | Delete your prediction and start over |
 | `lr verify [lang]` | Maintainer check: every snippet builds, runs, and prints the same thing three times in a row |
+| `lr bench [lang] [--assert]` | Wall time and peak memory per snippet, against the ceilings in `budgets.tsv` |
 
 `<id>` is the numeric prefix of a snippet, so `lr check go 03` is enough.
 
@@ -136,3 +137,58 @@ exercise no matter how good the lesson inside it is.
 
 It deliberately prints no snippet output, only line counts, so you can run it on
 a fresh checkout without spoiling a single exercise.
+
+## What it costs
+
+`lr check` asks what a program prints. `lr bench` asks what it costs, which is
+the other half of a mental model and usually the half made of folklore.
+
+```bash
+$ bin/lr bench rust
+rust
+  01-shadowing-and-blocks             2ms     1504KB  ok
+  02-drop-order                       3ms     1488KB  ok
+  ...
+```
+
+Wall time is the *minimum* of five runs, because every source of noise makes a
+run slower and never faster. Memory is the *peak* RSS across those runs, because
+peak is what gets a process killed. [`bin/measure.py`](bin/measure.py) does the
+measuring and normalises the platform difference in `ru_maxrss` (bytes on macOS,
+kilobytes on Linux) that would otherwise be a factor-of-1024 error.
+
+Two rules keep the numbers honest:
+
+1. **Measure the program, not the toolchain.** Go and Rust are built ahead of
+   time so the measured run contains no compile step. Python and TypeScript have
+   no build step, so their interpreter startup is a real part of the cost and is
+   left in.
+2. **Compare against a ceiling, not against each other.** A breach means
+   something regressed. It does not mean one language beat another.
+
+That said, the spread is the most useful thing in this directory, because these
+snippets all do nothing. Under twenty printed lines, no allocation worth the
+name, so what you are looking at is the price of admission for each runtime:
+
+| Runtime | Wall time | Peak RSS | What you are paying for |
+|---------|-----------|----------|-------------------------|
+| Rust | ~2ms | ~1.5MB | A static binary with no runtime to start |
+| Go | ~3ms | ~4MB | The scheduler and GC coming up before `main` |
+| Python | ~19ms | ~15MB | Interpreter startup plus stdlib import |
+| Node | ~50ms | ~70MB | V8 reserving its heap |
+
+A 45x memory spread between the fastest and slowest way to print twelve lines is
+worth knowing before you pick a language for something that starts a process per
+request.
+
+[`budgets.tsv`](budgets.tsv) holds the ceilings, generous enough that CI runner
+variance never trips them:
+
+```bash
+bin/lr bench --assert      # nonzero exit on a breach; runs in CI
+just run-predict-bench     # the same thing from the repo root
+```
+
+Ceilings are uniform within a language on purpose. The spread between snippets
+in the same language is measurement noise, and a per-snippet number would imply a
+precision that is not there.
