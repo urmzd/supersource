@@ -131,7 +131,7 @@ Three distinct "distributed" problems kept apart on purpose: distributed **train
 | [Competitive Programming](competitive-programming/) | [CP Handbook](https://cses.fi/book/book.pdf) (free) + CSES Problem Set | 6-8 weeks |
 | [Information Theory](information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
 | [Programming Languages](programming-languages/) | [*Types and Programming Languages* (Pierce)](https://www.cis.upenn.edu/~bcpierce/tapl/) + [PLFA](https://plfa.github.io/) (free) | 2-3 weeks |
-| [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) | 3-4 weeks |
+| [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) + [project postmortems](software-craftsmanship/04-lessons-from-practice/) | 3-4 weeks |
 | [Diagramming & Documentation](diagramming-and-documentation/) | [C4 model](https://c4model.com/) + [D2](https://d2lang.com/)/[Mermaid](https://mermaid.js.org/) + [Diátaxis](https://diataxis.fr/) (free) | 2 weeks |
 | [Infrastructure](infrastructure/) | [K8s](https://kubernetes.io/docs/) + [Kafka](https://kafka.apache.org/documentation/) + [Lucene](https://lucene.apache.org/core/)/[Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html) + Apache docs (free) | 5-7 weeks |
 

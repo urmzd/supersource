@@ -18,6 +18,7 @@ The engineering practices, principles, and culture that separate senior/staff en
 - The Pragmatic Programmer teaches individual craft; SWE at Google teaches organizational craft at scale.
 - **Testing is a practice, not a phase** -- the discipline of treating tests (and docs and diagrams) as first-class, executable specifications.
 - Staff+ engineers are distinguished by judgment calls about trade-offs, not raw coding ability.
+- The principles are cheapest to learn from **someone else's postmortem** -- most costly mistakes take under 30 minutes to prevent.
 
 ## How to Study
 
@@ -32,6 +33,8 @@ graph LR
     PP[01 The Pragmatic Programmer] --> SWE[02 Software Engineering at Google]
     PP --> TEST[03 The Testing Mentality]
     SWE --> TEST
+    TEST --> LP[04 Lessons from Practice]
+    PP --> LP
 ```
 
 ## Topics
@@ -41,12 +44,14 @@ graph LR
 | 01 | [The Pragmatic Programmer](01-pragmatic-programmer/) | *The Pragmatic Programmer* (Hunt & Thomas) | 1.5-2 weeks |
 | 02 | [Software Engineering at Google](02-swe-at-google/) | [*SWE at Google*](https://abseil.io/resources/swe-book) (free) | 1.5-2 weeks |
 | 03 | [The Testing Mentality](03-testing-mentality/) | [*SWE at Google* testing chapters](https://abseil.io/resources/swe-book) (free) + [Testing on the Toilet](https://testing.googleblog.com/) (free) | 1 week |
+| 04 | [Lessons from Practice](04-lessons-from-practice/) | Postmortems of shipped and shelved projects (2019-2021) | 2-3 days |
 
 ## Quick Start
 
 1. **Want individual craft?** Start with 01 -- DRY, orthogonality, reversibility, design by contract.
 2. **Leading a team or codebase?** 02 -- code review, Hyrum's Law, deprecation budgets, CI as leverage.
 3. **Tests always feel like a chore?** 03 reframes testing as a *mentality* applied to code, infra, data, docs, and diagrams.
-4. **Want the artifacts these principles produce?** Pair with [Diagramming & Documentation](../diagramming-and-documentation/) and [Infrastructure](../infrastructure/).
+4. **About to start a time-boxed build?** 04 -- 13 failure modes from real projects, each cheap to prevent and expensive to live with.
+5. **Want the artifacts these principles produce?** Pair with [Diagramming & Documentation](../diagramming-and-documentation/) and [Infrastructure](../infrastructure/).
 
 See [Study Plan](../STUDY-PLAN.md) for the schedule.
