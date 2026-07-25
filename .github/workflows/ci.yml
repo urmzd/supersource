@@ -51,6 +51,16 @@ jobs:
         run: uv run pytest || echo "No tests found, skipping"
         continue-on-error: true
 
+      # Each case study is a self-contained, dependency-free implementation that
+      # runs its own assertions. Not continue-on-error: these must actually pass.
+      - name: Verify case-study implementations
+        run: |
+          set -euo pipefail
+          for file in case-studies/*/*.py; do
+            echo "--- $file"
+            (cd "$(dirname "$file")" && uv run --no-project python "$(basename "$file")" >/dev/null)
+          done
+
   book:
     name: Book PDF
     runs-on: ubuntu-latest
