@@ -42,6 +42,7 @@ TRACKS: list[tuple[str, str]] = [
     ("diagramming-and-documentation", "Diagramming & Documentation"),
     ("infrastructure", "Infrastructure"),
     ("competitive-programming", "Competitive Programming"),
+    ("case-studies", "Case Studies"),
 ]
 
 # Appended after the tracks as a final Part.

@@ -117,3 +117,4 @@ Reference specific content from the curriculum:
 - Study routines → `STUDY-PLAN.md` (daily routine sections)
 - Math prerequisites → `math/README.md`
 - Competitive programming → `competitive-programming/README.md`
+- Worked builds → `case-studies/{study-dir}/README.md` (each has a runnable implementation)

@@ -71,6 +71,7 @@ Full diagnostic assessment:
    - Practice languages: `practice/{tier}/{lang}/README.md`
    - Competitive programming: `competitive-programming/README.md`
    - Information theory: `information-theory/README.md`
+   - Case studies: `case-studies/{study-dir}/README.md`
 3. If a language is given, frame code questions in that language and evaluate idiom
 4. For language-specific questions, also read `practice/{tier}/{lang}/README.md` for idiom reference
 5. Use existing problem implementations in the repo as reference (but don't show them to the user during quizzes)
@@ -117,3 +118,7 @@ Map shorthand topic names to directories:
 - calculus-1 through probability → math/{topic}/
 - cp, competitive → competitive-programming/
 - info-theory → information-theory/
+- order-book, matching → case-studies/01-order-book-matching/
+- sql-agent, text-to-sql → case-studies/02-grounded-sql-agent/
+- events, idempotency, exactly-once → case-studies/03-exactly-once-event-api/
+- kmeans, clustering-optimization → case-studies/04-kmeans-optimization/
