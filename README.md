@@ -25,7 +25,7 @@
 - [Study Plans](#study-plans)
 - [Read Offline (Single PDF)](#read-offline-single-pdf)
 - [Interviews](#interviews)
-- [Polyglot Practice](#polyglot-practice)
+- [Practice](#practice)
 - [Case Studies](#case-studies)
 - [Books and Resources](#books-and-resources)
 - [Agent Skill](#agent-skill)
@@ -37,7 +37,7 @@
 - **Graded depth** undergraduate foundations through PhD-level research topics
 - **Multi-track** math, algorithms, ML, systems, info theory, competitive programming
 - **Interview-ready** 19 company-specific guides across Big Tech, quant, and frontier
-- **Polyglot practice** 10 graded exercises each across 9 languages, plus a predict-then-run drill in 4
+- **Practice path** one CLI, three exercise kinds (predict, build, reattempt), attempts cloned to a gitignored scratchpad
 - **Case studies** real builds generalized into runnable, dependency-free implementations that test themselves
 - **Prerequisite graph** mermaid diagram showing topic dependencies
 - **Single-PDF book** the entire curriculum renders into one PDF in CI (build artifact + release asset)
@@ -225,19 +225,33 @@ Company-specific guides for 19 companies. See [`interviews/README.md`](interview
 - **Quant & Trading** [Jane Street](interviews/jane-street/), [Citadel](interviews/citadel/), [Two Sigma](interviews/two-sigma/), [HRT](interviews/hrt/), [Renaissance](interviews/renaissance-technologies/)
 - **Frontier** [SpaceX](interviews/spacex/)
 
-## Polyglot Practice
+## Practice
 
-Retain and sharpen coding skills across 9 languages. See [`practice/README.md`](practice/README.md).
+The tracks above are the **learning path**: you read them. [`practice/`](practice/README.md) is the **practice path**: it tells you whether you actually know it. One CLI drives it, and everything you write goes to a gitignored `.scratchpad/`, never into the repo.
+
+```bash
+practice/bin/ss list                # every exercise, and which you have started
+practice/bin/ss start predict go 01 # clone it into .scratchpad/ and open it
+practice/bin/ss check predict go 01 # exit code is the verdict
+```
+
+Three kinds of exercise, distinguished only by what you produce:
+
+| Kind | You produce | It is wrong when |
+|------|-------------|------------------|
+| [`predict`](practice/predict/) | The exact output you expect from a snippet | Your prediction differs from what ran |
+| [`build`](practice/build/) | An implementation from scratch | The exercise's own assertions fail |
+| [`reattempt`](practice/reattempt/) | A second solution to something you already solved | The original's assertions fail |
+
+**[Predict-then-run](practice/predict/)** is the retention drill and the place to start: 24 snippets across Go, Rust, Python, and TypeScript where you write the exact expected output *before* running, and the diff tells you which part of your mental model is wrong. Every snippet is checked in CI for determinism, wall time, and peak memory.
+
+**[Build](practice/build/)** is 10 graded exercises per language across 9 languages, covering data structures, algorithms, concurrency, and language-specific idioms. Each reference implementation is standard library only and passes its own assertions in CI.
 
 | Tier | Languages | Focus |
 |------|-----------|-------|
-| **Systems** | [C](practice/systems/c/), [C++](practice/systems/cpp/), [Rust](practice/systems/rust/), [Zig](practice/systems/zig/) | Memory management, performance, hardware awareness |
-| **Cloud** | [Go](practice/cloud/go/), [Scala](practice/cloud/scala/), [Java](practice/cloud/java/) | Distributed systems, concurrency, JVM/runtime |
-| **General** | [Python](practice/general/python/), [TypeScript](practice/general/typescript/) | Rapid prototyping, type systems, full-stack |
-
-Each language has 10 graded exercises covering data structures, algorithms, concurrency, and language-specific idioms.
-
-**[Predict-then-run](practice/predict/)** is the retention drill: 24 snippets across Go, Rust, Python, and TypeScript where you write the exact expected output *before* running, and the diff tells you which part of your mental model is wrong. Every snippet is checked in CI for determinism, wall time, and peak memory.
+| **Systems** | [C](practice/build/systems/c/), [C++](practice/build/systems/cpp/), [Rust](practice/build/systems/rust/), [Zig](practice/build/systems/zig/) | Memory management, performance, hardware awareness |
+| **Cloud** | [Go](practice/build/cloud/go/), [Scala](practice/build/cloud/scala/), [Java](practice/build/cloud/java/) | Distributed systems, concurrency, JVM/runtime |
+| **General** | [Python](practice/build/general/python/), [TypeScript](practice/build/general/typescript/) | Rapid prototyping, type systems, full-stack |
 
 ### From-Scratch Implementations
 

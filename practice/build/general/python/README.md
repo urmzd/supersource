@@ -32,6 +32,20 @@ Master the data model, generators, decorators, and asyncio.
 - *Python Cookbook* (Beazley & Jones) -- recipes
 - [Real Python](https://realpython.com/) -- tutorials
 
+## Practising these
+
+```bash
+practice/bin/ss list  build python          # which of these have references yet
+practice/bin/ss start build python 01       # clone it stubbed into .scratchpad/
+practice/bin/ss check build python 01       # run it; exit code is the verdict
+practice/bin/ss diff  build python 01       # your attempt against the reference
+```
+
+Exercises are ordered by concept, not by difficulty, so pick by the stars rather
+than by the number. An exercise listed below with no reference yet is a row in
+this table and nothing more; see the [practice path](../../README.md) for how the
+harness works.
+
 ## Exercises
 
 | # | Exercise | Concepts | Difficulty |
