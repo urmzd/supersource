@@ -1,5 +1,17 @@
 # Zig Practice
 
+> **Optional language.** Zig is not one of the languages this
+> curriculum targets, so these exercises have no reference implementations
+> yet and are excluded from `ss verify build` and from CI. They are kept
+> because the exercises are worth doing, and every `ss` command works on
+> them by name.
+>
+> Toolchain: `brew install zig`. On a chezmoi-managed machine it comes from the
+> `install_alt_langs` flag, which is off by default.
+>
+> Zig 0.16 removed `async`/`await` from the language, so exercise 06 as listed below needs redefining before it can be written.
+
+
 Master comptime, explicit allocation, and zero-hidden-control-flow.
 
 ## Language Essentials

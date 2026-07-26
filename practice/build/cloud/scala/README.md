@@ -1,5 +1,17 @@
 # Scala Practice
 
+> **Optional language.** Scala is not one of the languages this
+> curriculum targets, so these exercises have no reference implementations
+> yet and are excluded from `ss verify build` and from CI. They are kept
+> because the exercises are worth doing, and every `ss` command works on
+> them by name.
+>
+> Toolchain: `brew install scala-cli`. On a chezmoi-managed machine it comes from the
+> `install_alt_langs` flag, which is off by default.
+>
+> `scala-cli` runs a bare directory of sources and manages its own JVM, so no build definition is needed.
+
+
 Master functional programming, the type system, and pattern matching on the JVM.
 
 ## Language Essentials

@@ -124,16 +124,13 @@ jobs:
       # assertions, and must carry solution markers so `ss start` can stub it.
       # A reference that does not hold up is not a reference.
       #
-      # Only the languages whose toolchains are present are verified. zig and
-      # scala are not installed on the runner image, and `ss verify` reports
-      # nothing for a language with no exercises yet, so this stays honest
-      # rather than silently green.
+      # Bare `verify build` covers the core languages only. zig, scala and java
+      # are optional here and are skipped with a message when their toolchain is
+      # absent, so there is no JVM or Zig setup step to maintain. Running them
+      # in CI would mean installing toolchains for languages this curriculum
+      # does not target.
       - name: Verify reference implementations
-        run: |
-          set -euo pipefail
-          for lang in c cpp rust go java python typescript; do
-            practice/bin/ss verify build "$lang"
-          done
+        run: practice/bin/ss verify build
 
   book:
     name: Book PDF

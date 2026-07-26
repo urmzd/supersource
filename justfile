@@ -139,13 +139,11 @@ run-predict-lang lang:
 run-predict-bench:
   practice/bin/ss bench --assert
 
-# Every build-exercise reference must pass its own assertions. Limited to the
-# languages with toolchains available; pass a language to check just one.
+# Verify every core build reference (zig/scala/java are optional; see run-build-lang)
 run-build:
-  for lang in c cpp rust go java python typescript; do \
-    practice/bin/ss verify build "$lang"; \
-  done
+  practice/bin/ss verify build
 
+# Verify one language by name, including the optional ones
 run-build-lang lang:
   practice/bin/ss verify build {{lang}}
 

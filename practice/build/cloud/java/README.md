@@ -1,5 +1,17 @@
 # Java Practice
 
+> **Optional language.** Java is not one of the languages this
+> curriculum targets, so these exercises have no reference implementations
+> yet and are excluded from `ss verify build` and from CI. They are kept
+> because the exercises are worth doing, and every `ss` command works on
+> them by name.
+>
+> Toolchain: `mise, with a `.mise.toml` pin`. On a chezmoi-managed machine it comes from the
+> `install_alt_langs` flag, which is off by default.
+>
+> macOS ships `/usr/bin/java` as a stub that exists and only prints "Unable to locate a Java Runtime", so check with `javac -version`, not `command -v javac`.
+
+
 Master JVM internals, generics, concurrency, and modern Java features.
 
 ## Language Essentials
