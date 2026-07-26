@@ -35,6 +35,21 @@ PRACTICE="$(cd "$BIN_DIR/.." && pwd)"
 ROOT="$(cd "$PRACTICE/.." && pwd)"
 SCRATCH="${SS_SCRATCH:-$ROOT/.scratchpad}"
 
+# Pick up any per-project toolchains pinned in .mise.toml.
+#
+# This is not optional convenience. mise's shell hook only installs itself in
+# INTERACTIVE shells, and this script is not one, so without this a toolchain
+# that works when you type `javac` by hand is missing when `ss` runs it. On
+# macOS that failure is especially quiet: /usr/bin/javac exists and is
+# executable, so nothing reports "not found" and you instead get "Unable to
+# locate a Java Runtime" from a stub.
+#
+# Resolved relative to the repo root rather than the caller's directory, so it
+# holds no matter where ss is invoked from. A no-op when mise is not installed.
+if command -v mise >/dev/null 2>&1 && [[ -f "$ROOT/.mise.toml" ]]; then
+  eval "$(cd "$ROOT" && mise env -s bash 2>/dev/null)" || true
+fi
+
 RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'; DIM=$'\033[2m'; BLD=$'\033[1m'; RST=$'\033[0m'
 [[ -t 1 ]] || { RED=; GRN=; YEL=; DIM=; BLD=; RST=; }
 
