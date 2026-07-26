@@ -1,0 +1,17 @@
+# Per-project runtimes, activated by mise on cd.
+#
+# This file is committed on purpose: it is the record of which toolchain the
+# exercises in this repository are written against, so a fresh checkout gets the
+# same one rather than whatever happens to be on PATH.
+#
+#   mise install     # fetch the versions below
+#   mise current     # show what is active here
+#
+# Node is deliberately absent. fnm owns node on this machine and mise would
+# shadow it, since whichever activates last wins on PATH.
+
+[tools]
+# Java 25 is the current LTS. The build/cloud/java exercises assume virtual
+# threads, records, sealed interfaces, and pattern matching for switch, all of
+# which are final rather than preview from 21 onward.
+java = "temurin-25"
