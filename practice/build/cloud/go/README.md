@@ -31,6 +31,20 @@ Master goroutines, channels, interfaces, and simplicity-driven design.
 - [Go Blog](https://go.dev/blog/) -- official articles
 - *The Go Programming Language* (Donovan & Kernighan) -- comprehensive
 
+## Practising these
+
+```bash
+practice/bin/ss list  build go          # which of these have references yet
+practice/bin/ss start build go 01       # clone it stubbed into .scratchpad/
+practice/bin/ss check build go 01       # run it; exit code is the verdict
+practice/bin/ss diff  build go 01       # your attempt against the reference
+```
+
+Exercises are ordered by concept, not by difficulty, so pick by the stars rather
+than by the number. An exercise listed below with no reference yet is a row in
+this table and nothing more; see the [practice path](../../README.md) for how the
+harness works.
+
 ## Exercises
 
 | # | Exercise | Concepts | Difficulty |

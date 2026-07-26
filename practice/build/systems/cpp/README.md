@@ -31,6 +31,20 @@ Master RAII, move semantics, templates, and the STL.
 - *Effective Modern C++* (Scott Meyers) -- essential C++11/14 patterns
 - [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/) -- free, maintained by Stroustrup & Sutter
 
+## Practising these
+
+```bash
+practice/bin/ss list  build cpp          # which of these have references yet
+practice/bin/ss start build cpp 01       # clone it stubbed into .scratchpad/
+practice/bin/ss check build cpp 01       # run it; exit code is the verdict
+practice/bin/ss diff  build cpp 01       # your attempt against the reference
+```
+
+Exercises are ordered by concept, not by difficulty, so pick by the stars rather
+than by the number. An exercise listed below with no reference yet is a row in
+this table and nothing more; see the [practice path](../../README.md) for how the
+harness works.
+
 ## Exercises
 
 | # | Exercise | Concepts | Difficulty |

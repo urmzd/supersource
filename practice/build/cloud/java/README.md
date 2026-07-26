@@ -31,6 +31,20 @@ Master JVM internals, generics, concurrency, and modern Java features.
 - *Effective Java* (Bloch, 3rd ed.) -- essential patterns
 - *Java Concurrency in Practice* (Goetz) -- concurrency bible
 
+## Practising these
+
+```bash
+practice/bin/ss list  build java          # which of these have references yet
+practice/bin/ss start build java 01       # clone it stubbed into .scratchpad/
+practice/bin/ss check build java 01       # run it; exit code is the verdict
+practice/bin/ss diff  build java 01       # your attempt against the reference
+```
+
+Exercises are ordered by concept, not by difficulty, so pick by the stars rather
+than by the number. An exercise listed below with no reference yet is a row in
+this table and nothing more; see the [practice path](../../README.md) for how the
+harness works.
+
 ## Exercises
 
 | # | Exercise | Concepts | Difficulty |

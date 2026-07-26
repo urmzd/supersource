@@ -31,6 +31,20 @@ Master ownership, borrowing, lifetimes, and zero-cost abstractions.
 - [Rustonomicon](https://doc.rust-lang.org/nomicon/) -- unsafe Rust deep dive
 - *Programming Rust* (Blandy, Orendorff, Tindall) -- comprehensive reference
 
+## Practising these
+
+```bash
+practice/bin/ss list  build rust          # which of these have references yet
+practice/bin/ss start build rust 01       # clone it stubbed into .scratchpad/
+practice/bin/ss check build rust 01       # run it; exit code is the verdict
+practice/bin/ss diff  build rust 01       # your attempt against the reference
+```
+
+Exercises are ordered by concept, not by difficulty, so pick by the stars rather
+than by the number. An exercise listed below with no reference yet is a row in
+this table and nothing more; see the [practice path](../../README.md) for how the
+harness works.
+
 ## Exercises
 
 | # | Exercise | Concepts | Difficulty |

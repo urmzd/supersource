@@ -1,0 +1,790 @@
+#!/usr/bin/env bash
+# ss - the supersource practice harness.
+#
+# The learning path is the track directories: you read them. This is the
+# practice path: you do them. Every exercise here works the same way, whatever
+# its kind or language.
+#
+#   ss start  <kind> <lang> <id>   clone the exercise into .scratchpad/ and open it
+#   ss check  <kind> <lang> [id]   run your attempt; exit code is the verdict
+#   ss diff   <kind> <lang> <id>   your attempt against the reference
+#   ss list   [kind] [lang]        what exists, and what you have attempted
+#   ss show   <kind> <lang> <id>   print the reference source (spoils it)
+#   ss score  [kind] [lang]        tally
+#   ss reveal <kind> <lang> <id>   just run the reference (burns the exercise)
+#   ss reset  <kind> <lang> <id>   throw your attempt away and start cold
+#   ss where                       print the paths this script is using
+#   ss verify [kind] [lang]        maintainer check: every reference builds,
+#                                  passes, and is deterministic. Prints no
+#                                  exercise output, so it spoils nothing.
+#   ss bench  [lang] [--assert]    wall time and peak memory per predict snippet,
+#                                  against the ceilings in predict/budgets.tsv
+#
+# Kinds:
+#   predict     you write the exact output you expect, then diff against reality
+#   build       you implement from scratch against a self-testing reference
+#   reattempt   an already-solved problem from algorithms/ or case-studies/,
+#               handed back to you with the solution stripped out
+#
+# Your work lives in .scratchpad/ at the repo root and is gitignored. Nothing
+# you write while practising is ever committed.
+
+set -uo pipefail
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PRACTICE="$(cd "$BIN_DIR/.." && pwd)"
+ROOT="$(cd "$PRACTICE/.." && pwd)"
+SCRATCH="${SS_SCRATCH:-$ROOT/.scratchpad}"
+
+RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'; DIM=$'\033[2m'; BLD=$'\033[1m'; RST=$'\033[0m'
+[[ -t 1 ]] || { RED=; GRN=; YEL=; DIM=; BLD=; RST=; }
+
+die() { echo "${RED}error:${RST} $*" >&2; exit 1; }
+rel() { echo "${1#$ROOT/}"; }
+
+KINDS="predict build reattempt"
+
+# ---------------------------------------------------------------------------
+# Languages
+#
+# predict has four, build has nine, reattempt is organised by source track
+# instead of by language. Aliases exist because the build tree spells out
+# "typescript" while the predict tree uses "ts", and typing either should work.
+# ---------------------------------------------------------------------------
+
+langs_predict()   { echo "go rust python ts"; }
+langs_build()     { echo "c cpp rust zig go scala java python typescript"; }
+langs_reattempt() { echo "algorithms case-studies"; }
+
+langs_for() {
+  case "$1" in
+    predict)   langs_predict ;;
+    build)     langs_build ;;
+    reattempt) langs_reattempt ;;
+  esac
+}
+
+# Canonical spelling for a language within a kind.
+norm_lang() {
+  local kind="$1" l="$2"
+  case "$kind:$l" in
+    predict:typescript) l=ts ;;
+    predict:ts)         l=ts ;;
+    build:ts)           l=typescript ;;
+    build:c++|build:cxx) l=cpp ;;
+    build:py)           l=python ;;
+    predict:py)         l=python ;;
+    reattempt:algo|reattempt:algorithms) l=algorithms ;;
+    reattempt:cs|reattempt:case-studies) l=case-studies ;;
+  esac
+  echo "$l"
+}
+
+valid_kind() {
+  case " $KINDS " in *" $1 "*) ;; *) die "unknown kind '$1' (want: $KINDS)" ;; esac
+}
+
+valid_lang() {
+  local kind="$1" l="$2"
+  case " $(langs_for "$kind") " in
+    *" $l "*) ;;
+    *) die "unknown $kind language '$l' (want: $(langs_for "$kind"))" ;;
+  esac
+}
+
+# Tier directory for a build language, since the build tree groups by tier.
+build_tier() {
+  case "$1" in
+    c|cpp|rust|zig)   echo systems ;;
+    go|scala|java)    echo cloud ;;
+    python|typescript) echo general ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# Locating exercises
+#
+# ex_dir  -> the committed reference directory (or file, for predict)
+# ex_name -> the NN-name identity used everywhere in output and paths
+# ---------------------------------------------------------------------------
+
+lang_root() {
+  local kind="$1" lang="$2"
+  case "$kind" in
+    predict)   echo "$PRACTICE/predict/$lang" ;;
+    build)     echo "$PRACTICE/build/$(build_tier "$lang")/$lang" ;;
+    reattempt) echo "$PRACTICE/reattempt" ;;
+  esac
+}
+
+# All exercise names (NN-name) for a kind+lang, sorted.
+all_names() {
+  local kind="$1" lang="$2" lr; lr="$(lang_root "$kind" "$lang")"
+  case "$kind" in
+    predict)
+      case "$lang" in
+        go)     find "$lr/predict" -maxdepth 1 -type d -name '[0-9][0-9]-*' -exec basename {} \; 2>/dev/null ;;
+        rust)   find "$lr/predict/src/bin" -maxdepth 1 -name '[0-9][0-9]-*.rs' -exec basename {} .rs \; 2>/dev/null ;;
+        python) find "$lr/predict" -maxdepth 1 -name '[0-9][0-9]-*.py' -exec basename {} .py \; 2>/dev/null ;;
+        ts)     find "$lr/predict" -maxdepth 1 -name '[0-9][0-9]-*.ts' -exec basename {} .ts \; 2>/dev/null ;;
+      esac ;;
+    build)
+      find "$lr" -maxdepth 1 -type d -name '[0-9][0-9]-*' -exec basename {} \; 2>/dev/null ;;
+    reattempt)
+      manifest_names "$lang" ;;
+  esac | sort
+}
+
+# Resolve an id prefix ("03") or a full name to the full exercise name.
+resolve_name() {
+  local kind="$1" lang="$2" id="$3" hit
+  hit="$(all_names "$kind" "$lang" | awk -v id="$id" '$0 == id || index($0, id "-") == 1' | head -1)"
+  [[ -n "$hit" ]] || return 1
+  echo "$hit"
+}
+
+# ---------------------------------------------------------------------------
+# reattempt manifest
+#
+# algorithms/ and case-studies/ already hold solved, committed code. Rather
+# than copy any of it into practice/, the manifest points at it in place and
+# ss strips the solution on the way into the scratchpad.
+#
+# Columns: track <TAB> name <TAB> source path (repo-relative)
+# ---------------------------------------------------------------------------
+
+MANIFEST="$PRACTICE/reattempt/manifest.tsv"
+
+manifest_rows() {
+  [[ -f "$MANIFEST" ]] || return 0
+  awk -F'\t' -v track="$1" '
+    /^[[:space:]]*(#|$)/ { next }
+    $1 == track { print $2 "\t" $3 }
+  ' "$MANIFEST"
+}
+
+manifest_names() { manifest_rows "$1" | cut -f1; }
+
+manifest_source() {
+  local track="$1" name="$2" p
+  p="$(manifest_rows "$track" | awk -F'\t' -v n="$name" '$1 == n { print $2; exit }')"
+  [[ -n "$p" ]] || return 1
+  echo "$ROOT/$p"
+}
+
+# ---------------------------------------------------------------------------
+# Reference sources
+#
+# For build and reattempt, the reference is the committed solution. For
+# predict, the "reference" is the snippet itself, which you never edit.
+# ---------------------------------------------------------------------------
+
+ref_path() {
+  local kind="$1" lang="$2" name="$3" lr; lr="$(lang_root "$kind" "$lang")"
+  case "$kind" in
+    predict)
+      case "$lang" in
+        go)     echo "$lr/predict/$name/main.go" ;;
+        rust)   echo "$lr/predict/src/bin/$name.rs" ;;
+        python) echo "$lr/predict/$name.py" ;;
+        ts)     echo "$lr/predict/$name.ts" ;;
+      esac ;;
+    build)     echo "$lr/$name" ;;
+    reattempt) manifest_source "$lang" "$name" ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# Your workspace in .scratchpad/
+# ---------------------------------------------------------------------------
+
+work_dir() { echo "$SCRATCH/$1/$2/$3"; }
+
+# predict keeps a single prediction file rather than a workspace.
+pred_file() { echo "$SCRATCH/predict/$1/$2.txt"; }
+
+# Has this exercise been attempted?
+attempted() {
+  local kind="$1" lang="$2" name="$3"
+  if [[ "$kind" == predict ]]; then
+    [[ -s "$(pred_file "$lang" "$name")" ]]
+  else
+    [[ -d "$(work_dir "$kind" "$lang" "$name")" ]]
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Stub generation
+#
+# A reference marks the parts you are supposed to write with begin/end markers
+# on their own lines, in whatever comment syntax the language uses. Cloning
+# replaces each marked region with a single TODO. That means one committed
+# source of truth per exercise, instead of a reference and a stub that drift
+# apart.
+#
+# A file with no markers is copied verbatim: that is how tests, headers and
+# scaffolding come along untouched.
+#
+# Two details that are easy to get wrong and produce broken stubs:
+#
+#   * The TODO is built by substituting into the marker line itself rather than
+#     by keeping only the text before the marker. Otherwise a C-style
+#     "/* MARKER */" yields "/* TODO..." with no closing "*/", an unterminated
+#     comment that silently swallows the next function.
+#   * A marker only counts when its line holds nothing but comment punctuation
+#     and the marker. Prose that mentions the marker by name, in a header
+#     comment or a README, is not a marker.
+# ---------------------------------------------------------------------------
+
+MARKER_BEGIN='SOLUTION-BEGIN'
+MARKER_END='SOLUTION-END'
+# Leading comment punctuation, the marker, then optional closers like "*/".
+MARKER_RE="^[^A-Za-z0-9]*(${MARKER_BEGIN}|${MARKER_END})[^A-Za-z0-9]*$"
+
+strip_solution() {
+  awk -v b="$MARKER_BEGIN" -v e="$MARKER_END" '
+    function is_marker(line, tok) {
+      return line ~ ("^[^A-Za-z0-9]*" tok "[^A-Za-z0-9]*$")
+    }
+    is_marker($0, b) {
+      todo = $0
+      sub(b, "TODO: your implementation goes here.", todo)
+      print todo
+      skip = 1
+      next
+    }
+    is_marker($0, e) { skip = 0; next }
+    !skip { print }
+  ' "$1"
+}
+
+has_markers() { grep -Eq "$MARKER_RE" "$1" 2>/dev/null; }
+
+# The reference with its marker lines removed: what you would have written if
+# you had got it right. This is the side `ss diff` compares against, because
+# diffing against the markers themselves is just noise.
+drop_markers() { grep -Ev "$MARKER_RE" "$1"; }
+
+# ---------------------------------------------------------------------------
+# Running things
+#
+# Every build exercise is self-testing: it has one entry point that asserts and
+# exits nonzero when an assertion fails, which is the same contract the
+# case-studies use. So "check" is just "run it, and look at $?" in every
+# language, and no test framework is involved anywhere.
+#
+# An exercise that needs something this table cannot express (an external
+# crate, a code generator, a linker invocation) ships an executable run.sh and
+# that wins.
+# ---------------------------------------------------------------------------
+
+# Run inside directory $1, for build language $2. Output and exit code pass through.
+#
+# Compiled output goes to a scratchpad directory keyed by the exercise path,
+# never next to the source. Building in place would drop binaries and class
+# files into the repository every time CI verified a reference, and the first
+# person to run `git add -A` would commit them.
+run_build_dir() {
+  local d="$1" lang="$2" out
+  if [[ -x "$d/run.sh" ]]; then (cd "$d" && ./run.sh); return $?; fi
+
+  out="$SCRATCH/.build/$(printf '%s' "${d#$ROOT/}" | tr '/' '_')"
+  mkdir -p "$out" || return 1
+
+  case "$lang" in
+    c)     (cd "$d" && cc -std=c11 -Wall -Wextra -Wno-unused-parameter -o "$out/bin" ./*.c 2>&1 && "$out/bin") ;;
+    cpp)   (cd "$d" && c++ -std=c++20 -Wall -Wextra -o "$out/bin" ./*.cpp 2>&1 && "$out/bin") ;;
+    rust)  (cd "$d" && rustc --edition 2021 -A dead_code -o "$out/bin" main.rs 2>&1 && "$out/bin") ;;
+    zig)   (cd "$d" && zig run main.zig --cache-dir "$out" 2>&1) ;;
+    go)    (cd "$d" && GOCACHE="${GOCACHE:-$out/gocache}" go run . 2>&1) ;;
+    scala) (cd "$d" && scala-cli run . 2>&1) ;;
+    java)  (cd "$d" && javac -d "$out" ./*.java 2>&1 && java -cp "$out" Main) ;;
+    python)     (cd "$d" && uv run --no-project --quiet python main.py 2>&1) ;;
+    typescript) (cd "$d" && node main.ts 2>&1) ;;
+  esac
+}
+
+# Run a reattempt source file, by extension. As above, anything compiled lands
+# in the scratchpad rather than beside the source, which here would mean
+# dropping binaries into algorithms/ and case-studies/.
+run_reattempt_file() {
+  local f="$1" d out; d="$(dirname "$f")"
+  out="$SCRATCH/.build/$(printf '%s' "${f#$ROOT/}" | tr '/' '_')"
+  case "$f" in
+    *.py) (cd "$d" && uv run --no-project --quiet python "$(basename "$f")" 2>&1) ;;
+    *.js) (cd "$d" && node "$(basename "$f")" 2>&1) ;;
+    *.ts) (cd "$d" && node "$(basename "$f")" 2>&1) ;;
+    *.c)  mkdir -p "$out" && (cd "$d" && cc -std=c11 -o "$out/bin" "$(basename "$f")" 2>&1 && "$out/bin") ;;
+    *)    echo "no runner for $(basename "$f")" >&2; return 1 ;;
+  esac
+}
+
+# Run a predict snippet from the committed tree, merging stderr in.
+run_snippet() {
+  local lang="$1" name="$2" lr; lr="$(lang_root predict "$lang")"
+  case "$lang" in
+    go)     (cd "$PRACTICE/predict/go"           && go run "./predict/$name" 2>&1) ;;
+    rust)   (cd "$PRACTICE/predict/rust/predict" && cargo run --quiet --bin "$name" 2>&1) ;;
+    python) (cd "$PRACTICE/predict/python"       && uv run --no-project --quiet python "predict/$name.py" 2>&1) ;;
+    ts)     (cd "$PRACTICE/predict/ts"           && node "predict/$name.ts" 2>&1) ;;
+  esac
+}
+
+# Compile ahead of time, so a fresh checkout's first run does not mix compiler
+# output into a snippet's stdout and show up as a false diff.
+prepare_predict() {
+  case "$1" in
+    go)   (cd "$PRACTICE/predict/go"           && go build ./... >/dev/null) ;;
+    rust) (cd "$PRACTICE/predict/rust/predict" && cargo build --quiet --bins) ;;
+    *)    : ;;
+  esac
+}
+
+# Strip trailing whitespace and leading/trailing blank lines, so a correct
+# prediction is not called wrong over an extra newline.
+normalize() { sed 's/[[:space:]]*$//' | awk 'NF{blank=0; for(i=0;i<held;i++) print ""; held=0; print; seen=1; next} seen{held++}' ; }
+
+# ---------------------------------------------------------------------------
+# start
+# ---------------------------------------------------------------------------
+
+cmd_start() {
+  local kind="$1" lang="$2" id="$3"
+  valid_kind "$kind"; lang="$(norm_lang "$kind" "$lang")"; valid_lang "$kind" "$lang"
+  local name; name="$(resolve_name "$kind" "$lang" "$id")" || die "no $kind exercise '$id' in $lang"
+
+  if [[ "$kind" == predict ]]; then
+    local pf; pf="$(pred_file "$lang" "$name")"
+    mkdir -p "$(dirname "$pf")"
+    [[ -f "$pf" ]] || : > "$pf"
+    cmd_show predict "$lang" "$id"
+    echo
+    echo "${YEL}Write the exact output you expect into:${RST} $(rel "$pf")"
+    echo "${DIM}Commit to it before you run anything. A prediction edited after the fact is worth nothing.${RST}"
+    "${EDITOR:-vi}" "$pf"
+    return
+  fi
+
+  local src wd; src="$(ref_path "$kind" "$lang" "$name")"; wd="$(work_dir "$kind" "$lang" "$name")"
+  if [[ -d "$wd" ]]; then
+    echo "${YEL}already started:${RST} $(rel "$wd")"
+    echo "${DIM}ss reset $kind $lang $id  throws it away and starts cold${RST}"
+  else
+    mkdir -p "$wd"
+    if [[ -d "$src" ]]; then
+      # build: clone the whole exercise directory, stripping marked regions.
+      local f target
+      while IFS= read -r f; do
+        target="$wd/${f#$src/}"
+        mkdir -p "$(dirname "$target")"
+        if has_markers "$f"; then strip_solution "$f" > "$target"; else cp "$f" "$target"; fi
+      done < <(find "$src" -type f ! -name '_ss_*')
+    else
+      # reattempt: a single committed solution file.
+      local base; base="$(basename "$src")"
+      if has_markers "$src"; then strip_solution "$src" > "$wd/$base"; else cp "$src" "$wd/$base"; fi
+    fi
+    # Go needs a module to run a directory; the clone is outside the repo's tree.
+    if [[ "$kind" == build && "$lang" == go && ! -f "$wd/go.mod" ]]; then
+      printf 'module practice/%s\n\ngo 1.22\n' "$name" > "$wd/go.mod"
+    fi
+    echo "${GRN}started${RST} $kind/$lang/$name"
+    echo "  workspace  $(rel "$wd")"
+    echo "  check      ss check $kind $lang $id"
+  fi
+
+  local entry
+  entry="$(find "$wd" -maxdepth 2 -type f \( -name 'main.*' -o -name 'Main.java' -o -name '*.c' -o -name '*.py' -o -name '*.ts' -o -name '*.js' \) ! -name '*_test.*' | sort | head -1)"
+  [[ -n "$entry" ]] && "${EDITOR:-vi}" "$entry"
+}
+
+# ---------------------------------------------------------------------------
+# check
+# ---------------------------------------------------------------------------
+
+# 0 = pass, 1 = fail, 2 = not attempted.
+check_one() {
+  local kind="$1" lang="$2" name="$3" quiet="${4:-}"
+
+  if ! attempted "$kind" "$lang" "$name"; then
+    [[ -n "$quiet" ]] || echo "${DIM}skip${RST} $name  (not started: ss start $kind $lang ${name%%-*})"
+    return 2
+  fi
+
+  if [[ "$kind" == predict ]]; then
+    local pf actual expected; pf="$(pred_file "$lang" "$name")"
+    actual="$(run_snippet "$lang" "$name" | normalize)"
+    expected="$(normalize < "$pf")"
+    if [[ "$actual" == "$expected" ]]; then echo "${GRN}PASS${RST} $name"; return 0; fi
+    echo "${RED}MISS${RST} $name"
+    if [[ -z "$quiet" ]]; then
+      diff -u --label "you predicted" <(printf '%s\n' "$expected") \
+              --label "actually printed" <(printf '%s\n' "$actual") | sed 's/^/    /'
+      echo "    ${YEL}Record this in practice/predict/LEDGER.md before you move on.${RST}"
+    fi
+    return 1
+  fi
+
+  local wd out rc; wd="$(work_dir "$kind" "$lang" "$name")"
+  if [[ "$kind" == build ]]; then out="$(run_build_dir "$wd" "$lang")"; rc=$?
+  else
+    local f; f="$(find "$wd" -maxdepth 1 -type f ! -name '_ss_*' | head -1)"
+    out="$(run_reattempt_file "$f")"; rc=$?
+  fi
+
+  if [[ $rc -eq 0 ]]; then
+    echo "${GRN}PASS${RST} $name"
+  else
+    echo "${RED}FAIL${RST} $name"
+    [[ -n "$quiet" ]] || { printf '%s\n' "$out" | sed 's/^/    /'; echo "    ${DIM}ss diff $kind $lang ${name%%-*}  compares your attempt to the reference${RST}"; }
+  fi
+  return $rc
+}
+
+cmd_check() {
+  local kind="$1" lang="$2"
+  valid_kind "$kind"; lang="$(norm_lang "$kind" "$lang")"; valid_lang "$kind" "$lang"
+  if [[ $# -ge 3 ]]; then
+    local name; name="$(resolve_name "$kind" "$lang" "$3")" || die "no $kind exercise '$3' in $lang"
+    check_one "$kind" "$lang" "$name"; return $?
+  fi
+  local n rc=0
+  while IFS= read -r n; do
+    check_one "$kind" "$lang" "$n" quiet; [[ $? -eq 1 ]] && rc=1
+  done < <(all_names "$kind" "$lang")
+  return $rc
+}
+
+# ---------------------------------------------------------------------------
+# diff, show, reveal, reset
+# ---------------------------------------------------------------------------
+
+cmd_diff() {
+  local kind="$1" lang="$2" id="$3"
+  valid_kind "$kind"; lang="$(norm_lang "$kind" "$lang")"; valid_lang "$kind" "$lang"
+  [[ "$kind" != predict ]] || die "predict has no reference to diff; use ss check predict $lang $id"
+  local name; name="$(resolve_name "$kind" "$lang" "$id")" || die "no $kind exercise '$id' in $lang"
+  local wd src; wd="$(work_dir "$kind" "$lang" "$name")"; src="$(ref_path "$kind" "$lang" "$name")"
+  [[ -d "$wd" ]] || die "not started: ss start $kind $lang $id"
+  echo "${DIM}Reference on the right. Different is not the same as worse.${RST}"
+  echo
+  if [[ -d "$src" ]]; then
+    local f
+    while IFS= read -r f; do
+      diff -u --label "yours: ${f#$src/}" "$wd/${f#$src/}" \
+              --label "reference: ${f#$src/}" <(drop_markers "$f") 2>/dev/null
+    done < <(find "$src" -type f ! -name '_ss_*' | sort)
+  else
+    diff -u --label "yours" "$wd/$(basename "$src")" --label reference <(drop_markers "$src")
+  fi
+  return 0
+}
+
+cmd_show() {
+  local kind="$1" lang="$2" id="$3"
+  valid_kind "$kind"; lang="$(norm_lang "$kind" "$lang")"; valid_lang "$kind" "$lang"
+  local name; name="$(resolve_name "$kind" "$lang" "$id")" || die "no $kind exercise '$id' in $lang"
+  local src; src="$(ref_path "$kind" "$lang" "$name")"
+  if [[ -d "$src" ]]; then
+    local f
+    while IFS= read -r f; do
+      echo "${BLD}$(rel "$f")${RST}"; echo; drop_markers "$f"; echo
+    done < <(find "$src" -type f ! -name '_ss_*' | sort)
+  else
+    echo "${BLD}$(rel "$src")${RST}"; echo; drop_markers "$src"
+  fi
+}
+
+cmd_reveal() {
+  local kind="$1" lang="$2" id="$3"
+  valid_kind "$kind"; lang="$(norm_lang "$kind" "$lang")"; valid_lang "$kind" "$lang"
+  local name; name="$(resolve_name "$kind" "$lang" "$id")" || die "no $kind exercise '$id' in $lang"
+  case "$kind" in
+    predict)   run_snippet "$lang" "$name" ;;
+    build)     run_build_dir "$(ref_path build "$lang" "$name")" "$lang" ;;
+    reattempt) run_reattempt_file "$(ref_path reattempt "$lang" "$name")" ;;
+  esac
+}
+
+cmd_reset() {
+  local kind="$1" lang="$2" id="$3"
+  valid_kind "$kind"; lang="$(norm_lang "$kind" "$lang")"; valid_lang "$kind" "$lang"
+  local name; name="$(resolve_name "$kind" "$lang" "$id")" || die "no $kind exercise '$id' in $lang"
+  local t
+  if [[ "$kind" == predict ]]; then t="$(pred_file "$lang" "$name")"; else t="$(work_dir "$kind" "$lang" "$name")"; fi
+  [[ -e "$t" ]] || die "nothing to reset at $(rel "$t")"
+  case "$t" in "$SCRATCH"/*) ;; *) die "refusing to delete outside the scratchpad: $t" ;; esac
+  rm -rf "$t" && echo "cleared $(rel "$t")"
+}
+
+# ---------------------------------------------------------------------------
+# list, score
+# ---------------------------------------------------------------------------
+
+cmd_list() {
+  local kind="$1" lang="$2"
+  lang="$(norm_lang "$kind" "$lang")"; valid_lang "$kind" "$lang"
+  local total; total="$(all_names "$kind" "$lang" | wc -l | tr -d ' ')"
+  [[ "$total" -gt 0 ]] || return 0
+  printf '%s\n' "${BLD}$kind/$lang${RST}"
+  local n
+  while IFS= read -r n; do
+    if attempted "$kind" "$lang" "$n"; then
+      printf '  %-38s %s\n' "$n" "${GRN}started${RST}"
+    else
+      printf '  %-38s %s\n' "$n" "${DIM}--${RST}"
+    fi
+  done < <(all_names "$kind" "$lang")
+}
+
+cmd_score() {
+  local kind="$1" lang="$2"
+  lang="$(norm_lang "$kind" "$lang")"; valid_lang "$kind" "$lang"
+  local n pass=0 fail=0 todo=0
+  while IFS= read -r n; do
+    check_one "$kind" "$lang" "$n" quiet >/dev/null 2>&1
+    case $? in 0) pass=$((pass+1)) ;; 1) fail=$((fail+1)) ;; *) todo=$((todo+1)) ;; esac
+  done < <(all_names "$kind" "$lang")
+  [[ $((pass+fail+todo)) -gt 0 ]] || return 0
+  local done_n=$((pass+fail))
+  printf '%-22s %s%d passing%s  %s%d failing%s  %s%d not attempted%s' \
+    "${BLD}$kind/$lang${RST}" "$GRN" "$pass" "$RST" "$RED" "$fail" "$RST" "$DIM" "$todo" "$RST"
+  [[ $done_n -gt 0 ]] && printf '   (%d%% of attempted)' $(( pass * 100 / done_n ))
+  printf '\n'
+}
+
+# ---------------------------------------------------------------------------
+# verify: the maintainer/CI check
+#
+# check validates you. verify validates the exercises, and it is the one that
+# has to stay green in CI.
+#
+#   predict    every snippet builds, exits zero, prints something, and prints
+#              the identical something three runs running. Nondeterministic
+#              output cannot be predicted, so it fails the build.
+#   build      every reference builds and its own assertions pass.
+#   reattempt  every manifest row points at a file that exists and still runs.
+#
+# It prints no exercise output, only shapes and line counts, so it is safe to
+# run on a fresh checkout without spoiling anything.
+# ---------------------------------------------------------------------------
+
+verify_predict() {
+  local lang="$1"
+  if ! prepare_predict "$lang"; then echo "${RED}FAIL${RST}  predict/$lang (build failed)"; return 1; fi
+  local name out first rc=0 i
+  while IFS= read -r name; do
+    first=""
+    for i in 1 2 3; do
+      if ! out="$(run_snippet "$lang" "$name")"; then
+        echo "${RED}FAIL${RST}  predict/$lang/$name (exited nonzero)"; rc=1; continue 2
+      fi
+      if [[ $i -eq 1 ]]; then first="$out"
+      elif [[ "$out" != "$first" ]]; then
+        echo "${RED}FLAKY${RST} predict/$lang/$name (run $i differed, so it is not predictable)"; rc=1; continue 2
+      fi
+    done
+    if [[ -z "$first" ]]; then echo "${RED}EMPTY${RST} predict/$lang/$name (printed nothing)"; rc=1; continue; fi
+    printf '%sOK%s    predict/%s/%s (%s lines, stable over 3 runs)\n' \
+      "$GRN" "$RST" "$lang" "$name" "$(printf '%s\n' "$first" | wc -l | tr -d ' ')"
+  done < <(all_names predict "$lang")
+  return $rc
+}
+
+verify_build() {
+  local lang="$1" name d out rc=0 dupes
+
+  # Two exercises sharing a numeric prefix make `ss start build <lang> 03`
+  # ambiguous: resolve_name takes the first match, so one of them becomes
+  # unreachable from the CLI. Catch it here rather than letting someone wonder
+  # why their exercise never opens.
+  dupes="$(all_names build "$lang" | cut -d- -f1 | sort | uniq -d)"
+  if [[ -n "$dupes" ]]; then
+    local id
+    while IFS= read -r id; do
+      echo "${RED}FAIL${RST}  build/$lang (duplicate id $id: $(all_names build "$lang" | grep "^$id-" | tr '\n' ' '))"
+    done <<<"$dupes"
+    rc=1
+  fi
+
+  while IFS= read -r name; do
+    d="$(ref_path build "$lang" "$name")"
+    if [[ ! -f "$d/README.md" ]]; then
+      echo "${RED}FAIL${RST}  build/$lang/$name (no README.md brief)"; rc=1; continue
+    fi
+    if ! find "$d" -type f -exec grep -Eql "$MARKER_RE" {} + >/dev/null 2>&1; then
+      echo "${RED}FAIL${RST}  build/$lang/$name (no solution markers, so it cannot be stubbed)"; rc=1; continue
+    fi
+    if ! out="$(run_build_dir "$d" "$lang" 2>&1)"; then
+      echo "${RED}FAIL${RST}  build/$lang/$name (reference does not pass its own assertions)"
+      printf '%s\n' "$out" | tail -5 | sed 's/^/        /'
+      rc=1; continue
+    fi
+    printf '%sOK%s    build/%s/%s\n' "$GRN" "$RST" "$lang" "$name"
+  done < <(all_names build "$lang")
+  return $rc
+}
+
+verify_reattempt() {
+  local track="$1" name src rc=0
+  while IFS= read -r name; do
+    src="$(ref_path reattempt "$track" "$name")" || { echo "${RED}FAIL${RST}  reattempt/$track/$name (not in manifest)"; rc=1; continue; }
+    if [[ ! -f "$src" ]]; then
+      echo "${RED}FAIL${RST}  reattempt/$track/$name (source missing: $(rel "$src"))"; rc=1; continue
+    fi
+    if ! has_markers "$src"; then
+      echo "${RED}FAIL${RST}  reattempt/$track/$name (no solution markers in $(rel "$src"))"; rc=1; continue
+    fi
+    if ! run_reattempt_file "$src" >/dev/null 2>&1; then
+      echo "${RED}FAIL${RST}  reattempt/$track/$name (source does not run clean)"; rc=1; continue
+    fi
+    printf '%sOK%s    reattempt/%s/%s\n' "$GRN" "$RST" "$track" "$name"
+  done < <(all_names reattempt "$track")
+  return $rc
+}
+
+verify_kind_lang() {
+  case "$1" in
+    predict)   verify_predict "$2" ;;
+    build)     verify_build "$2" ;;
+    reattempt) verify_reattempt "$2" ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# bench: what the predict snippets cost
+#
+# check asks what a program prints. bench asks what it costs, which is the
+# other half of a mental model and usually the half made of folklore.
+#
+#   1. Measure the program, not the toolchain. Go and Rust are built ahead of
+#      time so the measured run has no compile step in it. Python and
+#      TypeScript have no build step, so interpreter startup is a real part of
+#      their cost and is left in.
+#   2. Compare against a ceiling, not against each other. A breach means
+#      something regressed. It does not mean one language beat another.
+# ---------------------------------------------------------------------------
+
+BENCH_RUNS="${SS_BENCH_RUNS:-${LR_BENCH_RUNS:-5}}"
+BUDGETS="$PRACTICE/predict/budgets.tsv"
+BENCH_TMP="$SCRATCH/.bench"
+
+bench_prepare() {
+  local lang="$1" name
+  case "$lang" in
+    go)
+      mkdir -p "$BENCH_TMP/go"
+      while IFS= read -r name; do
+        (cd "$PRACTICE/predict/go" && go build -o "$BENCH_TMP/go/$name" "./predict/$name") || return 1
+      done < <(all_names predict go) ;;
+    rust) (cd "$PRACTICE/predict/rust/predict" && cargo build --quiet --bins) || return 1 ;;
+    *)    : ;;
+  esac
+}
+
+bench_measure() {
+  local lang="$1" name="$2" m="$BIN_DIR/measure.py"
+  case "$lang" in
+    go)     python3 "$m" "$BENCH_RUNS" "$BENCH_TMP/go/$name" ;;
+    rust)   python3 "$m" "$BENCH_RUNS" "$PRACTICE/predict/rust/predict/target/debug/$name" ;;
+    python) python3 "$m" "$BENCH_RUNS" python3 "$PRACTICE/predict/python/predict/$name.py" ;;
+    ts)     python3 "$m" "$BENCH_RUNS" node "$PRACTICE/predict/ts/predict/$name.ts" ;;
+  esac
+}
+
+bench_budget() {
+  awk -v lang="$1" -v name="$2" '
+    /^[[:space:]]*(#|$)/ { next }
+    $1 == lang && $2 == name { print $3 "\t" $4; exit }
+  ' "$BUDGETS" 2>/dev/null
+}
+
+cmd_bench() {
+  local lang="$1" strict="${2:-}"
+  lang="$(norm_lang predict "$lang")"; valid_lang predict "$lang"
+  if ! bench_prepare "$lang"; then echo "${RED}FAIL${RST}  $lang (build failed)"; return 1; fi
+  local name measured ms kb budget max_ms max_kb status rc=0
+  while IFS= read -r name; do
+    if ! measured="$(bench_measure "$lang" "$name")"; then
+      echo "${RED}FAIL${RST}  $lang/$name (exited nonzero)"; rc=1; continue
+    fi
+    read -r ms kb <<<"$measured"
+    budget="$(bench_budget "$lang" "$name")"
+    if [[ -z "$budget" ]]; then
+      status="${DIM}no budget${RST}"
+    else
+      read -r max_ms max_kb <<<"$budget"
+      status="${GRN}ok${RST}"
+      if [[ "$ms" -gt "$max_ms" ]]; then
+        status="${RED}over time (max ${max_ms}ms)${RST}"; [[ -n "$strict" ]] && rc=1
+      elif [[ "$kb" -gt "$max_kb" ]]; then
+        status="${RED}over memory (max ${max_kb}KB)${RST}"; [[ -n "$strict" ]] && rc=1
+      fi
+    fi
+    printf '  %-34s %6sms %8sKB  %s\n' "$name" "$ms" "$kb" "$status"
+  done < <(all_names predict "$lang")
+  return $rc
+}
+
+cmd_where() {
+  printf '%-12s %s\n' repo "$ROOT"
+  printf '%-12s %s\n' practice "$PRACTICE"
+  printf '%-12s %s%s\n' scratchpad "$SCRATCH" "$([[ -d "$SCRATCH" ]] || echo "  ${DIM}(not created yet)${RST}")"
+  printf '%-12s %s\n' manifest "$(rel "$MANIFEST")"
+  echo
+  local kind lang
+  for kind in $KINDS; do
+    for lang in $(langs_for "$kind"); do
+      printf '  %-10s %-12s %s exercises\n' "$kind" "$lang" "$(all_names "$kind" "$lang" | wc -l | tr -d ' ')"
+    done
+  done
+}
+
+usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "${BASH_SOURCE[0]}"; }
+
+# Fan a per-(kind,lang) function out over everything, or over one kind, or one
+# kind and language, depending on how many arguments the user gave.
+fan_out() {
+  local fn="$1"; shift
+  local kind lang rc=0
+  if [[ $# -eq 0 ]]; then
+    for kind in $KINDS; do for lang in $(langs_for "$kind"); do "$fn" "$kind" "$lang" || rc=1; done; done
+  elif [[ $# -eq 1 ]]; then
+    valid_kind "$1"
+    for lang in $(langs_for "$1"); do "$fn" "$1" "$lang" || rc=1; done
+  else
+    valid_kind "$1"; "$fn" "$1" "$(norm_lang "$1" "$2")" || rc=1
+  fi
+  return $rc
+}
+
+[[ $# -ge 1 ]] || { usage; exit 1; }
+sub="$1"; shift
+case "$sub" in
+  start)  [[ $# -eq 3 ]] || die "usage: ss start <kind> <lang> <id>";  cmd_start "$@" ;;
+  check)  [[ $# -ge 2 ]] || die "usage: ss check <kind> <lang> [id]";  cmd_check "$@" ;;
+  diff)   [[ $# -eq 3 ]] || die "usage: ss diff <kind> <lang> <id>";   cmd_diff "$@" ;;
+  show)   [[ $# -eq 3 ]] || die "usage: ss show <kind> <lang> <id>";   cmd_show "$@" ;;
+  reveal) [[ $# -eq 3 ]] || die "usage: ss reveal <kind> <lang> <id>"; cmd_reveal "$@" ;;
+  reset)  [[ $# -eq 3 ]] || die "usage: ss reset <kind> <lang> <id>";  cmd_reset "$@" ;;
+  list)   fan_out cmd_list "$@" ;;
+  score)  fan_out cmd_score "$@" ;;
+  verify) fan_out verify_kind_lang "$@" ;;
+  bench)  strict=""; blang=""
+          for arg in "$@"; do
+            case "$arg" in
+              --assert) strict=1 ;;
+              -*)       die "unknown flag '$arg' (want: --assert)" ;;
+              *)        blang="$arg" ;;
+            esac
+          done
+          if [[ -n "$blang" ]]; then
+            printf '%s\n' "${BLD}$blang${RST}"; cmd_bench "$blang" "$strict"
+          else
+            rc=0
+            for l in $(langs_predict); do printf '%s\n' "${BLD}$l${RST}"; cmd_bench "$l" "$strict" || rc=1; done
+            exit $rc
+          fi ;;
+  where)  cmd_where ;;
+  -h|--help|help) usage ;;
+  *)      die "unknown subcommand '$sub'" ;;
+esac

@@ -93,12 +93,47 @@ jobs:
       # same thing three runs in a row. Nondeterministic output cannot be
       # predicted, so it fails the build.
       - name: Verify snippets are runnable and deterministic
-        run: practice/predict/bin/lr verify
+        run: practice/bin/ss verify predict
 
       # Wall time and peak RSS against the ceilings in budgets.tsv. This
       # catches a snippet that regressed into doing real work, not slow CI.
       - name: Assert cost budgets
-        run: practice/predict/bin/lr bench --assert
+        run: practice/bin/ss bench --assert
+
+  build-exercises:
+    name: Build Exercises
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+          cache: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install
+
+      # Every build exercise's reference implementation must pass its own
+      # assertions, and must carry solution markers so `ss start` can stub it.
+      # A reference that does not hold up is not a reference.
+      #
+      # Only the languages whose toolchains are present are verified. zig and
+      # scala are not installed on the runner image, and `ss verify` reports
+      # nothing for a language with no exercises yet, so this stays honest
+      # rather than silently green.
+      - name: Verify reference implementations
+        run: |
+          set -euo pipefail
+          for lang in c cpp rust go java python typescript; do
+            practice/bin/ss verify build "$lang"
+          done
 
   book:
     name: Book PDF
