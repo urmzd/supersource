@@ -245,13 +245,12 @@ Three kinds of exercise, distinguished only by what you produce:
 
 **[Predict-then-run](practice/predict/)** is the retention drill and the place to start: 24 snippets across Go, Rust, Python, and TypeScript where you write the exact expected output *before* running, and the diff tells you which part of your mental model is wrong. Every snippet is checked in CI for determinism, wall time, and peak memory.
 
-**[Build](practice/build/)** is 10 graded exercises per language across 9 languages, covering data structures, algorithms, concurrency, and language-specific idioms. Each reference implementation is standard library only and passes its own assertions in CI.
+**[Build](practice/build/)** is 10 graded exercises per language, covering data structures, algorithms, concurrency, and language-specific idioms. Each reference implementation is standard library only and passes its own assertions in CI.
 
-| Tier | Languages | Focus |
-|------|-----------|-------|
-| **Systems** | [C](practice/build/systems/c/), [C++](practice/build/systems/cpp/), [Rust](practice/build/systems/rust/), [Zig](practice/build/systems/zig/) | Memory management, performance, hardware awareness |
-| **Cloud** | [Go](practice/build/cloud/go/), [Scala](practice/build/cloud/scala/), [Java](practice/build/cloud/java/) | Distributed systems, concurrency, JVM/runtime |
-| **General** | [Python](practice/build/general/python/), [TypeScript](practice/build/general/typescript/) | Rapid prototyping, type systems, full-stack |
+| | Languages | Focus |
+|---|-----------|-------|
+| **Core** | [Go](practice/build/cloud/go/), [Rust](practice/build/systems/rust/), [Python](practice/build/general/python/), [TypeScript](practice/build/general/typescript/), [C](practice/build/systems/c/), [C++](practice/build/systems/cpp/) | What the curriculum targets, and what CI verifies |
+| **Optional** | [Zig](practice/build/systems/zig/), [Scala](practice/build/cloud/scala/), [Java](practice/build/cloud/java/) | Worth doing, but not in use here; excluded from the default run |
 
 ### From-Scratch Implementations
 

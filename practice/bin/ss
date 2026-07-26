@@ -67,15 +67,56 @@ KINDS="predict build reattempt"
 # ---------------------------------------------------------------------------
 
 langs_predict()   { echo "go rust python ts"; }
-langs_build()     { echo "c cpp rust zig go scala java python typescript"; }
 langs_reattempt() { echo "algorithms case-studies"; }
+
+# Build languages are split by whether they are actually used here.
+#
+# Core is what the curriculum targets and what CI verifies. Optional languages
+# are still fully supported by every command, and `ss <verb> build <lang>` works
+# on them, but they are left out of the no-argument fan-out so that a missing
+# toolchain is never a failure in a run you did not ask for.
+langs_build_core()     { echo "go rust python typescript c cpp"; }
+langs_build_optional() { echo "zig scala java"; }
+langs_build()          { echo "$(langs_build_core) $(langs_build_optional)"; }
 
 langs_for() {
   case "$1" in
     predict)   langs_predict ;;
-    build)     langs_build ;;
+    build)     langs_build_core ;;   # fan-out default; see langs_build above
     reattempt) langs_reattempt ;;
   esac
+}
+
+# Every language, for validation and for `ss where`.
+langs_all_for() {
+  case "$1" in
+    build) langs_build ;;
+    *)     langs_for "$1" ;;
+  esac
+}
+
+is_optional_lang() {
+  case " $(langs_build_optional) " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+# The command that proves a language's toolchain is actually usable.
+#
+# Note java: `command -v javac` is not enough, because macOS ships
+# /usr/bin/javac as a stub that exists, is executable, and only prints
+# "Unable to locate a Java Runtime". The probe has to RUN it.
+toolchain_probe() {
+  case "$1" in
+    c)          cc --version ;;
+    cpp)        c++ --version ;;
+    rust)       rustc --version ;;
+    go)         go version ;;
+    python)     uv --version ;;
+    typescript) node --version ;;
+    zig)        zig version ;;
+    scala)      scala-cli version ;;
+    java)       javac -version ;;
+    *)          return 0 ;;
+  esac >/dev/null 2>&1
 }
 
 # Canonical spelling for a language within a kind.
@@ -100,9 +141,9 @@ valid_kind() {
 
 valid_lang() {
   local kind="$1" l="$2"
-  case " $(langs_for "$kind") " in
+  case " $(langs_all_for "$kind") " in
     *" $l "*) ;;
-    *) die "unknown $kind language '$l' (want: $(langs_for "$kind"))" ;;
+    *) die "unknown $kind language '$l' (want: $(langs_all_for "$kind"))" ;;
   esac
 }
 
@@ -608,6 +649,19 @@ verify_predict() {
 verify_build() {
   local lang="$1" name d out rc=0 dupes
 
+  # An absent toolchain is reported as a skip rather than a failure, and says
+  # what to install. Optional languages are not installed by default, so a
+  # compile error from a missing compiler would otherwise look like a broken
+  # exercise.
+  if ! toolchain_probe "$lang"; then
+    if is_optional_lang "$lang"; then
+      echo "${DIM}skip${RST}  build/$lang (toolchain not installed; it is optional here)"
+      return 0
+    fi
+    echo "${RED}FAIL${RST}  build/$lang (toolchain not installed, and this language is core)"
+    return 1
+  fi
+
   # Two exercises sharing a numeric prefix make `ss start build <lang> 03`
   # ambiguous: resolve_name takes the first match, so one of them becomes
   # unreachable from the CLI. Catch it here rather than letting someone wonder
@@ -746,12 +800,23 @@ cmd_where() {
   printf '%-12s %s%s\n' scratchpad "$SCRATCH" "$([[ -d "$SCRATCH" ]] || echo "  ${DIM}(not created yet)${RST}")"
   printf '%-12s %s\n' manifest "$(rel "$MANIFEST")"
   echo
-  local kind lang
+  local kind lang tag
   for kind in $KINDS; do
-    for lang in $(langs_for "$kind"); do
-      printf '  %-10s %-12s %s exercises\n' "$kind" "$lang" "$(all_names "$kind" "$lang" | wc -l | tr -d ' ')"
+    for lang in $(langs_all_for "$kind"); do
+      if [[ "$kind" == build ]] && is_optional_lang "$lang"; then
+        if toolchain_probe "$lang"; then tag="${DIM}optional${RST}"; else tag="${DIM}optional, no toolchain${RST}"; fi
+      elif ! toolchain_probe "$lang"; then
+        tag="${RED}toolchain missing${RST}"
+      else
+        tag=""
+      fi
+      printf '  %-10s %-12s %2s exercises  %s\n' \
+        "$kind" "$lang" "$(all_names "$kind" "$lang" | wc -l | tr -d ' ')" "$tag"
     done
   done
+  echo
+  printf '  %s\n' "${DIM}core build languages:     $(langs_build_core)${RST}"
+  printf '  %s\n' "${DIM}optional build languages: $(langs_build_optional) (excluded from bare 'ss verify build')${RST}"
 }
 
 usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "${BASH_SOURCE[0]}"; }

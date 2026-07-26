@@ -86,14 +86,44 @@ on it.
 Ten per language, ordered by concept rather than by difficulty, so read the
 stars and not the numbers.
 
-| Tier | Languages | Focus |
-|------|-----------|-------|
-| Systems | [C](build/systems/c/), [C++](build/systems/cpp/), [Rust](build/systems/rust/), [Zig](build/systems/zig/) | Manual memory, hardware, performance |
-| Cloud | [Go](build/cloud/go/), [Scala](build/cloud/scala/), [Java](build/cloud/java/) | Concurrency, distribution, runtimes |
-| General | [Python](build/general/python/), [TypeScript](build/general/typescript/) | Type systems, metaprogramming, prototyping |
-
 Standard library only unless an exercise says otherwise. The point is to write
 the thing, not to find the crate that already did.
+
+### Core
+
+The languages this curriculum actually targets. `ss verify build` with no
+argument covers exactly these, and so does CI.
+
+| Language | Focus | References |
+|----------|-------|-----------|
+| [Go](build/cloud/go/) | Concurrency, channels, interfaces | 0/10 |
+| [Rust](build/systems/rust/) | Ownership, lifetimes, zero-cost abstractions | 0/10 |
+| [Python](build/general/python/) | Data model, metaprogramming, asyncio | 0/10 |
+| [TypeScript](build/general/typescript/) | Type narrowing, generics, runtime safety | 0/10 |
+| [C](build/systems/c/) | Manual memory, pointers, undefined behaviour | 10/10 |
+| [C++](build/systems/cpp/) | RAII, templates, move semantics | 10/10 |
+
+### Optional
+
+Kept because the exercises are worth doing, not because the languages are in
+use here. Every command works on them by name, but they are left out of the
+bare fan-out so a toolchain you have not installed is never a failure in a run
+you did not ask for.
+
+| Language | Focus | Toolchain |
+|----------|-------|-----------|
+| [Zig](build/systems/zig/) | Comptime, explicit allocators, C interop | `brew install zig` |
+| [Scala](build/cloud/scala/) | FP plus OOP, type system, given instances | `brew install scala-cli` |
+| [Java](build/cloud/java/) | JVM internals, virtual threads, generics | `mise` plus a `.mise.toml` pin |
+
+On a chezmoi-managed machine all three come from the `install_alt_langs` flag,
+which is off by default.
+
+```bash
+ss verify build              # core only
+ss verify build zig          # by name, and skips cleanly if zig is absent
+ss where                     # which languages are core, optional, or missing a toolchain
+```
 
 **Reference implementations are being filled in incrementally.** `ss list build`
 shows what is ready right now; an exercise with no directory yet is a table row
