@@ -4,6 +4,8 @@ Where you *run* an LLM. This maps the inference/serving ecosystem across languag
 
 > Parent topic: [LLM Systems & Inference](../). Quantization formats these frameworks consume are in [Quantization: Math → Code](../quantization/). Runnable examples: [`code/`](code/).
 
+> For deployment choices and operating costs, see [LLM Serving Platforms](../routing-and-reproducibility.md): Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter.
+
 ## Overview
 
 - **Primary references** (all free): [llama.cpp](https://github.com/ggml-org/llama.cpp) + [ggml](https://github.com/ggml-org/ggml), [candle](https://github.com/huggingface/candle) docs, [mistral.rs](https://github.com/EricLBuehler/mistral.rs), [ZML](https://github.com/zml/zml), [vLLM](https://docs.vllm.ai/) / [SGLang](https://github.com/sgl-project/sglang) / [TGI](https://huggingface.co/docs/text-generation-inference) docs
