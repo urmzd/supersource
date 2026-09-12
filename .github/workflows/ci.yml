@@ -47,6 +47,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Install memory measurement dependency
+        run: sudo apt-get install -y time
+
       - name: Run tests
         run: uv run pytest || echo "No tests found, skipping"
         continue-on-error: true
@@ -88,6 +91,14 @@ jobs:
       # 2024 (Rust 1.85+), which every current image satisfies.
       - name: Show toolchain versions
         run: go version && rustc --version && node --version && uv --version
+
+      # The memory probe needs GNU time to avoid charging the Python
+      # launcher's inherited RSS to small native snippets on Linux.
+      - name: Install memory measurement dependency
+        run: sudo apt-get install -y time
+
+      - name: Verify memory measurement
+        run: python3 -m unittest discover -s practice/predict/bin -p 'test_measure.py'
 
       # Every snippet must build, exit zero, print something, and print the
       # same thing three runs in a row. Nondeterministic output cannot be

@@ -155,7 +155,12 @@ Wall time is the *minimum* of five runs, because every source of noise makes a
 run slower and never faster. Memory is the *peak* RSS across those runs, because
 peak is what gets a process killed. [`bin/measure.py`](bin/measure.py) does the
 measuring and normalises the platform difference in `ru_maxrss` (bytes on macOS,
-kilobytes on Linux) that would otherwise be a factor-of-1024 error.
+kilobytes on Linux) that would otherwise be a factor-of-1024 error. On Linux,
+it requires GNU `/usr/bin/time` (the `time` package): measuring the Python
+harness's immediate child includes inherited launcher memory and falsely
+inflates small native programs. GNU time measures its own child after the
+Python launcher has been replaced. Wall time includes this small wrapper
+overhead; the memory ceilings remain unchanged.
 
 Two rules keep the numbers honest:
 
