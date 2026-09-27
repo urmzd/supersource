@@ -22,7 +22,8 @@ and records the sequence it was built in.
   price-time priority is cheap; knowing to write the O(n) version first and earn
   the heap is what actually separates outcomes under time pressure.
 - **Every study has one invariant that makes testing possible.** A crossed book,
-  a double-fired event, an unbounded query, a rising inertia. Find that property
+  a double-fired event, an unbounded query, a rising inertia, a record that
+  does not replay. Find that property
   and validation stops being guesswork.
 - **The interesting decisions are refusals.** Not adding durability, not letting
   the model be the safety boundary, not shipping exactly-once. Each study states
@@ -45,10 +46,11 @@ and records the sequence it was built in.
 | 02 | [Grounded SQL Agent](02-grounded-sql-agent/) | LLM tool loops, grounding, and safety | [`safety_gate.py`](02-grounded-sql-agent/safety_gate.py) |
 | 03 | [Exactly-Once Event API](03-exactly-once-event-api/) | API design and processing guarantees | [`event_api.py`](03-exactly-once-event-api/event_api.py) |
 | 04 | [K-Means Optimization](04-kmeans-optimization/) | Optimising an algorithm in tiers | [`kmeans_ladder.py`](04-kmeans-optimization/kmeans_ladder.py) |
+| 05 | [Agent Evaluation Harness](05-agent-eval-harness/) | Grading an agent that changes state | [`eval_harness.py`](05-agent-eval-harness/eval_harness.py) |
 
 ## The Shared Shape
 
-Three of the four studies are the same move applied to different domains: build
+Four of the five studies are the same move applied to different domains: build
 the obvious correct version, name its bottleneck precisely, then earn each
 improvement.
 
@@ -58,6 +60,7 @@ improvement.
 | K-means | Random init, fixed iterations | k-means++, then incremental updates and distance bounds | Nothing algorithmic; only code complexity |
 | SQL agent | One tool, no grounding | Schema discovery, bounded retry, deterministic gate | Tokens per query, and latency |
 | Event API | Check-then-act dedup | Constraint dedup, then atomic claim | Nothing; the correct version is also simpler |
+| Eval harness | Compare final rows | Replay verification, then oracles and mutants | Storage per call, and a suite to maintain |
 
 The last row is worth sitting with. Dedup done properly is *less* code than
 dedup done by checking first, and it is correct under concurrency. Not every
