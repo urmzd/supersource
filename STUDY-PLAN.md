@@ -255,7 +255,7 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 
 ---
 
-## AI Platform Engineering (23-33 weeks)
+## AI Platform Engineering (25-35 weeks)
 
 ~8-10 hours per week. **Patterns-first**: the goal is to internalize the fundamental patterns (like math, everything downstream is derivative) and treat each trendy tool as an instance. Requires [Deep Learning](ml/02-deep-learning/) and [LLM Systems](ml/04-llm-systems/), plus [System Design](systems/01-system-design/) and [Data Engineering](data-engineering/) foundations (OLTP vs OLAP, replication). Tip: [Coding & Design Patterns](ai-platform-engineering/06-coding-and-design-patterns/) can be read first as vocabulary.
 
@@ -322,7 +322,14 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 | 27 | Realtime/streaming encoders: offline vs causal/chunked; speech (Whisper offline, Conformer/RNN-T streaming); real-time factor | Whisper + Conformer papers |
 | 28 | Efficiency architectures (the Mistral clinic): sliding-window attention, GQA, Mixtral MoE, Codestral Mamba/SSM, Voxtral | Mistral 7B + Mixtral + Mamba papers |
 
-### Optional deep dive (weeks 29-33)
+### Weeks 29-30: Model Routing & Cascades
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 29 | The three routing decisions; router families (rules, predictive, cascade, verifier-gated, session-level); oracle vs deployed router; model recall | RouteLLM + FrugalGPT + LLMRouterBench |
+| 30 | Cache-aware switching, escalation policy (category, verifier, confidence), token-basis economics, the SFT/DPO/RFT ladder, evaluating a router | FireRouter docs + RFT docs |
+
+### Optional deep dive (weeks 31-35)
 
 LLM-as-judge & Elo arenas, RAG metrics (faithfulness, context precision/recall, NDCG/MRR), agent metrics (TTFT/TTLT, tool success), and building a composable `Scorer` eval harness gated in CI. References: Ragas, Chatbot Arena, lm-evaluation-harness, saige `eval/`.
 
