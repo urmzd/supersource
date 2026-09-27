@@ -121,7 +121,7 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 - **Why SLMs (≈1-8B)**: cheap to fine-tune, fast to serve, fit on one GPU (or CPU/edge when quantized), and *good enough* — or better — on narrow tasks. The platform default when you don't need a frontier model.
 - **Getting a good SLM**:
   - **Distillation**: train the small model to match a large teacher's outputs (logits or generated data) — transfer capability into a cheaper package.
-  - **Fine-tuning**: supervised fine-tuning (SFT) on task data; preference tuning (DPO) for behavior.
+  - **Fine-tuning**: choose by the signal you have. **SFT** needs input and correct-output pairs. **DPO** needs chosen-versus-rejected pairs. **RFT** (reinforcement fine-tuning) needs a scorer that returns a reward, so it fits verifiable tasks where you have no gold answers; watch for reward hacking. The ladder, with worked examples, is in [Model Routing & Cascades §9](../11-model-routing-and-cascades/).
   - **PEFT / LoRA / QLoRA**: freeze the base model, train small low-rank adapter matrices. QLoRA fine-tunes a 4-bit-quantized base, so a 7B model tunes on a single consumer GPU. Adapters are tiny (MBs) and swappable — serve many tasks from one base.
 - **Quantize for serving**: GPTQ/AWQ/bitsandbytes shrink the SLM further (see [Quantization](../../ml/04-llm-systems/quantization/)).
 - **The build-vs-buy decision**: a fine-tuned SLM trades a fixed training cost for a much lower per-token serving cost and no vendor dependency — the core platform economics calculation.
@@ -150,6 +150,9 @@ The four axes of parallelism (you combine them — "3D parallelism" is TP × PP 
 | Huge model across nodes | 3D parallelism (TP×PP×DP), Megatron |
 | Cheap retrieval for RAG | Fine-tuned embedding model + vector store |
 | Cheap, fast, narrow task | SLM + QLoRA + quantization |
+| Labelled input and output pairs | SFT |
+| Preference pairs (accepted vs rejected) | DPO |
+| A verifiable outcome, no gold answers | RFT, with your eval as the reward |
 
 ## Patterns Worth Internalizing
 
