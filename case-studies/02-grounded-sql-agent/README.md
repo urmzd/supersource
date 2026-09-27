@@ -183,6 +183,95 @@ An agent that reports "I found 5 genres" after its query returned 3 rows is
 reporting an intention. Systems that trust the narration are the ones that
 confidently return numbers nobody ran.
 
+## 7. What the public benchmarks can and cannot tell you
+
+Ten questions on a sample schema prove an approach. They do not predict accuracy
+on a customer's warehouse, and neither do the public leaderboards. Figures below
+were reviewed September 26, 2026.
+
+**The scores.**
+
+| Benchmark | What it is | Reported results |
+|-----------|-----------|------------------|
+| [BIRD](https://bird-bench.github.io/) | 12,751 question and SQL pairs, 95 databases, 37 domains, scored by execution accuracy | Human baseline 92.96%. Gemini-SQL2, announced June 12, 2026 on Gemini 3.1 Pro, leads the single-model track at 80.04% |
+| [Spider 2.0](https://arxiv.org/abs/2411.07763) | 632 enterprise workflow tasks; schemas often over 1,000 columns; BigQuery and Snowflake dialects | At release an o1-preview agent solved 21.3%, against 91.2% on Spider 1.0 and 73.0% on BIRD |
+
+Two details in the BIRD table matter more than the top line:
+
+- **General frontier models trail.** On the single-model track, GPT-5.5 and
+  Claude Opus 4.6 were reported at roughly 70 to 73%, twenty points or more
+  under the human baseline.
+- **Specialised mid-size models sit above them.** Three tuned 32B systems
+  from data platform vendors were reported between about 74% and 76%. A
+  narrow model trained for the task beats a larger general one, which is the
+  same economic argument as section 1 arriving from a different direction.
+
+Gemini-SQL2 was announced with a score and no paper, method, or public model
+ID. A number without a method is a claim to track, not a technique to copy.
+
+**Why models fail on real schemas.** The Spider 2.0 authors and the BIRD
+results point at the same causes:
+
+| Cause | What it looks like |
+|-------|--------------------|
+| Schema linking at scale | The right three columns out of three thousand |
+| Business logic outside the schema | "Active customer" is defined in a wiki, not a table |
+| Value grounding | The filter is `'BR'`, the question said "Brazil" |
+| Dialect | A function that exists in one engine and not another |
+| Ambiguity | The question has two defensible readings |
+| Multi-step workflows | Several dependent queries, over 100 lines |
+
+None of these is fixed by a larger model alone. They are retrieval, grounding,
+and specification problems, which is why this study spends its effort on schema
+tools and an eval harness instead of on model choice.
+
+**The gold answers are often wrong.** An audit published at CIDR 2026,
+[*Text-to-SQL Benchmarks are Broken*](https://www.vldb.org/cidrdb/papers/2026/p5-jin.pdf),
+found annotation errors in 52.8% of BIRD Mini-Dev problems and in 66.1% of the
+121 Spider 2.0-Snow problems with published gold SQL. Re-scoring five leading
+agents on a corrected sample of 100 BIRD Dev problems moved results by -2 to
++19 points and reordered the ranking: one agent went from 62% to 81% and from
+fourth to first.
+
+| Error pattern | Meaning | Share in BIRD Mini-Dev |
+|---------------|---------|------------------------|
+| E1 | Gold SQL does not match the question's logic | 29.3% |
+| E2 | Gold SQL misreads the data or schema | 57.8% |
+| E3 | Gold SQL contradicts domain knowledge | 10.7% |
+| E4 | The question is ambiguous | 29.7% |
+
+Read leaderboards with that in mind. Matching a flawed answer key is not the
+same as answering correctly, and a system tuned to the key can score above a
+system that is right. The Spider 2.0-Snow leaderboard now lists entries above
+96%; hold that next to the audit before drawing a conclusion from either.
+
+**Clean data moved the ceiling more than pipeline engineering did.** A
+follow-up from the same group,
+[*Human-Level Text-to-SQL via Reinforcement Learning on Verified Data*](https://arxiv.org/abs/2603.20004),
+corrected 61% of a 2.5k-instance training sample and reports reaching the
+92.96% human baseline on an expert-verified version of BIRD by fine-tuning with
+verifiable rewards, without a multi-stage pipeline. It also names two failure
+modes that apply to any harness built like the one in section 5:
+
+- **Result-based rewards have false positives.** A wrong query can return the
+  right rows on a small database. Result-set equivalence is necessary and not
+  sufficient; add a second check on hard cases.
+- **Models ignore supplied knowledge.** Given a definition alongside the
+  question, the model often does not use it. Score whether the hint was
+  applied, not only whether the rows matched.
+
+**What to do with this.**
+
+1. Build a private eval set on the customer's own schema. Public sets leak
+   into training and carry errors you cannot see.
+2. Audit your own gold answers. If published benchmarks are half wrong, a
+   hand-written set of fifty is not exempt.
+3. Report the denominator. "10/10 on ten public questions" is an honest
+   sentence. "100% accurate" is not.
+4. Treat a verified eval set as the asset. It is the regression gate today and
+   the reward function for fine-tuning later; see
+   [Model Routing & Cascades §9](../../ai-platform-engineering/11-model-routing-and-cascades/).
+
 ## Build Log
 
 1. **The eval set first.** Ten questions with gold answers, and a scorer that
@@ -213,6 +302,7 @@ existed before the architecture did.
 |-----------|---------------|
 | Ablate the grounding | Any RAG or tool-augmented system, to prove retrieval earns its cost |
 | Ask what the benchmark leaks | Any public dataset a model may have memorised |
+| Audit the gold answers | Any eval set, public or your own, before trusting a score |
 | Deterministic gate before execution | Any generated code, query, or command that will run |
 | Allowlist, not denylist | Any classifier where unknown input must fail closed |
 | Lex before you match keywords | Any rule applied to code or query text |
@@ -228,6 +318,7 @@ existed before the architecture did.
 |---------|-----------------|-----|
 | Eval harnesses, scoring, LLM-as-judge | [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/) | The theory this study applies |
 | Schema retrieval at warehouse scale | [Retrieval & RAG](../../ai-platform-engineering/07-retrieval-and-rag/) | Where schema discovery becomes retrieval |
+| Escalation, cascades, tuning on eval rewards | [Model Routing & Cascades](../../ai-platform-engineering/11-model-routing-and-cascades/) | Bounded retry generalised to model tiers |
 | Least privilege, defence in depth | [Authorization & Access Control](../../ai-platform-engineering/08-authorization-and-access-control/) | Why the database role is the real control |
 | Tool loops, streaming, token budgets | [Streaming & SSE](../../ai-platform-engineering/03-streaming-sse/) | The delivery half of the same agent |
 | Test doubles and deterministic tests | [The Testing Mentality](../../software-craftsmanship/03-testing-mentality/) | Testing a system with a stochastic component |
