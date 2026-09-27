@@ -3,7 +3,7 @@
 ## Overview
 
 - **Primary references** (all free): [RouteLLM paper](https://arxiv.org/abs/2406.18665) + [LMSYS write-up](https://www.lmsys.org/blog/2024-07-01-routellm/), [FrugalGPT](https://arxiv.org/abs/2305.05176), [LLMRouterBench](https://arxiv.org/abs/2601.07206) (Findings of ACL 2026)
-- **Supplementary**: [FireRouter docs](https://docs.fireworks.ai/ecosystem/firerouter/overview), Fireworks' [*The Frontier Isn't a Model, It's a Router*](https://fireworks.ai/blog/the-frontier-isnt-a-model-its-a-router), [OpenRouter Auto Router](https://openrouter.ai/docs/guides/routing/routers/auto-router), [Fireworks reinforcement fine-tuning docs](https://docs.fireworks.ai/fine-tuning/reinforcement-fine-tuning-models)
+- **Supplementary**: [FireRouter docs](https://docs.fireworks.ai/ecosystem/firerouter/overview), Fireworks' [*The Frontier Isn't a Model, It's a Router*](https://fireworks.ai/blog/the-frontier-isnt-a-model-its-a-router), [OpenRouter Auto Router](https://openrouter.ai/docs/guides/routing/routers/auto-router), [Fireworks reinforcement fine-tuning docs](https://docs.fireworks.ai/fine-tuning/reinforcement-fine-tuning-models), [TypeSafe System One docs](https://docs.typesafe.ai/concepts/system-one), [System One Models](https://systemonemodels.org/) (independent directory), Fireworks' [Specialized Intelligence Index](https://fireworks.ai/blog/introducing-the-specialized-intelligence-index)
 - **Prerequisites**: [LLM Evaluation](../09-llm-evaluation/) (harnesses, precision and recall), [LLM Systems & Inference](../../ml/04-llm-systems/) (prefill, KV cache, prompt caching), [Training & Frameworks](../01-training-and-frameworks/) (SFT, LoRA)
 - **Estimated time**: 1-2 weeks at 8-10 hrs/week
 - **Sources reviewed**: September 26, 2026. Vendor numbers and product behaviour change; treat every figure below as dated.
@@ -17,6 +17,8 @@
 - **A model switch can cost more than it saves.** Changing models abandons the prompt cache. A router that ignores cache state optimises the sticker price and raises the bill.
 - **Escalate on category or on a verifier, not on model confidence alone.** Confidence is produced by the thing you are trying to check, and untrusted input can move it.
 - **The router is a small share of the cost and decides the rest.** That makes precision the adoption metric and the labelled set the durable asset.
+- **A decision is not a generation.** Routing, gating, and scoring have a closed answer set. A model that returns a typed choice with a probability fits that job better than one that writes text you then parse.
+- **The pool is filling with specialised models.** Open bases post-trained on a verifiable reward now sit beside general frontier models, and they are often the cheap tier worth routing to.
 
 ## How to Study
 
@@ -242,6 +244,115 @@ What is not published, as reviewed: the features the router uses, its training d
 
 Notice the design choices against the sections above: per-turn granularity (section 5), cache awareness (section 6), and a user-set preference in place of a hidden threshold (section 2).
 
+## 12. System One Decision Models
+
+A category named on September 15, 2026, when TypeSafe AI announced Jev. The
+name borrows Kahneman's fast, intuitive System 1. It is days old as of this
+review, so treat every number here as vendor-reported and unreplicated.
+
+**Definition.** A decision model takes content plus a typed question and
+returns a typed answer, a probability for every option, and a confidence value.
+It does not write text. It produces all outputs in one forward pass instead of
+a token-by-token loop.
+
+| Primitive | Question shape | Returns |
+|-----------|----------------|---------|
+| **Choice** | Pick one of a listed set, up to 255 options | The selection and a probability per option |
+| **Score** | Place content on an ordered scale of 2 to 10 levels | A probability-weighted position |
+| **Noul** | Yes or no | One probability from 0 to 1 |
+
+**Why it belongs in a routing track.** Every router in section 2 is a decision
+with a closed answer set. Three ways to make that decision, in order of how
+much machinery runs:
+
+| Approach | What runs | What you get |
+|----------|-----------|--------------|
+| LLM, free text | Full generation | A string to parse and validate |
+| LLM, structured output | Generation constrained to a schema | A valid shape; correctness not guaranteed |
+| Decision model | One pass, no generation | A typed value and a probability to threshold on |
+
+Structured output guarantees the shape. It does not give a trained,
+calibrated probability. The claimed advantage of a decision model lives in the
+probabilities, not in the types.
+
+**Calibration is the product.** Jev is described as trained with RLCD, a
+method that rewards honest probabilities: when the model says 0.8 it should be
+right about 80% of the time. Calibration is what makes confidence escalation
+from section 7 workable: act above a threshold, escalate below it. Measure it
+yourself with a reliability plot on your own labelled data before trusting a
+threshold.
+
+**What it cannot do, and what it still gets wrong.**
+
+- It cannot invent a value outside your option list. It can pick the wrong one.
+- Documented weak spots for Jev 1.13 include arithmetic and counting, dates
+  treated as text instead of ordered quantities, and literal reading of
+  questions, where scoping words and double negatives change the answer.
+- It reads supplied text as data, and prompt injection is listed as a weakness.
+  Section 7 still applies: on untrusted input, category rules outrank any
+  probability.
+
+**The field, as listed by an independent directory.**
+
+| Model | Vendor | Announced | Access |
+|-------|--------|-----------|--------|
+| Jev 1.13 | TypeSafe AI | Sep 15, 2026 | Hosted API |
+| Kev (0.8B, 4B, 9B) | Jared Palmer | Sep 17, 2026 | Apache 2.0 |
+| Laya | Convai Innovations | Sep 18, 2026 | Apache 2.0 |
+| Tev1-4B | Together AI | Sep 23, 2026 | Hosted API |
+| CLM-8B | Contrastive-LM | Sep 23, 2026 | Apache 2.0 |
+| GLiNER2.5-Decide (340M) | Fastino Labs | Sep 24, 2026 | Apache 2.0 |
+
+Reported figures: Jev at $0.042 per million input tokens with output free, and
+70 to 500 ms per decision. TypeSafe has not published Jev's architecture, its
+training data, or the RLCD method. The open reproductions use their own
+training recipes, so they test the interface, not the method.
+
+**How to evaluate one.** Same harness as section 10, plus calibration. Compare
+against two baselines you already own: a small LLM with structured output, and
+a fine-tuned encoder classifier. If a 300M-parameter classifier trained on your
+labels matches it, you did not need a new category.
+
+## 13. What Goes in the Pool: Specialised Models
+
+A router is only as good as its candidates. The open-weight-only oracle in
+section 3 reached 90.3%, which says the cheap tier is no longer a fallback. The
+models filling that tier are open bases post-trained for one job. Figures below
+are vendor-reported, from Fireworks' own posts.
+
+| Model | Base | How it was built | Reported result |
+|-------|------|------------------|-----------------|
+| **Ember-1** (research preview, Sep 23, 2026) | Kimi K3 | Over 50 training experiments and 200 evaluations | About 40% fewer tokens than the base at comparable quality; 75.2% against 66.4% on DeepSWE 1.1 |
+| **Gen-1 Slides** (with Genspark) | MiniMax M3 | SFT on curated decks, then RL on a curriculum of growing context length | Low-rated decks cut from 18% to 3.6%; about 90% lower cost per deck than Opus 5 |
+| **dfs-large1** (depthfirst) | GLM 5.2 | Post-trained with RL | Reported as a new Pareto frontier on a security benchmark |
+| **FARE-20B** | gpt-oss-20B | Rejection-sampled SFT on a multi-domain set | A multi-task evaluator: pairwise, step-level, reference-based and reference-free scoring |
+| **FireFunction** | Open base | Additional training for tool use | Function calling |
+
+Four patterns repeat across that table:
+
+1. **SFT first, RL second.** Supervised data teaches the format; a reward
+   teaches judgment. This is the ladder in section 9, applied to the worker
+   instead of the router.
+2. **Token efficiency is a training target.** Ember-1 optimises how many
+   tokens a task consumes, not only whether it succeeds. Cost per successful
+   task falls even when accuracy is flat.
+3. **The evaluator is a model too.** FARE-20B exists because every reward and
+   every eval needs a scorer. A tuned evaluator is infrastructure.
+4. **Long-horizon RL is an engineering problem.** The Gen-1 write-up names
+   sequence-level rewards, alignment of tokenization between inference and
+   training, and numerical stability on episodes over 100,000 tokens.
+
+**Benchmark scores overstate deployed value.** The Specialized Intelligence
+Index cites a METR review of 296 AI-generated pull requests in which maintainer
+acceptance averaged 24.2 points below the automated benchmark score. The same
+caution as section 7 of the
+[Grounded SQL Agent](../../case-studies/02-grounded-sql-agent/): a score is a
+capability claim, and a business outcome is a separate measurement.
+
+**Check how a specialised model is served.** Several of these are on-demand
+only, which means dedicated capacity billed by GPU time. Section 8's warning
+applies before any of them enters a per-token cost model.
+
 ---
 
 ## Decision Cheat Sheet
@@ -257,6 +368,8 @@ Notice the design choices against the sections above: per-turn granularity (sect
 | Labelled routes exist | SFT on them, LoRA first |
 | A verifiable outcome and no gold answers | RFT with your eval as the reward |
 | A vendor shows an oracle chart | Ask for the deployed router's numbers on matched tasks |
+| A closed-set decision at high volume, thresholded in code | A decision model or a tuned classifier; verify calibration |
+| A narrow task with a verifiable reward and steady volume | A specialised post-trained model in the pool |
 
 ## Patterns Worth Internalizing
 
@@ -266,6 +379,7 @@ Notice the design choices against the sections above: per-turn granularity (sect
 - **Put the control outside the model.** Category rules and verifiers cannot be persuaded.
 - **The labelled set is the asset.** Models are replaced every few months; labels and harnesses are not.
 - **Small, complementary, curated.** Two or three well-chosen models beat a long list.
+- **Match the machinery to the answer space.** Closed set: decide. Open set: generate. Do not pay for generation to pick one of six labels.
 
 ## Connections to Other Tracks
 
@@ -286,4 +400,6 @@ Notice the design choices against the sections above: per-turn granularity (sect
 | OpenRouter | Gateway with provider selection, fallbacks, and optional model selection | Auto Router |
 | LMSYS / Anyscale | Preference-trained predictive routing | RouteLLM |
 | Stanford | Learned cascades with a scoring function | FrugalGPT |
+| TypeSafe AI / Together AI | Typed decisions with calibrated probabilities | Jev, Tev1 |
+| Fireworks with partners | Open base, SFT then RL, against a domain reward | Ember-1, Gen-1 Slides |
 | Any agent product | Category escalation and fail-open fan-out | Specialised subagents behind a classifier |

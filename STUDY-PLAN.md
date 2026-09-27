@@ -327,7 +327,7 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 | Week | Focus | Reference |
 |------|-------|-----------|
 | 29 | The three routing decisions; router families (rules, predictive, cascade, verifier-gated, session-level); oracle vs deployed router; model recall | RouteLLM + FrugalGPT + LLMRouterBench |
-| 30 | Cache-aware switching, escalation policy (category, verifier, confidence), token-basis economics, the SFT/DPO/RFT ladder, evaluating a router | FireRouter docs + RFT docs |
+| 30 | Cache-aware switching, escalation policy (category, verifier, confidence), token-basis economics, the SFT/DPO/RFT ladder, evaluating a router, System One decision models, specialised models in the pool | FireRouter docs + RFT docs + TypeSafe docs |
 
 ### Optional deep dive (weeks 31-35)
 
