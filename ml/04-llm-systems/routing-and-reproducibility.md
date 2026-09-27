@@ -169,4 +169,5 @@ Compare a fixed model, a fixed model with provider fallback, and a learned model
 - [LLM Systems & Inference](README.md)
 - [Inference Frameworks](frameworks/)
 - [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/)
+- [Model Routing & Cascades](../../ai-platform-engineering/11-model-routing-and-cascades/): router families, oracle versus deployed router, escalation policy, and decision models
 - [Training & Frameworks](../../ai-platform-engineering/01-training-and-frameworks/)

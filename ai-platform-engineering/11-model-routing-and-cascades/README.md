@@ -45,6 +45,8 @@ No single model is best at everything, and prices differ by more than an order o
 
 Pinning a model name does not pin the provider, the quantization, or the cache. Using a gateway does not mean a learned router chose the model. When someone says "we use routing," ask which of the three they mean.
 
+For where these decisions sit in a full serving stack, and how gateways, orchestrators, and inference engines differ, see [LLM Serving Platforms](../../ml/04-llm-systems/routing-and-reproducibility.md). This track covers the decision itself.
+
 ## 2. Router Families
 
 | Family | Decides | Signal | Extra cost | Main weakness |
@@ -387,6 +389,7 @@ applies before any of them enters a per-token cost model.
 |---------|-----------------|-------------|
 | Harness design, precision and recall, judges | [LLM Evaluation](../09-llm-evaluation/) | Measuring a routing policy |
 | Prefill, KV cache, serving cost | [LLM Systems & Inference](../../ml/04-llm-systems/) | Why a switch is expensive |
+| Gateways, engines, provider selection, reproducibility | [LLM Serving Platforms](../../ml/04-llm-systems/routing-and-reproducibility.md) | The layers a routed request passes through |
 | SFT, DPO, LoRA, small models | [Training & Frameworks](../01-training-and-frameworks/) | Tuning the router and the tiers |
 | Retrieval over a large candidate set | [Retrieval & RAG](../07-retrieval-and-rag/) | Routing across hundreds of specialists is ranking |
 | Deterministic gates, bounded retry | [Grounded SQL Agent](../../case-studies/02-grounded-sql-agent/) | Verifier-gated escalation in a real build |
