@@ -31,6 +31,9 @@ graph LR
     RAG --> EVAL
     TF --> EDGE[Edge, Realtime & On-Device]
     SSE --> EDGE
+    EVAL --> ROUTE[Model Routing & Cascades]
+    TF --> ROUTE
+    LLM --> ROUTE
 ```
 
 ## The Split: Three Different "Distributed" Problems
@@ -57,6 +60,7 @@ A recurring confusion is that "distributed X" is one topic. It is three, and thi
 | 08 | [Authorization & Access Control](08-authorization-and-access-control/) | RBAC/ABAC/ReBAC/NGAC, the pushdown ladder | [NIST RBAC/ABAC/NGAC](https://csrc.nist.gov/projects/role-based-access-control) + [Zanzibar](https://research.google/pubs/pub48190/) | 2-3 weeks |
 | 09 | [LLM Evaluation](09-llm-evaluation/) | Cross-entropy/perplexity/bits-per-byte, judges | [MacKay](http://www.inference.org.uk/mackay/itila/) + [HELM](https://crfm.stanford.edu/helm/) + [Ragas](https://docs.ragas.io/) | 2-3 weeks |
 | 10 | [Edge, Realtime & On-Device Inference](10-edge-realtime-inference/) | Deployment spectrum, streaming encoders, efficiency architectures | [llama.cpp](https://github.com/ggml-org/llama.cpp) + [Mistral 7B](https://arxiv.org/abs/2310.06825) + [Mamba](https://arxiv.org/abs/2312.00752) | 2-3 weeks |
+| 11 | [Model Routing & Cascades](11-model-routing-and-cascades/) | Oracle vs router, cascades, escalation, cache-aware switching | [RouteLLM](https://arxiv.org/abs/2406.18665) + [FrugalGPT](https://arxiv.org/abs/2305.05176) + [LLMRouterBench](https://arxiv.org/abs/2601.07206) | 1-2 weeks |
 
 ## Key Takeaways
 
@@ -70,6 +74,7 @@ A recurring confusion is that "distributed X" is one topic. It is three, and thi
 - **Authorization is a complexity-ladder problem.** Flat RBAC is a lookup; nested groups and hierarchies are *graph reachability* (pushdown, not finite-state) — which is why ReBAC/Zanzibar exist, and why secure RAG filters by permission *during* retrieval.
 - **Evaluation starts in information theory.** Cross-entropy = bits to predict the next token = compression; perplexity and bits-per-byte are re-normalizations. Intrinsic loss steers training; extrinsic evals (benchmarks, judges, RAG faithfulness) decide if it's good.
 - **Inference is a spectrum from datacenter to phone, and "realtime" is an architecture choice.** llama.cpp + GGUF is the end-to-end local path; streaming encoders must be causal/chunked; and Mistral's SWA, GQA, MoE, and Mamba/SSM variants are four different escapes from the vanilla transformer's cost curve.
+- **Routing is approximating an oracle you cannot have.** No model is best at everything, so a pool beats its best member, but only on paper. A real router chooses before the outcome exists, has to price the cache it abandons when it switches, and should escalate on category or a verifier, not on model confidence alone.
 
 ## How to Use This Track
 
@@ -77,5 +82,6 @@ A recurring confusion is that "distributed X" is one topic. It is three, and thi
 2. **Coming from backend / distributed systems**: [02 RPC](02-rpc-and-protocols/) → [04 Data & Caching](04-distributed-data-and-caching/) → [05 Orchestration](05-durable-orchestration-and-workers/), then loop to training.
 3. **Strengthening fundamentals**: start with [06 Coding & Design Patterns](06-coding-and-design-patterns/) — it's the vocabulary the other topics are written in.
 4. **Building a GenAI / RAG product**: [07 Retrieval & RAG](07-retrieval-and-rag/) + [01 §embeddings](01-training-and-frameworks/) + [03 Streaming & SSE](03-streaming-sse/) + [04 §caching](04-distributed-data-and-caching/), then [08 Authorization](08-authorization-and-access-control/) for secure/multi-tenant retrieval and [09 Evaluation](09-llm-evaluation/) to measure it.
+5. **Cutting an inference bill**: [09 Evaluation](09-llm-evaluation/) first, then [11 Model Routing & Cascades](11-model-routing-and-cascades/) and [01 §small language models](01-training-and-frameworks/). Build the harness before you change which model answers.
 
 See [Study Plan](../STUDY-PLAN.md) for the AI Platform Engineering schedule.
