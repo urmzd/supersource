@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.6.0 (2026-09-27)
+
+### Features
+
+- **practice**: assert wall time and peak memory per snippet ([ffb1b74](https://github.com/urmzd/supersource/commit/ffb1b74154ec199b05048edd77df17ef0d59933f))
+- **practice**: fill the predict harness with 24 verified snippets ([c08fea3](https://github.com/urmzd/supersource/commit/c08fea3522c5ec950703c304e13308fd0ccacbf9))
+- **practice**: add predict-then-run harness baseline ([ae50471](https://github.com/urmzd/supersource/commit/ae50471ea036db911c96443befb3e1df418f3c1e))
+- **programming-languages**: add Type Systems & Polymorphism track (#14) ([438d929](https://github.com/urmzd/supersource/commit/438d9295c7dad5940a210105c98a1cbfe1f6b7be))
+
+### Bug Fixes
+
+- **ci**: measure child RSS without Python launcher memory ([b1f3a00](https://github.com/urmzd/supersource/commit/b1f3a00ea4d0583e03af12cde526a2dbb1e0e9dc))
+
+### Misc
+
+- **platform**: cross-link routing track and serving platforms guide ([fc00373](https://github.com/urmzd/supersource/commit/fc003732f91740041b643f6018b0eaf38ee5cb5c))
+- **platform**: cover System One decision models and specialised models in the pool ([bd330ca](https://github.com/urmzd/supersource/commit/bd330ca8778a7119dca955f028950260df855954))
+- **case-studies**: explain what text-to-SQL benchmarks can and cannot tell you ([5ab5473](https://github.com/urmzd/supersource/commit/5ab54731e6694c48e9ea930cede7bf62257947cf))
+- **platform**: add Model Routing & Cascades track ([fda5cc7](https://github.com/urmzd/supersource/commit/fda5cc79e47292fd2df954816388100571755b94))
+- explain LLM serving platforms and routing trade-offs ([9fdcacb](https://github.com/urmzd/supersource/commit/9fdcacb6c251bb6414628de4a7c418d62e2862b9))
+- **case-studies**: add worked-build track consolidating four projects ([781847d](https://github.com/urmzd/supersource/commit/781847d084809ef186e4040ad26a9c7c65c08da6))
+- **craftsmanship**: add Lessons from Practice, consolidating the lessons archive ([426640d](https://github.com/urmzd/supersource/commit/426640d1d95bfcfa3b594feaa328cf9e17ce2c75))
+- bump GitHub Actions to Node 24 majors and switch app token to client-id ([0af765e](https://github.com/urmzd/supersource/commit/0af765e43b730c9f86012fec10f55a8e9618afcd))
+- bump setup-chrome to v2 for Node 24 support ([12673d4](https://github.com/urmzd/supersource/commit/12673d493b4aafbedad041769b91901aa2e49352))
+- pin setup-uv to v7 (no floating v8 major tag exists) ([b6c4188](https://github.com/urmzd/supersource/commit/b6c4188f0efddafb870ead127fff56a53fc4a3e6))
+- sync uv.lock to 0.5.0 and add it to sr stage_files ([bd61a10](https://github.com/urmzd/supersource/commit/bd61a1073526c0948c93f9af4b58c696b5d3e207))
+- bump all GitHub Actions to latest Node 24 majors ([0a92da2](https://github.com/urmzd/supersource/commit/0a92da2d01c2ca327e6acda915d54616a4fd5d7e))
+- bump checkout to v5 and setup-uv to v6 for Node 24 support ([b8ca677](https://github.com/urmzd/supersource/commit/b8ca6774728aa66717087f980c2ae0a625f6980f))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.5.0...v0.6.0)
+
+
 ## 0.5.0 (2026-06-14)
 
 ### Features
