@@ -60,7 +60,7 @@ A recurring confusion is that "distributed X" is one topic. It is three, and thi
 | 08 | [Authorization & Access Control](08-authorization-and-access-control/) | RBAC/ABAC/ReBAC/NGAC, the pushdown ladder | [NIST RBAC/ABAC/NGAC](https://csrc.nist.gov/projects/role-based-access-control) + [Zanzibar](https://research.google/pubs/pub48190/) | 2-3 weeks |
 | 09 | [LLM Evaluation](09-llm-evaluation/) | Cross-entropy/perplexity/bits-per-byte, judges | [MacKay](http://www.inference.org.uk/mackay/itila/) + [HELM](https://crfm.stanford.edu/helm/) + [Ragas](https://docs.ragas.io/) | 2-3 weeks |
 | 10 | [Edge, Realtime & On-Device Inference](10-edge-realtime-inference/) | Deployment spectrum, streaming encoders, efficiency architectures | [llama.cpp](https://github.com/ggml-org/llama.cpp) + [Mistral 7B](https://arxiv.org/abs/2310.06825) + [Mamba](https://arxiv.org/abs/2312.00752) | 2-3 weeks |
-| 11 | [Model Routing & Cascades](11-model-routing-and-cascades/) | Oracle vs router, cascades, escalation, cache-aware switching | [RouteLLM](https://arxiv.org/abs/2406.18665) + [FrugalGPT](https://arxiv.org/abs/2305.05176) + [LLMRouterBench](https://arxiv.org/abs/2601.07206) | 1-2 weeks |
+| 11 | [Model Routing & Cascades](11-model-routing-and-cascades/) | Oracle vs router, cascades, escalation, cache-aware switching, decision models | [RouteLLM](https://arxiv.org/abs/2406.18665) + [FrugalGPT](https://arxiv.org/abs/2305.05176) + [LLMRouterBench](https://arxiv.org/abs/2601.07206) | 1-2 weeks |
 
 ## Key Takeaways
 
