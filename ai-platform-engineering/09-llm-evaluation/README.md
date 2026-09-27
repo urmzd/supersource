@@ -153,6 +153,7 @@ Evaluating a generative model is hard because there's no single right answer to 
 | TTFT/TTLT, cost, serving SLOs | [LLM Systems](../../ml/04-llm-systems/) / [Streaming & SSE](../03-streaming-sse/) | Operational eval |
 | Scorer as a pure function, composition | [Coding & Design Patterns](../06-coding-and-design-patterns/) | The harness design |
 | Eval suites as tests, CI gating | [Software Craftsmanship](../../software-craftsmanship/) | Regression-gating model changes |
+| Grading an agent that changes state | [Agent Evaluation Harness](../../case-studies/05-agent-eval-harness/) | Replay, set-based checks, oracles and mutants in a worked build |
 
 ## How Companies Apply These Patterns
 

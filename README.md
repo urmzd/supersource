@@ -137,7 +137,7 @@ Three distinct "distributed" problems kept apart on purpose: distributed **train
 | [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) + [project postmortems](software-craftsmanship/04-lessons-from-practice/) | 3-4 weeks |
 | [Diagramming & Documentation](diagramming-and-documentation/) | [C4 model](https://c4model.com/) + [D2](https://d2lang.com/)/[Mermaid](https://mermaid.js.org/) + [Diátaxis](https://diataxis.fr/) (free) | 2 weeks |
 | [Infrastructure](infrastructure/) | [K8s](https://kubernetes.io/docs/) + [Kafka](https://kafka.apache.org/documentation/) + [Lucene](https://lucene.apache.org/core/)/[Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html) + Apache docs (free) | 5-7 weeks |
-| [Case Studies](case-studies/) | Worked builds with runnable, dependency-free implementations | 4-8 days |
+| [Case Studies](case-studies/) | Worked builds with runnable, dependency-free implementations | 5-10 days |
 
 ## Prerequisite Graph
 
@@ -255,6 +255,7 @@ Real builds, generalized. Each takes a system designed under a deadline, strips 
 | 02 | [Grounded SQL Agent](case-studies/02-grounded-sql-agent/) | Schema grounding measured by ablation, bounded self-correction, a deterministic safety gate | [`safety_gate.py`](case-studies/02-grounded-sql-agent/safety_gate.py) |
 | 03 | [Exactly-Once Event API](case-studies/03-exactly-once-event-api/) | Constraint-based dedup, atomic claims, and what at-most-once actually buys | [`event_api.py`](case-studies/03-exactly-once-event-api/event_api.py) |
 | 04 | [K-Means Optimization](case-studies/04-kmeans-optimization/) | Initialization over iteration, and stating an optimization's regime | [`kmeans_ladder.py`](case-studies/04-kmeans-optimization/kmeans_ladder.py) |
+| 05 | [Agent Evaluation Harness](case-studies/05-agent-eval-harness/) | Outcome, evidence, and grade kept apart; replay before grading; a checker proved by oracles and mutants | [`eval_harness.py`](case-studies/05-agent-eval-harness/eval_harness.py) |
 
 ## Books and Resources
 

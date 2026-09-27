@@ -393,6 +393,7 @@ applies before any of them enters a per-token cost model.
 | SFT, DPO, LoRA, small models | [Training & Frameworks](../01-training-and-frameworks/) | Tuning the router and the tiers |
 | Retrieval over a large candidate set | [Retrieval & RAG](../07-retrieval-and-rag/) | Routing across hundreds of specialists is ranking |
 | Deterministic gates, bounded retry | [Grounded SQL Agent](../../case-studies/02-grounded-sql-agent/) | Verifier-gated escalation in a real build |
+| A checker proved by oracles and mutants | [Agent Evaluation Harness](../../case-studies/05-agent-eval-harness/) | What a reward function has to survive before RFT trains on it |
 | Least privilege, untrusted input | [Authorization & Access Control](../08-authorization-and-access-control/) | Why confidence is not a control |
 
 ## How Companies Apply These Patterns
