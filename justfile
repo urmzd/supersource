@@ -131,13 +131,25 @@ run-15-probabilistic-structures:
   python3 algorithms/15-probabilistic-structures/bloom.py
 
 run-predict:
-  practice/predict/bin/lr verify
+  practice/bin/ss verify predict
 
 run-predict-lang lang:
-  practice/predict/bin/lr verify {{lang}}
+  practice/bin/ss verify predict {{lang}}
 
 run-predict-bench:
-  practice/predict/bin/lr bench --assert
+  practice/bin/ss bench --assert
+
+# Verify every core build reference (zig/scala/java are optional; see run-build-lang)
+run-build:
+  practice/bin/ss verify build
+
+# Verify one language by name, including the optional ones
+run-build-lang lang:
+  practice/bin/ss verify build {{lang}}
+
+# Where the harness thinks everything is, and how many exercises each kind has.
+run-practice-status:
+  practice/bin/ss where
 
 # ---------- Aggregate recipes ----------
 

@@ -104,12 +104,44 @@ jobs:
       # same thing three runs in a row. Nondeterministic output cannot be
       # predicted, so it fails the build.
       - name: Verify snippets are runnable and deterministic
-        run: practice/predict/bin/lr verify
+        run: practice/bin/ss verify predict
 
       # Wall time and peak RSS against the ceilings in budgets.tsv. This
       # catches a snippet that regressed into doing real work, not slow CI.
       - name: Assert cost budgets
-        run: practice/predict/bin/lr bench --assert
+        run: practice/bin/ss bench --assert
+
+  build-exercises:
+    name: Build Exercises
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+          cache: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install
+
+      # Every build exercise's reference implementation must pass its own
+      # assertions, and must carry solution markers so `ss start` can stub it.
+      # A reference that does not hold up is not a reference.
+      #
+      # Bare `verify build` covers the core languages only. zig, scala and java
+      # are optional here and are skipped with a message when their toolchain is
+      # absent, so there is no JVM or Zig setup step to maintain. Running them
+      # in CI would mean installing toolchains for languages this curriculum
+      # does not target.
+      - name: Verify reference implementations
+        run: practice/bin/ss verify build
 
   book:
     name: Book PDF
