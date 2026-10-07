@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # ss - the supersource practice harness.
 #
-# The learning path is the track directories: you read them. This is the
-# practice path: you do them. Every exercise here works the same way, whatever
-# its kind or language.
+# The learning path is the track directories: you read them, in the order a
+# role path under paths/ gives (ss learn). The practice path is everything
+# else here: you do them. Every exercise works the same way, whatever its kind
+# or language.
+#
+#   ss learn                       list role paths and your progress on each
+#   ss learn  <path>               its stages, what "done" means, which you finished
+#   ss learn  <path> <n|next>      read stage n (or the first unfinished one)
+#   ss learn  <path> --done <n>    mark stage n finished (--undo <n> reverses it)
+#   ss learn  --verify             maintainer check: every file a path names exists
 #
 #   ss start  <kind> <lang> <id>   clone the exercise into .scratchpad/ and open it
 #   ss check  <kind> <lang> [id]   run your attempt; exit code is the verdict
@@ -27,7 +34,7 @@
 #               handed back to you with the solution stripped out
 #
 # Your work lives in .scratchpad/ at the repo root and is gitignored. Nothing
-# you write while practising is ever committed.
+# you write while practising is ever committed, and neither is learn progress.
 
 set -uo pipefail
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -819,6 +826,145 @@ cmd_where() {
   printf '  %s\n' "${DIM}optional build languages: $(langs_build_optional) (excluded from bare 'ss verify build')${RST}"
 }
 
+# ---------------------------------------------------------------------------
+# Learn
+#
+# A role path is paths/<name>/path.tsv: one row per stage, tab-separated as
+#   stage  title  files  done-when
+# where files is a comma-separated list of repo-relative markdown files read in
+# order. The tracks stay where they are; a path only decides the order and what
+# "done" means for one job. Progress is one stage number per line in
+# .scratchpad/learn/<name>.done.
+
+PATHS_DIR="$ROOT/paths"
+
+path_names() {
+  local f
+  for f in "$PATHS_DIR"/*/path.tsv; do [[ -f "$f" ]] && basename "$(dirname "$f")"; done
+}
+path_tsv() {
+  local f="$PATHS_DIR/$1/path.tsv"
+  [[ -f "$f" ]] || die "no path '$1' (have: $(path_names | tr '\n' ' '))"
+  echo "$f"
+}
+path_rows()  { grep -v '^#' "$(path_tsv "$1")" | grep -v '^[[:space:]]*$'; }
+path_title() { sed -n 's/^# //p' "$PATHS_DIR/$1/README.md" 2>/dev/null | head -1; }
+learn_done_file() { echo "$SCRATCH/learn/$1.done"; }
+is_done() { grep -qx "$2" "$(learn_done_file "$1")" 2>/dev/null; }
+
+stage_row() {
+  local row
+  row="$(path_rows "$1" | awk -F'\t' -v n="$2" '$1 == n')"
+  [[ -n "$row" ]] || die "path '$1' has no stage '$2'"
+  echo "$row"
+}
+
+learn_list() {
+  local name total done
+  for name in $(path_names); do
+    total="$(path_rows "$name" | wc -l | tr -d ' ')"
+    done="$(sort -u "$(learn_done_file "$name")" 2>/dev/null | wc -l | tr -d ' ')"
+    printf '  %-18s %3s/%-3s %s\n' "$name" "$done" "$total" "$(path_title "$name")"
+  done
+}
+
+learn_stages() {
+  local name="$1" n title files when mark
+  printf '%s\n\n' "${BLD}$(path_title "$name")${RST}"
+  while IFS=$'\t' read -r n title files when; do
+    if is_done "$name" "$n"; then mark="${GRN}[x]${RST}"; else mark="[ ]"; fi
+    printf '  %s %2s  %s\n' "$mark" "$n" "${BLD}$title${RST}"
+    printf '         %s\n' "${DIM}${files//,/  }${RST}"
+    printf '         done when: %s\n\n' "$when"
+  done < <(path_rows "$name")
+  printf '%s\n' "${DIM}read a stage: ss learn $name <n|next>    mark it: ss learn $name --done <n>${RST}"
+}
+
+# Markdown to the terminal: glow when it exists and we own a terminal, plain
+# text otherwise, so piping into a file or another tool stays clean.
+render_md() {
+  if [[ -t 1 ]] && command -v glow >/dev/null 2>&1; then
+    glow -p "$@"
+  elif [[ -t 1 ]]; then
+    cat "$@" | "${PAGER:-less}"
+  else
+    cat "$@"
+  fi
+}
+
+learn_read() {
+  local name="$1" n="$2" row title files when f
+  if [[ "$n" == next ]]; then
+    n="$(path_rows "$name" | cut -f1 | while read -r s; do is_done "$name" "$s" || { echo "$s"; break; }; done)"
+    [[ -n "$n" ]] || { echo "${GRN}every stage of '$name' is done${RST}"; return 0; }
+  fi
+  # die inside $(...) only leaves the subshell, so propagate it by hand.
+  row="$(stage_row "$name" "$n")" || exit 1
+  IFS=$'\t' read -r _ title files when <<<"$row"
+  local paths=()
+  IFS=',' read -ra list <<<"$files"
+  for f in "${list[@]}"; do
+    [[ -f "$ROOT/$f" ]] || die "stage $n names '$f', which does not exist"
+    paths+=("$ROOT/$f")
+  done
+  printf '%s\n' "${BLD}stage $n: $title${RST}" >&2
+  printf '%s\n\n' "${DIM}done when: $when${RST}" >&2
+  render_md "${paths[@]}"
+}
+
+learn_mark() {
+  local name="$1" flag="$2" n="$3" file
+  stage_row "$name" "$n" >/dev/null
+  file="$(learn_done_file "$name")"
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+  if [[ "$flag" == --done ]]; then
+    is_done "$name" "$n" || echo "$n" >> "$file"
+    echo "${GRN}stage $n done${RST}"
+  else
+    grep -vx "$n" "$file" > "$file.tmp" || true
+    mv "$file.tmp" "$file"
+    echo "stage $n unmarked"
+  fi
+}
+
+learn_verify() {
+  local name n title files when f rc=0 seen
+  [[ -n "$(path_names)" ]] || die "no paths under $(rel "$PATHS_DIR")"
+  for name in $(path_names); do
+    seen=""
+    while IFS=$'\t' read -r n title files when; do
+      [[ "$n" =~ ^[0-9]+$ ]] || { echo "${RED}FAIL${RST} $name: stage '$n' is not a number"; rc=1; }
+      [[ " $seen " == *" $n "* ]] && { echo "${RED}FAIL${RST} $name: stage $n appears twice"; rc=1; }
+      seen="$seen $n"
+      [[ -n "$title" && -n "$files" && -n "$when" ]] || { echo "${RED}FAIL${RST} $name stage $n: empty column"; rc=1; }
+      IFS=',' read -ra list <<<"$files"
+      for f in "${list[@]}"; do
+        [[ -f "$ROOT/$f" ]] || { echo "${RED}FAIL${RST} $name stage $n: missing $f"; rc=1; }
+      done
+    done < <(path_rows "$name")
+    [[ $rc -eq 0 ]] && echo "${GRN}ok${RST}   $name ($(path_rows "$name" | wc -l | tr -d ' ') stages)"
+  done
+  return $rc
+}
+
+cmd_learn() {
+  # Resolve the path name here, outside any $(...), so an unknown name dies
+  # instead of leaving later greps with an empty filename to read stdin from.
+  [[ $# -ge 1 && "$1" != --verify ]] && path_tsv "$1" >/dev/null
+  case $# in
+    0) learn_list ;;
+    1) [[ "$1" == --verify ]] && { learn_verify; return; }
+       learn_stages "$1" ;;
+    2) learn_read "$1" "$2" ;;
+    3) case "$2" in
+         --done|--undo) learn_mark "$1" "$2" "$3" ;;
+         *) die "usage: ss learn <path> --done|--undo <n>" ;;
+       esac ;;
+    *) die "usage: ss learn [<path> [<n>|next|--done <n>|--undo <n>]]" ;;
+  esac
+}
+
 usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "${BASH_SOURCE[0]}"; }
 
 # Fan a per-(kind,lang) function out over everything, or over one kind, or one
@@ -864,6 +1010,7 @@ case "$sub" in
             for l in $(langs_predict); do printf '%s\n' "${BLD}$l${RST}"; cmd_bench "$l" "$strict" || rc=1; done
             exit $rc
           fi ;;
+  learn)  cmd_learn "$@" ;;
   where)  cmd_where ;;
   -h|--help|help) usage ;;
   *)      die "unknown subcommand '$sub'" ;;

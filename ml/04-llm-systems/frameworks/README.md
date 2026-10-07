@@ -4,7 +4,7 @@ Where you *run* an LLM. This maps the inference/serving ecosystem across languag
 
 > Parent topic: [LLM Systems & Inference](../). Quantization formats these frameworks consume are in [Quantization: Math → Code](../quantization/). Runnable examples: [`code/`](code/).
 
-> For deployment choices and operating costs, see [LLM Serving Platforms](../routing-and-reproducibility.md): Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter.
+> For deployment choices and operating costs, see [LLM Serving Platforms](../serving-platforms.md): Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter.
 
 ## Overview
 

@@ -69,3 +69,4 @@ packages:
     # release asset. Must exist on disk before the tag is created.
     artifacts:
       - outputs/supersource-curriculum.pdf
+      - outputs/supersource-fde-inference.pdf
