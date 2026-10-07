@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.0 (2026-10-07)
+
+### Features
+
+- **paths**: split the FDE path into six parts composed by Superstar FDE ([3e4b0ea](https://github.com/urmzd/supersource/commit/3e4b0eaf0d00e31816f291ffc15ebb3a268f5c08))
+- **practice**: let paths include other paths in ss learn ([57963b1](https://github.com/urmzd/supersource/commit/57963b1d9bca9960313ceb0e83f22a59e36220c9))
+
+### Misc
+
+- **llm-systems**: add serving architecture diagrams in D2 and Mermaid ([2f2a00a](https://github.com/urmzd/supersource/commit/2f2a00a2698b277db3510f830845009c7eada84b))
+- **field-engineering**: add the field engineering track ([3261d29](https://github.com/urmzd/supersource/commit/3261d2989e02835ebd8efa95a1877d367ca7951d))
+- **book**: build composed path PDFs and fail on stale diagram renders ([9767d83](https://github.com/urmzd/supersource/commit/9767d83e87985ba2cd48761919906ee623e580c5))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.7.0...v0.8.0)
+
+
 ## 0.7.0 (2026-10-07)
 
 ### Features
