@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.7.0 (2026-10-07)
+
+### Features
+
+- **paths**: add the FDE inference role path and wire it into the curriculum ([1056748](https://github.com/urmzd/supersource/commit/10567487ad377d22b18a93500eda595ff3860104))
+- **practice**: add ss learn to read role paths stage by stage ([f3ca3a0](https://github.com/urmzd/supersource/commit/f3ca3a06baf003bf987296304fe63779c73061ab))
+- **practice**: pin the JDK with mise and resolve it inside ss ([be14be3](https://github.com/urmzd/supersource/commit/be14be3358343d9c7835dccd97ad3e0e03e3548f))
+- **practice**: complete the C++ track with five more exercises ([4496480](https://github.com/urmzd/supersource/commit/449648076236fba85d04fbf93654fae0a92f3423))
+- **practice**: add five C++ build exercises ([723f09d](https://github.com/urmzd/supersource/commit/723f09d7b2c3f57143d48330687b4bd969815e34))
+- **practice**: add ten verified C build exercises ([e8467ed](https://github.com/urmzd/supersource/commit/e8467edcb1d176619a06e04c926bd62ec8d9fb7e))
+
+### Bug Fixes
+
+- **practice**: include stdint.h and memory explicitly so gcc builds the references ([8469e86](https://github.com/urmzd/supersource/commit/8469e8659bd1eee0ea2ca4dfe799e96b3d3f3d70))
+
+### Refactoring
+
+- **llm-systems**: rename the serving platforms guide to match its title ([dfcd60d](https://github.com/urmzd/supersource/commit/dfcd60d565018d67941bb69b11cedb04294ca9be))
+- **practice**: split build languages into core and optional ([c70086c](https://github.com/urmzd/supersource/commit/c70086c08c05b2a18ac73c1e8c7cef29e1bf745b))
+- **practice**: consolidate predict and build into one practice path ([f96c416](https://github.com/urmzd/supersource/commit/f96c416341c5f930db145e6bdfbf48763d5c76b5))
+
+### Misc
+
+- **llm-systems**: apply ruff format to the model loading scripts ([3b1f5b0](https://github.com/urmzd/supersource/commit/3b1f5b005097d49fda2ecb40046f72291ca63a41))
+- add CS curriculum and validated source register ([bc9ac9f](https://github.com/urmzd/supersource/commit/bc9ac9fce7610ecff439659d587dd4e141335745))
+- **book**: build and release one PDF per role path ([1844ffb](https://github.com/urmzd/supersource/commit/1844ffb20ea2cc75b9c79147d96889fd874197aa))
+- **ml**: add training and post-training topic with LoRA, DPO, and memory tooling ([59cf089](https://github.com/urmzd/supersource/commit/59cf0897cc00e01b663b083ae0908f90ffeffe7b))
+- **llm-systems**: add serving and load deep dive with capacity calculator and load generator ([a8b001d](https://github.com/urmzd/supersource/commit/a8b001d4a57b63654fe8232de596312bf9adede3))
+- **llm-systems**: add model loading deep dive with safetensors and config tooling ([e65a686](https://github.com/urmzd/supersource/commit/e65a686203f6ba070bce35c2a85d9a0d289b660e))
+- point measure tests at practice/bin after the merge ([516ec07](https://github.com/urmzd/supersource/commit/516ec070c71429cd2bac70040ea38b38888e1f74))
+- **llm-systems**: add serving platforms guide and link it from framework docs ([f801646](https://github.com/urmzd/supersource/commit/f8016467ce1a031617e63443fd07d6375f0e880a))
+- **case-studies**: add Agent Evaluation Harness worked build ([a5c2e2a](https://github.com/urmzd/supersource/commit/a5c2e2a91893461361b99d388fe0742715e92f88))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.6.0...v0.7.0)
+
+
 ## 0.6.0 (2026-09-27)
 
 ### Features
