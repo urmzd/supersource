@@ -1,0 +1,106 @@
+# Parallelism for inference: how TP, PP, EP, and DP place one model on GPUs.
+# Render: d2 parallelism.d2 parallelism.svg
+# Question this diagram answers: what is split, across which GPUs, and which
+# collective each strategy pays per step?
+
+direction: right
+grid-columns: 2
+grid-gap: 60
+
+classes: {
+  gpu: {
+    style: { fill: "#76b900"; font-color: "#000000"; stroke: "#4f7c00"; border-radius: 4 }
+  }
+  comm: {
+    shape: hexagon
+    style: { fill: "#d56b43"; font-color: "#ffffff"; stroke: "#95492e" }
+  }
+  data: {
+    style: { fill: "#85bbf0"; font-color: "#000000"; stroke: "#5d82a8"; border-radius: 8 }
+  }
+  group: {
+    style: { stroke: "#2e6295"; stroke-dash: 4; fill: "transparent"; bold: true }
+  }
+}
+
+tp: "Tensor Parallel (TP=4): one layer split across 4 GPUs" {
+  class: group
+  direction: right
+
+  x: "Input X\n(replicated on\nevery GPU)" { class: data }
+
+  attn: "Attention" {
+    class: group
+    direction: down
+    cols: "Column-parallel QKV:\nGPU i holds heads\n[i*H/4, (i+1)*H/4)" { class: gpu }
+    rows: "Row-parallel O proj:\nGPU i holds rows for\nits heads -> partial sum" { class: gpu }
+    cols -> rows: "local, no comm"
+  }
+  ar1: "All-reduce #1\n(sum partials)" { class: comm }
+
+  mlp: "MLP" {
+    class: group
+    direction: down
+    up: "Column-parallel\ngate/up: d_ff/4\ncolumns per GPU" { class: gpu }
+    down: "Row-parallel down:\nd_ff/4 rows per GPU\n-> partial sum" { class: gpu }
+    up -> down: "local, no comm"
+  }
+  ar2: "All-reduce #2\n(sum partials)" { class: comm }
+
+  x -> attn.cols
+  attn.rows -> ar1
+  ar1 -> mlp.up
+  mlp.down -> ar2
+}
+
+pp: "Pipeline Parallel (PP=4): layer ranges per stage" {
+  class: group
+  direction: right
+
+  s0: "Stage 0 / GPU 0\nlayers 0-19" { class: gpu }
+  s1: "Stage 1 / GPU 1\nlayers 20-39" { class: gpu }
+  s2: "Stage 2 / GPU 2\nlayers 40-59" { class: gpu }
+  s3: "Stage 3 / GPU 3\nlayers 60-79" { class: gpu }
+
+  s0 -> s1: "send activations\nmicro-batch k"
+  s1 -> s2: "micro-batch k-1"
+  s2 -> s3: "micro-batch k-2"
+
+  note: "Micro-batches keep stages busy;\nidle slots at fill/drain = bubbles.\nOne point-to-point send per boundary:\nPCIe / InfiniBand is enough" { class: data }
+}
+
+ep: "Expert Parallel (EP=4): MoE layer, whole experts per GPU" {
+  class: group
+  direction: right
+
+  gate: "Router / gate\n(top-k experts\nper token)" { class: data }
+  a2a1: "All-to-all\ndispatch tokens" { class: comm }
+  experts: "Experts" {
+    class: group
+    direction: down
+    e0: "GPU 0\nexperts 0-15" { class: gpu }
+    e1: "GPU 1\nexperts 16-31" { class: gpu }
+    e2: "GPU 2\nexperts 32-47" { class: gpu }
+    e3: "GPU 3\nexperts 48-63" { class: gpu }
+  }
+  a2a2: "All-to-all\ncombine outputs" { class: comm }
+
+  gate -> a2a1
+  a2a1 -> experts
+  experts -> a2a2
+
+  note: "Attention usually runs\ndata-parallel (DP attention)" { class: data }
+}
+
+dp: "Data Parallel (DP=2): independent full replicas" {
+  class: group
+  direction: right
+
+  lb: "Load balancer /\nrouter" { class: data }
+  r0: "Replica 0\nfull model\n(itself may be TP)" { class: gpu }
+  r1: "Replica 1\nfull model\n(itself may be TP)" { class: gpu }
+  lb -> r0: "request a"
+  lb -> r1: "request b"
+  nocomm: "No communication:\nthroughput scales linearly,\nlatency unchanged" { class: data }
+}
+

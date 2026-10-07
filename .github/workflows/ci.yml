@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # check_diagrams.sh compares commit times of each .d2 and its .svg.
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v7
 
@@ -32,6 +35,9 @@ jobs:
 
       - name: Run linter
         run: uv run ruff check .
+
+      - name: Check rendered diagrams are current
+        run: scripts/check_diagrams.sh
 
   test:
     name: Test
@@ -144,8 +150,9 @@ jobs:
         run: practice/bin/ss verify build
 
       - name: Verify role paths
-        # Every stage a paths/*/path.tsv names must exist, so ss learn and the
-        # role-path PDFs never point at a moved or renamed chapter.
+        # Every stage a paths/*/path.tsv names must exist and every @include
+        # must resolve without a cycle, so ss learn and the per-path PDFs never
+        # point at a moved or renamed chapter.
         run: practice/bin/ss learn --verify
 
   book:

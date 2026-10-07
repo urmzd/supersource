@@ -1,0 +1,60 @@
+# Disaggregated prefill/decode (DistServe, Splitwise, Dynamo, llm-d).
+# Render: d2 disaggregated-serving.d2 disaggregated-serving.svg
+# Question this diagram answers: where does each phase run, and what crosses
+# the wire between them?
+
+direction: right
+
+classes: {
+  person: {
+    shape: person
+    style: { fill: "#08427b"; font-color: "#ffffff"; stroke: "#052e56"; bold: true }
+  }
+  container: {
+    style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295"; border-radius: 8 }
+  }
+  gpu: {
+    style: { fill: "#76b900"; font-color: "#000000"; stroke: "#4f7c00"; border-radius: 4 }
+  }
+  comm: {
+    shape: hexagon
+    style: { fill: "#d56b43"; font-color: "#ffffff"; stroke: "#95492e" }
+  }
+  store: {
+    shape: cylinder
+    style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295" }
+  }
+  group: {
+    style: { stroke: "#2e6295"; stroke-dash: 4; fill: "transparent"; bold: true }
+  }
+}
+
+client: "Client" { class: person }
+
+router: "KV-aware Router\n\n1. pick prefill worker\n(prefix hit, load)\n2. pick decode worker\n(free KV, batch size)" { class: container }
+
+prefill: "Prefill Pool (compute-bound)" {
+  class: group
+  direction: down
+  p0: "Prefill worker 0\nhigh TP, large chunks" { class: gpu }
+  p1: "Prefill worker 1\nhigh TP, large chunks" { class: gpu }
+}
+
+xfer: "KV transfer\nNIXL / Mooncake over RDMA\nn x KV_tok bytes\n(8k tok of 70B BF16 = 2.7 GB,\n~54 ms at 50 GB/s)" { class: comm }
+
+decode: "Decode Pool (memory-bound)" {
+  class: group
+  direction: down
+  d0: "Decode worker 0\nlarge batch, big KV pool" { class: gpu }
+  d1: "Decode worker 1\nlarge batch, big KV pool" { class: gpu }
+}
+
+kvstore: "Shared KV store\n(Mooncake: DRAM / SSD)\nprefix computed once" { class: store }
+
+client -> router: "request"
+router -> prefill.p0: "prompt"
+prefill.p0 -> xfer: "KV blocks for\nall prompt tokens"
+xfer -> decode.d0: "KV blocks land in\ndecode KV pool"
+router -> decode.d0: "decode assignment\n(handle for the KV)" { style.stroke-dash: 4 }
+decode.d0 -> client: "streamed tokens (SSE)"
+prefill.p1 <-> kvstore: "reuse / publish\nprefix KV" { style.stroke-dash: 4 }

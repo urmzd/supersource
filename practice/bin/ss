@@ -6,11 +6,11 @@
 # else here: you do them. Every exercise works the same way, whatever its kind
 # or language.
 #
-#   ss learn                       list role paths and your progress on each
+#   ss learn                       list paths and your progress on each
 #   ss learn  <path>               its stages, what "done" means, which you finished
-#   ss learn  <path> <n|next>      read stage n (or the first unfinished one)
-#   ss learn  <path> --done <n>    mark stage n finished (--undo <n> reverses it)
-#   ss learn  --verify             maintainer check: every file a path names exists
+#   ss learn  <path> <stage|next>  read a stage (n, or part:n for an included part)
+#   ss learn  <path> --done <stage>  mark it finished (--undo <stage> reverses it)
+#   ss learn  --verify             maintainer check: includes resolve, files exist
 #
 #   ss start  <kind> <lang> <id>   clone the exercise into .scratchpad/ and open it
 #   ss check  <kind> <lang> [id]   run your attempt; exit code is the verdict
@@ -829,12 +829,16 @@ cmd_where() {
 # ---------------------------------------------------------------------------
 # Learn
 #
-# A role path is paths/<name>/path.tsv: one row per stage, tab-separated as
+# A path is paths/<name>/path.tsv, one row per stage, tab-separated as
 #   stage  title  files  done-when
 # where files is a comma-separated list of repo-relative markdown files read in
-# order. The tracks stay where they are; a path only decides the order and what
-# "done" means for one job. Progress is one stage number per line in
-# .scratchpad/learn/<name>.done.
+# order. A row whose first column is @<other> pulls in every stage of path
+# <other>, so a role is assembled from parts: the parts stay usable on their
+# own and progress made in a part counts in every path that includes it.
+#
+# Stages are addressed as <n> for a path's own stages and <part>:<n> for an
+# included one. Progress is one stage number per line in
+# .scratchpad/learn/<owning path>.done.
 
 PATHS_DIR="$ROOT/paths"
 
@@ -847,37 +851,78 @@ path_tsv() {
   [[ -f "$f" ]] || die "no path '$1' (have: $(path_names | tr '\n' ' '))"
   echo "$f"
 }
-path_rows()  { grep -v '^#' "$(path_tsv "$1")" | grep -v '^[[:space:]]*$'; }
 path_title() { sed -n 's/^# //p' "$PATHS_DIR/$1/README.md" 2>/dev/null | head -1; }
 learn_done_file() { echo "$SCRATCH/learn/$1.done"; }
 is_done() { grep -qx "$2" "$(learn_done_file "$1")" 2>/dev/null; }
 
-stage_row() {
-  local row
-  row="$(path_rows "$1" | awk -F'\t' -v n="$2" '$1 == n')"
-  [[ -n "$row" ]] || die "path '$1' has no stage '$2'"
-  echo "$row"
+# Every stage of a path with includes resolved, one row per stage:
+#   owner  stage  title  files  done-when
+# Prints a diagnostic and fails on an unknown include or a cycle; callers run
+# it inside $(...) and must propagate the failure themselves.
+expand_rows() {
+  local name="$1" stack="${2:-}" tsv stage title files when
+  tsv="$PATHS_DIR/$name/path.tsv"
+  local chain="${stack# }"; chain="${chain// / -> }"
+  [[ -f "$tsv" ]] || { echo "${RED}error:${RST} unknown path '$name'${chain:+ (included from $chain)}" >&2; return 1; }
+  [[ " $stack " == *" $name "* ]] && { echo "${RED}error:${RST} include cycle: $chain -> $name" >&2; return 1; }
+  while IFS=$'\t' read -r stage title files when; do
+    [[ -z "$stage" || "$stage" == \#* ]] && continue
+    if [[ "$stage" == @* ]]; then
+      expand_rows "${stage#@}" "$stack $name" || return 1
+    else
+      printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$stage" "$title" "$files" "$when"
+    fi
+  done < "$tsv"
 }
 
+# The address a reader types for a stage of <top>: n for its own, part:n otherwise.
+stage_key() { if [[ "$2" == "$1" ]]; then echo "$3"; else echo "$2:$3"; fi; }
+
 learn_list() {
-  local name total done
+  local name rows total done parts
   for name in $(path_names); do
-    total="$(path_rows "$name" | wc -l | tr -d ' ')"
-    done="$(sort -u "$(learn_done_file "$name")" 2>/dev/null | wc -l | tr -d ' ')"
-    printf '  %-18s %3s/%-3s %s\n' "$name" "$done" "$total" "$(path_title "$name")"
+    rows="$(expand_rows "$name")" || { printf '  %-24s %s\n' "$name" "${RED}broken (run ss learn --verify)${RST}"; continue; }
+    total="$(grep -c . <<<"$rows")"
+    done=0
+    while IFS=$'\t' read -r owner stage _; do is_done "$owner" "$stage" && done=$((done + 1)); done <<<"$rows"
+    parts="$(cut -f1 <<<"$rows" | sort -u | grep -vx "$name" | wc -l | tr -d ' ')"
+    printf '  %-24s %3s/%-3s %s%s\n' "$name" "$done" "$total" "$(path_title "$name")" \
+      "$([[ $parts -gt 0 ]] && echo "  ${DIM}(composes $parts parts)${RST}")"
   done
 }
 
 learn_stages() {
-  local name="$1" n title files when mark
-  printf '%s\n\n' "${BLD}$(path_title "$name")${RST}"
-  while IFS=$'\t' read -r n title files when; do
-    if is_done "$name" "$n"; then mark="${GRN}[x]${RST}"; else mark="[ ]"; fi
-    printf '  %s %2s  %s\n' "$mark" "$n" "${BLD}$title${RST}"
-    printf '         %s\n' "${DIM}${files//,/  }${RST}"
-    printf '         done when: %s\n\n' "$when"
-  done < <(path_rows "$name")
-  printf '%s\n' "${DIM}read a stage: ss learn $name <n|next>    mark it: ss learn $name --done <n>${RST}"
+  local top="$1" rows owner stage title files when mark prev=""
+  rows="$(expand_rows "$top")" || exit 1
+  printf '%s\n' "${BLD}$(path_title "$top")${RST}"
+  while IFS=$'\t' read -r owner stage title files when; do
+    if [[ "$owner" != "$prev" ]]; then
+      printf '\n  %s\n' "${YEL}$( [[ "$owner" == "$top" ]] && echo "$top" || echo "part: $owner")  ${DIM}$(path_title "$owner")${RST}"
+      prev="$owner"
+    fi
+    if is_done "$owner" "$stage"; then mark="${GRN}[x]${RST}"; else mark="[ ]"; fi
+    printf '  %s %-26s %s\n' "$mark" "$(stage_key "$top" "$owner" "$stage")" "${BLD}$title${RST}"
+    printf '      %s\n' "${DIM}${files//,/  }${RST}"
+    printf '      done when: %s\n' "$when"
+  done <<<"$rows"
+  printf '\n%s\n' "${DIM}read a stage: ss learn $top <stage|next>    mark it: ss learn $top --done <stage>${RST}"
+}
+
+# Resolve a typed stage address to one expanded row, or die.
+find_row() {
+  local top="$1" key="$2" rows row
+  rows="$(expand_rows "$top")" || exit 1
+  if [[ "$key" == next ]]; then
+    while IFS=$'\t' read -r owner stage _; do
+      is_done "$owner" "$stage" || { grep -m1 "^$owner"$'\t'"$stage"$'\t' <<<"$rows"; return 0; }
+    done <<<"$rows"
+    return 0
+  fi
+  local owner="$top" stage="$key"
+  [[ "$key" == *:* ]] && { owner="${key%%:*}"; stage="${key#*:}"; }
+  row="$(awk -F'\t' -v o="$owner" -v s="$stage" '$1 == o && $2 == s' <<<"$rows")"
+  [[ -n "$row" ]] || die "path '$top' has no stage '$key' (list them with: ss learn $top)"
+  echo "$row"
 }
 
 # Markdown to the terminal: glow when it exists and we own a terminal, plain
@@ -893,64 +938,73 @@ render_md() {
 }
 
 learn_read() {
-  local name="$1" n="$2" row title files when f
-  if [[ "$n" == next ]]; then
-    n="$(path_rows "$name" | cut -f1 | while read -r s; do is_done "$name" "$s" || { echo "$s"; break; }; done)"
-    [[ -n "$n" ]] || { echo "${GRN}every stage of '$name' is done${RST}"; return 0; }
-  fi
+  local top="$1" row owner stage title files when f
   # die inside $(...) only leaves the subshell, so propagate it by hand.
-  row="$(stage_row "$name" "$n")" || exit 1
-  IFS=$'\t' read -r _ title files when <<<"$row"
-  local paths=()
+  row="$(find_row "$top" "$2")" || exit 1
+  [[ -n "$row" ]] || { echo "${GRN}every stage of '$top' is done${RST}"; return 0; }
+  IFS=$'\t' read -r owner stage title files when <<<"$row"
+  local paths=() list
   IFS=',' read -ra list <<<"$files"
   for f in "${list[@]}"; do
-    [[ -f "$ROOT/$f" ]] || die "stage $n names '$f', which does not exist"
+    [[ -f "$ROOT/$f" ]] || die "stage $(stage_key "$top" "$owner" "$stage") names '$f', which does not exist"
     paths+=("$ROOT/$f")
   done
-  printf '%s\n' "${BLD}stage $n: $title${RST}" >&2
+  printf '%s\n' "${BLD}stage $(stage_key "$top" "$owner" "$stage"): $title${RST}" >&2
   printf '%s\n\n' "${DIM}done when: $when${RST}" >&2
   render_md "${paths[@]}"
 }
 
 learn_mark() {
-  local name="$1" flag="$2" n="$3" file
-  stage_row "$name" "$n" >/dev/null
-  file="$(learn_done_file "$name")"
+  local top="$1" flag="$2" row owner stage file
+  row="$(find_row "$top" "$3")" || exit 1
+  IFS=$'\t' read -r owner stage _ <<<"$row"
+  file="$(learn_done_file "$owner")"
   mkdir -p "$(dirname "$file")"
   touch "$file"
   if [[ "$flag" == --done ]]; then
-    is_done "$name" "$n" || echo "$n" >> "$file"
-    echo "${GRN}stage $n done${RST}"
+    is_done "$owner" "$stage" || echo "$stage" >> "$file"
+    echo "${GRN}stage $(stage_key "$top" "$owner" "$stage") done${RST}${owner:+$([[ "$owner" != "$top" ]] && echo " ${DIM}(counts in every path that includes $owner)${RST}")}"
   else
-    grep -vx "$n" "$file" > "$file.tmp" || true
+    grep -vx "$stage" "$file" > "$file.tmp" || true
     mv "$file.tmp" "$file"
-    echo "stage $n unmarked"
+    echo "stage $(stage_key "$top" "$owner" "$stage") unmarked"
   fi
 }
 
 learn_verify() {
-  local name n title files when f rc=0 seen
+  local name rows owner stage title files when f rc=0 bad list
   [[ -n "$(path_names)" ]] || die "no paths under $(rel "$PATHS_DIR")"
   for name in $(path_names); do
-    seen=""
-    while IFS=$'\t' read -r n title files when; do
-      [[ "$n" =~ ^[0-9]+$ ]] || { echo "${RED}FAIL${RST} $name: stage '$n' is not a number"; rc=1; }
-      [[ " $seen " == *" $n "* ]] && { echo "${RED}FAIL${RST} $name: stage $n appears twice"; rc=1; }
-      seen="$seen $n"
-      [[ -n "$title" && -n "$files" && -n "$when" ]] || { echo "${RED}FAIL${RST} $name stage $n: empty column"; rc=1; }
+    bad=0
+    [[ -n "$(path_title "$name")" ]] || { echo "${RED}FAIL${RST} $name: README.md has no '# ' title"; bad=1; }
+    if ! rows="$(expand_rows "$name")"; then
+      echo "${RED}FAIL${RST} $name: includes do not resolve"; rc=1; continue
+    fi
+    # A stage number may appear once per owning path.
+    while read -r dup; do
+      [[ -n "$dup" ]] && { echo "${RED}FAIL${RST} $name: stage $dup appears twice"; bad=1; }
+    done < <(awk -F'\t' '$1 == "'"$name"'" {print $2}' <<<"$rows" | sort | uniq -d)
+    while IFS=$'\t' read -r owner stage title files when; do
+      [[ "$owner" == "$name" ]] || continue   # included stages are checked under their own path
+      [[ "$stage" =~ ^[0-9]+$ ]] || { echo "${RED}FAIL${RST} $name: stage '$stage' is not a number"; bad=1; }
+      [[ -n "$title" && -n "$files" && -n "$when" ]] || { echo "${RED}FAIL${RST} $name stage $stage: empty column"; bad=1; }
       IFS=',' read -ra list <<<"$files"
       for f in "${list[@]}"; do
-        [[ -f "$ROOT/$f" ]] || { echo "${RED}FAIL${RST} $name stage $n: missing $f"; rc=1; }
+        [[ -f "$ROOT/$f" ]] || { echo "${RED}FAIL${RST} $name stage $stage: missing $f"; bad=1; }
       done
-    done < <(path_rows "$name")
-    [[ $rc -eq 0 ]] && echo "${GRN}ok${RST}   $name ($(path_rows "$name" | wc -l | tr -d ' ') stages)"
+    done <<<"$rows"
+    if [[ $bad -eq 0 ]]; then
+      echo "${GRN}ok${RST}   $name ($(grep -c . <<<"$rows") stages)"
+    else
+      rc=1
+    fi
   done
   return $rc
 }
 
 cmd_learn() {
   # Resolve the path name here, outside any $(...), so an unknown name dies
-  # instead of leaving later greps with an empty filename to read stdin from.
+  # instead of leaving later reads with nothing to read.
   [[ $# -ge 1 && "$1" != --verify ]] && path_tsv "$1" >/dev/null
   case $# in
     0) learn_list ;;
@@ -959,9 +1013,9 @@ cmd_learn() {
     2) learn_read "$1" "$2" ;;
     3) case "$2" in
          --done|--undo) learn_mark "$1" "$2" "$3" ;;
-         *) die "usage: ss learn <path> --done|--undo <n>" ;;
+         *) die "usage: ss learn <path> --done|--undo <stage>" ;;
        esac ;;
-    *) die "usage: ss learn [<path> [<n>|next|--done <n>|--undo <n>]]" ;;
+    *) die "usage: ss learn [<path> [<stage>|next|--done <stage>|--undo <stage>]]" ;;
   esac
 }
 

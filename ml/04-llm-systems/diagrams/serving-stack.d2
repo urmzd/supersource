@@ -1,0 +1,83 @@
+# LLM serving stack: one request path from client to GPU, plus the control loop.
+# Render: d2 serving-stack.d2 serving-stack.svg  (ELK layout set via vars below)
+# Question this diagram answers: which layer owns which decision (auth, placement,
+# batching, memory), and which signals drive scaling?
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+  }
+}
+
+direction: down
+
+classes: {
+  person: {
+    shape: person
+    style: { fill: "#08427b"; font-color: "#ffffff"; stroke: "#052e56"; bold: true }
+  }
+  container: {
+    style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295"; border-radius: 8 }
+  }
+  component: {
+    style: { fill: "#85bbf0"; font-color: "#000000"; stroke: "#5d82a8"; border-radius: 8 }
+  }
+  gpu: {
+    style: { fill: "#76b900"; font-color: "#000000"; stroke: "#4f7c00"; border-radius: 4 }
+  }
+  store: {
+    shape: cylinder
+    style: { fill: "#438dd5"; font-color: "#ffffff"; stroke: "#2e6295" }
+  }
+  control: {
+    style: { fill: "#d56b43"; font-color: "#ffffff"; stroke: "#95492e"; border-radius: 8 }
+  }
+}
+
+client: "Client\n[Person / App]\n\nOpenAI-compatible API,\nstreams SSE" {
+  class: person
+  label.near: outside-right-center
+  style.font-color: "#000000"
+}
+
+gateway: "API Gateway\n\nAuth (API keys), rate limits\n(req/s and tok/min), quotas" { class: container }
+
+router: "Router\n\nModel / LoRA / region routing\nKV-aware: send to the replica\nalready holding the prefix" { class: container }
+
+replica_a: "Engine Replica 1 [vLLM / SGLang]" {
+  style: { stroke: "#2e6295"; stroke-dash: 4; fill: "transparent"; bold: true }
+
+  scheduler: "Scheduler\n\nContinuous batching,\nchunked prefill budget,\npreemption" { class: component }
+  kvm: "KV Cache Manager\n\nBlock table, prefix cache,\nfree block pool" { class: component }
+  exec: "Model Executor\n\nForward pass per step,\nCUDA graphs, sampling" { class: component }
+
+  scheduler -> kvm: "allocate / free blocks"
+  kvm -> exec: "block tables"
+  scheduler -> exec: "batch for this step"
+
+  gpus: "GPUs (TP group)" {
+    style: { stroke: "#4f7c00"; stroke-dash: 2; fill: "transparent" }
+    g0: "GPU 0\nweights/N + KV" { class: gpu }
+    g1: "GPU 1\nweights/N + KV" { class: gpu }
+  }
+  exec -> gpus: "kernels + NCCL"
+}
+
+replica_b: "Engine Replica N\n(same layout)" { class: container }
+
+autoscaler: "Autoscaler\n[KEDA / HPA / planner]\n\nScales on queue depth,\nKV utilization, TTFT p99\nNot GPU util" { class: control }
+
+metrics: "Metrics\n[Prometheus]" { class: store }
+
+weights: "Object Storage\n\nModel weights,\nLoRA adapters" { class: store }
+
+client -> gateway: "HTTPS\nPOST /v1/chat/completions"
+gateway -> router: "authorized request"
+router -> replica_a.scheduler: "pick replica"
+router -> replica_b: "pick replica"
+
+replica_a -> metrics: "num_requests_waiting\nkv_cache_usage_perc"
+replica_b -> metrics
+metrics -> autoscaler: "queue depth,\nKV utilization"
+autoscaler -> replica_b: "add / remove replicas" { style.stroke-dash: 4 }
+weights -> replica_b: "cold start: pull weights\n(size / storage BW)" { style.stroke-dash: 4 }
