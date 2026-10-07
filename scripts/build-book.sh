@@ -16,6 +16,8 @@ set -euo pipefail
 #   --skip-mermaid     Leave Mermaid blocks as code (no headless browser needed)
 #   --no-toc           Omit the table of contents
 #   --manifest FILE    Write a build manifest JSON to FILE
+#   --path NAME        Build one role path (paths/NAME/path.tsv) instead of the
+#                      whole curriculum; writes supersource-NAME.pdf
 #   --help             Show this help
 #
 # Requirements: pandoc, a LaTeX engine (xelatex), python3.
@@ -30,6 +32,7 @@ SUBTITLE="Free, self-paced study from foundations to Staff+ depth"
 SKIP_MERMAID=false
 WITH_TOC=true
 MANIFEST=""
+LEARN_PATH=""
 
 # Font candidates (Unicode-capable serif/sans cover the math glyphs the
 # curriculum uses: → ≠ ∝ σ Σ · etc).
@@ -68,6 +71,7 @@ while [[ $# -gt 0 ]]; do
     --skip-mermaid) SKIP_MERMAID=true; shift ;;
     --no-toc) WITH_TOC=false; shift ;;
     --manifest) MANIFEST="$2"; shift 2 ;;
+    --path) LEARN_PATH="$2"; shift 2 ;;
     --help|-h) usage ;;
     -*) die "Unknown option: $1" ;;
     *) die "Unexpected argument: $1" ;;
@@ -94,12 +98,21 @@ trap cleanup EXIT
 COMBINED_MD="$WORK_DIR/supersource-book.md"
 
 info "Assembling curriculum into one document..."
-python3 "$SCRIPT_DIR/assemble_book.py" --root "$ROOT_DIR" --out "$COMBINED_MD"
+assemble_args=(--root "$ROOT_DIR" --out "$COMBINED_MD")
+PDF_NAME="supersource-curriculum.pdf"
+if [[ -n "$LEARN_PATH" ]]; then
+  assemble_args+=(--path "$LEARN_PATH")
+  PDF_NAME="supersource-$LEARN_PATH.pdf"
+  # The path's README H1 is its title, e.g. "Forward Deployed Engineer, ...".
+  TITLE="$(sed -n 's/^# //p' "$ROOT_DIR/paths/$LEARN_PATH/README.md" | head -1)"
+  SUBTITLE="A Supersource role path"
+fi
+python3 "$SCRIPT_DIR/assemble_book.py" "${assemble_args[@]}"
 
 # --- render -----------------------------------------------------------------
 
 mkdir -p "$OUTPUT_DIR"
-PDF_PATH="$OUTPUT_DIR/supersource-curriculum.pdf"
+PDF_PATH="$OUTPUT_DIR/$PDF_NAME"
 BUILD_DATE="$(date -u +%Y-%m-%d)"
 
 base_cmd=(

@@ -15,8 +15,12 @@ that a naive ``cat`` of every README cannot:
 Mermaid fenced code blocks are left untouched -- pandoc's ``mermaid-filter``
 renders them downstream (or they fall back to code blocks).
 
+With ``--path NAME`` it assembles one role path instead: the stages listed in
+``paths/NAME/path.tsv``, each a Part holding that stage's files in order, with
+the stage's "done when" criterion as the Part's opening line.
+
 Usage:
-    python scripts/assemble_book.py --out /tmp/book.md [--root .]
+    python scripts/assemble_book.py --out /tmp/book.md [--root .] [--path NAME]
 """
 
 from __future__ import annotations
@@ -48,6 +52,8 @@ TRACKS: list[tuple[str, str]] = [
 # Appended after the tracks as a final Part.
 APPENDICES: list[tuple[str, str]] = [
     ("STUDY-PLAN.md", "Appendix: Study Plans"),
+    ("CS-CURRICULUM.md", "Appendix: Computer Science Curriculum"),
+    ("SOURCES.md", "Appendix: Sources and Validation"),
 ]
 
 # Markdown inline image:  ![alt](target "title")
@@ -169,6 +175,37 @@ def assemble(root: Path) -> tuple[str, int]:
     return "".join(chunks), chapters
 
 
+def read_path(root: Path, name: str) -> list[tuple[str, str, list[str], str]]:
+    """Rows of paths/<name>/path.tsv as (stage, title, files, done_when)."""
+    tsv = root / "paths" / name / "path.tsv"
+    if not tsv.exists():
+        raise SystemExit(f"[error] no path manifest at {tsv}")
+    rows = []
+    for line in tsv.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        stage, title, files, when = line.split("\t")
+        rows.append((stage, title, [f for f in files.split(",") if f], when))
+    return rows
+
+
+def assemble_path(root: Path, name: str) -> tuple[str, int]:
+    chunks: list[str] = []
+    chapters = 0
+    for stage, title, files, when in read_path(root, name):
+        chunks.append(part_divider(f"Stage {stage}: {title}"))
+        chunks.append(f"**Done when:** {when}\n\n")
+        for rel in files:
+            path = root / rel
+            if not path.exists():
+                raise SystemExit(f"[error] stage {stage} names missing file {rel}")
+            text = single_chapter(path.read_text(encoding="utf-8"))
+            chunks.append(substitute_glyphs(rewrite_images(text, path.parent)))
+            chunks.append("\n\n")
+            chapters += 1
+    return "".join(chunks), chapters
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -177,9 +214,16 @@ def main() -> int:
     parser.add_argument(
         "--root", default=Path(__file__).resolve().parent.parent, type=Path
     )
+    parser.add_argument(
+        "--path", help="assemble one role path from paths/<NAME>/path.tsv"
+    )
     args = parser.parse_args()
 
-    body, chapters = assemble(args.root.resolve())
+    root = args.root.resolve()
+    if args.path:
+        body, chapters = assemble_path(root, args.path)
+    else:
+        body, chapters = assemble(root)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(body, encoding="utf-8")
     print(f"[info] assembled {chapters} chapter(s) -> {args.out}")

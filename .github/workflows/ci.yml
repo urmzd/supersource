@@ -143,6 +143,11 @@ jobs:
       - name: Verify reference implementations
         run: practice/bin/ss verify build
 
+      - name: Verify role paths
+        # Every stage a paths/*/path.tsv names must exist, so ss learn and the
+        # role-path PDFs never point at a moved or renamed chapter.
+        run: practice/bin/ss learn --verify
+
   book:
     name: Book PDF
     runs-on: ubuntu-latest
@@ -188,11 +193,21 @@ jobs:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: ./scripts/build-book.sh --manifest outputs/build-manifest.json
 
+      - name: Build one PDF per role path
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          for tsv in paths/*/path.tsv; do
+            name="$(basename "$(dirname "$tsv")")"
+            ./scripts/build-book.sh --path "$name" --manifest "outputs/build-manifest-$name.json"
+          done
+
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v7
         with:
           name: supersource-curriculum-pdf
           path: |
             outputs/supersource-curriculum.pdf
-            outputs/build-manifest.json
+            outputs/supersource-*.pdf
+            outputs/build-manifest*.json
           if-no-files-found: error
