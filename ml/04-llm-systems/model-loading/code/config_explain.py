@@ -24,8 +24,19 @@ import argparse
 import json
 from pathlib import Path
 
-DTYPE_BYTES = {"float32": 4, "fp32": 4, "bfloat16": 2, "bf16": 2, "float16": 2, "fp16": 2,
-               "fp8": 1, "float8": 1, "int8": 1, "int4": 0.5, "fp4": 0.5}
+DTYPE_BYTES = {
+    "float32": 4,
+    "fp32": 4,
+    "bfloat16": 2,
+    "bf16": 2,
+    "float16": 2,
+    "fp16": 2,
+    "fp8": 1,
+    "float8": 1,
+    "int8": 1,
+    "int4": 0.5,
+    "fp4": 0.5,
+}
 
 # Effective sequential bandwidths (GB/s) for the cold-start estimate. Order of
 # magnitude only; measure your own path with fio / dd / iperf.
@@ -63,8 +74,8 @@ def attn_params(cfg: dict) -> int:
         nope, rope = cfg["qk_nope_head_dim"], cfg["qk_rope_head_dim"]
         v, r_kv, r_q = cfg["v_head_dim"], cfg["kv_lora_rank"], cfg.get("q_lora_rank")
         q = (d * r_q + r_q + r_q * h * (nope + rope)) if r_q else d * h * (nope + rope)
-        kv_a = d * (r_kv + rope) + r_kv          # down-projection + its RMSNorm
-        kv_b = r_kv * h * (nope + v)             # up-projection to per-head K_nope, V
+        kv_a = d * (r_kv + rope) + r_kv  # down-projection + its RMSNorm
+        kv_b = r_kv * h * (nope + v)  # up-projection to per-head K_nope, V
         o = h * v * d
         return q + kv_a + kv_b + o
     kv = cfg.get("num_key_value_heads") or h
@@ -73,13 +84,16 @@ def attn_params(cfg: dict) -> int:
     if cfg.get("attention_bias"):
         p += h * hd + 2 * kv * hd
     if cfg.get("model_type", "").startswith("qwen3"):
-        p += 2 * hd                              # q_norm, k_norm
+        p += 2 * hd  # q_norm, k_norm
     return p
 
 
 def is_moe_layer(cfg: dict, i: int) -> bool:
-    if cfg.get("n_routed_experts"):              # DeepSeek V2/V3
-        return i >= cfg.get("first_k_dense_replace", 0) and i % cfg.get("moe_layer_freq", 1) == 0
+    if cfg.get("n_routed_experts"):  # DeepSeek V2/V3
+        return (
+            i >= cfg.get("first_k_dense_replace", 0)
+            and i % cfg.get("moe_layer_freq", 1) == 0
+        )
     if cfg.get("num_experts") or cfg.get("num_local_experts"):  # Qwen MoE, Mixtral
         if i in (cfg.get("mlp_only_layers") or []):
             return False
@@ -94,7 +108,11 @@ def mlp_params(cfg: dict, moe: bool) -> tuple[int, int]:
     if not moe:
         p = 3 * d * cfg["intermediate_size"]
         return p, p
-    e = cfg.get("n_routed_experts") or cfg.get("num_experts") or cfg.get("num_local_experts")
+    e = (
+        cfg.get("n_routed_experts")
+        or cfg.get("num_experts")
+        or cfg.get("num_local_experts")
+    )
     k = cfg["num_experts_per_tok"]
     i_moe = cfg.get("moe_intermediate_size") or cfg["intermediate_size"]
     expert = 3 * d * i_moe
@@ -111,7 +129,7 @@ def count_params(cfg: dict) -> tuple[int, int]:
     d, L, V = cfg["hidden_size"], cfg["num_hidden_layers"], cfg["vocab_size"]
     embed = V * d
     head = 0 if cfg.get("tie_word_embeddings") else V * d
-    total = active = embed + head + d            # + final norm
+    total = active = embed + head + d  # + final norm
     a = attn_params(cfg)
     for i in range(L):
         t, act = mlp_params(cfg, is_moe_layer(cfg, i))
@@ -175,31 +193,56 @@ def explain(path: str, kv_dtype: str) -> None:
     weights = total * wbytes
 
     print(f"== {path}")
-    print(f"  architecture    {cfg.get('architectures', ['?'])[0]}  (model_type={cfg.get('model_type')})")
+    print(
+        f"  architecture    {cfg.get('architectures', ['?'])[0]}  (model_type={cfg.get('model_type')})"
+    )
     if cfg.get("auto_map"):
-        print("  custom code     auto_map present: stock transformers may need trust_remote_code")
-    print(f"  shape           L={cfg['num_hidden_layers']} d={cfg['hidden_size']} vocab={cfg['vocab_size']}"
-          f" tied_embeddings={bool(cfg.get('tie_word_embeddings'))}")
+        print(
+            "  custom code     auto_map present: stock transformers may need trust_remote_code"
+        )
+    print(
+        f"  shape           L={cfg['num_hidden_layers']} d={cfg['hidden_size']} vocab={cfg['vocab_size']}"
+        f" tied_embeddings={bool(cfg.get('tie_word_embeddings'))}"
+    )
     print(f"  attention       {attention_variant(cfg)}")
     moe_layers = sum(is_moe_layer(cfg, i) for i in range(cfg["num_hidden_layers"]))
     if moe_layers:
-        e = cfg.get("n_routed_experts") or cfg.get("num_experts") or cfg.get("num_local_experts")
-        print(f"  MoE             {moe_layers} MoE layers, {e} experts, top-{cfg['num_experts_per_tok']}"
-              f", shared={cfg.get('n_shared_experts', 0)}")
-    print(f"  params          total={total / 1e9:.2f}B  active/token={active / 1e9:.2f}B")
+        e = (
+            cfg.get("n_routed_experts")
+            or cfg.get("num_experts")
+            or cfg.get("num_local_experts")
+        )
+        print(
+            f"  MoE             {moe_layers} MoE layers, {e} experts, top-{cfg['num_experts_per_tok']}"
+            f", shared={cfg.get('n_shared_experts', 0)}"
+        )
+    print(
+        f"  params          total={total / 1e9:.2f}B  active/token={active / 1e9:.2f}B"
+    )
     if cfg.get("num_nextn_predict_layers"):
-        print(f"                  (+{cfg['num_nextn_predict_layers']} MTP layer(s) in checkpoint, not counted)")
+        print(
+            f"                  (+{cfg['num_nextn_predict_layers']} MTP layer(s) in checkpoint, not counted)"
+        )
     print(f"  weights         {wname} -> ~{gb(weights)}")
     print(f"  context         max_position_embeddings={ctx}; rope: {rope_summary(cfg)}")
-    print(f"  KV cache        {per_tok / 1024:,.1f} KiB/token ({kv_dtype})"
-          + (f"; one {ctx:,}-token sequence = {gb(per_tok * ctx)}" if ctx else ""))
+    print(
+        f"  KV cache        {per_tok / 1024:,.1f} KiB/token ({kv_dtype})"
+        + (f"; one {ctx:,}-token sequence = {gb(per_tok * ctx)}" if ctx else "")
+    )
     eos = cfg.get("eos_token_id")
-    print(f"  eos_token_id    {eos}  (generation_config.json may override; mismatch => runaway output)")
-    print("  cold load       " + "; ".join(f"{n}: {secs(weights / (bw * 1e9))}" for n, bw in BANDWIDTHS))
+    print(
+        f"  eos_token_id    {eos}  (generation_config.json may override; mismatch => runaway output)"
+    )
+    print(
+        "  cold load       "
+        + "; ".join(f"{n}: {secs(weights / (bw * 1e9))}" for n, bw in BANDWIDTHS)
+    )
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("configs", nargs="+")
     p.add_argument("--kv-dtype", default="bf16", choices=sorted(DTYPE_BYTES))
     a = p.parse_args()
