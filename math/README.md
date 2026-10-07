@@ -4,7 +4,7 @@ A free, self-paced math curriculum built on open-source textbooks. This track co
 mathematical foundations required for computer science, machine learning, and software
 engineering -- from single-variable calculus through probability and statistics.
 
-Every resource linked here is freely available online under open licenses.
+The primary math texts are free to read online. Access and reuse permissions differ; consult each source's license. See the [source register](../SOURCES.md) for checked references.
 
 ## Prerequisite Graph
 
@@ -30,12 +30,14 @@ graph LR
 | 06 | [Discrete Math 2](06-discrete-math-2/) | Levin, *Discrete Mathematics* | 4 weeks |
 | 07 | [Probability & Statistics](07-probability-statistics/) | Grinstead & Snell + OpenStax Stats | 3-4 weeks |
 
-**Total**: ~27-28 weeks (roughly two semesters)
+**Total**: ~27-28 weeks for this intensive introductory pass, at 10-12 hours per week.
+Full textbook coverage and degree-level mastery require additional problem sets and assessment.
 
 ## Quick Start
 
 1. **Pick your entry point.** Calculus 1, Linear Algebra, and Discrete Math 1 have no
-   prerequisites -- start with any of them (or all three in parallel).
+   college-level prerequisites. Algebra and functions are assumed; calculus also requires
+   trigonometry. Start with one subject unless your weekly time budget supports more.
 2. **Open the topic README.** Each topic lists the free textbook, section-by-section study
    plan, key theorems, worked examples, and exercises.
 3. **Work problems with pencil and paper.** Mathematics is learned by doing, not reading.
@@ -55,3 +57,9 @@ graph LR
 
 **Part-time (1 topic at a time)**:
 - Follow the numbering 01 through 07, respecting prerequisites.
+
+## Apply the mathematics
+
+Use the [CS curriculum math labs](../CS-CURRICULUM.md#mathematics-must-produce-working-artifacts) alongside these topics: prove a scheduler correct, implement least squares and PCA, check gradients, measure integration error, and simulate statistical inference. Each assignment requires a derivation, implementation, independent comparison, and failure analysis.
+
+After the foundations, read Deisenroth, Faisal and Ong's [Mathematics for Machine Learning](https://mml-book.github.io/) for the bridge to numerical optimization and data applications.
