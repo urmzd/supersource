@@ -98,7 +98,7 @@ jobs:
         run: sudo apt-get install -y time
 
       - name: Verify memory measurement
-        run: python3 -m unittest discover -s practice/predict/bin -p 'test_measure.py'
+        run: python3 -m unittest discover -s practice/bin -p 'test_measure.py'
 
       # Every snippet must build, exit zero, print something, and print the
       # same thing three runs in a row. Nondeterministic output cannot be
