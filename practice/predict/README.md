@@ -5,10 +5,10 @@ language: **write down what you think the code prints, then run it.** The diff
 between your prediction and reality is the only signal here. Nothing in this
 directory grades style, teaches syntax, or rewards effort.
 
-The rest of [Polyglot Practice](../README.md) asks you to *build* things. This
-asks you to *predict* things, which is a different and much faster way to find
-out that you were wrong about `defer`, about integer overflow, or about what
-`this` is bound to.
+This is one of the three exercise kinds on the [practice path](../README.md).
+The `build` kind asks you to *build* things. This one asks you to *predict*
+things, which is a different and much faster way to find out that you were wrong
+about `defer`, about integer overflow, or about what `this` is bound to.
 
 ## Why prediction and not reading
 
@@ -27,35 +27,36 @@ Two rules make this work:
 
 ## The harness
 
-`bin/lr` is a single bash script with no dependencies beyond the language
-toolchains themselves.
+The harness is [`../bin/ss`](../bin/ss), a single bash script with no
+dependencies beyond the language toolchains themselves. It drives the other
+exercise kinds too; these are the verbs that matter here.
 
 | Command | What it does |
 |---------|--------------|
-| `lr list [lang]` | Show snippets and whether you have predicted them |
-| `lr show <lang> <id>` | Print a snippet's source |
-| `lr predict <lang> <id>` | Show the source, then open your prediction file in `$EDITOR` |
-| `lr check <lang> [id]` | Run for real and diff your prediction against actual output |
-| `lr score [lang]` | Tally passed, missed, and not attempted |
-| `lr reveal <lang> <id>` | Just run it, burning the exercise |
-| `lr reset <lang> <id>` | Delete your prediction and start over |
-| `lr verify [lang]` | Maintainer check: every snippet builds, runs, and prints the same thing three times in a row |
-| `lr bench [lang] [--assert]` | Wall time and peak memory per snippet, against the ceilings in `budgets.tsv` |
+| `ss list predict [lang]` | Show snippets and whether you have predicted them |
+| `ss show predict <lang> <id>` | Print a snippet's source |
+| `ss start predict <lang> <id>` | Show the source, then open your prediction file in `$EDITOR` |
+| `ss check predict <lang> [id]` | Run for real and diff your prediction against actual output |
+| `ss score predict [lang]` | Tally passed, missed, and not attempted |
+| `ss reveal predict <lang> <id>` | Just run it, burning the exercise |
+| `ss reset predict <lang> <id>` | Delete your prediction and start over |
+| `ss verify predict [lang]` | Maintainer check: every snippet builds, runs, and prints the same thing three times in a row |
+| `ss bench [lang] [--assert]` | Wall time and peak memory per snippet, against the ceilings in `budgets.tsv` |
 
-`<id>` is the numeric prefix of a snippet, so `lr check go 03` is enough.
+`<id>` is the numeric prefix of a snippet, so `ss check predict go 03` is
+enough.
 
-Your predictions are written to `<lang>/predictions/<snippet>.txt`. They are
-yours, they are not committed, and the harness never looks at them until you run
-`lr check`.
+Your predictions are written to `.scratchpad/predict/<lang>/<snippet>.txt` at
+the repo root. They are yours, the whole `.scratchpad/` directory is gitignored,
+and the harness never looks at them until you run `ss check`.
 
 ## A session
 
 ```bash
-cd practice/predict
-bin/lr list go                 # what is here, and what you have attempted
-bin/lr predict go 03           # read the source, write the exact expected output
-bin/lr check go 03             # PASS, or a diff of prediction against reality
-bin/lr score                   # where you stand across all four languages
+ss list predict go              # what is here, and what you have attempted
+ss start predict go 03          # read the source, write the exact expected output
+ss check predict go 03          # PASS, or a diff of prediction against reality
+ss score predict                # where you stand across all four languages
 ```
 
 A miss prints a unified diff and one instruction: record it in
@@ -63,9 +64,9 @@ A miss prints a unified diff and one instruction: record it in
 slower is better, because the value is entirely in the minute you spend deciding
 what you think happens.
 
-`lr check` runs the real toolchain. First contact with Rust or Go pays for a
-compile, so `lr verify <lang>` (below) is a reasonable way to warm the cache
-before a session.
+`ss check` runs the real toolchain. First contact with Rust or Go pays for a
+compile, so `ss verify predict <lang>` (below) is a reasonable way to warm the
+cache before a session.
 
 ## Where snippets live
 
@@ -81,7 +82,7 @@ that `go run`, `cargo run`, and friends work with no wrapper.
 
 Every snippet must be **deterministic**. Output that varies between runs (map
 iteration order, goroutine interleaving, timestamps, addresses) makes prediction
-impossible and is a bug in the snippet, not a lesson. `lr verify` is what
+impossible and is a bug in the snippet, not a lesson. `ss verify` is what
 enforces that.
 
 Node runs the TypeScript files by stripping the types, not by checking them.
@@ -120,11 +121,11 @@ stick.
 
 ## Validating the corpus
 
-`lr check` validates *you*. `lr verify` validates the *snippets*, and it is the
+`ss check` validates *you*. `ss verify` validates the *snippets*, and it is the
 one that runs in CI:
 
 ```bash
-$ bin/lr verify go
+$ ss verify predict go
 OK    go/01-loop-var-capture (4 lines, stable over 3 runs)
 OK    go/02-nil-interface (7 lines, stable over 3 runs)
 ...
@@ -140,11 +141,11 @@ a fresh checkout without spoiling a single exercise.
 
 ## What it costs
 
-`lr check` asks what a program prints. `lr bench` asks what it costs, which is
+`ss check` asks what a program prints. `ss bench` asks what it costs, which is
 the other half of a mental model and usually the half made of folklore.
 
 ```bash
-$ bin/lr bench rust
+$ ss bench rust
 rust
   01-shadowing-and-blocks             2ms     1504KB  ok
   02-drop-order                       3ms     1488KB  ok
@@ -153,7 +154,7 @@ rust
 
 Wall time is the *minimum* of five runs, because every source of noise makes a
 run slower and never faster. Memory is the *peak* RSS across those runs, because
-peak is what gets a process killed. [`bin/measure.py`](bin/measure.py) does the
+peak is what gets a process killed. [`../bin/measure.py`](../bin/measure.py) does the
 measuring and normalises the platform difference in `ru_maxrss` (bytes on macOS,
 kilobytes on Linux) that would otherwise be a factor-of-1024 error. On Linux,
 it requires GNU `/usr/bin/time` (the `time` package): measuring the Python
@@ -190,7 +191,7 @@ request.
 variance never trips them:
 
 ```bash
-bin/lr bench --assert      # nonzero exit on a breach; runs in CI
+ss bench --assert          # nonzero exit on a breach; runs in CI
 just run-predict-bench     # the same thing from the repo root
 ```
 

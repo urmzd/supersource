@@ -1,0 +1,22 @@
+# Per-project runtimes, activated by mise on cd.
+#
+# Only the OPTIONAL build languages need anything here. The core ones (go, rust,
+# python, typescript, c, cpp) come from the system toolchain or from the manager
+# that already owns them: rustup for rust, fnm for node, uv for python.
+#
+# Committed on purpose, so that if you do pick up the optional Java track you
+# get the version its exercises were written against instead of whatever
+# happens to be on PATH. Nothing here is required to work through the core
+# exercises, and `ss` no-ops when mise is absent.
+#
+#   mise install     # fetch the versions below
+#   mise current     # show what is active here
+#
+# Node is deliberately absent: fnm owns node on this machine and mise would
+# shadow it, since whichever activates last wins on PATH.
+
+[tools]
+# Optional: only needed for build/cloud/java. Java 25 is the current LTS, and
+# those exercises assume virtual threads, records, sealed interfaces, and
+# pattern matching for switch, all final rather than preview from 21 onward.
+java = "temurin-25"

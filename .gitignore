@@ -9,10 +9,10 @@ __pycache__/
 .DS_Store
 .idea/
 
-# Predict-then-run: your predictions are yours alone. Committing them would
-# spoil the exercise for the next reader.
-practice/predict/*/predictions/
-practice/predict/.bench/
+# Everything you write while practising lives here: predictions, cloned
+# exercise workspaces, bench binaries. Committing any of it would spoil the
+# exercises for the next reader, so the whole directory stays out.
+/.scratchpad/
 
 # Book build (PDF is a CI artifact / release asset, not committed)
 /outputs/
