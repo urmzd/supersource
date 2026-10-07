@@ -10,6 +10,7 @@ recognition, which feels like knowledge and is not. Practice produces a verdict,
 which is uncomfortable and is the only thing that transfers.
 
 ```bash
+practice/bin/ss learn          # role paths: the learning path in order, for one job
 practice/bin/ss where          # what exists, and where it lives
 practice/bin/ss list           # every exercise, and which ones you have started
 ```
