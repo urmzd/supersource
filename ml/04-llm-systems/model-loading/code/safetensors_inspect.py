@@ -38,12 +38,28 @@ from pathlib import Path
 
 # Element width in bits, mirroring Dtype::bitsize() in safetensors/src/tensor.rs.
 DTYPE_BITS = {
-    "BOOL": 8, "U8": 8, "I8": 8,
-    "F8_E4M3": 8, "F8_E5M2": 8, "F8_E8M0": 8, "F8_E4M3FNUZ": 8, "F8_E5M2FNUZ": 8,
-    "F4": 4, "F6_E2M3": 6, "F6_E3M2": 6,
-    "I16": 16, "U16": 16, "F16": 16, "BF16": 16,
-    "I32": 32, "U32": 32, "F32": 32,
-    "I64": 64, "U64": 64, "F64": 64, "C64": 64,
+    "BOOL": 8,
+    "U8": 8,
+    "I8": 8,
+    "F8_E4M3": 8,
+    "F8_E5M2": 8,
+    "F8_E8M0": 8,
+    "F8_E4M3FNUZ": 8,
+    "F8_E5M2FNUZ": 8,
+    "F4": 4,
+    "F6_E2M3": 6,
+    "F6_E3M2": 6,
+    "I16": 16,
+    "U16": 16,
+    "F16": 16,
+    "BF16": 16,
+    "I32": 32,
+    "U32": 32,
+    "F32": 32,
+    "I64": 64,
+    "U64": 64,
+    "F64": 64,
+    "C64": 64,
 }
 
 # Dtypes often used as *containers* for packed low-bit weights (GPTQ/AWQ
@@ -56,6 +72,7 @@ MAX_HEADER = 100 * 1024 * 1024  # the reference implementation also caps this
 # --------------------------------------------------------------------------
 # Header parsing
 # --------------------------------------------------------------------------
+
 
 class Source:
     """Random-access byte reader over a local file or an HTTP(S) URL."""
@@ -80,7 +97,9 @@ class Source:
             with urllib.request.urlopen(req, timeout=60) as resp:  # follows redirects
                 data = resp.read()
         if len(data) != length:
-            raise ValueError(f"short read: wanted {length} bytes at {offset}, got {len(data)}")
+            raise ValueError(
+                f"short read: wanted {length} bytes at {offset}, got {len(data)}"
+            )
         return data
 
 
@@ -109,7 +128,9 @@ def validate(header: dict) -> list[str]:
             continue
         expected = math.ceil(math.prod(shape) * DTYPE_BITS[dtype] / 8)
         if end - begin != expected:
-            problems.append(f"{name}: {end - begin} bytes but {dtype}{shape} needs {expected}")
+            problems.append(
+                f"{name}: {end - begin} bytes but {dtype}{shape} needs {expected}"
+            )
         spans.append((begin, end, name))
     spans.sort()
     cursor = 0
@@ -124,8 +145,19 @@ def validate(header: dict) -> list[str]:
 # Decoding raw bytes (F32 / F16 / BF16 / ints) without numpy
 # --------------------------------------------------------------------------
 
-STRUCT_CODES = {"F32": "f", "F64": "d", "F16": "e", "I8": "b", "U8": "B",
-                "I16": "h", "U16": "H", "I32": "i", "U32": "I", "I64": "q", "U64": "Q"}
+STRUCT_CODES = {
+    "F32": "f",
+    "F64": "d",
+    "F16": "e",
+    "I8": "b",
+    "U8": "B",
+    "I16": "h",
+    "U16": "H",
+    "I32": "i",
+    "U32": "I",
+    "I64": "q",
+    "U64": "Q",
+}
 
 
 def decode(dtype: str, raw: bytes) -> list:
@@ -142,7 +174,11 @@ def decode(dtype: str, raw: bytes) -> list:
 
 def read_tensor(src: Source, n: int, info: dict, limit: int | None = None) -> list:
     begin, end = info["data_offsets"]
-    if limit is not None and info["dtype"] in DTYPE_BITS and DTYPE_BITS[info["dtype"]] >= 8:
+    if (
+        limit is not None
+        and info["dtype"] in DTYPE_BITS
+        and DTYPE_BITS[info["dtype"]] >= 8
+    ):
         end = min(end, begin + limit * DTYPE_BITS[info["dtype"]] // 8)
     raw = src.read(8 + n + begin, end - begin)
     return decode(info["dtype"], raw)
@@ -151,6 +187,7 @@ def read_tensor(src: Source, n: int, info: dict, limit: int | None = None) -> li
 # --------------------------------------------------------------------------
 # Reporting
 # --------------------------------------------------------------------------
+
 
 def human(nbytes: float) -> str:
     for unit in ("B", "KB", "MB", "GB", "TB"):
@@ -163,7 +200,9 @@ def human(nbytes: float) -> str:
 def summarize(header: dict, show: int) -> dict:
     tensors = {k: v for k, v in header.items() if k != "__metadata__"}
     elems = {k: math.prod(v["shape"]) for k, v in tensors.items()}
-    nbytes = {k: v["data_offsets"][1] - v["data_offsets"][0] for k, v in tensors.items()}
+    nbytes = {
+        k: v["data_offsets"][1] - v["data_offsets"][0] for k, v in tensors.items()
+    }
     by_dtype = Counter()
     for k, v in tensors.items():
         by_dtype[v["dtype"]] += elems[k]
@@ -172,11 +211,17 @@ def summarize(header: dict, show: int) -> dict:
         print(f"  {'tensor':<{width}} {'dtype':<8} {'shape':<22} {'bytes':>12}")
         for k in sorted(tensors)[:show]:
             v = tensors[k]
-            print(f"  {k:<{width}.{width}} {v['dtype']:<8} {v['shape']!s:<22} {human(nbytes[k]):>12}")
+            print(
+                f"  {k:<{width}.{width}} {v['dtype']:<8} {v['shape']!s:<22} {human(nbytes[k]):>12}"
+            )
         if len(tensors) > show:
             print(f"  ... {len(tensors) - show} more (use --show N)")
-    return {"tensors": len(tensors), "elements": sum(elems.values()),
-            "bytes": sum(nbytes.values()), "by_dtype": by_dtype}
+    return {
+        "tensors": len(tensors),
+        "elements": sum(elems.values()),
+        "bytes": sum(nbytes.values()),
+        "by_dtype": by_dtype,
+    }
 
 
 def report_file(target: str, show: int, tensor: str | None, limit: int) -> dict:
@@ -189,17 +234,26 @@ def report_file(target: str, show: int, tensor: str | None, limit: int) -> dict:
         print(f"  __metadata__: {meta}")
     stats = summarize(header, show)
     problems = validate(header)
-    print(f"  tensors={stats['tensors']}  elements={stats['elements']:,}  data={human(stats['bytes'])}")
-    print("  elements by dtype: " + ", ".join(f"{d}={c:,}" for d, c in stats["by_dtype"].most_common()))
+    print(
+        f"  tensors={stats['tensors']}  elements={stats['elements']:,}  data={human(stats['bytes'])}"
+    )
+    print(
+        "  elements by dtype: "
+        + ", ".join(f"{d}={c:,}" for d, c in stats["by_dtype"].most_common())
+    )
     packed = PACKED_CONTAINERS & set(stats["by_dtype"])
     if packed:
-        print(f"  note: {sorted(packed)} may hold packed low-bit weights; elements != params")
+        print(
+            f"  note: {sorted(packed)} may hold packed low-bit weights; elements != params"
+        )
     print("  validation: " + ("OK" if not problems else "; ".join(problems[:5])))
     if tensor:
         if tensor not in header:
             raise SystemExit(f"tensor {tensor!r} not in this file")
         values = read_tensor(src, n, header[tensor], limit)
-        print(f"  {tensor}[:{len(values)}] = {[round(x, 6) if isinstance(x, float) else x for x in values]}")
+        print(
+            f"  {tensor}[:{len(values)}] = {[round(x, 6) if isinstance(x, float) else x for x in values]}"
+        )
     return stats
 
 
@@ -211,7 +265,9 @@ def report_index(path: str, show: int) -> None:
         shards[shard].append(name)
     total = index.get("metadata", {}).get("total_size")
     print(f"== {path}")
-    print(f"  {len(weight_map)} tensors across {len(shards)} shards; metadata.total_size={total and human(total)}")
+    print(
+        f"  {len(weight_map)} tensors across {len(shards)} shards; metadata.total_size={total and human(total)}"
+    )
     for shard in sorted(shards):
         print(f"  {shard}: {len(shards[shard])} tensors")
     base = Path(path).parent
@@ -225,24 +281,36 @@ def report_index(path: str, show: int) -> None:
         missing = set(shards[shard]) - set(header)
         extra = set(header) - set(shards[shard]) - {"__metadata__"}
         if missing or extra:
-            print(f"  MISMATCH in {shard}: missing={sorted(missing)[:3]} extra={sorted(extra)[:3]}")
+            print(
+                f"  MISMATCH in {shard}: missing={sorted(missing)[:3]} extra={sorted(extra)[:3]}"
+            )
         grand += report_file(str(base / shard), show, None, 0)["bytes"]
     if total is not None and len(present) == len(shards):
-        print(f"  sum of shard data = {human(grand)}  (index says {human(total)}; equal: {grand == total})")
+        print(
+            f"  sum of shard data = {human(grand)}  (index says {human(total)}; equal: {grand == total})"
+        )
 
 
 # --------------------------------------------------------------------------
 # Self-test: write a safetensors file by hand, then parse it back
 # --------------------------------------------------------------------------
 
-def write_safetensors(path: Path, tensors: dict[str, tuple[str, list[int], bytes]],
-                      metadata: dict[str, str] | None = None) -> None:
+
+def write_safetensors(
+    path: Path,
+    tensors: dict[str, tuple[str, list[int], bytes]],
+    metadata: dict[str, str] | None = None,
+) -> None:
     header: dict = {}
     if metadata:
         header["__metadata__"] = metadata
     offset = 0
     for name, (dtype, shape, raw) in tensors.items():
-        header[name] = {"dtype": dtype, "shape": shape, "data_offsets": [offset, offset + len(raw)]}
+        header[name] = {
+            "dtype": dtype,
+            "shape": shape,
+            "data_offsets": [offset, offset + len(raw)],
+        }
         offset += len(raw)
     blob = json.dumps(header, separators=(",", ":")).encode()
     blob += b" " * (-len(blob) % 8)  # pad so the data buffer is 8-byte aligned
@@ -255,7 +323,10 @@ def write_safetensors(path: Path, tensors: dict[str, tuple[str, list[int], bytes
 
 def bf16_bytes(values: list[float]) -> bytes:
     # truncate float32 to its top 16 bits (round-toward-zero is fine for a test)
-    return b"".join(struct.pack("<H", struct.unpack("<I", struct.pack("<f", v))[0] >> 16) for v in values)
+    return b"".join(
+        struct.pack("<H", struct.unpack("<I", struct.pack("<f", v))[0] >> 16)
+        for v in values
+    )
 
 
 def selftest() -> None:
@@ -283,12 +354,20 @@ def selftest() -> None:
         assert read_tensor(src, n, header["model.norm.weight"]) == [1.0, 2.0, -3.0, 0.5]
         # a corrupt header must be caught
         bad = dict(header)
-        bad["model.norm.weight"] = {"dtype": "BF16", "shape": [5], "data_offsets": [24, 32]}
+        bad["model.norm.weight"] = {
+            "dtype": "BF16",
+            "shape": [5],
+            "data_offsets": [24, 32],
+        }
         assert validate(bad), "validator should flag a shape/size mismatch"
-        index = {"metadata": {"total_size": 24 + 8 + 3},
-                 "weight_map": {"model.embed_tokens.weight": f1.name,
-                                "model.norm.weight": f1.name,
-                                "model.layers.0.mlp.qweight": f2.name}}
+        index = {
+            "metadata": {"total_size": 24 + 8 + 3},
+            "weight_map": {
+                "model.embed_tokens.weight": f1.name,
+                "model.norm.weight": f1.name,
+                "model.layers.0.mlp.qweight": f2.name,
+            },
+        }
         (d / "model.safetensors.index.json").write_text(json.dumps(index))
         report_file(str(f1), 10, "model.embed_tokens.weight", 6)
         report_index(str(d / "model.safetensors.index.json"), 0)
@@ -296,12 +375,20 @@ def selftest() -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("path", nargs="?", help=".safetensors file or model.safetensors.index.json")
-    p.add_argument("--url", help="inspect a remote file via HTTP Range requests (HF_TOKEN honored)")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "path", nargs="?", help=".safetensors file or model.safetensors.index.json"
+    )
+    p.add_argument(
+        "--url", help="inspect a remote file via HTTP Range requests (HF_TOKEN honored)"
+    )
     p.add_argument("--show", type=int, default=20, help="tensors to list (default 20)")
     p.add_argument("--tensor", help="decode this tensor's raw bytes into a list")
-    p.add_argument("--limit", type=int, default=16, help="max elements to decode (default 16)")
+    p.add_argument(
+        "--limit", type=int, default=16, help="max elements to decode (default 16)"
+    )
     p.add_argument("--selftest", action="store_true")
     a = p.parse_args(argv)
     if a.selftest:
