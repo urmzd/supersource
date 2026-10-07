@@ -142,6 +142,7 @@ Three distinct "distributed" problems kept apart on purpose: distributed **train
 | [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) + [project postmortems](software-craftsmanship/04-lessons-from-practice/) | 3-4 weeks |
 | [Diagramming & Documentation](diagramming-and-documentation/) | [C4 model](https://c4model.com/) + [D2](https://d2lang.com/)/[Mermaid](https://mermaid.js.org/) + [Diátaxis](https://diataxis.fr/) (free) | 2 weeks |
 | [Infrastructure](infrastructure/) | [K8s](https://kubernetes.io/docs/) + [Kafka](https://kafka.apache.org/documentation/) + [Lucene](https://lucene.apache.org/core/)/[Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html) + Apache docs (free) | 5-7 weeks |
+| [Field Engineering](field-engineering/) | Discovery, sizing, performance testing engagements, POCs, migration, commercials, escalation for inference-cloud customers | 3-4 weeks |
 | [Case Studies](case-studies/) | Worked builds with runnable, dependency-free implementations | 5-10 days |
 
 ## Prerequisite Graph
@@ -187,6 +188,8 @@ graph TD
     DE --> INFRA
 
     LLM --> AIP[AI Platform Engineering]
+    LLM --> FE[Field Engineering]
+    AIP --> FE
     SYS --> AIP
     DE --> AIP
 ```
@@ -204,20 +207,27 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **Programming Languages** 2-3 weeks, type systems and polymorphism from the lambda-calculus ladder through Hindley-Milner inference, variance, and generics across five languages
 - **Diagramming & Documentation** 2 weeks, C4 diagramming-as-code and docs-as-code
 - **Infrastructure** 5-7 weeks, containers and Kubernetes through messaging, workers, search, and the Apache stack
+- **Superstar FDE** 14 weeks, the composed role path: LLM foundations through inference performance, field engineering, and a one-customer capstone
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
 
 ## Role Paths
 
-A [role path](paths/) orders existing chapters for one job and says what "done" means at each stage. The tracks keep owning the content.
+A [path](paths/) orders existing chapters for one job and says what "done" means at each stage; the tracks keep owning the content. Paths compose: six parts each stand alone for a narrower role, and **Superstar FDE** includes all six plus a capstone.
 
 | Path | For |
 |------|-----|
-| [FDE, Inference](paths/fde-inference/) | Forward Deployed Engineer at an inference and fine-tuning cloud: LLM history and math, PyTorch/JAX, loading from the Hub, training and post-training, engine internals, vLLM/SGLang serving and load, full stack, and customer field craft |
+| [Superstar FDE](paths/superstar-fde/) | Forward deployed engineer at an inference and fine-tuning cloud, end to end: every part below plus a one-customer capstone |
+| [LLM Foundations](paths/llm-foundations/) | History from n-grams to reasoning models, transformer math, architecture variants |
+| [Frameworks and Models](paths/frameworks-and-models/) | PyTorch, JAX, Keras 3, and loading checkpoints from the Hugging Face Hub |
+| [Training](paths/training/) | RL foundations, pretraining, post-training (SFT, DPO, GRPO), LoRA |
+| [Inference Performance](paths/inference-performance/) | Engine internals, quantization, vLLM/SGLang serving and load testing |
+| [AI Full Stack](paths/ai-full-stack/) | Streaming, retrieval, evaluation, routing |
+| [Field Engineering](paths/field-engineering/) | Discovery, sizing, performance testing engagements, POCs, migration, commercials, escalation |
 
 ```bash
-practice/bin/ss learn fde-inference          # stages and progress
-practice/bin/ss learn fde-inference next     # read the next unfinished stage
+practice/bin/ss learn                        # every path and your progress
+practice/bin/ss learn superstar-fde next     # read the next unfinished stage
 ```
 
 ## Read Offline (Single PDF)
@@ -231,7 +241,7 @@ order, with the C4 architecture diagrams and Mermaid diagrams rendered inline.
 
   ```bash
   ./scripts/build-book.sh           # -> outputs/supersource-curriculum.pdf
-  ./scripts/build-book.sh --path fde-inference  # -> outputs/supersource-fde-inference.pdf
+  ./scripts/build-book.sh --path superstar-fde  # -> outputs/supersource-superstar-fde.pdf
   ./scripts/build-book.sh --help    # options (--skip-mermaid, --no-toc, ...)
   ```
 

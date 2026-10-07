@@ -186,21 +186,20 @@ How a model is made before it is served. Pairs with RL (weeks 14-19) for the RLH
 
 ---
 
-## Role Path: FDE, Inference (12 weeks)
+## Role Path: Superstar FDE (14 weeks)
 
-~10-12 hours per week. Assumes Python and basic linear algebra. The order and the done-when criteria live in [`paths/fde-inference/path.tsv`](paths/fde-inference/path.tsv); run `practice/bin/ss learn fde-inference` to follow it. Depth-first on the job: stages 7, 8, and 10 get the most time.
+~10-12 hours per week. Assumes Python and basic linear algebra. The order and the done-when criteria live in [`paths/`](paths/): the [Superstar FDE](paths/superstar-fde/) path includes six parts, each also a path on its own. Run `practice/bin/ss learn superstar-fde` to follow it. If you already work in inference, do the Field Engineering weeks first.
 
-| Week | Stage | Focus |
-|------|-------|-------|
-| 1 | 0, 1 | Role brief; history from n-grams through RNN/LSTM, attention, Transformer, scaling, RLHF, MoE, reasoning |
-| 2 | 2 | Transformer math: attention, backprop, FLOPs per token, memory |
-| 3 | 3, 4 | Architecture variants from config.json; PyTorch and JAX side by side, Keras 3 as a front end |
-| 4 | 5 | Loading from the Hub: safetensors, configs, tokenizers, chat templates, failure modes |
-| 5-6 | 6 | Training and post-training; run a LoRA fine-tune and evaluate it |
-| 7-8 | 7 | Engine internals: KV cache, batching, quantization, speculative decoding |
-| 9-10 | 8 | Serving and load: benchmark vLLM vs SGLang, latency curves, cost per 1M tokens |
-| 11 | 9 | Full stack: streaming, retrieval, evals against your own endpoint |
-| 12 | 10 | Field craft: mock discovery call and POC plan |
+| Week | Part | Focus |
+|------|------|-------|
+| 1 | Role brief, LLM Foundations 1 | What an inference cloud sells; history from n-grams through RNN/LSTM, attention, Transformer, scaling, RLHF, MoE, reasoning |
+| 2 | LLM Foundations 2-3 | Transformer math: attention, backprop, FLOPs per token, memory; architecture variants from `config.json` |
+| 3 | Frameworks and Models | PyTorch and JAX side by side, Keras 3 as a front end; loading from the Hub, safetensors, chat templates |
+| 4-5 | Training | RL foundations; pretraining, post-training, LoRA; run a LoRA fine-tune and evaluate it |
+| 6-8 | Inference Performance | Engine internals, quantization, the framework map; benchmark vLLM vs SGLang, latency curves, cost per 1M tokens |
+| 9 | AI Full Stack | Streaming, retrieval, evals against your own endpoint, routing |
+| 10-12 | Field Engineering | Discovery, sizing, performance testing engagements, POC, migration, commercials and security, escalation |
+| 13-14 | Capstone | One mock customer through every part: eleven artifacts, then a 20-minute readout |
 
 ## Systems & Architecture (11-15 weeks)
 
