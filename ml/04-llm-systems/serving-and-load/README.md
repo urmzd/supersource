@@ -41,6 +41,10 @@ bytes_step ≈ W_active / N_gpu + Σ_seq ctx_seq × KV_tok / N_gpu
 
 Every metric a customer cares about is a function of that equation: TPOT is `t_step` during decode, TTFT is queueing plus the prefill steps, throughput is `batch / t_step`, and cost is `$/hr / throughput`. Every engine knob changes a term of it (batch size, bytes per weight, bytes per KV element, `N_gpu`, how prefill tokens are mixed in). The FDE's job is to know which term dominates for this customer's traffic and move that one.
 
+Where that loop sits in a production stack: the gateway and router decide *which* replica runs a request; the engine's scheduler and KV cache manager decide *when* and *with how much memory*; the autoscaler closes the loop on queue depth and KV utilization.
+
+![LLM serving stack: client, gateway, router, engine replicas with scheduler, KV cache manager and executor, GPUs, autoscaler, and weight storage](../diagrams/serving-stack.svg)
+
 ## 1. Prefill vs Decode: The Roofline
 
 **Key ideas**:
@@ -105,6 +109,37 @@ python code/capacity.py --preset llama-3.1-70b --tp 2 --weight-bytes 1 --kv-byte
 - **Little's law**: `L = λ × W`. Mean in-flight requests equals arrival rate times mean time in system. At 10 req/s and 6 s mean E2E, 60 requests are in flight: you need `--max-num-seqs ≥ 60` **and** a KV pool for `60 × mean context` tokens, or the excess queues and TTFT grows
 - **Utilization and queueing**: for an M/M/1-like server, mean wait grows as `ρ / (1 − ρ)`. At 90% utilization the queue is 9x the service time; at 95% it is 19x. Size for 60-75% of measured saturation on bursty traffic
 
+One streaming request, end to end. TTFT spans arrival to the first SSE chunk; every later gap is one ITL sample; TPOT is their mean.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as Gateway
+    participant S as Scheduler
+    participant E as Engine
+    participant GPU as GPU
+    C->>G: POST /v1/chat/completions (stream true)
+    G->>G: auth, rate limit, tokenize prompt
+    G->>S: enqueue request (n_in tokens)
+    Note over S: waits in queue until KV blocks and batch slot are free
+    S->>E: allocate KV blocks, schedule prefill chunk 1
+    E->>GPU: forward pass (chunk 1 mixed with running decodes)
+    S->>E: schedule prefill chunk 2 (last)
+    E->>GPU: forward pass, sample token 1
+    E->>G: token 1
+    G->>C: SSE chunk 1 (TTFT ends here)
+    loop each decode step (one ITL gap per token)
+        S->>E: include sequence in batch, grow KV by one slot
+        E->>GPU: forward pass for whole batch
+        E->>G: token k
+        G->>G: incremental detokenize
+        G->>C: SSE chunk k
+    end
+    E->>S: EOS or max_tokens reached
+    S->>S: free KV blocks (shared prefix blocks decrement refcount)
+    G->>C: final chunk with usage, then [DONE]
+```
+
 | Workload | Primary SLO | Typical targets (illustrative) | What to optimize |
 |----------|-------------|-------------------------------|------------------|
 | Chat UI | TTFT p99, TPOT p50 | TTFT < 500 ms, TPOT < 30-50 ms (faster than reading) | Prefix caching, chunked prefill, moderate batch |
@@ -124,6 +159,14 @@ python code/capacity.py --preset llama-3.1-70b --tp 2 --weight-bytes 1 --kv-byte
 - **Disaggregated prefill/decode**: run prefill and decode on separate GPU pools and ship the KV cache between them. Rationale ([DistServe](https://arxiv.org/abs/2401.09670), [Splitwise](https://arxiv.org/abs/2311.18677)): the phases interfere (a prefill stalls every decode in the batch) and want different parallelism and even different hardware. [Mooncake](https://arxiv.org/abs/2407.00079) (Kimi) adds a KV-cache-centric store across DRAM/SSD so prefixes are computed once cluster-wide
 - **KV transfer cost** decides whether disaggregation pays: shipping `n × KV_tok` bytes must take less than the decode interference it removes. 8k tokens of 70B BF16 KV is `8192 × 320 KiB ≈ 2.7 GB`: about 54 ms at 50 GB/s RDMA, which is why this needs RDMA (NIXL, Mooncake transfer engine) and not TCP
 - **Implementations**: vLLM `--kv-transfer-config` with connectors (NIXL, LMCache, Mooncake); SGLang `--disaggregation-mode prefill|decode`; [NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) orchestrates disaggregated vLLM, SGLang, or TensorRT-LLM workers with a KV-aware router and a planner that rebalances prefill vs decode GPUs
+
+How each strategy places the model, and the collective it pays:
+
+![Tensor, pipeline, expert, and data parallelism layouts with their communication](../diagrams/parallelism.svg)
+
+Disaggregated serving moves the prefill/decode split from inside one engine's batch to two GPU pools, with the router choosing a worker in each and the KV cache crossing RDMA:
+
+![Disaggregated prefill and decode pools with KV transfer over NIXL / RDMA](../diagrams/disaggregated-serving.svg)
 
 | Strategy | Reduces latency | Raises throughput | Interconnect need | Use when |
 |----------|-----------------|-------------------|-------------------|----------|
@@ -212,6 +255,31 @@ Against a memory-bound step of roughly 16 ms (see `capacity.py --preset llama-3.
 | Low prefix-cache hit rate on chat | Unstable prompt prefix, or replicas not prefix-aware | Put static content first; use prefix-aware routing (SGLang router, Dynamo, llm-d) |
 | GPU util high, tok/s low | CPU-bound scheduler, tiny batches, detokenization | `--async-scheduling`, more API server processes, check client |
 | Throughput fine, cost too high | Over-provisioned for SLO | Find goodput knee, run nearer it, consider FP8 or a smaller model |
+
+The same table as a decision path: start from the metric that breaks the SLO.
+
+```mermaid
+flowchart TD
+    A["Which SLO or metric is failing?"] --> T["TTFT p99 high"]
+    A --> P["TPOT or ITL high"]
+    A --> M["Memory: OOM or preemptions"]
+    A --> X["Throughput or cost"]
+    T --> T1{"Only under load?"}
+    T1 -->|"yes, TPOT fine"| T2["Queueing: add DP replicas, raise --max-num-seqs if KV allows"]
+    T1 -->|"no, long prompts at low load"| T3["Prefill compute: bigger chunk budget, TP or CP, FP8, prefix caching"]
+    T --> T4{"Chat with shared prefix but low hit rate?"}
+    T4 -->|"yes"| T5["Static content first, prefix-aware routing"]
+    P --> P1{"Pattern?"}
+    P1 -->|"high even at low load"| P2["Bandwidth bound: TP up, FP8 or INT4 weights, spec decoding, H200 or B200"]
+    P1 -->|"ITL spikes when long prompts arrive"| P3["Prefill stalls decode: lower --max-num-batched-tokens, then disaggregate P/D"]
+    P1 -->|"rises steadily with load"| P4["KV reads dominate: cap --max-num-seqs, FP8 KV"]
+    M --> M1{"When?"}
+    M1 -->|"at startup"| M2["Profiling or CUDA graphs: lower util or --mem-fraction-static, lower --max-num-batched-tokens"]
+    M1 -->|"preemptions mid-run"| M3["KV pool exhausted: --kv-cache-dtype fp8, raise util, lower --max-num-seqs or --max-model-len, add TP"]
+    X --> X1{"GPU util high but tok/s low?"}
+    X1 -->|"yes"| X2["CPU bound: --async-scheduling, more API server processes, check client"]
+    X1 -->|"no, SLO met with margin"| X3["Over-provisioned: run nearer the goodput knee, FP8 or smaller model"]
+```
 
 ## 6. Speculative Decoding
 

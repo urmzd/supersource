@@ -46,6 +46,7 @@ TRACKS: list[tuple[str, str]] = [
     ("diagramming-and-documentation", "Diagramming & Documentation"),
     ("infrastructure", "Infrastructure"),
     ("competitive-programming", "Competitive Programming"),
+    ("field-engineering", "Field Engineering"),
     ("case-studies", "Case Studies"),
 ]
 
@@ -175,8 +176,24 @@ def assemble(root: Path) -> tuple[str, int]:
     return "".join(chunks), chapters
 
 
-def read_path(root: Path, name: str) -> list[tuple[str, str, list[str], str]]:
-    """Rows of paths/<name>/path.tsv as (stage, title, files, done_when)."""
+def path_title(root: Path, name: str) -> str:
+    readme = root / "paths" / name / "README.md"
+    for line in readme.read_text(encoding="utf-8").splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return name
+
+
+def read_path(
+    root: Path, name: str, stack: tuple[str, ...] = ()
+) -> list[tuple[str, str, str, list[str], str]]:
+    """Stages of paths/<name>/path.tsv with @includes expanded, in order.
+
+    Each row is (owner, stage, title, files, done_when): ``owner`` is the path
+    the stage belongs to, which differs from ``name`` for included parts.
+    """
+    if name in stack:
+        raise SystemExit(f"[error] include cycle: {' -> '.join((*stack, name))}")
     tsv = root / "paths" / name / "path.tsv"
     if not tsv.exists():
         raise SystemExit(f"[error] no path manifest at {tsv}")
@@ -184,25 +201,64 @@ def read_path(root: Path, name: str) -> list[tuple[str, str, list[str], str]]:
     for line in tsv.read_text(encoding="utf-8").splitlines():
         if not line.strip() or line.startswith("#"):
             continue
+        if line.startswith("@"):
+            rows.extend(read_path(root, line[1:].split("\t")[0], (*stack, name)))
+            continue
         stage, title, files, when = line.split("\t")
-        rows.append((stage, title, [f for f in files.split(",") if f], when))
+        rows.append((name, stage, title, [f for f in files.split(",") if f], when))
     return rows
 
 
+def after_title(text: str, note: str) -> str:
+    """Insert note right under the chapter's H1, so it prints on that page.
+
+    Text placed before the H1 would land at the end of the previous chapter.
+    """
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        if line.startswith("# "):
+            return "\n".join([*lines[: i + 1], "", note, *lines[i + 1 :]])
+    return f"{note}\n\n{text}"
+
+
+def stage_text(root: Path, stage: str, files: list[str], note: str) -> list[str]:
+    chunks = []
+    for i, rel in enumerate(files):
+        path = root / rel
+        if not path.exists():
+            raise SystemExit(f"[error] stage {stage} names missing file {rel}")
+        text = single_chapter(path.read_text(encoding="utf-8"))
+        if i == 0:
+            text = after_title(text, note)
+        chunks.append(substitute_glyphs(rewrite_images(text, path.parent)))
+        chunks.append("\n\n")
+    return chunks
+
+
 def assemble_path(root: Path, name: str) -> tuple[str, int]:
+    """A flat path gets one Part per stage; a composed path one Part per part.
+
+    Either way each stage's "done when" line sits under its first chapter
+    title, so the Part/Chapter hierarchy stays two levels deep.
+    """
+    rows = read_path(root, name)
+    composed = any(owner != name for owner, *_ in rows)
     chunks: list[str] = []
     chapters = 0
-    for stage, title, files, when in read_path(root, name):
-        chunks.append(part_divider(f"Stage {stage}: {title}"))
-        chunks.append(f"**Done when:** {when}\n\n")
-        for rel in files:
-            path = root / rel
-            if not path.exists():
-                raise SystemExit(f"[error] stage {stage} names missing file {rel}")
-            text = single_chapter(path.read_text(encoding="utf-8"))
-            chunks.append(substitute_glyphs(rewrite_images(text, path.parent)))
-            chunks.append("\n\n")
-            chapters += 1
+    current = None
+    for owner, stage, title, files, when in rows:
+        if composed:
+            if owner != current:
+                current = owner
+                part = "Overview" if owner == name else path_title(root, owner)
+                chunks.append(part_divider(part))
+            label = stage if owner == name else f"{owner}:{stage}"
+            note = f"> **Stage {label}: {title}.** Done when: {when}"
+        else:
+            chunks.append(part_divider(f"Stage {stage}: {title}"))
+            note = f"> **Done when:** {when}"
+        chunks.extend(stage_text(root, stage, files, note))
+        chapters += len(files)
     return "".join(chunks), chapters
 
 
