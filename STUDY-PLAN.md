@@ -1,10 +1,11 @@
 # Study Plans
 
 Structured schedules for self-paced learning. Pick the plan that matches your goals.
+For a degree-shaped sequence with assessment and specialization, use the [CS curriculum](CS-CURRICULUM.md). These shorter schedules are introductory passes or refreshers.
 
 ## Math Foundations (16 weeks)
 
-~10-12 hours per week. Topics are paired so you work on two subjects in parallel.
+~10-12 hours per active subject per week, or ~20-24 hours while two subjects are paired. At 10-12 hours total, take subjects sequentially and extend the schedule.
 
 ### Weeks 1-4: Calculus 1 + Linear Algebra
 
@@ -103,7 +104,7 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 
 ---
 
-## ML & AI (18-33 weeks)
+## ML & AI (18-37 weeks)
 
 ~10-12 hours per week. Requires math foundations (linear algebra, calculus, probability).
 
@@ -172,7 +173,34 @@ Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive 
 | 32 | CNNs: convolution math, pooling, LeNet→AlexNet→VGG→ResNet; AlexNet deep dive | CS231n + AlexNet/ResNet papers |
 | 33 | RNNs, BPTT, vanishing gradients; LSTM/GRU gate equations; CNNs vs RNNs vs Transformers | LSTM paper + Goodfellow Ch 10 |
 
+### Weeks 34-37: Training & Post-Training
+
+How a model is made before it is served. Pairs with RL (weeks 14-19) for the RLHF and GRPO sections.
+
+| Week | Focus | Reference |
+|------|-------|-----------|
+| 34 | Pretraining: cross entropy, 6ND FLOPs, Chinchilla vs inference-optimal overtraining, MFU | Chinchilla + `code/memory_calc.py` |
+| 35 | Training memory and parallelism: Adam state, ZeRO/FSDP2, TP/PP/CP/EP, JAX sharding | ZeRO + Megatron papers, PyTorch/JAX docs |
+| 36 | Post-training: SFT, PPO-RLHF, DPO derivation, GRPO and verifiable rewards | InstructGPT, DPO, DeepSeekMath papers |
+| 37 | PEFT and scoping: LoRA/QLoRA/DoRA math, run a LoRA fine-tune, eval base vs tuned | LoRA, QLoRA papers + `code/lora_from_scratch.py` |
+
 ---
+
+## Role Path: FDE, Inference (12 weeks)
+
+~10-12 hours per week. Assumes Python and basic linear algebra. The order and the done-when criteria live in [`paths/fde-inference/path.tsv`](paths/fde-inference/path.tsv); run `practice/bin/ss learn fde-inference` to follow it. Depth-first on the job: stages 7, 8, and 10 get the most time.
+
+| Week | Stage | Focus |
+|------|-------|-------|
+| 1 | 0, 1 | Role brief; history from n-grams through RNN/LSTM, attention, Transformer, scaling, RLHF, MoE, reasoning |
+| 2 | 2 | Transformer math: attention, backprop, FLOPs per token, memory |
+| 3 | 3, 4 | Architecture variants from config.json; PyTorch and JAX side by side, Keras 3 as a front end |
+| 4 | 5 | Loading from the Hub: safetensors, configs, tokenizers, chat templates, failure modes |
+| 5-6 | 6 | Training and post-training; run a LoRA fine-tune and evaluate it |
+| 7-8 | 7 | Engine internals: KV cache, batching, quantization, speculative decoding |
+| 9-10 | 8 | Serving and load: benchmark vLLM vs SGLang, latency curves, cost per 1M tokens |
+| 11 | 9 | Full stack: streaming, retrieval, evals against your own endpoint |
+| 12 | 10 | Field craft: mock discovery call and POC plan |
 
 ## Systems & Architecture (11-15 weeks)
 
