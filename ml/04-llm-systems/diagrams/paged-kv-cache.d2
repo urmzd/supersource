@@ -1,0 +1,92 @@
+# PagedAttention: per-sequence logical KV blocks mapped to physical GPU blocks.
+# Render: d2 paged-kv-cache.d2 paged-kv-cache.svg  (ELK layout set via vars below)
+# Question this diagram answers: how does a block table let sequences grow
+# without contiguous memory, and how is a shared prefix stored once?
+# Block size 16 tokens (vLLM default). Both sequences share the same system prompt.
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+  }
+}
+
+direction: right
+
+classes: {
+  logical: {
+    style: { fill: "#85bbf0"; font-color: "#000000"; stroke: "#5d82a8"; border-radius: 4 }
+  }
+  shared: {
+    style: { fill: "#d56b43"; font-color: "#ffffff"; stroke: "#95492e"; border-radius: 4; bold: true }
+  }
+  phys: {
+    style: { fill: "#76b900"; font-color: "#000000"; stroke: "#4f7c00"; border-radius: 0 }
+  }
+  free: {
+    style: { fill: "#eeeeee"; font-color: "#666666"; stroke: "#999999"; stroke-dash: 3; border-radius: 0 }
+  }
+  tablerow: {
+    style: { fill: "#ffffff"; font-color: "#000000"; stroke: "#5d82a8"; border-radius: 0; font: mono }
+  }
+  group: {
+    style: { stroke: "#2e6295"; stroke-dash: 4; fill: "transparent"; bold: true }
+  }
+}
+
+seqA: "Sequence A (logical view, 40 tokens)" {
+  class: group
+  direction: down
+  l0: "Logical block 0\ntokens 0-15\n(system prompt)" { class: shared }
+  l1: "Logical block 1\ntokens 16-31" { class: logical }
+  l2: "Logical block 2\ntokens 32-39\n(8 of 16 filled)" { class: logical }
+}
+
+seqB: "Sequence B (logical view, 20 tokens)" {
+  class: group
+  direction: down
+  l0: "Logical block 0\ntokens 0-15\n(system prompt)" { class: shared }
+  l1: "Logical block 1\ntokens 16-19\n(4 of 16 filled)" { class: logical }
+}
+
+btA: "Block table A" {
+  class: group
+  direction: down
+  logical_0: "logical 0 -> physical 7" { class: tablerow }
+  logical_1: "logical 1 -> physical 1" { class: tablerow }
+  logical_2: "logical 2 -> physical 4" { class: tablerow }
+}
+
+btB: "Block table B" {
+  class: group
+  direction: down
+  logical_0: "logical 0 -> physical 7" { class: tablerow }
+  logical_1: "logical 1 -> physical 2" { class: tablerow }
+}
+
+hbm: "GPU HBM: physical KV block pool (address order)" {
+  class: group
+  direction: down
+  p0: "block 0: free" { class: free }
+  p1: "block 1: A tokens 16-31\nrefcount 1" { class: phys }
+  p2: "block 2: B tokens 16-19\nrefcount 1" { class: phys }
+  p3: "block 3: free" { class: free }
+  p4: "block 4: A tokens 32-39\nrefcount 1" { class: phys }
+  p5: "block 5: free" { class: free }
+  p6: "block 6: free" { class: free }
+  p7: "block 7: shared prefix\nrefcount 2\n(copy-on-write)" { class: shared }
+}
+
+seqA.l0 -> btA.logical_0
+seqA.l1 -> btA.logical_1
+seqA.l2 -> btA.logical_2
+seqB.l0 -> btB.logical_0
+seqB.l1 -> btB.logical_1
+btA.logical_0 -> hbm.p7
+btA.logical_1 -> hbm.p1
+btA.logical_2 -> hbm.p4
+btB.logical_0 -> hbm.p7
+btB.logical_1 -> hbm.p2
+
+note: "Allocate one block when the last one fills.\nWaste per sequence < 1 block.\nOn finish: refcount--, block 7 freed only at 0.\nAttention kernel gathers K/V via the table." {
+  style: { fill: "#ffffcc"; stroke: "#999999"; font-color: "#000000" }
+}

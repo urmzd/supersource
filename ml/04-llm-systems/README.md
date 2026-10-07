@@ -68,6 +68,10 @@ Training is about *throughput over a fixed dataset*; inference is about *latency
 - **PagedAttention** (vLLM): manage the KV cache like virtual memory -- store it in fixed-size *blocks* (pages), referenced by a block table, allocated on demand. Near-zero fragmentation, enables copy-on-write sharing of prompt prefixes
 - **Prefix caching**: reuse the KV blocks of a shared prompt prefix (system prompt, few-shot examples) across requests -- huge win for chat and RAG
 
+How the block table works: each sequence sees contiguous *logical* blocks; the table maps them to whatever *physical* blocks were free. Two sequences with the same system prompt point at one physical block (refcount 2), which is freed only when both finish.
+
+![PagedAttention block tables mapping logical KV blocks to non-contiguous physical blocks, with a shared prefix block](diagrams/paged-kv-cache.svg)
+
 **Key result**: PagedAttention raised serving throughput 2-4x over prior systems by reclaiming wasted KV memory and packing more requests per batch.
 
 ## 4. Batching Strategies
