@@ -6,6 +6,7 @@
 - **Supplementary**: [vLLM docs](https://docs.vllm.ai/) (free), Lilian Weng's [*Large Transformer Model Inference Optimization*](https://lilianweng.github.io/posts/2023-01-10-inference-optimization/) (free), [*The Full Stack LLM Bootcamp*](https://fullstackdeeplearning.com/llm-bootcamp/) (free), [HuggingFace TGI](https://huggingface.co/docs/text-generation-inference) + [NVIDIA TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/) docs
 - **Deep dive**: [Quantization: Math → Code](quantization/) -- the quantizer zoo (GPTQ/AWQ/SmoothQuant/NF4/GGUF/FP8/QuIP#/TurboQuant) with C/CUDA/Rust examples
 - **Deep dive**: [Inference Frameworks](frameworks/) -- the cross-language stack (llama.cpp, vLLM, candle, mistral.rs, ZML) with Rust + Zig examples
+- **Practical guide**: [LLM Serving Platforms](routing-and-reproducibility.md) -- how Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter work; use cases, trade-offs, and reproducibility
 - **Prerequisites**: [Deep Learning](../02-deep-learning/) (transformers, attention), [Cloud Native](../../systems/03-cloud-native/) (containers, K8s), [Concurrency & Systems](../../algorithms/12-concurrency-systems/)
 - **Estimated time**: 4-6 weeks at 10-12 hrs/week
 

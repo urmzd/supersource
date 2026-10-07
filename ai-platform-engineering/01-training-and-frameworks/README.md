@@ -63,6 +63,8 @@ A framework is a contract between the math and the hardware. You write a model a
 
 ## 3. Serving Frameworks (vLLM and the Stack)
 
+For how the products work, when to use them, and their trade-offs, see [LLM Serving Platforms](../../ml/04-llm-systems/routing-and-reproducibility.md).
+
 **Where training output becomes a product**
 
 **Key ideas**:
