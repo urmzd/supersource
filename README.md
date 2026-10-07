@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">Supersource</h1>
   <p align="center">
-    Free, self-paced curriculum from undergraduate foundations through PhD-level depth and Staff/Principal engineer expertise. Every primary resource is open-access.
+    Free, self-paced curriculum from undergraduate foundations through PhD-level depth and Staff/Principal engineer expertise. Free learning routes with optional paid reference books.
     <br /><br />
     <a href="STUDY-PLAN.md">Study Plans</a>
     &middot;
@@ -23,6 +23,7 @@
 - [Tracks](#tracks)
 - [Prerequisite Graph](#prerequisite-graph)
 - [Study Plans](#study-plans)
+- [Role Paths](#role-paths)
 - [Read Offline (Single PDF)](#read-offline-single-pdf)
 - [Interviews](#interviews)
 - [Practice](#practice)
@@ -33,16 +34,19 @@
 
 ## Features
 
-- **Free-first** every primary textbook links to an open-access source
+- **Free-first** free learning routes, with paid books identified as optional references
 - **Graded depth** undergraduate foundations through PhD-level research topics
 - **Multi-track** math, algorithms, ML, systems, info theory, competitive programming
 - **Interview-ready** 19 company-specific guides across Big Tech, quant, and frontier
+- **Role paths** reading orders for one job across tracks, with checkable done-when criteria, in the terminal (`ss learn`) and as a per-role PDF
 - **Practice path** one CLI, three exercise kinds (predict, build, reattempt), attempts cloned to a gitignored scratchpad
 - **Case studies** real builds generalized into runnable, dependency-free implementations that test themselves
 - **Prerequisite graph** mermaid diagram showing topic dependencies
 - **Single-PDF book** the entire curriculum renders into one PDF in CI (build artifact + release asset)
 
 ## Tracks
+
+Start with the [end-to-end CS curriculum](CS-CURRICULUM.md) for an eight-term core, applied mathematics, specialization paths, and assessment requirements. See the [source register](SOURCES.md) for verified book references, access labels, and audit boundaries.
 
 ### Mathematics Foundations
 
@@ -88,6 +92,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | 04 | [LLM Systems & Inference](ml/04-llm-systems/) | [*ML Systems*](https://mlsysbook.ai/) (free) + [vLLM docs](https://docs.vllm.ai/) (free) | 4-6 weeks |
 | 05 | [Foundation Models & Architectures](ml/05-foundation-models/) | *AI Engineering* (Huyen) + [aie-book](https://github.com/chiphuyen/aie-book) (free) | 4-5 weeks |
 | 06 | [Neural Architectures & DL History](ml/06-neural-architectures/) | [CS231n](https://cs231n.github.io/) (free) + AlexNet/LSTM papers (free) | 3-4 weeks |
+| 07 | [Training & Post-Training](ml/07-training-and-post-training/) | [Chinchilla](https://arxiv.org/abs/2203.15556) + [DPO](https://arxiv.org/abs/2305.18290) papers (free) + PyTorch/JAX docs (free) | 4-6 weeks |
 
 ### Data Engineering
 
@@ -164,6 +169,9 @@ graph TD
     DL --> RL[Reinforcement Learning]
     PS --> RL
     DL --> FM[Foundation Models]
+    DL --> TPT[Training & Post-Training]
+    RL --> TPT
+    TPT --> LLM
 
     PS --> IT[Information Theory]
     LA --> IT
@@ -189,7 +197,7 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 
 - **Math Foundations** 16 weeks, all 7 math topics
 - **Algorithm Mastery** 21 days, all 15 algorithm topics
-- **ML & AI** 18-33 weeks, statistical learning through RL, LLM serving, foundation models, and neural-architecture foundations
+- **ML & AI** 18-37 weeks, statistical learning through RL, LLM serving, foundation models, neural-architecture foundations, and training and post-training
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
 - **AI Platform Engineering** 25-35 weeks, patterns-first: training/frameworks, RPC, streaming, distributed data & caching, durable orchestration, coding/design patterns, retrieval & RAG, authorization, LLM evaluation, edge/realtime inference, and model routing
@@ -199,17 +207,31 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
 
+## Role Paths
+
+A [role path](paths/) orders existing chapters for one job and says what "done" means at each stage. The tracks keep owning the content.
+
+| Path | For |
+|------|-----|
+| [FDE, Inference](paths/fde-inference/) | Forward Deployed Engineer at an inference and fine-tuning cloud: LLM history and math, PyTorch/JAX, loading from the Hub, training and post-training, engine internals, vLLM/SGLang serving and load, full stack, and customer field craft |
+
+```bash
+practice/bin/ss learn fde-inference          # stages and progress
+practice/bin/ss learn fde-inference next     # read the next unfinished stage
+```
+
 ## Read Offline (Single PDF)
 
 The whole curriculum builds into one PDF -- every track and topic in learning
 order, with the C4 architecture diagrams and Mermaid diagrams rendered inline.
 
 - **From CI**: every run produces a `supersource-curriculum-pdf` build artifact.
-- **From a release**: `supersource-curriculum.pdf` is attached to each GitHub Release.
+- **From a release**: `supersource-curriculum.pdf` is attached to each GitHub Release, alongside one `supersource-<path>.pdf` per [role path](paths/).
 - **Locally**:
 
   ```bash
   ./scripts/build-book.sh           # -> outputs/supersource-curriculum.pdf
+  ./scripts/build-book.sh --path fde-inference  # -> outputs/supersource-fde-inference.pdf
   ./scripts/build-book.sh --help    # options (--skip-mermaid, --no-toc, ...)
   ```
 
@@ -272,6 +294,8 @@ Real builds, generalized. Each takes a system designed under a deadline, strips 
 
 ## Books and Resources
 
+See the [source register](SOURCES.md) for author/publisher evidence and the distinction between free books, course materials, and paid companions. [Mathematics for Machine Learning](https://mml-book.github.io/) connects the foundational math tracks to regression, PCA, and optimization.
+
 All primary textbooks are free. Recommended (non-free) books are listed separately.
 
 ### Free Textbooks
@@ -330,7 +354,7 @@ All primary textbooks are free. Recommended (non-free) books are listed separate
 | *The Data Warehouse Toolkit* by Kimball | Data Engineering | The canonical text on dimensional modeling |
 | *Streaming Systems* by Akidau et al. | Data Engineering | The Dataflow model that unifies batch and streaming |
 | *Designing Machine Learning Systems* by Huyen | ML/AI | Production ML from data to deployment and serving |
-| *AI Engineering* by Chip Huyen | ML/AI | Building applications with foundation models -- the AI-engineering bible |
+| [*AI Engineering* by Chip Huyen (2025)](https://github.com/chiphuyen/aie-book) | ML/AI | Optional paid book; the linked official repository provides free companion materials |
 | *ByteByteGo System Design* | Systems | Visual system design walkthroughs |
 | *Software Architecture Patterns* by Richards | Systems | Concise pattern catalog for architecture decisions |
 | *Cloud Native DevOps with Kubernetes* 2nd ed. | Systems | Hands-on K8s from dev through production |
