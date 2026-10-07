@@ -36,7 +36,11 @@ except ImportError as exc:  # pragma: no cover
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--repo", default="HuggingFaceTB/SmolLM2-135M-Instruct")
-    p.add_argument("--revision", default="main", help="branch, tag, or commit sha (pin a sha in prod)")
+    p.add_argument(
+        "--revision",
+        default="main",
+        help="branch, tag, or commit sha (pin a sha in prod)",
+    )
     p.add_argument("--prompt", default="In one sentence, what is a safetensors file?")
     a = p.parse_args()
 
@@ -51,7 +55,9 @@ def main() -> None:
 
     # 2. Config first: this is what decides the model class and dtype.
     cfg = AutoConfig.from_pretrained(local)
-    print(f"model_type={cfg.model_type} arch={cfg.architectures} tie={cfg.tie_word_embeddings}")
+    print(
+        f"model_type={cfg.model_type} arch={cfg.architectures} tie={cfg.tie_word_embeddings}"
+    )
 
     # 3. Tokenizer + chat template. Look at the exact ids the model will see.
     tok = AutoTokenizer.from_pretrained(local)
@@ -61,13 +67,17 @@ def main() -> None:
     inputs = tok.apply_chat_template(
         messages, add_generation_prompt=True, return_tensors="pt", return_dict=True
     )
-    print(f"first ids: {inputs['input_ids'][0, :12].tolist()}  eos={tok.eos_token!r}/{tok.eos_token_id}")
+    print(
+        f"first ids: {inputs['input_ids'][0, :12].tolist()}  eos={tok.eos_token!r}/{tok.eos_token_id}"
+    )
 
     # 4. Model. dtype="auto" keeps the checkpoint dtype (BF16 for most LLMs);
     #    device_map="auto" lets accelerate place shards on GPU, then CPU, then disk.
     t0 = time.perf_counter()
     model = AutoModelForCausalLM.from_pretrained(local, dtype="auto", device_map="auto")
-    print(f"loaded in {time.perf_counter() - t0:.1f}s dtype={model.dtype} map={getattr(model, 'hf_device_map', None)}")
+    print(
+        f"loaded in {time.perf_counter() - t0:.1f}s dtype={model.dtype} map={getattr(model, 'hf_device_map', None)}"
+    )
 
     # 5. generation_config.json carries eos ids and default sampling params.
     gen = GenerationConfig.from_pretrained(local)
@@ -76,7 +86,7 @@ def main() -> None:
     inputs = inputs.to(model.device)
     with torch.inference_mode():
         out = model.generate(**inputs, max_new_tokens=48, do_sample=False)
-    new = out[0, inputs["input_ids"].shape[1]:]
+    new = out[0, inputs["input_ids"].shape[1] :]
     print("completion:", tok.decode(new, skip_special_tokens=True))
 
 
