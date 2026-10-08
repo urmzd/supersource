@@ -222,6 +222,20 @@ fp8 = cast_e4m3(x_scaled)            # hardware instruction on Hopper/Ada
 
 Hopper (H100) and Ada (L40S) tensor cores do FP8 matmul natively → near-INT8 throughput with far less accuracy loss. **Stack**: TensorRT-LLM, vLLM (`--quantization fp8`), torchao `float8`. The default for serving the latest large models when an H100 is available.
 
+**The float family.** E = exponent bits (range), M = mantissa bits (precision):
+
+| Format | Bits (S/E/M) | Used for |
+|--------|--------------|----------|
+| **FP32** | 1/8/23 | Master weights, accumulators |
+| **TF32** | 1/8/10 | Ampere+ matmul mode, internal only |
+| **BF16** | 1/8/7 | Default training/serving dtype; FP32's range |
+| **FP16** | 1/5/10 | Older default; narrow range, needs loss scaling |
+| **FP8 E4M3** | 1/4/3 | Weights + activations (DeepSeek-V3: `fmt: e4m3`, 128×128 blocks) |
+| **FP8 E5M2** | 1/5/2 | Gradients (range over precision) |
+| **MXFP8 / MXFP6 / MXFP4** | E4M3·E5M2 / E3M2·E2M3 / E2M1 | OCP microscaling: 32-element blocks share a power-of-two scale (gpt-oss ships MXFP4) |
+| **NVFP4** | 1/2/1 | Blackwell; 16-element blocks with an FP8 E4M3 scale, finer than MXFP4 |
+| **NF4** | 4-bit codebook | Not a true float: 16 fixed Gaussian-quantile levels (§5.4) |
+
 ### 5.7 QuIP# — incoherence + lattice codebook
 
 **Assumption**: outliers can be *rotated away*. Multiply weights and Hessian by **random orthogonal (Hadamard) matrices** to make them *incoherent* (mass spread evenly, no spikes), then vector-quantize with the **E8 lattice** codebook (the densest 8-D lattice) + light fine-tuning. Achieves usable 2-bit. This is the conceptual bridge to TurboQuant: **rotation makes the distribution predictable, then quantize optimally.**
