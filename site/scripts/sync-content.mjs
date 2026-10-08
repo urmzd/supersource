@@ -24,7 +24,7 @@ const ROOT = path.resolve(SITE, '..');
 const DOCS = path.join(SITE, 'src/content/docs');
 const ASSETS = path.join(SITE, 'public/repo');
 const GENERATED = path.join(SITE, 'src/generated');
-const BASE = '/supersource';
+const BASE = '';
 const GITHUB = 'https://github.com/urmzd/supersource';
 
 // Learning order, mirrored from scripts/assemble_book.py.

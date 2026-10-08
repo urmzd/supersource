@@ -5,8 +5,7 @@ import sidebar from './src/generated/sidebar.json' with { type: 'json' };
 
 // Content is generated from the repo's READMEs by scripts/sync-content.mjs.
 export default defineConfig({
-	site: 'https://urmzd.github.io',
-	base: '/supersource',
+	site: 'https://supersource.urmzd.com',
 	trailingSlash: 'always',
 	integrations: [
 		starlight({
