@@ -6,6 +6,6 @@ The repo's markdown is the source of truth. `scripts/sync-content.mjs` copies it
 
 ```bash
 pnpm install
-pnpm dev      # sync + dev server at http://localhost:4321/supersource/
+pnpm dev      # sync + dev server at http://localhost:4321/
 pnpm build    # sync + static build into dist/
 ```
