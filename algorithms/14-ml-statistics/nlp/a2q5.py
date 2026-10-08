@@ -2,7 +2,7 @@
 # @author: Urmzd Mukhammadnaim
 # @file: a2q5.py
 # @class: CSCI 4152
-# @banner_no: 
+# @banner_no:
 # @purpose: Provides functionality to determine class-level precision, recall and F1-measure.
 #           Additionally, this file contains utility helper to determine macro-averages.
 
