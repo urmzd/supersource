@@ -517,7 +517,7 @@ print(w, W6[-1], b, B6[-1], E6[-1], "WTRUE, WPRED, BTRUE, BPRED, COST")
 # ==============================================================================
 
 # Author: Urmzd Mukhammadnaim
-# 
+#
 # Description: Solution for CSCI 4155 A0 Q8
 # Requires: Python 3.10+
 

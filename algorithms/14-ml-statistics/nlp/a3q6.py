@@ -5,7 +5,7 @@
 # @purpose Calculate the edit distance of pairs given from stdin.
 # @class CSCI4152
 # @assignment Assignment #3 Quesiton #6
-# @banner 
+# @banner
 # @csid urmzd
 
 # Regex Library
