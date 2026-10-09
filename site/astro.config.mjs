@@ -1,6 +1,7 @@
 // @ts-check
 import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
+import starlightLlmsTxt from 'starlight-llms-txt';
 import sidebar from './src/generated/sidebar.json' with { type: 'json' };
 
 // Content is generated from the repo's READMEs by scripts/sync-content.mjs.
@@ -23,6 +24,7 @@ const dark = document.documentElement.dataset.theme === 'dark';
 mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'neutral' });`,
 				},
 			],
+			plugins: [starlightLlmsTxt()],
 			sidebar,
 		}),
 	],
