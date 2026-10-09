@@ -1,0 +1,40 @@
+id        = "rt.04"
+title     = "Paged KV block pool (format v1)"
+kind      = "build"
+lang      = ["c"]
+pass      = 6
+chapter   = "ml/08-tinyllm/p08-inference/08-paged-kv-block-pool.md"
+# The interface is tinyllm/kv_pool.h and the bytes formats/kv-block.md,
+# both linked from the card; neither carries a `chapter:` back-pointer
+# (DEVIATIONS B82-02).
+contract  = []
+# abi.c (tl_alloc, the error slot), rng.c's tl_fnv1a64 for the chained
+# block hash (M06.3), the free list as a tl_vec stack reserved once at
+# create (ds.01), the Swiss table (ds.02) for the prefix index, and the
+# intrusive LRU (ds.03) for cached blocks.
+deps      = ["rt.01", "M06.3", "ds.01", "ds.02", "ds.03"]
+reading   = ["ml/08-tinyllm/p08-inference/README.md"]   # L8.2's contiguous cache (not registered yet)
+# L8.3 is the Python cache over the pool; L9.4's paged attention kernel
+# reads its slabs. L10.4 (block manager), L10.6 (KV transfer), and craft.13
+# (format v2, upgrades kv_pool.c) join with their batches.
+used_by   = ["L8.3", "L9.4"]
+units     = ["c/src/runtime/kv_pool.c"]
+upgrades  = []
+milestone = "MS-L8"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/rt.04"
+smoke     = ["hand_example_block_hash_chain", "hand_example_export_envelope"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/parity/kv_wire_v1.json"]
+
+[learner_tests]                       # rung R3: tests first (ss tdd red), then code
+rung      = 3
+path      = "c/tests/rt04-kv-pool"
+threshold = 0.70
+required_mutants = ["s11"]
+time_budget_s = 30

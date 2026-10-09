@@ -36,7 +36,12 @@ class Net(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.emb = nn.Embedding(7, 4)
-        self.blocks = nn.ModuleList([nn.Sequential(nn.Linear(4, 8), nn.ReLU(), nn.Linear(8, 4)) for _ in range(2)])
+        self.blocks = nn.ModuleList(
+            [
+                nn.Sequential(nn.Linear(4, 8), nn.ReLU(), nn.Linear(8, 4))
+                for _ in range(2)
+            ]
+        )
         self.ln = nn.LayerNorm(4)
         self.head = nn.Linear(4, 7, bias=False)
 
@@ -62,9 +67,20 @@ def add(name, module, x, int_input=False):
 add("linear", nn.Linear(3, 4), f32(2, 5, 3))
 add("linear_nobias", nn.Linear(3, 2, bias=False), f32(4, 3))
 add("layernorm", nn.LayerNorm(6), f32(3, 6, lo=-4, hi=4))
-add("embedding", nn.Embedding(5, 3), np.array([[1, 4, 1, 0], [3, 3, 2, 4]]), int_input=True)
+add(
+    "embedding",
+    nn.Embedding(5, 3),
+    np.array([[1, 4, 1, 0], [3, 3, 2, 4]]),
+    int_input=True,
+)
 add("mlp", nn.Sequential(nn.Linear(3, 8), nn.Tanh(), nn.Linear(8, 2)), f32(6, 3))
-add("mlp_gelu", nn.Sequential(nn.Linear(3, 5), nn.GELU(), nn.Linear(5, 3), nn.ReLU(), nn.Linear(3, 1)), f32(4, 3))
+add(
+    "mlp_gelu",
+    nn.Sequential(
+        nn.Linear(3, 5), nn.GELU(), nn.Linear(5, 3), nn.ReLU(), nn.Linear(3, 1)
+    ),
+    f32(4, 3),
+)
 
 
 def main() -> None:
@@ -84,11 +100,24 @@ def main() -> None:
             arrays[f"{key}_gp_{pname}"] = p.grad.numpy()
         meta.append({"key": key, "name": name, "params": names, "int_input": int_input})
     keys = list(Net().state_dict().keys())
-    arrays["__meta__"] = np.array(json.dumps({"generator": "course/oracle/L0.4/layers_torch.py", "torch": torch.__version__, "numpy": np.__version__, "seed": 20261011, "cases": meta, "net_state_dict_keys": keys}))
+    arrays["__meta__"] = np.array(
+        json.dumps(
+            {
+                "generator": "course/oracle/L0.4/layers_torch.py",
+                "torch": torch.__version__,
+                "numpy": np.__version__,
+                "seed": 20261011,
+                "cases": meta,
+                "net_state_dict_keys": keys,
+            }
+        )
+    )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(OUT, **arrays)
     data = OUT.read_bytes()
-    print(f"{OUT}\t{hashlib.sha256(data).hexdigest()}\t{len(data)}\tcourse/oracle/L0.4/layers_torch.py\ttorch=={torch.__version__},numpy=={np.__version__}\t-\tApache-2.0")
+    print(
+        f"{OUT}\t{hashlib.sha256(data).hexdigest()}\t{len(data)}\tcourse/oracle/L0.4/layers_torch.py\ttorch=={torch.__version__},numpy=={np.__version__}\t-\tApache-2.0"
+    )
 
 
 main()

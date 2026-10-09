@@ -1,7 +1,7 @@
 --- a/c/src/numerics/rng.c
 +++ b/c/src/numerics/rng.c
-@@ -26,6 +26,7 @@
- /* SOLUTION-BEGIN M06.3 */
+@@ -23,6 +23,7 @@
+ uint32_t tl_pcg32_next(tl_pcg32 *r) {
      uint64_t old = r->state;
      r->state = old * TL_PCG32_MULT + r->inc;
 +    old = r->state;

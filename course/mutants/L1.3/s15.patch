@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -285,7 +285,7 @@
+@@ -283,7 +283,7 @@
              "padding": None,
              "added_tokens": added,
              "normalizer": {"type": "BertNormalizer", "clean_text": True, "handle_chinese_chars": True,

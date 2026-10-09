@@ -26,7 +26,9 @@ from _lib.pcg32 import PCG32
 from tinyllm.prob.rv import box_muller, expectation, normal, variance
 
 VECTORS = json.loads(
-    (Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M06.3" / "pcg32.vectors.json").read_text()
+    (
+        Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M06.3" / "pcg32.vectors.json"
+    ).read_text()
 )
 DIE = np.arange(1.0, 7.0)
 FAIR = np.full(6, 1.0 / 6.0)
@@ -98,7 +100,9 @@ def test_variance_shift_and_scale_laws():
         v = variance(x, p)
         assert v >= 0.0
         assert_close(variance(a * x + c, p), a * a * v, rtol=1e-9, atol=1e-12)
-        assert_close(expectation(a * x + c, p), a * expectation(x, p) + c, rtol=1e-9, atol=1e-9)
+        assert_close(
+            expectation(a * x + c, p), a * expectation(x, p) + c, rtol=1e-9, atol=1e-9
+        )
 
 
 def test_rejects_tables_that_are_not_distributions():

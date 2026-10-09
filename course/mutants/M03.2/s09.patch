@@ -1,9 +1,9 @@
 --- a/python/tinyllm/linalg/lu.py
 +++ b/python/tinyllm/linalg/lu.py
-@@ -23,7 +23,7 @@
+@@ -22,7 +22,7 @@
+ 
  
  def lu(A: ArrayLike) -> tuple[NDArray, NDArray, NDArray]:
-     # SOLUTION-BEGIN M03.2
 -    U = np.array(A, dtype=np.float64)  # a copy: the caller's A is never touched
 +    U = np.asarray(A, dtype=np.float64)  # a copy: the caller's A is never touched
      if U.ndim != 2 or U.shape[0] != U.shape[1]:

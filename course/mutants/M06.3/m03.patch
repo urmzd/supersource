@@ -1,9 +1,9 @@
 --- a/python/tinyllm/num/rng.py
 +++ b/python/tinyllm/num/rng.py
-@@ -133,7 +133,7 @@
+@@ -110,7 +110,7 @@
+ 
  
  def fnv1a64(data: bytes, h: int = FNV_OFFSET) -> int:
-     # SOLUTION-BEGIN M06.3
 -    h &= MASK64
 +    h = FNV_OFFSET
      for byte in bytes(data):

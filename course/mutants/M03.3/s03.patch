@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/qr.py
 +++ b/python/tinyllm/linalg/qr.py
-@@ -29,6 +29,18 @@
+@@ -28,6 +28,18 @@
          raise ValueError(f"qr_householder: A must be 2-D, got shape {R.shape}")
      m, n = R.shape
      k = min(m, n)

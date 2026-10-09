@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -582,7 +582,7 @@
+         self.mscale = float(spec.attention_scaling)
+         self.layout = spec.layout
+         self.rot = int(spec.rotary_dim)
+-        self.scale = cfg.head_dim**-0.5
++        self.scale = cfg.hidden_size**-0.5
+         self.report = None
+         if check:
+             self.report = check_ops(model, self.lib, seed)

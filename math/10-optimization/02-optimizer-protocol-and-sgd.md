@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/optim/sgd.pyi`](../../course/contracts/py/tinyllm/optim/sgd.pyi) |
 | **Tests** | `course/tests/M10.2/` (what they check: section 4) |
 | **Needs** | `M10.1` gradient descent (the tests compare, or `--ref-deps`) |
-| **Used by** | later: `L0.5` trains the bigram, `L2.2` the neural n-gram model, `L3.6` the recurrent models; `M10.3` (AdamW) and `M10.4` (schedules, clipping) implement and drive the same protocol |
+| **Used by** | `L0.5` trains the bigram · later: `L2.2` the neural n-gram model, `L3.6` the recurrent models; `M10.3` (AdamW) and `M10.4` (schedules, clipping) implement and drive the same protocol |
 | **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
 | **Optional depth** | Goh, [*Why Momentum Really Works*](https://distill.pub/2017/momentum/) (Distill, 2017); Sutskever, Martens, Dahl, and Hinton, "On the importance of initialization and momentum in deep learning" (ICML 2013) |
 
@@ -68,6 +68,8 @@ $$v_t = \beta v_{t-1} + g_t, \qquad \theta_{t+1} = \theta_t - \eta\, v_t,$$
 
 with $v_1 = g_1$ on the first step (PyTorch's convention: no dampening, and the learning rate multiplies the buffer). Unrolled, $v_t = \sum_{k \ge 0} \beta^k g_{t-k}$: an exponentially weighted sum of past gradients. When gradients agree from step to step (a long shallow valley) they add up, to $\eta/(1 - \beta)$ times one gradient in the limit; when they flip sign (bouncing across a steep valley) they cancel. On a quadratic with condition number $\kappa$, choosing $\eta = 4/(\sqrt L + \sqrt\mu)^2$ and $\beta = \left(\frac{\sqrt\kappa - 1}{\sqrt\kappa + 1}\right)^2$ gives a per-step rate of $\frac{\sqrt\kappa - 1}{\sqrt\kappa + 1} \approx 1 - 2/\sqrt\kappa$, against $1 - 1/\kappa$ for plain gradient descent: for $\kappa = 100$, about 0.82 instead of 0.99.
 
+**The buffer holds gradients, not steps.** $\eta$ multiplies $v_t$ when the step is taken; it never enters the buffer. With a constant $\eta$ that is only bookkeeping: a buffer $u_t = \beta u_{t-1} + \eta g_t$ with update $\theta_{t+1} = \theta_t - u_t$ produces the same trajectory. It stops being the same the moment $\eta$ changes, and the schedules of `M10.4` change it before every step. With $\eta$ outside, a new learning rate scales the whole next step at once; with $\eta$ inside, the old rate lingers in the buffer for about $1/(1 - \beta)$ steps.
+
 **Nesterov momentum.** Nesterov's method evaluates the gradient at a look-ahead point. Rewritten in the variables PyTorch stores, it becomes one extra term:
 
 $$v_t = \beta v_{t-1} + g_t, \qquad \theta_{t+1} = \theta_t - \eta\,(g_t + \beta v_t).$$
@@ -109,6 +111,8 @@ Plain gradient descent would give $0.9, 0.81, 0.729$: the buffer has already dou
 
 These numbers are the first test case in section 4, `test_hand_example`.
 
+**Changing the learning rate, momentum $\beta = 0.9$:** take the first momentum step above with $\eta = 0.1$ ($v_1 = 1$, $x_1 = 0.9$), then set $\eta = 0.01$. The buffer is $v_2 = 0.9 + 0.9 = 1.8$ as before, and the step is $0.01 \cdot 1.8 = 0.018$, so $x_2 = 0.882$. A buffer that had absorbed $\eta$ would hold $u_1 = 0.1$, then $u_2 = 0.09 + 0.009 = 0.099$, and land on $x_2 = 0.801$: ten times the step the schedule asked for. This is `test_lr_change_takes_effect_on_the_next_step`.
+
 ## 4. The interface
 
 ```python
@@ -130,6 +134,7 @@ class SGD:
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `test_hand_example` | unit | the section 3 tables for momentum, Nesterov, and decay | you and the test agree on the update order |
+| `test_lr_change_takes_effect_on_the_next_step` | unit | $\eta$ from 0.1 to 0.01 after one momentum step gives $x_2 = 0.882$ and $v_2 = 1.8$ | schedules (`M10.4`) set `opt.lr` before every step |
 | `test_matches_torch_golden` | golden | 20-step torch.optim.SGD trajectories, five settings, two parameters | recipes from PyTorch work on your optimizer |
 | `test_plain_sgd_equals_gradient_descent` | differential | bit for bit equal to `M10.1`'s `gradient_descent` | the protocol wraps the same update |
 | `test_updates_in_place` | unit | `p.data` is the same array after `step`; float32 stays float32 | the model's references see the update |
@@ -154,6 +159,7 @@ class SGD:
 | 6. Nesterov ignored or with its terms swapped | plain momentum where look-ahead was asked for | `test_hand_example` (mutants `s02`, `s03`) |
 | 7. zeros instead of `None`, or decaying parameters without a gradient | frozen layers shrink every step | `test_none_grad_is_skipped_and_zero_grad_clears` (mutants `s06`, `s07`) |
 | 8. the sign of the decay term | weights pushed away from zero | `test_weight_decay_shrinks_toward_zero` (mutant `s12`) |
+| 9. folding $\eta$ into the momentum buffer | identical while $\eta$ is constant; under a schedule the old rate lingers for about $1/(1-\beta)$ steps | `test_lr_change_takes_effect_on_the_next_step` (mutant `s11`) |
 
 ## 6. Where it's used next
 

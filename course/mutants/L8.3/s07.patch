@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/paged.py
++++ b/python/tinyllm/infer/paged.py
+@@ -172,8 +172,6 @@
+         end = start + T
+         first, last = start // B, (end - 1) // B  # blocks this write touches
+         # 1. Copy every shared block the write touches; nothing is written yet.
+-        for i in range(first, min(last + 1, len(table))):
+-            self._private(table, i)
+         # 2. Allocate the new blocks, all or nothing.
+         table.extend(self._alloc(max(0, last + 1 - len(table))))
+         # 3. Write, one block at a time.

@@ -1,0 +1,36 @@
+id        = "data.07"
+title     = "Tokenize and pack to llm.c .bin"
+kind      = "build"
+lang      = ["python"]
+pass      = 3
+chapter   = "data-engineering/05-corpus-pipeline/07-tokenize-and-pack.md"
+contract  = ["contracts/py/corpus/tokenize.pyi"]
+# tinyllm_rs.Bpe (L1.5) encodes tokenizer.json corpora; L1.6's bytes_per_token
+# gives the val split's bits-per-byte factor; read_shards (data.06) is the input.
+deps      = ["L1.5", "L1.6", "data.06"]
+reading   = ["L0.6", "L1.2"]           # the TokenStream reader of these files; the Python BPE L1.5 matches
+# C1 trains on these files through L0.6's TokenStream (a later batch).
+used_by   = ["data.08"]                # the datasheet reports the token counts of the manifest
+units     = ["python/corpus/tokenize.py"]
+upgrades  = []
+milestone = "MS-corpus"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/data.07"
+smoke     = ["test_hand_example", "test_gpt2_golden", "test_output_is_deterministic"]
+timeout_s = 120                        # the overlay builds tinyllm_rs (tl-py) on a cold run
+determinism_runs = 2
+
+[fixtures]
+files = [
+  "course/fixtures/tok-gpt2/tokenizer.json",
+  "course/fixtures/tok-gpt2/cases.jsonl",
+]
+
+[learner_tests]                        # rung R4: properties (Hypothesis), every pitfall mutant required
+rung      = 4
+path      = "python/tests/data-07-tokenize"
+threshold = 0.80
+required_mutants = []                  # the `y` rows of course/mutants/data.07/manifest.tsv
+time_budget_s = 60

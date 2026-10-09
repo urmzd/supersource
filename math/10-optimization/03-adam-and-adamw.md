@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/optim/adamw.pyi`](../../course/contracts/py/tinyllm/optim/adamw.pyi) · checkpoint keys: [`formats/checkpoint.md`](../../course/contracts/formats/checkpoint.md) |
 | **Tests** | `course/tests/M10.3/test_adamw.py` (what they check: section 4); golden trajectories from torch 2.14 in `course/fixtures/M10.3/adam_torch.json` |
 | **Needs** | no code dependency. Reading: `M10.2` (the `Optimizer` protocol and SGD with momentum), `M02.2` (the exponential moving average and its bias correction), `S-M10a` (the Adam derivation problems) |
-| **Used by** | `L0.5` trains every model with it from Part 0 on · later `L4.1`, `L5.5`, `L6.1`, `L7.9`, `C1`, and `L12.1` |
+| **Used by** | `L0.5` trains every model with it from Part 0 on · `L0.6` saves and restores its state in checkpoints · later `L4.1`, `L5.5`, `L6.1`, `L7.9`, `C1`, and `L12.1` |
 | **Milestone** | `MS-P2` (Pass 2 closes with every math module it teaches passing) |
 | **Optional depth** | Kingma and Ba, "Adam: A Method for Stochastic Optimization" (2015), sections 2 and 3; Loshchilov and Hutter, "Decoupled Weight Decay Regularization" (2019), sections 2 and 3; the torch source `torch/optim/adam.py`, `_single_tensor_adam` |
 
@@ -174,6 +174,7 @@ A parameter is any object with `data` (a float ndarray) and `grad` (an ndarray o
 | Back | `M02.2` | the EMA as a geometric series and its bias correction, here applied per coordinate (reading) |
 | Back | `S-M10a` | the Adam derivation problems check section 2.3 by hand (reading) |
 | Forward | `L0.5` | `train_step` calls `opt.zero_grad()`, the backward pass, then `opt.step()` on every model in Part 0 |
+| Forward | `L0.6` | the checkpoint writer stores `state_dict()` as `<name>.exp_avg`, `<name>.exp_avg_sq`, and the step, and resume calls `load_state_dict` |
 | Forward | `M10.4` | schedules set `opt.lr` between steps; clipping runs before `step()` |
 | Forward | `L4.1` | trains the encoder-decoder with teacher forcing |
 | Forward | `L5.5` | the 2017 Transformer with the Noam schedule |

@@ -1,0 +1,28 @@
+id        = "M09.3"
+title     = "Error analysis, condition numbers, tolerance budgets"
+kind      = "build"
+lang      = ["python"]
+pass      = 6
+chapter   = "math/09-numerical-methods-and-floating-point/03-error-analysis-condition-numbers-and-tolerance-budgets.md"
+contract  = ["contracts/py/tinyllm/num/tolerance.pyi"]
+# cond() takes its singular values from M03.5's svd; the course tests run
+# M01.1's central_diff to show the optimal step on a real difference.
+deps      = ["M03.5", "M01.1"]
+# Concepts only: the unit roundoff and float formats (M09.1), summation
+# order (M09.2), and the pen-and-paper set S-M09a.
+reading   = ["M09.1", "M09.2", "S-M09a"]
+# Call sites: L9.7 (the load-time op check compares each C kernel with numpy
+# within matmul_error_bound). L8.5's quantization budget and the learner's own
+# differential tests are catalog call sites that join with their rows
+# (DEVIATIONS B81-03).
+used_by   = ["L9.7"]
+units     = ["python/tinyllm/num/tolerance.py"]
+upgrades  = []
+milestone = "MS-P6"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M09.3"
+smoke     = ["test_hand_example", "test_hand_example_condition"]
+timeout_s = 60
+determinism_runs = 2

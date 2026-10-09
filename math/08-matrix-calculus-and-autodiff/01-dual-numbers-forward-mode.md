@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/autograd/dual.pyi`](../../course/contracts/py/tinyllm/autograd/dual.pyi) |
 | **Tests** | `course/tests/M08.1/` (what they check: section 4) |
 | **Needs** | `M01.3` activation derivatives (the tests compare against them) · `M04.2` numeric JVP · reading: `M02.1` Taylor series (or `--ref-deps`) |
-| **Used by** | `M08.2` the forward-mode oracle for reverse mode · later: `L0.2` the derivative oracle for every elementwise op |
+| **Used by** | `M08.2` the forward-mode oracle for reverse mode · `L0.2` the derivative oracle for every elementwise op |
 | **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
 | **Optional depth** | Baydin, Pearlmutter, Radul, and Siskind, [*Automatic Differentiation in Machine Learning: a Survey*](https://www.jmlr.org/papers/v18/17-468.html) (JMLR 2018), sections 2 and 3.1; Griewank and Walther, *Evaluating Derivatives* (SIAM, 2nd ed.), ch. 3 |
 

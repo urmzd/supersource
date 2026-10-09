@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/eig.py
 +++ b/python/tinyllm/linalg/eig.py
-@@ -50,7 +50,8 @@
+@@ -47,7 +47,8 @@
          norm = math.sqrt(float(w @ w))
          if norm == 0.0:
              return 0.0, v  # v is in the null space: eigenvalue 0

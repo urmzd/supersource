@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -151,7 +151,7 @@
+         # buffer: ascontiguousarray(broadcast_to(b, (1, M))) is b itself, and
+         # the kernel would write the product into the model's bias.
+         out, beta = np.empty((N, M), np.float32), 1.0
+-        out[:] = _f32(b)
++        out[:] = 0.0
+     lib.tl_matmul_f32(
+         f32_ptr(a), f32_ptr(w), f32_ptr(out), N, M, K, K, K, M, 1.0, beta, 1, None
+     )

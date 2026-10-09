@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/qr.py
 +++ b/python/tinyllm/linalg/qr.py
-@@ -64,7 +64,7 @@
+@@ -61,6 +61,6 @@
      G = normal(rng, rows * cols).reshape(rows, cols)
      # QR needs at least as many rows as columns to give orthonormal columns;
      # for a wide matrix factor its transpose and transpose back.
@@ -9,4 +9,3 @@
 +    Q, R = qr_householder(G)
 +    W = Q @ np.eye(rows, cols) if rows < cols else Q
      return gain * W
-     # SOLUTION-END

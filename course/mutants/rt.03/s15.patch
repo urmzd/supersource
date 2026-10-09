@@ -1,0 +1,11 @@
+--- a/c/src/runtime/pool.c
++++ b/c/src/runtime/pool.c
+@@ -108,7 +108,7 @@
+         return TL_EINVAL;
+     }
+     *out = NULL;
+-    if (n_threads == 0) {
++    if (n_threads == -5) {
+         long hw = sysconf(_SC_NPROCESSORS_ONLN);
+         n_threads = hw > 0 ? (int)(hw < 1024 ? hw : 1024) : 1;
+     }

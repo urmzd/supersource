@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -254,7 +254,7 @@
+@@ -252,7 +252,7 @@
          out = []
          for k, t in enumerate(toks):
              if k > 0:

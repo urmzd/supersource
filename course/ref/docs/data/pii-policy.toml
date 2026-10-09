@@ -1,0 +1,39 @@
+# Reference PII policy for ethics.02 (format: chapter section 4). data.05
+# scrubs the corpus with these kinds and placeholders; gw.08 redacts logs.
+version = 1
+owner = "data owner"
+reviewed = 2026-10-09
+default_source_policy = "scrub"   # the ledger pii_policy a new source gets
+
+[[category]]
+name = "email"
+placeholder = "<EMAIL>"
+why = "Emails identify a person directly and are easy to extract from a model."
+
+[[category]]
+name = "phone"
+placeholder = "<PHONE>"
+why = "Phone numbers identify a person and are reachable by anyone who reads them."
+
+[[category]]
+name = "card"
+placeholder = "<CARD>"
+why = "Payment card numbers are financial data; only Luhn-valid numbers count."
+
+[[category]]
+name = "ip"
+placeholder = "<IP>"
+why = "An IPv4 or IPv6 address can be tied to a household or a person by its provider."
+
+[[category]]
+name = "key"
+placeholder = "<KEY>"
+why = "Credentials grant access; the source is reported so the key gets revoked."
+
+[audit]
+store_values = false
+fields = ["doc_id", "kind", "start", "end"]
+
+[logs]
+redact = ["email", "phone", "card", "ip", "key"]
+retain_days = 30

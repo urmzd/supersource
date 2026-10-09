@@ -125,6 +125,38 @@ def test_debiased_constant_is_exact():
                     assert abs(got - c) <= tol * abs(c), (beta, c, t, got)
 
 
+def test_matches_exact_rational_arithmetic():
+    # WHY: the oracle is the definition evaluated with no rounding at all:
+    #      fractions.Fraction holds beta and every input exactly (they are
+    #      binary floats), runs m_t = b m + (1 - b) x and m_t / (1 - b^t) in
+    #      rational arithmetic, and rounds once at the end. The float64
+    #      recursion must stay within a few hundred ulps of it (the inputs
+    #      are of size 1) after 200 seeded steps, biased and debiased, so
+    #      any change to the
+    #      recursion or the correction shows up.
+    # KIND: golden
+    # CATCHES: s01, s03, s04, s06
+    # CHAPTER: M02.2 section 2.4, Bias correction
+    from fractions import Fraction
+
+    rng = PCG32(seed=SEED)
+    xs = [float(v) for v in rng.normal_array((200,))]
+    for beta in (0.9, 0.99):
+        b = Fraction(beta)
+        m = Fraction(0)
+        e = EMA(beta)
+        for t, x in enumerate(xs, start=1):
+            m = b * m + (1 - b) * Fraction(x)
+            e.update(x)
+            if t in (1, 2, 3, 10, 200):
+                want_m = float(m)
+                want_d = float(m / (1 - b**t))
+                tol = 256 * EPS / (1 - beta)
+                assert abs(e.value - want_m) <= tol * max(abs(want_m), 1.0), (beta, t)
+                got_d = e.value_debiased()
+                assert abs(got_d - want_d) <= tol * max(abs(want_d), 1.0), (beta, t)
+
+
 def test_bias_fades_without_correction():
     # WHY: the biased value converges to the constant as b^t -> 0: after
     #      t = 50 steps with b = 0.9 the gap is 0.9^50 = 0.5 percent of c. The

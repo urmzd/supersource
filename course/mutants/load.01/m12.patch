@@ -1,0 +1,11 @@
+--- a/go/loadgen/schedule.go
++++ b/go/loadgen/schedule.go
+@@ -81,7 +81,7 @@
+ 
+ func (c constant) Next() time.Duration {
+ 	// SOLUTION-BEGIN load.01
+-	return time.Duration(float64(time.Second) / c.rate)
++	return time.Duration(float64(time.Second) * c.rate)
+ 	// SOLUTION-END
+ }
+ 

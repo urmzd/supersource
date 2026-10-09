@@ -1,6 +1,6 @@
 --- a/python/tinyllm/prob/rv.py
 +++ b/python/tinyllm/prob/rv.py
-@@ -74,7 +74,7 @@
+@@ -65,6 +65,6 @@
          u2 = rng.uniform()
          z0, z1 = box_muller(u1, u2)
          out[i] = z0
@@ -8,4 +8,3 @@
 +        if i + 1 <= n:
              out[i + 1] = z1
      return out
-     # SOLUTION-END

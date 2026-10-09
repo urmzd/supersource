@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -210,7 +210,7 @@
+@@ -208,7 +208,7 @@
          ids: list[int] = []
          start = 0
          while start < len(word):

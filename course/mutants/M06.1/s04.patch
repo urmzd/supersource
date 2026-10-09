@@ -1,6 +1,6 @@
 --- a/python/tinyllm/autograd/graph.py
 +++ b/python/tinyllm/autograd/graph.py
-@@ -37,7 +37,7 @@
+@@ -36,7 +36,7 @@
          node, pending = stack[-1]
          for p in pending:
              s = state.get(id(p))

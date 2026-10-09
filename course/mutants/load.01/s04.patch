@@ -1,0 +1,11 @@
+--- a/go/ds/rng/pcg32.go
++++ b/go/ds/rng/pcg32.go
+@@ -69,7 +69,7 @@
+ func (r *PCG32) Float64() float64 {
+ 	// SOLUTION-BEGIN load.01
+ 	a := uint64(r.Uint32() >> 5)
+-	b := uint64(r.Uint32() >> 6)
++	b := uint64(r.Uint32() >> 5)
+ 	return float64(a<<26+b) * (1.0 / 9007199254740992.0)
+ 	// SOLUTION-END
+ }

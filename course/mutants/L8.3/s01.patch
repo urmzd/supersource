@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/paged.py
++++ b/python/tinyllm/infer/paged.py
+@@ -170,7 +170,7 @@
+         B, T = self.block_size, want[1]
+         start = self._lens[seq_id][layer]
+         end = start + T
+-        first, last = start // B, (end - 1) // B  # blocks this write touches
++        first, last = start // B, end // B
+         # 1. Copy every shared block the write touches; nothing is written yet.
+         for i in range(first, min(last + 1, len(table))):
+             self._private(table, i)

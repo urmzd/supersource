@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/qr.py
 +++ b/python/tinyllm/linalg/qr.py
-@@ -38,7 +38,7 @@
+@@ -37,7 +37,7 @@
          # Reflect x onto alpha e_1 with alpha = -sign(x_0) ||x||: then
          # v_0 = x_0 - alpha = x_0 + sign(x_0) ||x|| adds two numbers of the
          # same sign and never cancels.

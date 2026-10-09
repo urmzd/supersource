@@ -1,6 +1,6 @@
 --- a/python/tinyllm/autograd/graph.py
 +++ b/python/tinyllm/autograd/graph.py
-@@ -39,7 +39,7 @@
+@@ -38,7 +38,7 @@
              s = state.get(id(p))
              if s is None:
                  state[id(p)] = _ON_STACK

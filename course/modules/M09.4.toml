@@ -1,0 +1,33 @@
+id        = "M09.4"
+title     = "FP8 E4M3/E5M2, MXFP4/MXFP8 with E8M0 scales, and the C conversions"
+kind      = "build"
+lang      = ["c", "python"]
+pass      = 6
+chapter   = "math/09-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md"
+# The C half implements tinyllm/numerics.h (M09.4 section), linked from the
+# chapter card; that shared header carries no `chapter:` back-pointer for
+# this module (as M06.3, DEVIATIONS M063-02 and B81-02).
+contract  = ["contracts/py/tinyllm/num/lowp.pyi"]
+# The C bf16 and f16 conversions have their Python twin in M09.1: the
+# differential course test compares them with f32_to_bf16_bits and
+# round_to_fp16.
+deps      = ["M09.1"]
+reading   = ["S-M09a", "M06.3"]   # rounding by hand; the C build habits of the first C+Python math module
+# Call sites: L8.5 (fp8 and MX weights), L9.5 (f16 group scales of the
+# fused int4 matmul). L9.4 (f16 KV reads) and craft.13 (KV
+# format v2) join with their batches (DEVIATIONS B81-03).
+used_by   = ["L8.5", "L9.5"]
+units     = ["c/src/numerics/lowp.c", "python/tinyllm/num/lowp.py"]
+upgrades  = []
+milestone = "MS-P6"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M09.4"
+# One C and one Python name (smoke names run in every test language).
+smoke     = ["hand_example", "test_hand_example"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/M09.4/lowp_golden.npz"]

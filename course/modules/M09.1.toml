@@ -7,11 +7,11 @@ chapter   = "math/09-numerical-methods-and-floating-point/01-ieee-754.md"
 contract  = ["contracts/py/tinyllm/num/fp.pyi"]
 deps      = []
 reading   = ["M00.1"]   # powers of two and logarithms
-# Call sites (DESIGN 4.1): L0.6 and L7.9 bf16 loading, L11.1 mixed
-# precision, M09.4 fp8. None is registered with M09.1 in its deps yet (M09.2
-# lists it in reading), so verify check 9 fails until one is (DEVIATIONS
-# M091-02).
-used_by   = []
+# Call sites (DESIGN 4.1): L0.6 reads and writes BF16 safetensors through
+# the bit converters. L7.9 bf16 loading, L11.1 mixed precision, and M09.4 fp8
+# join with their batches (mirror rule, DEVIATIONS M061-01); M09.2 lists
+# M09.1 in reading.
+used_by   = ["L0.6"]
 units     = ["python/tinyllm/num/fp.py"]
 upgrades  = []
 milestone = "MS-P2"

@@ -29,7 +29,11 @@ from tinyllm.autograd.mode import no_grad
 from tinyllm.autograd.tensor import Tensor
 
 F64 = np.float64
-FIX = Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures")) / "L0.2" / "ops_torch.npz"
+FIX = (
+    Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures"))
+    / "L0.2"
+    / "ops_torch.npz"
+)
 
 
 def seed() -> int:
@@ -71,9 +75,13 @@ def _call(op: str, xs: list[Tensor], kw: dict, aux: dict) -> Tensor:
     if op == "gelu":
         return F.gelu(xs[0], **kw)
     if op in ("sum", "mean", "max"):
-        return getattr(F, op)(xs[0], axis=_axis(kw.get("axis")), keepdims=kw.get("keepdims", False))
+        return getattr(F, op)(
+            xs[0], axis=_axis(kw.get("axis")), keepdims=kw.get("keepdims", False)
+        )
     if op == "var":
-        return F.var(xs[0], axis=_axis(kw.get("axis")), correction=kw.get("correction", 0))
+        return F.var(
+            xs[0], axis=_axis(kw.get("axis")), correction=kw.get("correction", 0)
+        )
     if op == "reshape":
         return F.reshape(xs[0], tuple(kw["shape"]))
     if op == "transpose":
@@ -160,7 +168,10 @@ def test_matches_torch(name):
     data, cases = _golden()
     c = next(c for c in cases if c["name"] == name)
     k, dt = c["key"], np.dtype(c["dtype"])
-    xs = [Tensor(data[f"{k}_x{i}"], requires_grad=True, dtype=dt) for i in range(c["n_inputs"])]
+    xs = [
+        Tensor(data[f"{k}_x{i}"], requires_grad=True, dtype=dt)
+        for i in range(c["n_inputs"])
+    ]
     aux = {a: data[f"{k}_aux_{a}"] for a in c["aux"]}
     y = _call(c["op"], xs, c["kwargs"], aux)
     assert y.dtype == dt, f"{name}: output dtype {y.dtype}, expected {dt}"
@@ -193,10 +204,16 @@ GRAD_CASES = {
     "permute": (lambda a: F.permute(a, (1, 2, 0)), [(2, 3, 2)]),
     "concat": (lambda a, b, c: F.concat([a, b, c], axis=0), [(1, 2), (3, 2), (2, 2)]),
     "stack": (lambda a, b: F.stack([a, b], axis=1), [(2, 3), (2, 3)]),
-    "where": (lambda a, b: F.where(np.array([True, False, True]), a, b), [(2, 3), (2, 1)]),
+    "where": (
+        lambda a, b: F.where(np.array([True, False, True]), a, b),
+        [(2, 3), (2, 1)],
+    ),
     "gather": (lambda a: F.gather(a, np.array([[0, 0], [2, 1]]), axis=1), [(2, 3)]),
     "embedding": (lambda w: F.embedding(w, np.array([3, 1, 3, 0])), [(4, 2)]),
-    "masked_fill": (lambda a: F.masked_fill(a, np.array([[True], [False]]), 0.5), [(2, 3)]),
+    "masked_fill": (
+        lambda a: F.masked_fill(a, np.array([[True], [False]]), 0.5),
+        [(2, 3)],
+    ),
     "softmax": (lambda a: F.softmax(a, axis=0), [(3, 2)]),
     "log_softmax": (lambda a: F.log_softmax(a, axis=-1), [(2, 4)]),
     "logsumexp": (lambda a: F.logsumexp(a, axis=1, keepdims=True), [(2, 3)]),
@@ -226,7 +243,9 @@ def test_gradcheck_each_op(name):
 
     ts = [Tensor(x, requires_grad=True, dtype=F64) for x in xs]
     fn(*ts).backward(w)
-    gradcheck(f, xs, [t.grad if t.grad is not None else np.zeros_like(t.data) for t in ts])
+    gradcheck(
+        f, xs, [t.grad if t.grad is not None else np.zeros_like(t.data) for t in ts]
+    )
 
 
 # --- edges ---------------------------------------------------------------------------------
@@ -240,9 +259,20 @@ def test_float32_in_float32_out():
     # CATCHES: m04
     # CHAPTER: L0.2 section 5, Pitfalls, item 7
     x = Tensor(np.linspace(-1, 1, 12).reshape(3, 4), requires_grad=True)
-    outs = [F.exp(x), F.tanh(x), F.gelu(x), F.silu(x), F.softmax(x), F.log_softmax(x),
-            F.logsumexp(x), F.var(x, axis=-1), F.mean(x), F.dropout(x, 0.5, True, Rng(1)),
-            F.masked_fill(x, x.data > 0, 0.0), F.where(x.data > 0, x, 1.0)]
+    outs = [
+        F.exp(x),
+        F.tanh(x),
+        F.gelu(x),
+        F.silu(x),
+        F.softmax(x),
+        F.log_softmax(x),
+        F.logsumexp(x),
+        F.var(x, axis=-1),
+        F.mean(x),
+        F.dropout(x, 0.5, True, Rng(1)),
+        F.masked_fill(x, x.data > 0, 0.0),
+        F.where(x.data > 0, x, 1.0),
+    ]
     for y in outs:
         assert y.dtype == np.float32, y
     F.sum(F.dropout(x, 0.5, True, Rng(1))).backward()
@@ -375,7 +405,11 @@ def test_softmax_fully_masked_row():
     # KIND: boundary
     # CATCHES: s01
     # CHAPTER: L0.2 section 5, Pitfalls, item 5
-    x = Tensor([[-np.inf, -np.inf, -np.inf], [0.0, math.log(3.0), -np.inf]], requires_grad=True, dtype=F64)
+    x = Tensor(
+        [[-np.inf, -np.inf, -np.inf], [0.0, math.log(3.0), -np.inf]],
+        requires_grad=True,
+        dtype=F64,
+    )
     y = F.softmax(x, axis=-1)
     assert_close(y.data, [[0.0, 0.0, 0.0], [0.25, 0.75, 0.0]])
     y.backward(np.array([[1.0, 2.0, 3.0], [1.0, 0.0, 0.0]]))
@@ -446,7 +480,13 @@ def test_gelu_rejects_unknown_approximation():
     x = Tensor([1.0])
     with pytest.raises(ValueError):
         F.gelu(x, approximate="fast")
-    assert abs(float(F.gelu(Tensor([1.0], dtype=F64), approximate="tanh").data[0]) - 0.8411919906082768) < 1e-12
+    assert (
+        abs(
+            float(F.gelu(Tensor([1.0], dtype=F64), approximate="tanh").data[0])
+            - 0.8411919906082768
+        )
+        < 1e-12
+    )
 
 
 def test_ops_build_no_graph_under_no_grad():
@@ -461,8 +501,15 @@ def test_ops_build_no_graph_under_no_grad():
     assert not F.softmax(np.zeros((2, 2))).requires_grad
     x = Tensor(np.ones((2, 3)), requires_grad=True)
     with no_grad():
-        for y in (F.exp(x), F.softmax(x), F.sum(x), F.embedding(x, np.array([0])),
-                  F.concat([x, x]), F.dropout(x, 0.5, True, Rng(0)), F.matmul(x, F.transpose(x, 0, 1))):
+        for y in (
+            F.exp(x),
+            F.softmax(x),
+            F.sum(x),
+            F.embedding(x, np.array([0])),
+            F.concat([x, x]),
+            F.dropout(x, 0.5, True, Rng(0)),
+            F.matmul(x, F.transpose(x, 0, 1)),
+        ):
             assert not y.requires_grad
 
 
@@ -473,10 +520,41 @@ def test_gradcheck_all_reports_every_op():
     # CATCHES: s24
     # CHAPTER: L0.2 section 4, The interface (gradcheck_all)
     rep = F.gradcheck_all()
-    want = {"exp", "log", "tanh", "sigmoid", "relu", "silu", "gelu", "gelu_tanh", "sum", "mean",
-            "max", "var", "reshape", "transpose", "permute", "concat", "stack", "where", "gather",
-            "embedding", "masked_fill", "softmax", "log_softmax", "logsumexp", "dropout", "matmul",
-            "add", "sub", "mul", "div", "pow", "neg", "getitem"}
+    want = {
+        "exp",
+        "log",
+        "tanh",
+        "sigmoid",
+        "relu",
+        "silu",
+        "gelu",
+        "gelu_tanh",
+        "sum",
+        "mean",
+        "max",
+        "var",
+        "reshape",
+        "transpose",
+        "permute",
+        "concat",
+        "stack",
+        "where",
+        "gather",
+        "embedding",
+        "masked_fill",
+        "softmax",
+        "log_softmax",
+        "logsumexp",
+        "dropout",
+        "matmul",
+        "add",
+        "sub",
+        "mul",
+        "div",
+        "pow",
+        "neg",
+        "getitem",
+    }
     assert want <= set(rep), sorted(want - set(rep))
     bad = [k for k, r in rep.items() if not r.ok]
     assert not bad, f"not ok: {bad}"
@@ -495,7 +573,12 @@ def test_gradcheck_all_catches_a_wrong_op(monkeypatch):
     def softmax_bad(x, axis=-1):
         e = np.exp(x.data - x.data.max(axis=axis, keepdims=True))
         y = e / e.sum(axis=axis, keepdims=True)
-        return from_op(y, (x,), lambda g: (1.001 * y * (g - (g * y).sum(axis=axis, keepdims=True)),), "softmax")
+        return from_op(
+            y,
+            (x,),
+            lambda g: (1.001 * y * (g - (g * y).sum(axis=axis, keepdims=True)),),
+            "softmax",
+        )
 
     def sigmoid_bad(x):
         s = 1 / (1 + np.exp(-x.data))

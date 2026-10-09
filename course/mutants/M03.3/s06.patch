@@ -1,9 +1,9 @@
 --- a/python/tinyllm/linalg/qr.py
 +++ b/python/tinyllm/linalg/qr.py
-@@ -24,7 +24,7 @@
+@@ -23,7 +23,7 @@
+ 
  
  def qr_householder(A: ArrayLike) -> tuple[NDArray, NDArray]:
-     # SOLUTION-BEGIN M03.3
 -    R = np.array(A, dtype=np.float64)  # a copy, reduced to R in place
 +    R = np.asarray(A, dtype=np.float64)  # a copy, reduced to R in place
      if R.ndim != 2:

@@ -1,0 +1,27 @@
+id        = "rt.03"
+title     = "Thread pool and tl_parallel_for"
+kind      = "build"
+lang      = ["c"]
+pass      = 6
+chapter   = "ml/08-tinyllm/p09-kernels/03-thread-pool-and-parallel-for.md"
+# tinyllm/pool.h is linked from the chapter card; like arena.h it names its
+# module but has no `chapter:` back-pointer yet (DEVIATIONS B83-01).
+contract  = []
+deps      = ["rt.01"]   # tl_alloc and tl_free (the hook), tl_set_last_error
+reading   = ["lang.03"] # pthreads and atomics in C; no code called
+# Call sites: L9.1 (row blocks), L9.3 (heads), L9.4 (paged decode), L9.5
+# (quantized matmul rows). L10.1 (the forward through tl-sys) joins when it is
+# registered.
+used_by   = ["L9.1", "L9.3", "L9.4", "L9.5"]
+units     = ["c/src/runtime/pool.c"]
+upgrades  = []
+milestone = "MS-L9"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/rt.03"
+smoke     = ["hand_example"]
+timeout_s = 60
+determinism_runs = 2
+# A ThreadSanitizer build after the ASan one (DEVIATIONS X16; SS_TSAN=0 skips).
+sanitize  = ["thread"]

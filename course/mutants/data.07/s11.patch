@@ -1,0 +1,11 @@
+--- a/python/corpus/tokenize.py
++++ b/python/corpus/tokenize.py
+@@ -187,7 +187,7 @@
+     corpus = json.loads(manifest.read_text())
+     if tokenizer_json is None:
+         tok: Any = _Bytes()
+-        tok_sha = hashlib.sha256(b"").hexdigest()
++        tok_sha = hashlib.sha256(b"bytes").hexdigest()
+     else:
+         import tinyllm_rs
+ 

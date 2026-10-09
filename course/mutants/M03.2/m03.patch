@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/lu.py
 +++ b/python/tinyllm/linalg/lu.py
-@@ -33,8 +33,7 @@
+@@ -32,8 +32,7 @@
          # Pivot: the largest |entry| in column k at or below the diagonal.
          # np.argmax returns the first maximum, so ties go to the lowest row.
          p = k + int(np.argmax(np.abs(U[k:, k])))

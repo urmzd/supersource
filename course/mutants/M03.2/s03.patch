@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/lu.py
 +++ b/python/tinyllm/linalg/lu.py
-@@ -39,7 +39,7 @@
+@@ -38,7 +38,7 @@
              U[[k, p], k:] = U[[p, k], k:]
              # The multipliers already stored in L belong to the rows, so they
              # move with them; L's diagonal and upper part stay put.

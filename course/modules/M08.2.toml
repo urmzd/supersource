@@ -9,9 +9,8 @@ contract  = ["contracts/py/tinyllm/autograd/scalar.pyi"]
 # Dual and M04.2's vjp_numeric.
 deps      = ["M06.1", "M04.2", "M08.1"]
 reading   = []
-# L0.1 (scalarized oracle for broadcasting backward) is the call site; it
-# joins with its batch (mirror rule, DEVIATIONS L00-03).
-used_by   = []
+# L0.1 uses Value as the scalarized oracle for broadcasting backward.
+used_by   = ["L0.1"]
 units     = ["python/tinyllm/autograd/scalar.py"]
 upgrades  = []
 milestone = "MS-P2"

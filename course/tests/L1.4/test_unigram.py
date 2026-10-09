@@ -31,11 +31,24 @@ from tinyllm.tok.unigram import UnigramTokenizer, metaspace
 
 FX = Path(os.environ.get("TINYLLM_FIXTURES", ""))
 S = "▁"
-HAND_P = {S: 0.1, "a": 0.1, "b": 0.1, "c": 0.1, S + "a": 0.2, "ab": 0.15, "bc": 0.15, S + "ab": 0.1}
+HAND_P = {
+    S: 0.1,
+    "a": 0.1,
+    "b": 0.1,
+    "c": 0.1,
+    S + "a": 0.2,
+    "ab": 0.15,
+    "bc": 0.15,
+    S + "ab": 0.1,
+}
 # the six segmentations of "▁abc" and their probabilities (section 3)
 SEGS = {
-    (S, "a", "b", "c"): 1e-4, (S + "a", "b", "c"): 2e-3, (S, "ab", "c"): 1.5e-3,
-    (S, "a", "bc"): 1.5e-3, (S + "a", "bc"): 3e-2, (S + "ab", "c"): 1e-2,
+    (S, "a", "b", "c"): 1e-4,
+    (S + "a", "b", "c"): 2e-3,
+    (S, "ab", "c"): 1.5e-3,
+    (S, "a", "bc"): 1.5e-3,
+    (S + "a", "bc"): 3e-2,
+    (S + "ab", "c"): 1e-2,
 }
 Z = 0.0451
 CHI2_DF5_P001 = 20.515  # chi-square, 5 degrees of freedom, p = 1e-3
@@ -46,7 +59,9 @@ def seed() -> int:
 
 
 def hand() -> UnigramTokenizer:
-    return UnigramTokenizer([("<unk>", 0.0)] + [(p, math.log(q)) for p, q in HAND_P.items()])
+    return UnigramTokenizer(
+        [("<unk>", 0.0)] + [(p, math.log(q)) for p, q in HAND_P.items()]
+    )
 
 
 def toks(tok: UnigramTokenizer, ids: list[int]) -> tuple[str, ...]:
@@ -108,7 +123,9 @@ def test_hand_example_likelihood():
     # CATCHES: s19
     # CHAPTER: L1.4 section 3, Worked example by hand
     assert_close(hand().log_likelihood(["abc"]), math.log(Z), rtol=1e-12, atol=1e-12)
-    assert_close(hand().log_likelihood(["abc", "abc"]), 2 * math.log(Z), rtol=1e-12, atol=1e-12)
+    assert_close(
+        hand().log_likelihood(["abc", "abc"]), 2 * math.log(Z), rtol=1e-12, atol=1e-12
+    )
 
 
 def test_hand_example_em_step():
@@ -119,7 +136,16 @@ def test_hand_example_em_step():
     # CATCHES: s08, s14
     # CHAPTER: L1.4 section 3, Worked example by hand
     new = hand().em_step(["abc"])
-    want = {S: 3.1, "a": 1.6, "b": 2.1, "c": 13.6, S + "a": 32.0, "ab": 1.5, "bc": 31.5, S + "ab": 10.0}
+    want = {
+        S: 3.1,
+        "a": 1.6,
+        "b": 2.1,
+        "c": 13.6,
+        S + "a": 32.0,
+        "ab": 1.5,
+        "bc": 31.5,
+        S + "ab": 10.0,
+    }
     got = {p: math.exp(s) for p, s in new.pieces if p != "<unk>"}
     assert set(got) == set(want)
     for p, v in want.items():
@@ -151,8 +177,17 @@ def test_em_step_never_decreases_likelihood():
     # CHAPTER: L1.4 section 2, Principles
     lines = (FX / "L1.2" / "train.txt").read_text(encoding="utf-8").splitlines()[:12]
     words = sorted({w for line in lines for w in metaspace(line)})
-    pieces = sorted({w[i:j] for w in words for i in range(len(w)) for j in range(i + 1, min(len(w), i + 4) + 1)})
-    tok = UnigramTokenizer([("<unk>", 0.0)] + [(p, -math.log(len(pieces))) for p in pieces])
+    pieces = sorted(
+        {
+            w[i:j]
+            for w in words
+            for i in range(len(w))
+            for j in range(i + 1, min(len(w), i + 4) + 1)
+        }
+    )
+    tok = UnigramTokenizer(
+        [("<unk>", 0.0)] + [(p, -math.log(len(pieces))) for p in pieces]
+    )
     ll = tok.log_likelihood(lines)
     for _ in range(4):
         tok = tok.em_step(lines)
@@ -194,7 +229,16 @@ def test_unknown_character_penalty():
     # KIND: boundary
     # CATCHES: s03
     # CHAPTER: L1.4 section 2, Principles
-    tok = UnigramTokenizer([("<unk>", 0.0), (S, -1.0), ("a", -3.0), ("b", -5.0), ("ab", -1.0), ("za", -12.0)])
+    tok = UnigramTokenizer(
+        [
+            ("<unk>", 0.0),
+            (S, -1.0),
+            ("a", -3.0),
+            ("b", -5.0),
+            ("ab", -1.0),
+            ("za", -12.0),
+        ]
+    )
     assert tok.min_score == -12.0
     assert toks(tok, tok.encode("zab")) == (S, "za", "b")
 
@@ -233,7 +277,10 @@ def test_sample_matches_posterior():
         z = sum(w.values())
         counts = sample_counts(alpha, 6000, stream)
         assert set(counts) <= set(SEGS)
-        assert chi_square(counts, {s: v / z for s, v in w.items()}) < CHI2_DF5_P001, (alpha, counts)
+        assert chi_square(counts, {s: v / z for s, v in w.items()}) < CHI2_DF5_P001, (
+            alpha,
+            counts,
+        )
 
 
 def test_sample_alpha_zero_is_uniform():
@@ -261,7 +308,9 @@ def test_sample_draws_one_uniform_per_piece():
             ref.uniform()
         assert (rng.state, rng.inc) == (ref.state, ref.inc)
     a, b = PCG32(seed(), 45), PCG32(seed(), 45)
-    assert [tok.sample_encode("abc ab", 1.0, a) for _ in range(20)] == [tok.sample_encode("abc ab", 1.0, b) for _ in range(20)]
+    assert [tok.sample_encode("abc ab", 1.0, a) for _ in range(20)] == [
+        tok.sample_encode("abc ab", 1.0, b) for _ in range(20)
+    ]
 
 
 def test_sample_rejects_negative_alpha():
@@ -283,7 +332,9 @@ def test_hf_unigram_ids_match_oracle():
     # KIND: golden
     # CATCHES: s03, s09, s17
     # CHAPTER: L1.4 section 4, The interface
-    tok = UnigramTokenizer.from_hf_json(str(FX / "L1.4" / "hf-unigram" / "tokenizer.json"))
+    tok = UnigramTokenizer.from_hf_json(
+        str(FX / "L1.4" / "hf-unigram" / "tokenizer.json")
+    )
     for c in cases("hf-unigram"):
         assert tok.encode(c["text"]) == c["ids"], repr(c["text"])
 
@@ -294,7 +345,9 @@ def test_spm_unigram_ids_match_sentencepiece():
     # KIND: golden
     # CATCHES: s03
     # CHAPTER: L1.4 section 4, The interface
-    tok = UnigramTokenizer.from_hf_json(str(FX / "L1.4" / "spm-unigram" / "tokenizer.json"))
+    tok = UnigramTokenizer.from_hf_json(
+        str(FX / "L1.4" / "spm-unigram" / "tokenizer.json")
+    )
     rows = cases("spm-unigram")
     assert len(rows) >= 200
     for c in rows:
@@ -307,10 +360,14 @@ def test_hf_unigram_decode_matches_oracle():
     # KIND: golden
     # CATCHES: s16
     # CHAPTER: L1.4 section 4, The interface
-    tok = UnigramTokenizer.from_hf_json(str(FX / "L1.4" / "hf-unigram" / "tokenizer.json"))
+    tok = UnigramTokenizer.from_hf_json(
+        str(FX / "L1.4" / "hf-unigram" / "tokenizer.json")
+    )
     for c in cases("hf-unigram"):
         assert tok.decode(c["ids"]) == c["decoded"], repr(c["text"])
-        assert tok.decode(c["ids"], skip_special=True) == c["decoded_skip"], repr(c["text"])
+        assert tok.decode(c["ids"], skip_special=True) == c["decoded_skip"], repr(
+            c["text"]
+        )
 
 
 # --- training and files ---------------------------------------------------------------------
@@ -360,9 +417,15 @@ def test_from_hf_json_rejects_outside_subset(tmp_path):
     # KIND: boundary
     # CATCHES: s18
     # CHAPTER: L1.4 section 4, The interface
-    good = json.loads((FX / "L1.4" / "hf-unigram" / "tokenizer.json").read_text(encoding="utf-8"))
-    for key, value in (("model.byte_fallback", True), ("normalizer", {"type": "NFKC"}),
-                       ("pre_tokenizer.prepend_scheme", "first"), ("model.type", "BPE")):
+    good = json.loads(
+        (FX / "L1.4" / "hf-unigram" / "tokenizer.json").read_text(encoding="utf-8")
+    )
+    for key, value in (
+        ("model.byte_fallback", True),
+        ("normalizer", {"type": "NFKC"}),
+        ("pre_tokenizer.prepend_scheme", "first"),
+        ("model.type", "BPE"),
+    ):
         doc = json.loads(json.dumps(good))
         node, path = doc, key.split(".")
         for k in path[:-1]:

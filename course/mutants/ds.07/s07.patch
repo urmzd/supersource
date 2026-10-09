@@ -1,0 +1,10 @@
+--- a/rust/crates/tl-ds/src/radix.rs
++++ b/rust/crates/tl-ds/src/radix.rs
+@@ -273,7 +273,6 @@
+             };
+             let m = self.common(&self.nodes[child].key, rest);
+             let node = if m * g < self.nodes[child].key.len() { self.split(child, m, stamp) } else { child };
+-            self.nodes[node].stamp = stamp;
+             path.push(node);
+             done += m * g;
+             cur = node;

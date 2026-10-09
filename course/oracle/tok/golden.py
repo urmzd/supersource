@@ -91,7 +91,13 @@ def bpe_cases(tok: Tokenizer, texts: list[str]) -> list[dict]:
     rows = []
     for t in texts:
         ids = tok.encode(t, add_special_tokens=False).ids
-        rows.append({"text": t, "ids": ids, "decoded": tok.decode(ids, skip_special_tokens=False)})
+        rows.append(
+            {
+                "text": t,
+                "ids": ids,
+                "decoded": tok.decode(ids, skip_special_tokens=False),
+            }
+        )
     return rows
 
 
@@ -103,16 +109,26 @@ def fallback(tok: Tokenizer, i: int, unk: int | None, special: set[int]) -> bool
     return "�" in tok.decode([i], skip_special_tokens=False)
 
 
-def metrics(tok: Tokenizer, texts: list[str], words: list[str], unk: int | None) -> dict:
+def metrics(
+    tok: Tokenizer, texts: list[str], words: list[str], unk: int | None
+) -> dict:
     special = {t.id for t in []}
     special = {i for i, a in tok.get_added_tokens_decoder().items() if a.special}
     enc = [tok.encode(t, add_special_tokens=False).ids for t in texts]
     n_tok = sum(len(e) for e in enc)
     n_bytes = sum(len(t.encode("utf-8")) for t in texts)
     fb = sum(fallback(tok, i, unk, special) for e in enc for i in e)
-    fert = sum(len(tok.encode(w, add_special_tokens=False).ids) for w in words) / len(words)
-    return {"fertility": fert, "bytes_per_token": n_bytes / n_tok, "byte_fallback_rate": fb / n_tok,
-            "tokens": n_tok, "bytes": n_bytes, "fallback_tokens": fb}
+    fert = sum(len(tok.encode(w, add_special_tokens=False).ids) for w in words) / len(
+        words
+    )
+    return {
+        "fertility": fert,
+        "bytes_per_token": n_bytes / n_tok,
+        "byte_fallback_rate": fb / n_tok,
+        "tokens": n_tok,
+        "bytes": n_bytes,
+        "fallback_tokens": fb,
+    }
 
 
 def main() -> int:
@@ -122,10 +138,14 @@ def main() -> int:
     # ---- GPT-2 -----------------------------------------------------------
     gj = fetch(f"{GPT2}/tokenizer.json")
     doc = json.loads(gj)
-    assert doc["model"]["vocab"] == json.loads(fetch(f"{GPT2}/vocab.json")), "vocab.json differs"
+    assert doc["model"]["vocab"] == json.loads(fetch(f"{GPT2}/vocab.json")), (
+        "vocab.json differs"
+    )
     merges_txt = fetch(f"{GPT2}/merges.txt").decode("utf-8")
     lines = [x for x in merges_txt.split("\n") if x and not x.startswith("#version")]
-    assert [m if isinstance(m, str) else " ".join(m) for m in doc["model"]["merges"]] == lines, "merges differ"
+    assert [
+        m if isinstance(m, str) else " ".join(m) for m in doc["model"]["merges"]
+    ] == lines, "merges differ"
     write(FX / "tok-gpt2" / "tokenizer.json", gj)
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / "t.json"
@@ -134,7 +154,10 @@ def main() -> int:
     rows = bpe_cases(g, texts)
     tk = tiktoken.get_encoding("gpt2")
     for r in rows:
-        assert tk.encode(r["text"], allowed_special="all") == r["ids"], ("tiktoken", r["text"])
+        assert tk.encode(r["text"], allowed_special="all") == r["ids"], (
+            "tiktoken",
+            r["text"],
+        )
     write(FX / "tok-gpt2" / "cases.jsonl", jsonl(rows))
     out += [FX / "tok-gpt2" / "tokenizer.json", FX / "tok-gpt2" / "cases.jsonl"]
 
@@ -151,17 +174,23 @@ def main() -> int:
     vocab_lines = fetch(f"{BERT}/vocab.txt").decode("utf-8").split("\n")
     if vocab_lines and vocab_lines[-1] == "":
         vocab_lines.pop()
-    assert {t: i for i, t in enumerate(vocab_lines)} == bdoc["model"]["vocab"], "vocab.txt differs"
+    assert {t: i for i, t in enumerate(vocab_lines)} == bdoc["model"]["vocab"], (
+        "vocab.txt differs"
+    )
     write(FX / "tok-bert" / "tokenizer.json", bj)
     b = Tokenizer.from_file(str(FX / "tok-bert" / "tokenizer.json"))
     rows = []
     for t in texts:
         ids = b.encode(t, add_special_tokens=False).ids
-        rows.append({
-            "text": t, "ids": ids, "ids_special": b.encode(t).ids,
-            "decoded": b.decode(ids, skip_special_tokens=False),
-            "decoded_skip": b.decode(ids, skip_special_tokens=True),
-        })
+        rows.append(
+            {
+                "text": t,
+                "ids": ids,
+                "ids_special": b.encode(t).ids,
+                "decoded": b.decode(ids, skip_special_tokens=False),
+                "decoded_skip": b.decode(ids, skip_special_tokens=True),
+            }
+        )
     write(FX / "tok-bert" / "cases.jsonl", jsonl(rows))
     out += [FX / "tok-bert" / "tokenizer.json", FX / "tok-bert" / "cases.jsonl"]
 
@@ -171,59 +200,140 @@ def main() -> int:
     for vs, mf, sp in TRAIN_CONFIGS:
         hf = Tokenizer(models.BPE())
         hf.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
-        tr = trainers.BpeTrainer(vocab_size=vs, min_frequency=mf, special_tokens=sp,
-                                 initial_alphabet=pre_tokenizers.ByteLevel.alphabet(), show_progress=False)
+        tr = trainers.BpeTrainer(
+            vocab_size=vs,
+            min_frequency=mf,
+            special_tokens=sp,
+            initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
+            show_progress=False,
+        )
         hf.train_from_iterator(corpus, tr)
         d = json.loads(hf.to_str())
-        merges = [m.split(" ") if isinstance(m, str) else m for m in d["model"]["merges"]]
-        golden.append({"vocab_size": vs, "min_freq": mf, "specials": sp,
-                       "n_vocab": len(d["model"]["vocab"]), "merges": merges})
-    write(FX / "L1.2" / "train_merges.json", json.dumps(golden, ensure_ascii=False, indent=0) + "\n")
+        merges = [
+            m.split(" ") if isinstance(m, str) else m for m in d["model"]["merges"]
+        ]
+        golden.append(
+            {
+                "vocab_size": vs,
+                "min_freq": mf,
+                "specials": sp,
+                "n_vocab": len(d["model"]["vocab"]),
+                "merges": merges,
+            }
+        )
+    write(
+        FX / "L1.2" / "train_merges.json",
+        json.dumps(golden, ensure_ascii=False, indent=0) + "\n",
+    )
     out += [FX / "L1.2" / "train_merges.json"]
 
     # ---- Unigram: Hugging Face trainer, and a sentencepiece model ---------
     u = Tokenizer(models.Unigram())
     u.pre_tokenizer = pre_tokenizers.Metaspace()
     u.decoder = decoders.Metaspace()
-    u.train_from_iterator([x.rstrip("\n") for x in corpus], trainers.UnigramTrainer(
-        vocab_size=300, special_tokens=["<unk>"], unk_token="<unk>", show_progress=False))
+    u.train_from_iterator(
+        [x.rstrip("\n") for x in corpus],
+        trainers.UnigramTrainer(
+            vocab_size=300,
+            special_tokens=["<unk>"],
+            unk_token="<unk>",
+            show_progress=False,
+        ),
+    )
     hu_path = FX / "L1.4" / "hf-unigram" / "tokenizer.json"
     hu_path.parent.mkdir(parents=True, exist_ok=True)
     u.save(str(hu_path))
     rows = []
     for t in texts:
         ids = u.encode(t, add_special_tokens=False).ids
-        rows.append({"text": t, "ids": ids, "decoded": u.decode(ids, skip_special_tokens=False),
-                     "decoded_skip": u.decode(ids, skip_special_tokens=True)})
+        rows.append(
+            {
+                "text": t,
+                "ids": ids,
+                "decoded": u.decode(ids, skip_special_tokens=False),
+                "decoded_skip": u.decode(ids, skip_special_tokens=True),
+            }
+        )
     write(FX / "L1.4" / "hf-unigram" / "cases.jsonl", jsonl(rows))
     with tempfile.TemporaryDirectory() as td:
         spm.SentencePieceTrainer.train(
-            input=str(CORPUS), model_prefix=f"{td}/u", vocab_size=300, model_type="unigram",
-            normalization_rule_name="identity", remove_extra_whitespaces=False,
-            split_by_whitespace=True, add_dummy_prefix=True, bos_id=-1, eos_id=-1, unk_id=0,
-            character_coverage=1.0, byte_fallback=False, split_digits=False, minloglevel=2,
-            num_threads=1)
+            input=str(CORPUS),
+            model_prefix=f"{td}/u",
+            vocab_size=300,
+            model_type="unigram",
+            normalization_rule_name="identity",
+            remove_extra_whitespaces=False,
+            split_by_whitespace=True,
+            add_dummy_prefix=True,
+            bos_id=-1,
+            eos_id=-1,
+            unk_id=0,
+            character_coverage=1.0,
+            byte_fallback=False,
+            split_digits=False,
+            minloglevel=2,
+            num_threads=1,
+        )
         sp = spm.SentencePieceProcessor(model_file=f"{td}/u.model")
-    pieces = [[sp.id_to_piece(i), float(sp.get_score(i))] for i in range(sp.get_piece_size())]
-    meta = {"type": "Metaspace", "replacement": "▁", "prepend_scheme": "always", "split": True}
-    sdoc = {"version": "1.0", "truncation": None, "padding": None,
-            "added_tokens": [{"id": 0, "content": "<unk>", "single_word": False, "lstrip": False,
-                              "rstrip": False, "normalized": False, "special": True}],
-            "normalizer": None, "pre_tokenizer": meta, "post_processor": None, "decoder": meta,
-            "model": {"type": "Unigram", "unk_id": 0, "vocab": pieces, "byte_fallback": False}}
-    write(FX / "L1.4" / "spm-unigram" / "tokenizer.json", json.dumps(sdoc, ensure_ascii=False, indent=1) + "\n")
+    pieces = [
+        [sp.id_to_piece(i), float(sp.get_score(i))] for i in range(sp.get_piece_size())
+    ]
+    meta = {
+        "type": "Metaspace",
+        "replacement": "▁",
+        "prepend_scheme": "always",
+        "split": True,
+    }
+    sdoc = {
+        "version": "1.0",
+        "truncation": None,
+        "padding": None,
+        "added_tokens": [
+            {
+                "id": 0,
+                "content": "<unk>",
+                "single_word": False,
+                "lstrip": False,
+                "rstrip": False,
+                "normalized": False,
+                "special": True,
+            }
+        ],
+        "normalizer": None,
+        "pre_tokenizer": meta,
+        "post_processor": None,
+        "decoder": meta,
+        "model": {
+            "type": "Unigram",
+            "unk_id": 0,
+            "vocab": pieces,
+            "byte_fallback": False,
+        },
+    }
+    write(
+        FX / "L1.4" / "spm-unigram" / "tokenizer.json",
+        json.dumps(sdoc, ensure_ascii=False, indent=1) + "\n",
+    )
     hs = Tokenizer.from_file(str(FX / "L1.4" / "spm-unigram" / "tokenizer.json"))
     rows, skipped = [], 0
     for t in texts:
         ids = sp.encode(t)
         if hs.encode(t, add_special_tokens=False).ids != ids:
-            skipped += 1  # sentencepiece itself handles this string differently (reported)
+            skipped += (
+                1  # sentencepiece itself handles this string differently (reported)
+            )
             continue
         rows.append({"text": t, "ids": ids})
-    print(f"spm-unigram: {len(rows)} strings agree between sentencepiece and tokenizers, {skipped} differ")
+    print(
+        f"spm-unigram: {len(rows)} strings agree between sentencepiece and tokenizers, {skipped} differ"
+    )
     write(FX / "L1.4" / "spm-unigram" / "cases.jsonl", jsonl(rows))
-    out += [hu_path, FX / "L1.4" / "hf-unigram" / "cases.jsonl",
-            FX / "L1.4" / "spm-unigram" / "tokenizer.json", FX / "L1.4" / "spm-unigram" / "cases.jsonl"]
+    out += [
+        hu_path,
+        FX / "L1.4" / "hf-unigram" / "cases.jsonl",
+        FX / "L1.4" / "spm-unigram" / "tokenizer.json",
+        FX / "L1.4" / "spm-unigram" / "cases.jsonl",
+    ]
 
     # ---- metrics (L1.6) ----------------------------------------------------
     words = sorted({w for t in texts for w in t.split()})
@@ -238,9 +348,17 @@ def main() -> int:
     out += [FX / "L1.6" / "metrics.json"]
 
     tools = "tokenizers==0.22.1 tiktoken==0.12.0 sentencepiece==0.2.0"
-    ups = {"tok-gpt2/tokenizer.json": ("openai-community/gpt2@607a30d", "MIT"),
-           "tok-smollm2/tokenizer.json": ("HuggingFaceTB/SmolLM2-135M@93efa2f", "Apache-2.0"),
-           "tok-bert/tokenizer.json": ("google-bert/bert-base-uncased@86b5e09", "Apache-2.0")}
+    ups = {
+        "tok-gpt2/tokenizer.json": ("openai-community/gpt2@607a30d", "MIT"),
+        "tok-smollm2/tokenizer.json": (
+            "HuggingFaceTB/SmolLM2-135M@93efa2f",
+            "Apache-2.0",
+        ),
+        "tok-bert/tokenizer.json": (
+            "google-bert/bert-base-uncased@86b5e09",
+            "Apache-2.0",
+        ),
+    }
     for p in out:
         rel = p.relative_to(ROOT).as_posix()
         key = p.relative_to(FX).as_posix()
@@ -248,8 +366,19 @@ def main() -> int:
         if key.startswith("tok-gpt2/"):
             lic = "MIT"
         data = p.read_bytes()
-        print("\t".join([rel, hashlib.sha256(data).hexdigest(), str(len(data)),
-                         "course/oracle/tok/golden.py", tools, up, lic]))
+        print(
+            "\t".join(
+                [
+                    rel,
+                    hashlib.sha256(data).hexdigest(),
+                    str(len(data)),
+                    "course/oracle/tok/golden.py",
+                    tools,
+                    up,
+                    lic,
+                ]
+            )
+        )
     return 0
 
 

@@ -1,11 +1,11 @@
 --- a/python/tinyllm/lm/bigram.py
 +++ b/python/tinyllm/lm/bigram.py
-@@ -168,7 +168,7 @@
-     def forward(self, ids: ArrayLike) -> Tensor:
+@@ -169,7 +169,7 @@
          # A row gather is the one-hot matmul without the zeros: same logits,
-         # and backward adds each position's gradient into its row.
--        return F.embedding(self.weight, _as_ids(ids, self.weight.shape[0]))
-+        return F.embedding(self.weight.detach(), _as_ids(ids, self.weight.shape[0]))
+         # and backward adds each position's gradient into its row. Any shape
+         # of ids: the trainer feeds [B, T] windows. F.embedding checks them.
+-        return F.embedding(self.weight, ids)
++        return F.embedding(self.weight.detach(), ids)
  
      def to_lm(self) -> BigramLM:
          return BigramLM(self.weight.data.astype(np.float32, copy=True))

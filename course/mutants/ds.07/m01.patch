@@ -1,0 +1,10 @@
+--- a/rust/crates/tl-ds/src/radix.rs
++++ b/rust/crates/tl-ds/src/radix.rs
+@@ -320,7 +320,6 @@
+         if fresh.is_empty() {
+             return (last, values);
+         }
+-        self.n_values += fresh.len();
+         let leaf = Node::new(key[done..].to_vec(), fresh, Some(last), stamp);
+         let first = leaf.key[..g].to_vec();
+         let id = self.alloc(leaf);

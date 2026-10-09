@@ -1,11 +1,11 @@
 --- a/python/tinyllm/num/fp.py
 +++ b/python/tinyllm/num/fp.py
-@@ -38,7 +38,7 @@
+@@ -35,7 +35,7 @@
+ 
  def decompose_f32(x: float) -> tuple[int, int, int]:
-     # SOLUTION-BEGIN M09.1
      bits = int(_f32(x).reshape(()).view(np.uint32))
 -    return bits >> 31, (bits >> 23) & 0xFF, bits & 0x7FFFFF
 +    return bits >> 31, bits >> 23, bits & 0x7FFFFF
-     # SOLUTION-END
  
  
+ def compose_f32(sign: int, exponent: int, mantissa: int) -> float:

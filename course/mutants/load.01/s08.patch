@@ -1,0 +1,11 @@
+--- a/go/loadgen/schedule.go
++++ b/go/loadgen/schedule.go
+@@ -120,7 +120,7 @@
+ 	// SOLUTION-BEGIN load.01
+ 	i := b.i
+ 	b.i++
+-	if i > 0 && i%b.size == 0 {
++	if i%b.size == 0 {
+ 		return b.every
+ 	}
+ 	return 0

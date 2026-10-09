@@ -1,6 +1,6 @@
 --- a/python/tinyllm/autograd/graph.py
 +++ b/python/tinyllm/autograd/graph.py
-@@ -27,7 +27,23 @@
+@@ -26,7 +26,23 @@
      # state is keyed by id(node): tensors overload == elementwise and are
      # unhashable, so a set of nodes would fail. Every node we key on stays
      # alive (it sits on the stack or in `post`), so no id is ever reused.

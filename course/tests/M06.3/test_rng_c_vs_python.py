@@ -19,7 +19,9 @@ from _lib.pcg32 import PCG32 as FrozenPCG32
 from tinyllm.num import rng as learner_rng
 
 VECTORS = json.loads(
-    (Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M06.3" / "pcg32.vectors.json").read_text()
+    (
+        Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M06.3" / "pcg32.vectors.json"
+    ).read_text()
 )
 
 
@@ -70,9 +72,13 @@ def test_c_matches_spec_vectors():
     dll = lib()
     for seed in ("0", "1", str(2**63)):
         r = c_gen(dll, int(seed), 54)
-        assert [dll.tl_pcg32_next(ctypes.byref(r)) for _ in range(1024)] == VECTORS["next_u32"][seed]
+        assert [dll.tl_pcg32_next(ctypes.byref(r)) for _ in range(1024)] == VECTORS[
+            "next_u32"
+        ][seed]
         r = c_gen(dll, int(seed), 54)
-        assert [dll.tl_pcg32_uniform(ctypes.byref(r)) for _ in range(8)] == VECTORS["uniform_f64"][seed]
+        assert [dll.tl_pcg32_uniform(ctypes.byref(r)) for _ in range(8)] == VECTORS[
+            "uniform_f64"
+        ][seed]
 
 
 def test_c_stream_equals_python_stream_100k():

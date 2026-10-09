@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/eig.py
 +++ b/python/tinyllm/linalg/eig.py
-@@ -84,7 +84,7 @@
+@@ -77,7 +77,7 @@
      out: list[float] = []
      i = 0
      while i < n:

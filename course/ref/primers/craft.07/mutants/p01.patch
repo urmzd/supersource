@@ -1,0 +1,12 @@
+# pitfall: 13a splits a dash only after a digit (L4.5 section 2.1); this mutant forgets the rule, so 10-12 stays one token
+--- a/python/tinyllm/eval/seqmetrics.py
++++ b/python/tinyllm/eval/seqmetrics.py
+@@ -36,8 +36,6 @@
+     (re.compile(r"([^0-9])([\.,])"), r"\1 \2 "),
+     # period and comma unless followed by a digit
+     (re.compile(r"([\.,])([^0-9])"), r" \1 \2"),
+-    # dash when preceded by a digit
+-    (re.compile(r"([0-9])(-)"), r"\1 \2 "),
+ ]
+ 
+ 

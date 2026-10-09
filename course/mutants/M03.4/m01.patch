@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/eig.py
 +++ b/python/tinyllm/linalg/eig.py
-@@ -45,7 +45,7 @@
+@@ -42,7 +42,7 @@
      if iters < 0:
          raise ValueError(f"power_iteration: iters must be >= 0, got {iters}")
      v = _start(n, rng)

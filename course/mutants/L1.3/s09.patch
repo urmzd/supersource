@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -180,7 +180,7 @@
+@@ -178,7 +178,7 @@
          if strip:
              s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
          if self.lowercase:

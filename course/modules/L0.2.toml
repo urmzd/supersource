@@ -1,0 +1,30 @@
+id        = "L0.2"
+title     = "The op library and gradcheck_all"
+kind      = "build"
+lang      = ["python"]
+pass      = 2
+chapter   = "ml/08-tinyllm/p00-foundations/02-op-library-and-gradcheck.md"
+contract  = ["contracts/py/tinyllm/autograd/functional.pyi"]
+# L0.1 from_op and Tensor; M01.3 activations and their derivatives; M09.2 the
+# stable softmax family; M08.3 the softmax VJPs and unbroadcast; M08.1 the
+# Dual forward-mode oracle inside gradcheck_all; M04.1 gradcheck itself;
+# M06.3 PCG32 (dropout's uniforms, gradcheck_all's inputs).
+deps      = ["L0.1", "M01.3", "M09.2", "M08.3", "M08.1", "M04.1", "M06.3"]
+reading   = []
+# L0.4's layers and L0.5's BigramLogits are written in F; L0.6's course
+# tests compute their training loss with it. L0.3's losses are single fused
+# nodes on from_op and call no F op.
+used_by   = ["L0.4", "L0.5", "L0.6"]
+units     = ["python/tinyllm/autograd/functional.py"]
+upgrades  = []
+milestone = "MS-L0"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/L0.2"
+smoke     = ["test_hand_example_softmax_backward", "test_max_ties_share_the_gradient"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/L0.2/ops_torch.npz"]

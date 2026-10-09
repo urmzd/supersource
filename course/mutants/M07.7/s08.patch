@@ -1,0 +1,10 @@
+--- a/python/tinyllm/prob/metrics.py
++++ b/python/tinyllm/prob/metrics.py
+@@ -156,5 +156,5 @@
+ 
+ def ece(probs: ArrayLike, labels: ArrayLike, n_bins: int = 15) -> float:
+     counts, conf, acc = reliability_bins(probs, labels, n_bins)
+-    n = float(np.sum(counts))
+-    return float(np.sum(counts / n * np.abs(acc - conf)))
++    used = counts > 0
++    return float(np.mean(np.abs(acc - conf)[used]))

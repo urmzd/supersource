@@ -27,7 +27,9 @@ from tinyllm.num import rng as learner_rng
 
 PCG32 = learner_rng.PCG32
 VECTORS = json.loads(
-    (Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M06.3" / "pcg32.vectors.json").read_text()
+    (
+        Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M06.3" / "pcg32.vectors.json"
+    ).read_text()
 )
 SEEDS = ["0", "1", str(2**63)]
 M64 = (1 << 64) - 1
@@ -159,7 +161,9 @@ def test_substreams_match_spec_vectors(seed):
         assert learner_rng.PURPOSES[purpose] == pid
         assert learner_rng.child_seed(s, pid) == VECTORS["child_seed"][seed][purpose]
         g = PCG32(s).substream(purpose)
-        assert [g.next_u32() for _ in range(4)] == VECTORS["stream_next_u32"][seed][purpose]
+        assert [g.next_u32() for _ in range(4)] == VECTORS["stream_next_u32"][seed][
+            purpose
+        ]
 
 
 def test_substream_ignores_draws_already_made():
@@ -237,7 +241,9 @@ def test_universal_hash_hand_example():
     # CHAPTER: M06.3 section 3
     h = learner_rng.universal_hash
     assert h(10, 3, 7, 13, 5) == 1
-    assert [h(x, 3, 7, 13, 5) for x in range(13)] == [((3 * x + 7) % 13) % 5 for x in range(13)]
+    assert [h(x, 3, 7, 13, 5) for x in range(13)] == [
+        ((3 * x + 7) % 13) % 5 for x in range(13)
+    ]
     with pytest.raises(ValueError):
         h(1, 0, 7, 13, 5)  # a = 0 sends everything to b
     with pytest.raises(ValueError):

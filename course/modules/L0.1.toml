@@ -1,0 +1,25 @@
+id        = "L0.1"
+title     = "Tensor, broadcasting backward, and no_grad"
+kind      = "build"
+lang      = ["python"]
+pass      = 2
+chapter   = "ml/08-tinyllm/p00-foundations/01-tensor-and-broadcasting-backward.md"
+contract  = ["contracts/py/tinyllm/autograd/tensor.pyi", "contracts/py/tinyllm/autograd/mode.pyi"]
+# M06.1: backward walks graph.toposort's order. M08.3: every broadcast input's
+# gradient goes through vjp.unbroadcast. M08.2: the course tests use the
+# scalar Value graph as the elementwise oracle (DESIGN 4.3, "E vs scalarized M08.2").
+deps      = ["M06.1", "M08.3", "M08.2"]
+reading   = ["lang.01"]   # broadcasting rules; a primer has no code call site
+# Every later Part 0 unit builds on Tensor and from_op; L0.6's course tests
+# train the model they checkpoint with it.
+used_by   = ["L0.2", "L0.3", "L0.4", "L0.5", "L0.6"]
+units     = ["python/tinyllm/autograd/tensor.py", "python/tinyllm/autograd/mode.py"]
+upgrades  = []
+milestone = "MS-L0"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/L0.1"
+smoke     = ["test_hand_example_broadcast_backward", "test_no_grad_builds_no_graph"]
+timeout_s = 60
+determinism_runs = 2

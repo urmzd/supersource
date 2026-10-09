@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/spec.py
++++ b/python/tinyllm/infer/spec.py
+@@ -222,7 +222,7 @@
+         emitted, n_acc = verify_draft(rows, drafts, q if drafts else None, p, out, rng, prompt_ids)
+         drafted += len(drafts)
+         accepted += n_acc
+-        committed += len(pending) + n_acc
++        committed += len(pending) + n_acc + 1
+         cache.truncate(committed)  # drop the rejected drafts' keys and values
+         pending = [emitted[-1]]  # the extra token is not in the cache yet
+         for j, t in enumerate(emitted):

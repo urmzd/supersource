@@ -72,7 +72,10 @@ def hand_model() -> Linear:
     return m
 
 
-HAND = {"x": np.array([[1.0], [2.0]], dtype=np.float32), "y": np.array([[3.0], [5.0]], dtype=np.float32)}
+HAND = {
+    "x": np.array([[1.0], [2.0]], dtype=np.float32),
+    "y": np.array([[3.0], [5.0]], dtype=np.float32),
+}
 
 
 # --- the worked example ---------------------------------------------------------------
@@ -140,7 +143,10 @@ def test_nonfinite_loss_stops_before_the_update():
     # CATCHES: s05
     # CHAPTER: L0.5 section 5, Pitfalls, item 4
     m = hand_model()
-    bad = {"x": np.array([[np.nan]], dtype=np.float32), "y": np.array([[1.0]], dtype=np.float32)}
+    bad = {
+        "x": np.array([[np.nan]], dtype=np.float32),
+        "y": np.array([[1.0]], dtype=np.float32),
+    }
     with pytest.raises(FloatingPointError):
         train_step(m, bad, mse_fn, SGD(m.parameters(), lr=0.1))
     assert_close(m.weight.data, [[2.0]], dtype="float32")
@@ -155,10 +161,20 @@ def test_loss_fn_extras_and_shape():
     # CATCHES: m01, m04
     # CHAPTER: L0.5 section 4, The interface
     m = hand_model()
-    stats = train_step(m, HAND, lambda mod, b: (mse_fn(mod, b), {"acc": 0.5}), SGD(m.parameters(), lr=0.1))
+    stats = train_step(
+        m,
+        HAND,
+        lambda mod, b: (mse_fn(mod, b), {"acc": 0.5}),
+        SGD(m.parameters(), lr=0.1),
+    )
     assert stats["acc"] == 0.5 and "loss" in stats
     with pytest.raises(ValueError):
-        train_step(m, HAND, lambda mod, b: mod(Tensor(b["x"])) * 1.0, SGD(m.parameters(), lr=0.1))
+        train_step(
+            m,
+            HAND,
+            lambda mod, b: mod(Tensor(b["x"])) * 1.0,
+            SGD(m.parameters(), lr=0.1),
+        )
 
 
 # --- the loader ----------------------------------------------------------------------------
@@ -176,7 +192,12 @@ def test_dataloader_batches_in_order():
     dl = DataLoader({"x": x, "y": y}, batch_size=4, shuffle=False, rng=None)
     batches = list(dl)
     assert len(dl) == 2 and len(batches) == 2
-    assert batches[1]["x"].tolist() == [4, 5, 6, 7] and batches[1]["y"].tolist() == [40, 50, 60, 70]
+    assert batches[1]["x"].tolist() == [4, 5, 6, 7] and batches[1]["y"].tolist() == [
+        40,
+        50,
+        60,
+        70,
+    ]
     full = DataLoader({"x": x}, batch_size=4, shuffle=False, rng=None, drop_last=False)
     assert len(full) == 3 and [b["x"].tolist() for b in full][-1] == [8, 9]
 
@@ -190,7 +211,13 @@ def test_dataloader_shuffle_is_the_spec_permutation():
     # CATCHES: s07, s08
     # CHAPTER: L0.5 section 2, Principles (seeded data order)
     n = 13
-    dl = DataLoader({"i": np.arange(n)}, batch_size=1, shuffle=True, rng=Rng(seed()), drop_last=False)
+    dl = DataLoader(
+        {"i": np.arange(n)},
+        batch_size=1,
+        shuffle=True,
+        rng=Rng(seed()),
+        drop_last=False,
+    )
     e1 = [int(b["i"][0]) for b in dl]
     e2 = [int(b["i"][0]) for b in dl]
     ref = Rng(seed())
@@ -209,7 +236,9 @@ def test_dataloader_rejects_bad_input():
     # CATCHES: s09, m03
     # CHAPTER: L0.5 section 4, The interface
     with pytest.raises(ValueError):
-        DataLoader({"x": np.zeros(4), "y": np.zeros(5)}, batch_size=2, shuffle=False, rng=None)
+        DataLoader(
+            {"x": np.zeros(4), "y": np.zeros(5)}, batch_size=2, shuffle=False, rng=None
+        )
     with pytest.raises(ValueError):
         DataLoader({"x": np.zeros(4)}, batch_size=2, shuffle=True, rng=None)
     with pytest.raises(ValueError):
@@ -289,7 +318,13 @@ def two_moons(n: int, noise: float, s: int) -> tuple[np.ndarray, np.ndarray]:
 
 def run_two_moons(s: int, steps_epochs: int = 15) -> tuple[Sequential, dict]:
     x, y = two_moons(256, 0.1, 1234)
-    m = Sequential(Linear(2, 16, rng=Rng(s)), Tanh(), Linear(16, 16, rng=Rng(s + 1)), Tanh(), Linear(16, 2, rng=Rng(s + 2)))
+    m = Sequential(
+        Linear(2, 16, rng=Rng(s)),
+        Tanh(),
+        Linear(16, 16, rng=Rng(s + 1)),
+        Tanh(),
+        Linear(16, 2, rng=Rng(s + 2)),
+    )
     opt = AdamW(m.parameters(), lr=0.03, weight_decay=0.0)
     dl = DataLoader({"x": x, "y": y}, batch_size=32, shuffle=True, rng=Rng(s + 3))
 

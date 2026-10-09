@@ -1,23 +1,23 @@
 # mid	unit	tier	operator	line	required	public	private
-s01	python/tinyllm/num/rng.py	semantic	pitfall-1	56	n	(hidden until pass)	output from the new state
-s02	python/tinyllm/num/rng.py	semantic	pitfall-2	44	n	(hidden until pass)	inc not forced odd
-s03	python/tinyllm/num/rng.py	semantic	pitfall-3	53	n	(hidden until pass)	state update not reduced mod 2^64
-s04	python/tinyllm/num/rng.py	semantic	pitfall-4	63	n	(hidden until pass)	uniform from one 32-bit draw
-s05	python/tinyllm/num/rng.py	semantic	seeding	41	n	(hidden until pass)	seed added before the first step
-s06	python/tinyllm/num/rng.py	semantic	shuffle	94	n	(hidden until pass)	Sattolo: j = below(i)
-s07	python/tinyllm/num/rng.py	semantic	pitfall-5	87	n	(hidden until pass)	modulo bias: no rejection
-s08	python/tinyllm/num/rng.py	semantic	pitfall-6	101	n	(hidden until pass)	substream seeded from the current state
-s09	python/tinyllm/num/rng.py	semantic	splitmix	122	n	(hidden until pass)	first xorshift by 33 (murmur fmix)
-s10	python/tinyllm/num/rng.py	semantic	pitfall-7	138	n	(hidden until pass)	FNV-1: multiply before xor
-s11	python/tinyllm/num/rng.py	semantic	universal	152	n	(hidden until pass)	mod m before mod p
-s12	python/tinyllm/num/rng.py	semantic	set-state	112	n	(hidden until pass)	even inc accepted
-m01	python/tinyllm/num/rng.py	auto	stmt_delete	72	n	argument check deleted in uniforms	n < 0 accepted
-m02	python/tinyllm/num/rng.py	auto	boundary	79	n	range check in below changed	1 <= n to 0 <= n
-m03	python/tinyllm/num/rng.py	auto	return_default	136	n	chaining argument ignored	h reset to the offset
-s13	c/src/numerics/rng.c	semantic	pitfall-1	29	n	(hidden until pass)	C: output from the new state
-s14	c/src/numerics/rng.c	semantic	pitfall-8	33	n	(hidden until pass)	C: xs << (32 - rot), undefined at rot = 0
-s15	c/src/numerics/rng.c	semantic	pitfall-4	39	n	(hidden until pass)	C: 32-bit a overflows in a << 26
-s16	c/src/numerics/rng.c	semantic	pitfall-7	49	n	(hidden until pass)	C: FNV-1 order
-s17	c/src/numerics/rng.c	semantic	seeding	20	n	(hidden until pass)	C: state = seed instead of += seed
-m05	c/src/numerics/rng.c	auto	return_default	48	n	C: chaining argument ignored	h reset to the offset basis
-m04	c/src/numerics/rng.c	auto	const_replace	18	n	increment constant changed	inc = seq << 1
+s01	python/tinyllm/num/rng.py	semantic	pitfall-1	53	n	(hidden until pass)	output from the new state
+s02	python/tinyllm/num/rng.py	semantic	pitfall-2	43	n	(hidden until pass)	inc not forced odd
+s03	python/tinyllm/num/rng.py	semantic	pitfall-3	50	n	(hidden until pass)	state update not reduced mod 2^64
+s04	python/tinyllm/num/rng.py	semantic	pitfall-4	58	n	(hidden until pass)	uniform from one 32-bit draw
+s05	python/tinyllm/num/rng.py	semantic	seeding	40	n	(hidden until pass)	seed added before the first step
+s06	python/tinyllm/num/rng.py	semantic	shuffle	83	n	(hidden until pass)	Sattolo: j = below(i)
+s07	python/tinyllm/num/rng.py	semantic	pitfall-5	78	n	(hidden until pass)	modulo bias: no rejection
+s08	python/tinyllm/num/rng.py	semantic	pitfall-6	88	n	(hidden until pass)	substream seeded from the current state
+s09	python/tinyllm/num/rng.py	semantic	splitmix	103	n	(hidden until pass)	first xorshift by 33 (murmur fmix)
+s10	python/tinyllm/num/rng.py	semantic	pitfall-7	115	n	(hidden until pass)	FNV-1: multiply before xor
+s11	python/tinyllm/num/rng.py	semantic	universal	127	n	(hidden until pass)	mod m before mod p
+s12	python/tinyllm/num/rng.py	semantic	set-state	95	n	(hidden until pass)	even inc accepted
+m01	python/tinyllm/num/rng.py	auto	stmt_delete	65	n	argument check deleted in uniforms	n < 0 accepted
+m02	python/tinyllm/num/rng.py	auto	boundary	70	n	range check in below changed	1 <= n to 0 <= n
+m03	python/tinyllm/num/rng.py	auto	return_default	113	n	chaining argument ignored	h reset to the offset
+s13	c/src/numerics/rng.c	semantic	pitfall-1	26	n	(hidden until pass)	C: output from the new state
+s14	c/src/numerics/rng.c	semantic	pitfall-8	30	n	(hidden until pass)	C: xs << (32 - rot), undefined at rot = 0
+s15	c/src/numerics/rng.c	semantic	pitfall-4	34	n	(hidden until pass)	C: 32-bit a overflows in a << 26
+s16	c/src/numerics/rng.c	semantic	pitfall-7	42	n	(hidden until pass)	C: FNV-1 order
+s17	c/src/numerics/rng.c	semantic	seeding	19	n	(hidden until pass)	C: state = seed instead of += seed
+m05	c/src/numerics/rng.c	auto	return_default	41	n	C: chaining argument ignored	h reset to the offset basis
+m04	c/src/numerics/rng.c	auto	const_replace	17	n	increment constant changed	inc = seq << 1

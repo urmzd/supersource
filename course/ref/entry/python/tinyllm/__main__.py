@@ -12,6 +12,37 @@ Pass 2 verbs and flags (course/milestones/MS-L0.toml, glue in cli_train.py):
     gradcheck --suite all
     train bigram --method autograd ...      train mlp ...
 
+Pass 3 verbs (course/milestones/MS-L1.toml, glue in cli_tok.py):
+
+    tok train --algo bpe ...    tok encode ...    tok bench --impl rust ...
+
+Pass 3 verbs (course/milestones/MS-L2.toml, glue in cli_lm.py):
+
+    lm train ngram ...    lm train nplm ...    eval --model <dir> --data <tokens.bin>
+    generate --model <nplm dir> ... [--out <file>]
+
+Pass 4 verbs (course/milestones/MS-L3.toml and MS-L4.toml, glue in cli_seq.py):
+
+    train rnnlm ...    train seq2seq ...    translate ...
+    eval and generate on an rnnlm directory
+
+Pass 5 verbs (course/milestones/MS-L7.toml, glue in cli_modern.py):
+
+    pull <owner/name> ...    info, logits, generate on a Llama-family directory
+
+Pass 5 verbs (course/milestones/MS-L5.toml, glue in cli_xfmr.py):
+
+    train transformer ...    translate on a transformer directory
+
+Pass 5 verbs (course/milestones/MS-L6.toml, glue in cli_obj.py):
+
+    train gpt|bert|electra ...    finetune classify ...    eval ppl ...
+    zoo add ...    eval --suite zoo ...
+
+Pass 6 verbs (course/milestones/MS-L9.toml, glue in cli_kernels.py):
+
+    generate|logits ... --backend numpy|c [--check]    bench decode --backend numpy,c ...
+
 Entry-point territory (D16): this file is yours. It is glue over L0.0
 (BigramLM, safetensors) and rt.01 (the ctypes loader); the reference is used
 by course CI only. Runs as `python -m tinyllm` with python/ on the path, or
@@ -95,6 +126,11 @@ def cmd_train(a: argparse.Namespace) -> dict:
 
 
 def cmd_generate(a: argparse.Namespace) -> dict:
+    # Pass 3 (MS-L2): an nplm directory, and --out <file>, glue in cli_lm.py.
+    from tinyllm.cli_lm import arch_of, cmd_generate_lm, write_out
+
+    if arch_of(a.model) != "bigram":
+        return write_out(a, cmd_generate_lm(a))
     prompt = encode(a.prompt)
     if not prompt:
         raise UsageError(
@@ -104,7 +140,7 @@ def cmd_generate(a: argparse.Namespace) -> dict:
     ids = load_model(a.model).sample(prompt, a.max_tokens, temperature, a.seed)
     text = decode(ids)
     print(a.prompt + text, flush=True)
-    return {"ids": ids, "text": text}
+    return write_out(a, {"ids": ids, "text": text})
 
 
 def cmd_logits(a: argparse.Namespace) -> dict:
@@ -166,6 +202,7 @@ def parser() -> argparse.ArgumentParser:
     g.add_argument("--greedy", action="store_true")
     g.add_argument("--temperature", type=float, default=1.0)
     g.add_argument("--seed", type=int, default=0)
+    g.add_argument("--out")  # MS-L2: also write the final line to this file
     g.set_defaults(fn=cmd_generate)
     lg = sub.add_parser("logits")
     lg.add_argument("--model", required=True)
@@ -175,10 +212,56 @@ def parser() -> argparse.ArgumentParser:
     i = sub.add_parser("info")
     i.add_argument("--native", action="store_true")
     i.set_defaults(fn=cmd_info)
+    # Pass 3 (MS-L1): tok train, tok encode, tok bench, glue in cli_tok.py.
+    from tinyllm.cli_tok import add_parser as add_tok
+
+    add_tok(sub)
+    # Pass 3 (MS-L2): lm train, eval, glue in cli_lm.py.
+    from tinyllm.cli_lm import add_parser as add_lm
+
+    add_lm(sub)
     return ap
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Pass 6 (MS-L9): generate, logits, and bench decode with --backend
+    # numpy|c [--check], glue in cli_kernels.py (first: it claims only forms
+    # that carry --backend).
+    from tinyllm.cli_kernels import intercept as intercept_kernels
+
+    code = intercept_kernels(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
+    # Pass 5 (MS-L7): pull, and info, logits, generate on a Llama-family
+    # directory, glue in cli_modern.py (every other form falls through).
+    from tinyllm.cli_modern import intercept as intercept_modern
+
+    code = intercept_modern(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
+    # Pass 5 (MS-L6): train gpt|bert|electra, finetune classify, eval ppl,
+    # zoo add, eval --suite zoo, glue in cli_obj.py (first: it claims only
+    # those verbs).
+    from tinyllm.cli_obj import intercept as intercept_obj
+
+    code = intercept_obj(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
+    # Pass 5 (MS-L5): train transformer, and translate on a transformer
+    # directory, glue in cli_xfmr.py (before cli_seq, which takes every
+    # other translate).
+    from tinyllm.cli_xfmr import intercept as intercept_xfmr
+
+    code = intercept_xfmr(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
+    # Pass 4 (MS-L3, MS-L4): train rnnlm|seq2seq, translate, and eval or
+    # generate on an rnnlm directory, glue in cli_seq.py.
+    from tinyllm.cli_seq import intercept
+
+    code = intercept(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
     a = parser().parse_args(argv)  # argparse exits 2 on a usage error
     try:
         result = a.fn(a)

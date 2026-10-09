@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/lu.py
 +++ b/python/tinyllm/linalg/lu.py
-@@ -29,7 +29,7 @@
+@@ -28,7 +28,7 @@
      n = U.shape[0]
      L = np.eye(n)
      perm = np.arange(n)  # row i of P A is row perm[i] of A

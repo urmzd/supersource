@@ -29,8 +29,21 @@ HAND_VOCAB = ["<unk>", "<bos>", "<eos>", "e", "h", "i", "l", "o"]
 # Code points from many scripts and planes: ASCII, Latin-1, a combining
 # accent, Greek, CJK, Hangul, an astral emoji, a ZWJ, white space variants.
 ALPHABET = list("abcXYZ019 .,!?'\t\n") + [
-    "é", "́", "ß", "Σ", "σ", "日", "本", "한",
-    "\U0001f642", "\U0001f468", "‍", " ", "　", "\U0001d54f", "�",
+    "é",
+    "́",
+    "ß",
+    "Σ",
+    "σ",
+    "日",
+    "本",
+    "한",
+    "\U0001f642",
+    "\U0001f468",
+    "‍",
+    " ",
+    "　",
+    "\U0001d54f",
+    "�",
 ]
 
 
@@ -63,7 +76,10 @@ def test_hand_example_vocab():
     assert tok.special_ids == {"<unk>": 0, "<bos>": 1, "<eos>": 2}
     assert tok.unk_id == 0
     assert tok.token_to_id("l") == 6 and tok.token_to_id("z") is None
-    assert CharTokenizer.train(["hi", "hello"], specials=("<bos>", "<eos>")).vocab == HAND_VOCAB
+    assert (
+        CharTokenizer.train(["hi", "hello"], specials=("<bos>", "<eos>")).vocab
+        == HAND_VOCAB
+    )
 
 
 def test_hand_example_encode_decode():
@@ -168,7 +184,11 @@ def test_save_writes_the_char_format():
         hand().save(d)
         with open(os.path.join(d, "tinyllm_char.json"), encoding="utf-8") as f:
             doc = json.load(f)
-        assert doc == {"type": "char", "vocab": HAND_VOCAB, "specials": {"unk": 0, "bos": 1, "eos": 2}}
+        assert doc == {
+            "type": "char",
+            "vocab": HAND_VOCAB,
+            "specials": {"unk": 0, "bos": 1, "eos": 2},
+        }
         back = CharTokenizer.load(d)
         assert back.encode("hello!") == hand().encode("hello!")
         assert back.special_ids == hand().special_ids
@@ -253,7 +273,9 @@ def test_byte_tokens_are_the_gpt2_byte_map():
     assert b.id_to_token(32) == "Ġ" and b.id_to_token(10) == "Ċ"
     assert b.id_to_token(65) == "A" and b.token_to_id("Ġ") == 32
     assert b.token_to_id("<0x41>") is None
-    assert sorted(b.token_to_id(b.id_to_token(i)) for i in range(256)) == list(range(256))
+    assert sorted(b.token_to_id(b.id_to_token(i)) for i in range(256)) == list(
+        range(256)
+    )
 
 
 def test_byte_roundtrip_property():

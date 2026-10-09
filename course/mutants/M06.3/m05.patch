@@ -1,8 +1,8 @@
 --- a/c/src/numerics/rng.c
 +++ b/c/src/numerics/rng.c
-@@ -45,6 +45,7 @@
+@@ -38,6 +38,7 @@
+ 
  uint64_t tl_fnv1a64(const void *data, size_t n, uint64_t h) {
- /* SOLUTION-BEGIN M06.3 */
      const unsigned char *p = (const unsigned char *)data;
 +    h = TL_FNV1A64_OFFSET;
      for (size_t i = 0; i < n; i++) {

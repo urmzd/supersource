@@ -1,0 +1,11 @@
+--- a/c/src/runtime/kv_pool.c
++++ b/c/src/runtime/kv_pool.c
+@@ -101,7 +101,7 @@
+     }
+     unsigned char b[8];
+     put_u64(b, parent);
+-    uint64_t h = tl_fnv1a64(b, 8, TL_FNV1A64_OFFSET);
++    uint64_t h = tl_fnv1a64(b, 8, 0);
+     for (uint32_t i = 0; i < n; i++) {
+         put_u32(b, toks[i]);
+         h = tl_fnv1a64(b, 4, h);

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/constrain.py
++++ b/python/tinyllm/infer/constrain.py
+@@ -260,7 +260,7 @@
+             return s, loop
+         end = self.state()
+         self.eps[e].append(end)
+-        for _ in range(n - m):  # n - m optional copies, each may stop early
++        for _ in range(n - m - 1):
+             cs, ce = self.build(child)
+             self.eps[e].append(cs)
+             self.eps[ce].append(end)

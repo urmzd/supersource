@@ -63,13 +63,21 @@ def test_hand_example_bigram_gradient():
 
 def test_forward_is_a_row_gather():
     # WHY: logits for ids are the rows of the table, the one-hot matmul of
-    #      L0.0 without the zeros; out-of-range ids are an error.
+    #      L0.0 without the zeros, for ids of any shape (the trainer feeds
+    #      [B, T] windows from L0.6's TokenStream); out-of-range ids are an
+    #      error.
     # KIND: unit
     # CATCHES: s17
     # CHAPTER: L0.5 section 2, Principles (the same model, trained)
     m = BigramLogits(4)
     m.load_state_dict({"weight": np.arange(16.0).reshape(4, 4)})
-    assert_close(m(np.array([3, 0, 3])).data, [[12, 13, 14, 15], [0, 1, 2, 3], [12, 13, 14, 15]], dtype="float32")
+    assert_close(
+        m(np.array([3, 0, 3])).data,
+        [[12, 13, 14, 15], [0, 1, 2, 3], [12, 13, 14, 15]],
+        dtype="float32",
+    )
+    batch = m(np.array([[3, 0], [1, 1]])).data
+    assert batch.shape == (2, 2, 4) and (batch[1, 0] == [4, 5, 6, 7]).all()
     with pytest.raises(ValueError):
         m(np.array([4]))
 
@@ -87,7 +95,10 @@ def test_autograd_bigram_reaches_the_count_mle():
     np.add.at(counts, (ids[:-1], ids[1:]), 1.0)
     rows = counts.sum(axis=1, keepdims=True)
     nz = counts > 0
-    mle = float(-(counts[nz] * np.log((counts / np.where(rows > 0, rows, 1))[nz])).sum() / (len(ids) - 1))
+    mle = float(
+        -(counts[nz] * np.log((counts / np.where(rows > 0, rows, 1))[nz])).sum()
+        / (len(ids) - 1)
+    )
     m = BigramLogits(256)
     opt = AdamW(m.parameters(), lr=0.5, weight_decay=0.0)
     for step in range(400):
@@ -116,7 +127,9 @@ def test_to_lm_serves_the_same_table():
     assert not (lm.weight == 0).all()
 
 
-def engine_sample(w: np.ndarray, prefix: list[int], n: int, temperature: float, s: int) -> list[int]:
+def engine_sample(
+    w: np.ndarray, prefix: list[int], n: int, temperature: float, s: int
+) -> list[int]:
     """The tracer engine's sampler (L10.0, http.rs `sample`) over the frozen
     PCG32: f64 weights exp(z - max) summed in id order, u = uniform() * total,
     the first id whose running sum exceeds u."""
@@ -151,4 +164,6 @@ def test_sample_draws_like_the_engine():
     w = PCG32(seed=7).uniform_array((6, 6), -1.5, 1.5).astype(np.float32)
     lm = BigramLM(w)
     for t, s in ((1.0, seed()), (0.7, seed() + 1), (1.6, 99)):
-        assert lm.sample([2], 40, t, s) == engine_sample(w.astype(np.float64), [2], 40, t, s)
+        assert lm.sample([2], 40, t, s) == engine_sample(
+            w.astype(np.float64), [2], 40, t, s
+        )

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/autograd/graph.py
 +++ b/python/tinyllm/autograd/graph.py
-@@ -28,6 +28,7 @@
+@@ -27,6 +27,7 @@
      # unhashable, so a set of nodes would fail. Every node we key on stays
      # alive (it sits on the stack or in `post`), so no id is ever reused.
      state: dict[int, int] = {id(root): _ON_STACK}

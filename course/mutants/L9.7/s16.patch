@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -537,7 +537,7 @@
+             self._k[layer], self._v[layer] = nk, nv
+         self._k[layer][:, :, n : n + T] = k
+         self._v[layer][:, :, n : n + T] = v
+-        self._n[layer] = n + T
++        self._n[layer] = T
+         return (
+             np.ascontiguousarray(self._k[layer][:, :, : n + T]),
+             np.ascontiguousarray(self._v[layer][:, :, : n + T]),

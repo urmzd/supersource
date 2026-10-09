@@ -46,7 +46,9 @@ def with_spectrum(blocks: list, seq: int) -> np.ndarray:
 
 
 def rotation(r: float, theta: float) -> np.ndarray:
-    return r * np.array([[math.cos(theta), -math.sin(theta)], [math.sin(theta), math.cos(theta)]])
+    return r * np.array(
+        [[math.cos(theta), -math.sin(theta)], [math.sin(theta), math.cos(theta)]]
+    )
 
 
 def test_hand_example_power_iteration():
@@ -223,7 +225,14 @@ def test_spectral_radius_matches_numpy(blocks, rho):
     # KIND: differential
     # CATCHES: s07, s08, m02, m03
     # CHAPTER: M03.4 section 2.4
-    blocks = [rotation(1.5, 0.7) if b == "rot" else rotation(0.6, 2.0) if b == "rot_small" else b for b in blocks]
+    blocks = [
+        rotation(1.5, 0.7)
+        if b == "rot"
+        else rotation(0.6, 2.0)
+        if b == "rot_small"
+        else b
+        for b in blocks
+    ]
     W = with_spectrum(blocks, seq=102)
     assert_close(max(abs(np.linalg.eigvals(W))), rho, rtol=1e-9, atol=0.0)
     assert_close(spectral_radius(W, iters=200), rho, rtol=1e-8, atol=0.0)

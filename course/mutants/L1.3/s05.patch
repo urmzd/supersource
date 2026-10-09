@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -167,10 +167,10 @@
+@@ -165,10 +165,10 @@
          out = []
          for ch in text:
              o = ord(ch)

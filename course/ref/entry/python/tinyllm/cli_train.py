@@ -307,9 +307,12 @@ def train_bigram_stream(a, fp: Failpoints) -> dict:
     while step < a.max_steps:
         xb, yb = stream.next_batch()
         opt.zero_grad()
+        # BigramLogits reads 1-D ids (row t = logits after byte t); a bigram
+        # has no context across positions, so the [B, T] window flattens.
         n = xb.size
         loss = cross_entropy(
-            F.reshape(model(xb), (n, VOCAB)), np.asarray(yb).reshape(n)
+            F.reshape(model(np.asarray(xb).reshape(n)), (n, VOCAB)),
+            np.asarray(yb).reshape(n),
         )
         loss.backward()
         opt.step()

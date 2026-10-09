@@ -96,7 +96,9 @@ def test_orthogonality_survives_ill_conditioning():
     # CHAPTER: M03.3 section 2.2
     g = rng(82)
     base = g.uniform_array((30, 1), -1.0, 1.0)
-    A = np.hstack([base + 1e-10 * g.uniform_array((30, 1), -1.0, 1.0) for _ in range(4)])
+    A = np.hstack(
+        [base + 1e-10 * g.uniform_array((30, 1), -1.0, 1.0) for _ in range(4)]
+    )
     Q, R = qr_householder(A)
     assert_close(Q.T @ Q, np.eye(4), rtol=0.0, atol=1e-13)
 

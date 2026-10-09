@@ -2,7 +2,7 @@
 (tinyllm/nn/module.py, tinyllm/nn/layers.py).
 
 Rung R0 for this file: read these before you write code. (Your own graded
-tests for this module, rung R2, go in python/tests/l0-4-module/; see the
+tests for this module, rung R3, go in python/tests/l0-4-module/; see the
 chapter, section 4.) Each test names why it exists (WHY), what kind of check
 it is (KIND), the planted bugs it kills (CATCHES, mutants in
 course/mutants/L0.4), and the chapter section it comes from.
@@ -41,7 +41,11 @@ from tinyllm.nn.layers import (
 )
 from tinyllm.nn.module import Module
 
-FIX = Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures")) / "L0.4" / "layers_torch.npz"
+FIX = (
+    Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures"))
+    / "L0.4"
+    / "layers_torch.npz"
+)
 
 
 def seed() -> int:
@@ -71,7 +75,12 @@ class Net(Module):
     def __init__(self) -> None:
         super().__init__()
         self.emb = Embedding(7, 4, rng=Rng(1))
-        self.blocks = ModuleList([Sequential(Linear(4, 8, rng=Rng(2)), ReLU(), Linear(8, 4, rng=Rng(3))) for _ in range(2)])
+        self.blocks = ModuleList(
+            [
+                Sequential(Linear(4, 8, rng=Rng(2)), ReLU(), Linear(8, 4, rng=Rng(3)))
+                for _ in range(2)
+            ]
+        )
         self.ln = LayerNorm(4)
         self.head = Linear(4, 7, bias=False, rng=Rng(4))
 
@@ -89,7 +98,13 @@ def _build(name: str) -> Module:
         "layernorm": lambda: LayerNorm(6),
         "embedding": lambda: Embedding(5, 3, rng=r),
         "mlp": lambda: Sequential(Linear(3, 8, rng=r), Tanh(), Linear(8, 2, rng=r)),
-        "mlp_gelu": lambda: Sequential(Linear(3, 5, rng=r), GELU(), Linear(5, 3, rng=r), ReLU(), Linear(3, 1, rng=r)),
+        "mlp_gelu": lambda: Sequential(
+            Linear(3, 5, rng=r),
+            GELU(),
+            Linear(5, 3, rng=r),
+            ReLU(),
+            Linear(3, 1, rng=r),
+        ),
     }[name]()
 
 
@@ -148,7 +163,12 @@ def test_matches_torch(name):
         assert_close(x.grad, data[f"{k}_gx"], dtype="float32", msg=f"{name} input grad")
     params = dict(m.named_parameters())
     for p in c["params"]:
-        assert_close(params[p].grad, data[f"{k}_gp_{p}"], dtype="float32", msg=f"{name} grad of {p}")
+        assert_close(
+            params[p].grad,
+            data[f"{k}_gp_{p}"],
+            dtype="float32",
+            msg=f"{name} grad of {p}",
+        )
 
 
 def test_state_dict_names_match_torch():
@@ -217,10 +237,14 @@ def test_load_state_dict_strict():
     with pytest.raises(KeyError, match="bias"):
         lin.load_state_dict({"weight": np.zeros((2, 2))})
     with pytest.raises(KeyError, match="extra"):
-        lin.load_state_dict({"weight": np.zeros((2, 2)), "bias": np.zeros(2), "extra": np.zeros(1)})
+        lin.load_state_dict(
+            {"weight": np.zeros((2, 2)), "bias": np.zeros(2), "extra": np.zeros(1)}
+        )
     assert_close(lin.weight.data, before["weight"], dtype="float32")  # nothing copied
     with pytest.raises(ValueError):
-        lin.load_state_dict({"weight": np.zeros((1, 2)), "bias": np.zeros(2)})  # would broadcast
+        lin.load_state_dict(
+            {"weight": np.zeros((1, 2)), "bias": np.zeros(2)}
+        )  # would broadcast
     lin.load_state_dict({"weight": np.zeros((2, 2))}, strict=False)
     assert_close(lin.weight.data, np.zeros((2, 2)), dtype="float32")
     assert_close(lin.bias.data, before["bias"], dtype="float32")
@@ -291,7 +315,9 @@ def test_train_eval_reaches_every_child():
     # KIND: unit
     # CATCHES: s14, m09
     # CHAPTER: L0.4 section 5, Pitfalls, item 2
-    m = Sequential(Linear(4, 4, rng=Rng(1)), Sequential(Dropout(0.5, rng=Rng(2)), Tanh()))
+    m = Sequential(
+        Linear(4, 4, rng=Rng(1)), Sequential(Dropout(0.5, rng=Rng(2)), Tanh())
+    )
     assert m.eval() is m
     assert all(not mod.training for _, mod in m.named_modules())
     x = Tensor(np.ones((2, 4)))
@@ -377,7 +403,12 @@ def test_sequential_and_modulelist():
     x = Tensor(np.ones((1, 2)))
     assert_close(s(x).data, np.tanh(a(x).data), dtype="float32")
     ml = ModuleList([Linear(1, 1, rng=Rng(2))]).append(Linear(1, 1, rng=Rng(3)))
-    assert len(ml) == 2 and [n for n, _ in ml.named_parameters()] == ["0.weight", "0.bias", "1.weight", "1.bias"]
+    assert len(ml) == 2 and [n for n, _ in ml.named_parameters()] == [
+        "0.weight",
+        "0.bias",
+        "1.weight",
+        "1.bias",
+    ]
     with pytest.raises(NotImplementedError):
         ml(x)
     with pytest.raises(TypeError):

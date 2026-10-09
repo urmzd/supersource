@@ -146,7 +146,15 @@ def test_pow_grads(p):
 
 @pytest.mark.parametrize(
     "shapes",
-    [((3, 4), (4, 2)), ((3, 3), (3, 3)), ((2, 3, 4), (4, 5)), ((4,), (4, 2)), ((3, 4), (4,)), ((4,), (4,)), ((2, 1, 3, 4), (5, 4, 2))],
+    [
+        ((3, 4), (4, 2)),
+        ((3, 3), (3, 3)),
+        ((2, 3, 4), (4, 5)),
+        ((4,), (4, 2)),
+        ((3, 4), (4,)),
+        ((4,), (4,)),
+        ((2, 1, 3, 4), (5, 4, 2)),
+    ],
     ids=["mm", "square", "batched", "vec-mat", "mat-vec", "dot", "broadcast-batch"],
 )
 def test_matmul_grads(shapes):
@@ -283,7 +291,9 @@ def test_from_op_custom_op():
     # CHAPTER: L0.1 section 4, The interface (from_op)
     x = Tensor([1.0, -2.0, 3.0], requires_grad=True, dtype=F64)
     c = Tensor([1.0, 1.0, 2.0], dtype=F64)
-    y = from_op(c.data * x.data**2, (x, c), lambda g: (2 * c.data * x.data * g, None), "csquare")
+    y = from_op(
+        c.data * x.data**2, (x, c), lambda g: (2 * c.data * x.data * g, None), "csquare"
+    )
     assert y.requires_grad
     y.backward(np.array([1.0, 1.0, 0.5]))
     assert_close(x.grad, [2.0, -4.0, 6.0])
@@ -297,7 +307,9 @@ def test_grad_dtype_matches_data():
     # CATCHES: m03
     # CHAPTER: L0.1 section 4, The interface
     x = Tensor([1.0, 2.0], requires_grad=True)  # float32
-    y = from_op(x.data * 2, (x,), lambda g: (np.asarray(g, dtype=np.float64) * 2.0,), "double")
+    y = from_op(
+        x.data * 2, (x,), lambda g: (np.asarray(g, dtype=np.float64) * 2.0,), "double"
+    )
     y.backward(np.ones(2, dtype=np.float32))
     assert x.grad.dtype == np.float32 and x.grad.shape == (2,)
 
@@ -394,7 +406,9 @@ def test_detach_stops_gradient():
     assert not d.requires_grad
     y = x * d
     y.backward(np.ones(2))
-    assert_close(x.grad, [2.0, 4.0], dtype="float32")  # d is a constant: d(x * d)/dx = d
+    assert_close(
+        x.grad, [2.0, 4.0], dtype="float32"
+    )  # d is a constant: d(x * d)/dx = d
     assert d.numpy() is d.data
 
 

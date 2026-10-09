@@ -47,9 +47,9 @@ CJK = (
 )
 # White_Space (what Rust's char::is_whitespace tests); \t \n \r included.
 WHITE_SPACE = frozenset(
-    "\t\n\x0b\x0c\r \x85\xa0 "
+    "\t\n\x0b\x0c\r \x85\xa0\u1680"
     + "".join(chr(c) for c in range(0x2000, 0x200B))
-    + "    　"
+    + "\u2028\u2029\u202f\u205f\u3000"
 )
 
 

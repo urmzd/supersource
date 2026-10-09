@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/spec.py
++++ b/python/tinyllm/infer/spec.py
+@@ -220,7 +220,7 @@
+         rows = _forward_rows(target, pending + drafts, committed, cache)[len(pending) - 1 :]
+         calls += 1
+         emitted, n_acc = verify_draft(rows, drafts, q if drafts else None, p, out, rng, prompt_ids)
+-        drafted += len(drafts)
++        drafted += len(emitted)
+         accepted += n_acc
+         committed += len(pending) + n_acc
+         cache.truncate(committed)  # drop the rejected drafts' keys and values

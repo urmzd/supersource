@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -172,7 +172,7 @@
+@@ -170,7 +170,7 @@
              if is_bert_whitespace(ch):
                  out.append(" ")
              elif is_cjk(ch):

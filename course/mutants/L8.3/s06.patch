@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/paged.py
++++ b/python/tinyllm/infer/paged.py
+@@ -110,8 +110,6 @@
+         table = self._table(parent)
+         if child in self._tables:
+             raise ValueError(f"sequence {child} already exists")
+-        for b in table:  # the child holds every block too: no copy until a write
+-            self.lib.tl_kv_ref(self._pool, b)
+         self._tables[child] = list(table)
+         self._lens[child] = list(self._lens[parent])
+ 

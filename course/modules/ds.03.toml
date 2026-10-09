@@ -1,0 +1,29 @@
+id        = "ds.03"
+title     = "Intrusive list + LRU"
+kind      = "build"
+lang      = ["c"]
+pass      = 6
+chapter   = "algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md"
+contract  = []                        # tinyllm/ds.h, ds.03 section (DEVIATIONS B82-02)
+deps      = []                        # pure pointer code: no allocation, no error slot
+# The catalog lists ds.02 as a prerequisite (the order of the chapters);
+# list.c and lru.c call nothing in it.
+reading   = ["ds.02"]
+used_by   = ["rt.04"]                 # the cached KV blocks, oldest first
+units     = ["c/src/ds/list.c", "c/src/ds/lru.c"]
+upgrades  = []
+milestone = "MS-L8"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/ds.03"
+smoke     = ["hand_example_touch_order"]
+timeout_s = 60
+determinism_runs = 2
+
+[learner_tests]                       # rung R2
+rung      = 2
+path      = "c/tests/ds03-lru"
+threshold = 0.60
+required_mutants = []
+time_budget_s = 30

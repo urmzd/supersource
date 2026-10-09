@@ -1,0 +1,50 @@
+id        = "L1.5"
+title     = "Rust fast BPE (tl-tok), byte tokenizer, streaming decoder, PyO3 binding"
+kind      = "build"
+lang      = ["rust"]
+pass      = 3
+chapter   = "ml/08-tinyllm/p01-tokenizers/05-rust-fast-bpe.md"
+# py/tinyllm_rs.pyi (Bpe), formats/tokenizer.md, and spec/cli-roles.md are
+# linked from the chapter card; they carry no `chapter:` back-pointer to this
+# chapter yet (DEVIATIONS B43-02).
+contract  = []
+# The course tests diff tl-tok against your Python BPE (L1.2, P6); tl-tok
+# keeps its tables in RobinHoodMap (ds.05) and merges from LazyHeap (ds.06).
+deps      = ["L1.2", "ds.05", "ds.06"]
+reading   = ["lang.04", "M05.2"]    # the Rust primer; the GPT-2 byte map, re-implemented in Rust
+# ds.08 adds tinyllm_rs.Bloom to the tl-py crate root this module owns;
+# data.07 tokenizes the corpus with tinyllm_rs.Bpe. The catalog call sites
+# L10.1, L10.5, and C1 join with their batches.
+used_by   = ["ds.08", "data.07"]
+units     = [
+  "rust/crates/tl-tok/src/lib.rs",
+  "rust/crates/tl-tok/src/bpe.rs",
+  "rust/crates/tl-tok/src/pretok.rs",
+  "rust/crates/tl-tok/src/hfjson.rs",
+  "rust/crates/tl-tok/src/stream.rs",
+  "rust/crates/tl-py/src/lib.rs",   # crate root (glue): the tinyllm_rs module object, declares tok and bloom
+  "rust/crates/tl-py/src/tok.rs",
+]
+upgrades  = []
+milestone = "MS-L1"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/L1.5"     # Python through tinyllm_rs; the Rust half is course/tests/rust/l1_5.rs
+smoke     = ["hand_example_merges_from_the_heap", "gpt2_golden_10k", "py_bpe_matches_python_l12"]
+timeout_s = 120
+determinism_runs = 2
+
+[fixtures]                          # the tests also read tok-gpt2/ and tok-smollm2/tokenizer.json (L1.2's fixtures)
+files = [
+  "course/fixtures/L1.5/golden.jsonl",
+  "course/fixtures/tok-gpt2/parity.json",
+]
+
+[learner_tests]                     # rung R4: properties with proptest (craft.04)
+rung      = 4
+path      = "rust/crates/tl-tok/tests/l1_5_props.rs"
+threshold = 0.80
+# every semantic mutant your Rust tests can reach (s14 and s15 sit in tl-py)
+required_mutants = ["s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12", "s13", "s16"]
+time_budget_s = 90

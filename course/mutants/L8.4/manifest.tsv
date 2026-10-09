@@ -1,0 +1,13 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-1	82	y	a fully cached prompt is matched whole	the last-token rule is gone
+s02	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-2	85	n	a match returns only the last node's blocks	blocks of earlier path nodes dropped
+s03	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-3	90	n	hits are counted before matching	hit_tokens adds the usable length
+s04	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-4	102	n	insert accepts a partial last block	the block count check is gone
+s05	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-5	127	n	the caller's own cached blocks come back as duplicates	no comparison with the kept ids
+s06	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-6	110	n	insert stores the partial tail too	tokens are not cut to full blocks
+s07	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-7	133	y	lock pins nothing	lock is a no-op
+s08	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-8	138	n	unlock releases nothing	unlock is a no-op
+s09	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-9	147	n	eviction drops part of a leaf	the freed list is cut to n_blocks
+s10	rust/crates/tl-engine/src/prefix.rs	semantic	pitfall-10	165	n	locked blocks count as evictable	evictable_blocks ignores locks
+m01	rust/crates/tl-engine/src/prefix.rs	auto	statement-deletion	147	n	evictions are not counted	evicted_blocks += deleted
+m02	rust/crates/tl-engine/src/prefix.rs	auto	arithmetic	153	n	cached tokens are reported in blocks	the block_size factor is dropped

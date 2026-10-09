@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -601,7 +601,7 @@
+         """Norm, projections, and rope for the N rows of h: q [N, H, D], k, v [N, Hkv, D]."""
+         c = self.config
+         p = f"model.layers.{i}."
+-        x = rmsnorm(h, self.w[p + "input_layernorm.weight"], c.rms_norm_eps, self.lib)
++        x = rmsnorm(h, self.w[p + "input_layernorm.weight"], 1e-6, self.lib)
+         N, H, Hkv, D = (
+             h.shape[0],
+             c.num_attention_heads,

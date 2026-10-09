@@ -1,11 +1,11 @@
 --- a/c/src/numerics/rng.c
 +++ b/c/src/numerics/rng.c
-@@ -17,7 +17,7 @@
+@@ -16,7 +16,7 @@
      r->state = 0u;
      r->inc = (seq << 1u) | 1u; /* odd: the LCG has full period 2^64 */
      (void)tl_pcg32_next(r);
 -    r->state += seed;
 +    r->state = seed;
      (void)tl_pcg32_next(r);
- /* SOLUTION-END */
  }
+ 

@@ -189,12 +189,25 @@ def test_armijo_accepts_alpha0():
     # WHY: when the full step already decreases f enough, the search returns
     #      alpha0 unchanged; it never shrinks a step that works.
     # KIND: unit
-    # CATCHES: s09
+    # CATCHES: s09, m04
     # CHAPTER: M10.1 section 2, Principles (the Armijo condition)
     a = armijo_step(lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-0.5]))
     assert a == 1.0
     a = armijo_step(lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-2.0]), alpha0=0.75)
     assert a == 0.75
+
+
+def test_armijo_keeps_halving():
+    # WHY: each trial shrinks the PREVIOUS alpha by rho. On f(x) = x^2 at
+    #      x = 1 along d = -4 (slope -8), alpha = 1 lands on -3 (f = 9) and
+    #      alpha = 0.5 on -1 (f = 1, not below 1 - 4e-4); only the second
+    #      halving, alpha = 0.25, lands on the minimum. A loop that restarts
+    #      from alpha0 * rho every time never gets past 0.5.
+    # KIND: unit
+    # CATCHES: s12
+    # CHAPTER: M10.1 section 5, Pitfalls, item 10
+    a = armijo_step(lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-4.0]))
+    assert a == 0.25
 
 
 def test_armijo_rejects_nan_steps():
@@ -234,11 +247,19 @@ def test_armijo_gives_up():
     # WHY: with a gradient that lies (it claims d descends while f actually
     #      rises), no alpha ever qualifies. After 60 halvings the search
     #      raises instead of looping forever or returning a step of 1e-18.
+    #      The 60th halving itself is still tried: a function that accepts
+    #      only steps up to 2^-60 gets exactly 2^-60 back.
     # KIND: boundary
-    # CATCHES: s10
+    # CATCHES: s10, s12, m03
     # CHAPTER: M10.1 section 4, The interface
     with pytest.raises(RuntimeError):
         armijo_step(lambda x: float(x[0]), lambda x: np.array([-1.0]), np.array([0.0]), np.array([1.0]))
+
+    def tiny_only(x):
+        return float(-x[0]) if x[0] <= 2.0**-60 else float(x[0])
+
+    a = armijo_step(tiny_only, lambda x: np.array([-1.0]), np.array([0.0]), np.array([1.0]))
+    assert a == 2.0**-60
 
 
 def test_line_search_descends_rosenbrock():

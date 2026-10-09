@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -192,7 +192,7 @@
+         r,
+         f32_ptr(f),
+         attention_scaling,
+-        0 if layout == "half" else 1,
++        0,
+     )
+     return y
+ 

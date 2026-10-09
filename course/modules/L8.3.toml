@@ -1,0 +1,33 @@
+id        = "L8.3"
+title     = "Paged KV cache in Python over the C block pool"
+kind      = "build"
+lang      = ["python"]
+pass      = 6
+chapter   = "ml/08-tinyllm/p08-inference/03-paged-kv-cache.md"
+contract  = ["contracts/py/tinyllm/infer/paged.pyi"]
+# tl_kv_* through the rt.01 ctypes loader; the course tests' decoding
+# differential runs L8.2's contiguous KVCache(dtype=np.float16) as the
+# catalog's oracle.
+deps      = ["L8.2", "rt.04", "rt.01"]
+reading   = []
+# Call sites (DESIGN 4.3): L9.4's differential oracle (its tests build the
+# paged cache and run the C kernel over cache.pool). L10.4's semantics and
+# L8.2's generate(cache="paged") join with their batches.
+used_by   = ["L9.4"]
+units     = ["python/tinyllm/infer/paged.py"]
+upgrades  = []
+milestone = "MS-L8"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/L8.3"
+smoke     = ["test_hand_example_block_table", "test_paged_matches_contiguous_decoding"]
+timeout_s = 60
+determinism_runs = 2
+
+[learner_tests]                       # rung R4: properties (DESIGN 3.4's example)
+rung      = 4
+path      = "python/tests/l8-3-paged"
+threshold = 0.80
+required_mutants = ["s06", "s07"]
+time_budget_s = 30

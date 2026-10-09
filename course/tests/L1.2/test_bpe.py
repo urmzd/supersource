@@ -30,7 +30,17 @@ from tinyllm.tok.pretok import pretokenize_gpt2, split_digits
 FX = Path(os.environ.get("TINYLLM_FIXTURES", ""))
 HAND_TEXTS = ["hug", "hug", "pug", "hugs"]
 ALPHABET = list("ab hgpsu'.,!?0129\t\n") + [
-    "  ", "é", "́", "日", "\U0001f642", " ", "　", "\x1c", "½", "'s", "'T",
+    "  ",
+    "é",
+    "́",
+    "日",
+    "\U0001f642",
+    " ",
+    "　",
+    "\x1c",
+    "½",
+    "'s",
+    "'T",
 ]
 
 _cache: dict[str, BPETokenizer] = {}
@@ -47,13 +57,17 @@ def cases(name: str) -> list[dict]:
 
 def gpt2() -> BPETokenizer:
     if "gpt2" not in _cache:
-        _cache["gpt2"] = BPETokenizer.from_hf_json(str(FX / "tok-gpt2" / "tokenizer.json"))
+        _cache["gpt2"] = BPETokenizer.from_hf_json(
+            str(FX / "tok-gpt2" / "tokenizer.json")
+        )
     return _cache["gpt2"]
 
 
 def smollm2() -> BPETokenizer:
     if "smollm2" not in _cache:
-        _cache["smollm2"] = BPETokenizer.from_hf_json(str(FX / "tok-smollm2" / "tokenizer.json"))
+        _cache["smollm2"] = BPETokenizer.from_hf_json(
+            str(FX / "tok-smollm2" / "tokenizer.json")
+        )
     return _cache["smollm2"]
 
 
@@ -75,8 +89,16 @@ def test_hand_example_training():
     tok = BPETokenizer.train(HAND_TEXTS, vocab_size=259, min_freq=1)
     assert tok.merges == [("u", "g"), ("h", "ug"), ("p", "ug")]
     assert tok.vocab_size == 259
-    assert tok.token_to_id("ug") == 256 and tok.token_to_id("hug") == 257 and tok.token_to_id("pug") == 258
-    assert tok.token_to_id("!") == 0 and tok.token_to_id("g") == 70 and tok.token_to_id("Ġ") == 220
+    assert (
+        tok.token_to_id("ug") == 256
+        and tok.token_to_id("hug") == 257
+        and tok.token_to_id("pug") == 258
+    )
+    assert (
+        tok.token_to_id("!") == 0
+        and tok.token_to_id("g") == 70
+        and tok.token_to_id("Ġ") == 220
+    )
 
 
 def test_hand_example_encode():
@@ -112,12 +134,22 @@ def test_trainer_matches_hf_merges():
     # KIND: golden
     # CATCHES: s01, s02, s05
     # CHAPTER: L1.2 section 2, Principles
-    lines = (FX / "L1.2" / "train.txt").read_text(encoding="utf-8").splitlines(keepends=True)
+    lines = (
+        (FX / "L1.2" / "train.txt")
+        .read_text(encoding="utf-8")
+        .splitlines(keepends=True)
+    )
     golden = json.loads((FX / "L1.2" / "train_merges.json").read_text(encoding="utf-8"))
     for g in golden:
         tok = BPETokenizer.train(lines, g["vocab_size"], g["specials"], g["min_freq"])
-        assert [list(m) for m in tok.merges] == g["merges"], (g["vocab_size"], g["min_freq"])
-        assert len(tok.vocab) + len(tok.added) - len(set(tok.vocab) & set(tok.added)) == g["n_vocab"]
+        assert [list(m) for m in tok.merges] == g["merges"], (
+            g["vocab_size"],
+            g["min_freq"],
+        )
+        assert (
+            len(tok.vocab) + len(tok.added) - len(set(tok.vocab) & set(tok.added))
+            == g["n_vocab"]
+        )
 
 
 def test_specials_are_not_trained_on():
@@ -230,10 +262,16 @@ def test_gpt2_files_load_like_tokenizer_json(tmp_path):
     # CATCHES: s13
     # CHAPTER: L1.2 section 4, The interface
     doc = json.loads((FX / "tok-gpt2" / "tokenizer.json").read_text(encoding="utf-8"))
-    (tmp_path / "vocab.json").write_text(json.dumps(doc["model"]["vocab"]), encoding="utf-8")
-    lines = ["#version: 0.2"] + [m if isinstance(m, str) else " ".join(m) for m in doc["model"]["merges"]]
+    (tmp_path / "vocab.json").write_text(
+        json.dumps(doc["model"]["vocab"]), encoding="utf-8"
+    )
+    lines = ["#version: 0.2"] + [
+        m if isinstance(m, str) else " ".join(m) for m in doc["model"]["merges"]
+    ]
     (tmp_path / "merges.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    tok = BPETokenizer.from_gpt2(str(tmp_path / "vocab.json"), str(tmp_path / "merges.txt"))
+    tok = BPETokenizer.from_gpt2(
+        str(tmp_path / "vocab.json"), str(tmp_path / "merges.txt")
+    )
     assert tok.special_ids == {"<|endoftext|>": 50256}
     for c in cases("tok-gpt2")[:120]:
         assert tok.encode(c["text"]) == c["ids"], repr(c["text"])
@@ -340,7 +378,11 @@ def test_roundtrip_property():
     # KIND: property
     # CATCHES: s16
     # CHAPTER: L1.2 section 2, Principles
-    lines = (FX / "L1.2" / "train.txt").read_text(encoding="utf-8").splitlines(keepends=True)
+    lines = (
+        (FX / "L1.2" / "train.txt")
+        .read_text(encoding="utf-8")
+        .splitlines(keepends=True)
+    )
     tok = BPETokenizer.train(lines, vocab_size=400)
     rng = PCG32(seed(), 22)
     for _ in range(200):
@@ -354,12 +396,19 @@ def test_save_load_roundtrip(tmp_path):
     # KIND: property
     # CATCHES: s18
     # CHAPTER: L1.2 section 4, The interface
-    lines = (FX / "L1.2" / "train.txt").read_text(encoding="utf-8").splitlines(keepends=True)
+    lines = (
+        (FX / "L1.2" / "train.txt")
+        .read_text(encoding="utf-8")
+        .splitlines(keepends=True)
+    )
     tok = BPETokenizer.train(lines, vocab_size=400, specials=["<|endoftext|>"])
     tok.save(str(tmp_path))
     doc = json.loads((tmp_path / "tokenizer.json").read_text(encoding="utf-8"))
     assert doc["model"]["type"] == "BPE" and doc["pre_tokenizer"]["type"] == "ByteLevel"
-    assert doc["added_tokens"][0]["content"] == "<|endoftext|>" and doc["added_tokens"][0]["special"] is True
+    assert (
+        doc["added_tokens"][0]["content"] == "<|endoftext|>"
+        and doc["added_tokens"][0]["special"] is True
+    )
     back = BPETokenizer.load(str(tmp_path))
     assert back.merges == tok.merges and back.special_ids == tok.special_ids
     for line in lines[:20] + ["unseen \U0001f642<|endoftext|>"]:
@@ -379,7 +428,15 @@ def test_from_hf_json_rejects_outside_subset(tmp_path):
         ("model.dropout", 0.1),
         ("model.unk_token", "<unk>"),
         ("model.byte_fallback", True),
-        ("post_processor", {"type": "TemplateProcessing", "single": [], "pair": [], "special_tokens": {}}),
+        (
+            "post_processor",
+            {
+                "type": "TemplateProcessing",
+                "single": [],
+                "pair": [],
+                "special_tokens": {},
+            },
+        ),
         ("pre_tokenizer", {"type": "Metaspace", "replacement": "▁"}),
         ("version", "2.0"),
     ]

@@ -1,11 +1,11 @@
 --- a/python/tinyllm/prob/rv.py
 +++ b/python/tinyllm/prob/rv.py
-@@ -42,7 +42,7 @@
+@@ -39,7 +39,7 @@
+ 
  def expectation(values: ArrayLike, probs: ArrayLike) -> float:
-     # SOLUTION-BEGIN M07.0
      x, p = _table(values, probs)
 -    return float(x @ p)
 +    return float(x.mean())
-     # SOLUTION-END
  
  
+ def variance(values: ArrayLike, probs: ArrayLike) -> float:

@@ -10,9 +10,10 @@ deps      = []
 # M02.2 teaches the EMA and its bias correction, which Adam re-derives per
 # coordinate. Neither is called, so both are reading (DEVIATIONS B34-01).
 reading   = ["M10.2", "M02.2", "S-M10a"]
-# L0.5's train loop steps it. L4.1, L5.5, L6.1, L7.9, C1, and L12.1 join with
-# their batches: the mirror rule only accepts call sites in the registry.
-used_by   = ["L0.5"]
+# L0.5's train loop steps it; L0.6 writes and restores its state_dict in the
+# checkpoint. L4.1, L5.5, L6.1, L7.9, C1, and L12.1 join with their batches:
+# the mirror rule only accepts call sites in the registry.
+used_by   = ["L0.5", "L0.6"]
 units     = ["python/tinyllm/optim/adamw.py"]
 upgrades  = []
 milestone = "MS-P2"

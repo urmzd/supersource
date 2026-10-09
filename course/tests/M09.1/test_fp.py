@@ -8,7 +8,7 @@ mutants in course/mutants/M09.1), and the chapter section it comes from.
 The chapter's worked examples (section 3): -6.25 = -1.5625 * 2^2 has fields
 (1, 129, 0x480000); float32(0.1) = 0x3DCCCCCD rounds up to bf16 0x3DCD; and
 1 + 2^-8 is a tie that rounds to the even neighbour 1.0.
-The golden file course/fixtures/M09.1/round_f32.npz holds about 8000 float32
+The golden file course/fixtures/M09.1/round_f32.npz holds 10 156 float32
 bit patterns with their bf16 and f16 codes, rounded with exact rational
 arithmetic (course/oracle/M09.1/lowp_golden.py).
 """
@@ -32,7 +32,8 @@ from tinyllm.num.fp import (
 )
 
 GOLDEN = np.load(
-    Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M09.1" / "round_f32.npz", allow_pickle=False
+    Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M09.1" / "round_f32.npz",
+    allow_pickle=False,
 )
 F32_BITS = GOLDEN["f32_bits"]
 F32 = F32_BITS.view(np.float32)
@@ -122,7 +123,9 @@ def test_ulp_matches_numpy_spacing():
     x32 = F32[np.abs(F32) < np.finfo(np.float32).max]
     assert (ulp(x32, "f32") == np.abs(np.spacing(x32)).astype(np.float64)).all()
     g = PCG32(int(os.environ.get("SS_SEED", "0")), seq=111)
-    x16 = np.array([g.below(0x7BFF) for _ in range(2000)], dtype=np.uint16).view(np.float16)
+    x16 = np.array([g.below(0x7BFF) for _ in range(2000)], dtype=np.uint16).view(
+        np.float16
+    )
     assert (ulp(x16, "f16") == np.spacing(x16).astype(np.float64)).all()
 
 
@@ -149,7 +152,10 @@ def test_bf16_hand_examples():
     # CHAPTER: M09.1 section 3
     assert int(f32_to_bf16_bits(0.1)) == 0x3DCD
     assert float(round_to_bf16(0.1)) == 0.10009765625
-    assert f32_to_bf16_bits([1.0 + 2.0**-8, 1.0 + 3 * 2.0**-8]).tolist() == [0x3F80, 0x3F82]
+    assert f32_to_bf16_bits([1.0 + 2.0**-8, 1.0 + 3 * 2.0**-8]).tolist() == [
+        0x3F80,
+        0x3F82,
+    ]
 
 
 def test_bf16_matches_exact_rational_golden():
@@ -162,7 +168,9 @@ def test_bf16_matches_exact_rational_golden():
     got = f32_to_bf16_bits(F32)
     assert got.dtype == np.uint16
     bad = np.flatnonzero(got != GOLDEN["bf16_bits"])
-    assert bad.size == 0, f"{bad.size} codes differ; first f32 0x{int(F32_BITS[bad[0]]):08X}"
+    assert bad.size == 0, (
+        f"{bad.size} codes differ; first f32 0x{int(F32_BITS[bad[0]]):08X}"
+    )
 
 
 def test_bf16_nan_stays_nan():
@@ -173,7 +181,9 @@ def test_bf16_nan_stays_nan():
     # KIND: boundary
     # CATCHES: s03
     # CHAPTER: M09.1 section 5, Pitfalls
-    nans = np.array([0x7F800001, 0xFF800001, 0x7FC00000, 0xFFFFFFFF], dtype=np.uint32).view(np.float32)
+    nans = np.array(
+        [0x7F800001, 0xFF800001, 0x7FC00000, 0xFFFFFFFF], dtype=np.uint32
+    ).view(np.float32)
     assert f32_to_bf16_bits(nans).tolist() == [0x7FC0] * 4
     assert np.isnan(round_to_bf16(nans)).all()
 
@@ -219,14 +229,18 @@ def test_fp16_matches_numpy_bitwise():
     # CATCHES: s06, s07, s08, m02
     # CHAPTER: M09.1 section 2.4
     g = PCG32(int(os.environ.get("SS_SEED", "0")), seq=112)
-    rnd = np.array([g.next_u32() for _ in range(100_000)], dtype=np.uint32).view(np.float32)
+    rnd = np.array([g.next_u32() for _ in range(100_000)], dtype=np.uint32).view(
+        np.float32
+    )
     for x in (F32, rnd):
         with np.errstate(all="ignore"):
             want = x.astype(np.float16).astype(np.float32)
         got = round_to_fp16(x)
         assert got.dtype == np.float32
         bad = np.flatnonzero(~same_f32(got, want))
-        assert bad.size == 0, f"{bad.size} differ; first f32 0x{int(x.view(np.uint32)[bad[0]]):08X}"
+        assert bad.size == 0, (
+            f"{bad.size} differ; first f32 0x{int(x.view(np.uint32)[bad[0]]):08X}"
+        )
     gold = GOLDEN["f16_bits"].view(np.float16).astype(np.float32)
     assert same_f32(round_to_fp16(F32), gold).all()
 
@@ -240,7 +254,9 @@ def test_fp16_edges():
     # KIND: boundary
     # CATCHES: s06, s07, s08
     # CHAPTER: M09.1 section 2.4
-    got = round_to_fp16([65504.0, 65519.0, 65520.0, -1e6, 2.0**-20, 2.0**-25, 3 * 2.0**-25, -(2.0**-24)])
+    got = round_to_fp16(
+        [65504.0, 65519.0, 65520.0, -1e6, 2.0**-20, 2.0**-25, 3 * 2.0**-25, -(2.0**-24)]
+    )
     want = [65504.0, 65504.0, np.inf, -np.inf, 2.0**-20, 0.0, 2.0**-23, -(2.0**-24)]
     assert got.tolist() == want
 

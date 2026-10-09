@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -626,7 +626,7 @@
+             self.scale,
+             q_offset,
+             True,
+-            self.config.sliding_window,
++            None,
+             self.w.get(f"model.layers.{i}.self_attn.sinks"),
+             self.lib,
+         )

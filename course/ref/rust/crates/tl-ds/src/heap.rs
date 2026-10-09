@@ -181,6 +181,14 @@ where
         // SOLUTION-END
     }
 
+    /// The items in array order: index 0 is the root, the children of `i`
+    /// are `2i + 1` and `2i + 2`. For tests and the chapter's diagrams.
+    pub fn array(&self) -> Vec<&T> {
+        // SOLUTION-BEGIN ds.06
+        self.data.iter().map(|n| &n.item).collect()
+        // SOLUTION-END
+    }
+
     pub fn is_empty(&self) -> bool {
         // SOLUTION-BEGIN ds.06
         self.data.is_empty()
@@ -363,6 +371,21 @@ where
     pub fn stale_len(&self) -> usize {
         // SOLUTION-BEGIN ds.06
         self.data.len() - self.live
+        // SOLUTION-END
+    }
+
+    /// Empties the heap and keeps its allocations, so a caller that runs many
+    /// small jobs (one BPE piece after another) allocates once. Every handle
+    /// issued so far becomes stale.
+    pub fn clear(&mut self) {
+        // SOLUTION-BEGIN ds.06
+        self.data.clear();
+        for g in self.gens.iter_mut() {
+            *g = g.wrapping_add(1);
+        }
+        self.free.clear();
+        self.free.extend((0..self.gens.len() as u32).rev());
+        self.live = 0;
         // SOLUTION-END
     }
 

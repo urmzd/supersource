@@ -22,8 +22,23 @@ import pytest
 from tinyllm.tok.wordpiece import WordPieceTokenizer
 
 FX = Path(os.environ.get("TINYLLM_FIXTURES", ""))
-HAND = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "the", "un", "##aff", "##able", "##a",
-        "!", "u", "##n", "cafe", "##s"]
+HAND = [
+    "[PAD]",
+    "[UNK]",
+    "[CLS]",
+    "[SEP]",
+    "[MASK]",
+    "the",
+    "un",
+    "##aff",
+    "##able",
+    "##a",
+    "!",
+    "u",
+    "##n",
+    "cafe",
+    "##s",
+]
 _cache: dict[str, WordPieceTokenizer] = {}
 
 
@@ -33,7 +48,9 @@ def hand(**kw) -> WordPieceTokenizer:
 
 def bert() -> WordPieceTokenizer:
     if "bert" not in _cache:
-        _cache["bert"] = WordPieceTokenizer.from_hf_json(str(FX / "tok-bert" / "tokenizer.json"))
+        _cache["bert"] = WordPieceTokenizer.from_hf_json(
+            str(FX / "tok-bert" / "tokenizer.json")
+        )
     return _cache["bert"]
 
 
@@ -135,7 +152,10 @@ def test_strip_accents_follows_lowercase():
     assert WordPieceTokenizer(v).normalize("Café") == "cafe"
     assert WordPieceTokenizer(v, lowercase=False).normalize("Café") == "Café"
     assert WordPieceTokenizer(v, strip_accents=False).normalize("Café") == "café"
-    assert WordPieceTokenizer(v, lowercase=False, strip_accents=True).normalize("Café") == "Cafe"
+    assert (
+        WordPieceTokenizer(v, lowercase=False, strip_accents=True).normalize("Café")
+        == "Cafe"
+    )
 
 
 def test_only_nonspacing_marks_are_stripped():
@@ -156,7 +176,17 @@ def test_punctuation_is_split():
     # KIND: boundary
     # CATCHES: s08
     # CHAPTER: L1.3 section 2, Principles
-    assert hand().basic_tokenize("$5+x^2«a»") == ["$", "5", "+", "x", "^", "2", "«", "a", "»"]
+    assert hand().basic_tokenize("$5+x^2«a»") == [
+        "$",
+        "5",
+        "+",
+        "x",
+        "^",
+        "2",
+        "«",
+        "a",
+        "»",
+    ]
 
 
 def test_lowercase_per_code_point():
@@ -200,7 +230,9 @@ def test_bert_template_matches_oracle():
     # CHAPTER: L1.3 section 4, The interface
     tok = bert()
     for c in cases()[:100]:
-        assert tok.encode(c["text"], add_special=True) == c["ids_special"], repr(c["text"])
+        assert tok.encode(c["text"], add_special=True) == c["ids_special"], repr(
+            c["text"]
+        )
 
 
 def test_bert_decode_matches_oracle():
@@ -212,7 +244,9 @@ def test_bert_decode_matches_oracle():
     tok = bert()
     for c in cases():
         assert tok.decode(c["ids"]) == c["decoded"], repr(c["text"])
-        assert tok.decode(c["ids"], skip_special=True) == c["decoded_skip"], repr(c["text"])
+        assert tok.decode(c["ids"], skip_special=True) == c["decoded_skip"], repr(
+            c["text"]
+        )
 
 
 def test_from_vocab_equals_tokenizer_json(tmp_path):
@@ -222,7 +256,9 @@ def test_from_vocab_equals_tokenizer_json(tmp_path):
     # CHAPTER: L1.3 section 4, The interface
     doc = json.loads((FX / "tok-bert" / "tokenizer.json").read_text(encoding="utf-8"))
     vocab = sorted(doc["model"]["vocab"].items(), key=lambda kv: kv[1])
-    (tmp_path / "vocab.txt").write_text("".join(t + "\n" for t, _ in vocab), encoding="utf-8")
+    (tmp_path / "vocab.txt").write_text(
+        "".join(t + "\n" for t, _ in vocab), encoding="utf-8"
+    )
     tok = WordPieceTokenizer.from_vocab(str(tmp_path / "vocab.txt"))
     assert tok.special_ids == bert().special_ids
     for c in cases()[:120]:

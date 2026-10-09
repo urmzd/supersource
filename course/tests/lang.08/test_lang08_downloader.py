@@ -61,7 +61,9 @@ class CountingServer:
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"
 
-    async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    async def _handle(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         try:
             head = await reader.readuntil(b"\r\n\r\n")
         except (asyncio.IncompleteReadError, ConnectionError):
@@ -119,7 +121,9 @@ def test_http_get_sends_extra_headers():
     # KIND: unit
     # CHAPTER: lang.08 section 4
     with FlakyHTTP({"/hello.txt": BODY}) as srv:
-        resp = asyncio.run(http_get(srv.url("/hello.txt"), headers={"Range": "bytes=6-"}))
+        resp = asyncio.run(
+            http_get(srv.url("/hello.txt"), headers={"Range": "bytes=6-"})
+        )
         sent = srv.headers("/hello.txt")[0]
     assert sent.get("Range") == "bytes=6-"
     assert resp.status == 206
@@ -179,7 +183,9 @@ def test_fetch_retries_5xx_with_exponential_backoff():
     sleep = FakeSleep()
     with FlakyHTTP({"/hello.txt": BODY}) as srv:
         srv.fail("/hello.txt", status=503, times=2)
-        body = asyncio.run(fetch(srv.url("/hello.txt"), attempts=3, base_delay=0.1, sleep=sleep))
+        body = asyncio.run(
+            fetch(srv.url("/hello.txt"), attempts=3, base_delay=0.1, sleep=sleep)
+        )
         hits = srv.hits("/hello.txt")
     assert body == BODY
     assert hits == 3
@@ -211,7 +217,9 @@ def test_fetch_gives_up_after_its_attempts():
     with FlakyHTTP({"/hello.txt": BODY}) as srv:
         srv.fail("/hello.txt", status=503, times=10)
         with pytest.raises(HTTPError) as err:
-            asyncio.run(fetch(srv.url("/hello.txt"), attempts=3, base_delay=0.1, sleep=sleep))
+            asyncio.run(
+                fetch(srv.url("/hello.txt"), attempts=3, base_delay=0.1, sleep=sleep)
+            )
         hits = srv.hits("/hello.txt")
     assert err.value.status == 503
     assert hits == 3
@@ -243,7 +251,9 @@ def test_fetch_times_out_each_attempt():
         srv.delay("/slow.txt", 0.6)
         t0 = time.monotonic()
         with pytest.raises(TimeoutError):
-            asyncio.run(fetch(srv.url("/slow.txt"), attempts=2, timeout=0.05, sleep=sleep))
+            asyncio.run(
+                fetch(srv.url("/slow.txt"), attempts=2, timeout=0.05, sleep=sleep)
+            )
         elapsed = time.monotonic() - t0
         # Wait until both requests reached the server's handler threads.
         deadline = time.monotonic() + 2
@@ -251,7 +261,9 @@ def test_fetch_times_out_each_attempt():
             time.sleep(0.01)
         hits = srv.hits("/slow.txt")
     assert hits == 2
-    assert elapsed < 0.5, f"two 0.05 s attempts took {elapsed:.2f} s: is the timeout per attempt?"
+    assert elapsed < 0.5, (
+        f"two 0.05 s attempts took {elapsed:.2f} s: is the timeout per attempt?"
+    )
     assert len(sleep.calls) == 1
 
 
@@ -260,9 +272,9 @@ def test_fetch_times_out_each_attempt():
 
 def test_download_all_keeps_limit_requests_in_flight():
     # WHY: the point of the exercise. Twelve downloads with limit 3 must run
-    #      exactly three at a time: one at a time means the coroutines block
-    #      the event loop or await each other in turn (pitfalls 1 and 2);
-    #      twelve at a time means there is no bound at all.
+    #      exactly three at a time: one at a time means the coroutines await
+    #      each other in turn (pitfall 1); twelve at a time means there is no
+    #      bound at all, as with a semaphore made inside each task (pitfall 2).
     # KIND: unit
     # CHAPTER: lang.08 section 3, Worked example by hand
     paths = [f"/f{i:02d}" for i in range(12)]
@@ -330,7 +342,9 @@ def test_a_failure_cancels_the_other_downloads():
         err, elapsed, closed, lingering = asyncio.run(go(flaky))
     assert err.status == 404
     assert elapsed < 2.0
-    assert lingering == [], f"tasks still running after download_all raised: {lingering}"
+    assert lingering == [], (
+        f"tasks still running after download_all raised: {lingering}"
+    )
     assert closed == sorted(hold), f"connections closed by the client: {closed}"
 
 
@@ -338,8 +352,14 @@ def test_limit_must_be_positive():
     # WHY: Semaphore(0) never lets anything through, so limit=0 would hang
     #      forever instead of failing; reject it up front.
     # KIND: boundary
+    async def go():
+        # A hang (the symptom) fails after 2 s instead of blocking the suite.
+        return await asyncio.wait_for(
+            download_all(["http://127.0.0.1:9/x"], limit=0), 2.0
+        )
+
     with pytest.raises(ValueError):
-        asyncio.run(download_all(["http://127.0.0.1:9/x"], limit=0))
+        asyncio.run(go())
 
 
 def test_module_imports_only_the_standard_library():
@@ -357,5 +377,7 @@ def test_module_imports_only_the_standard_library():
             names |= {a.name.split(".")[0] for a in node.names}
         elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
             names.add(node.module.split(".")[0])
-    outside = sorted(n for n in names if n not in sys.stdlib_module_names and n != "__future__")
+    outside = sorted(
+        n for n in names if n not in sys.stdlib_module_names and n != "__future__"
+    )
     assert not outside, f"downloader.py imports outside the standard library: {outside}"

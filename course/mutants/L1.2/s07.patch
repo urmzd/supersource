@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/pretok.py
 +++ b/python/tinyllm/tok/pretok.py
-@@ -31,7 +31,7 @@
+@@ -29,7 +29,7 @@
  
  
  def is_space(ch: str) -> bool:

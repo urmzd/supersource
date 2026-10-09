@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/autograd/scalar.pyi`](../../course/contracts/py/tinyllm/autograd/scalar.pyi) |
 | **Tests** | `course/tests/M08.2/` (what they check: section 4) |
 | **Needs** | `M06.1` iterative topological sort (`toposort`) · `M08.1` dual numbers (the tests compare) · `M04.2` numeric VJP (or `--ref-deps`) |
-| **Used by** | later: `L0.1` (the scalarized oracle for broadcasting backward in your Tensor engine) |
+| **Used by** | `L0.1` (the scalarized oracle for broadcasting backward in your Tensor engine) |
 | **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
 | **Optional depth** | Karpathy, [micrograd](https://github.com/karpathy/micrograd) and the lecture "The spelled-out intro to neural networks and backpropagation"; Baydin et al., [*Automatic Differentiation in Machine Learning: a Survey*](https://www.jmlr.org/papers/v18/17-468.html), section 3.2 |
 

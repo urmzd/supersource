@@ -4,7 +4,6 @@ contracts/py/tinyllm/tok/{base,char}.pyi; `ss mutate L1.1` runs them against
 the reference with one planted bug at a time."""
 
 import json
-import os
 
 import pytest
 from tinyllm.tok.base import ByteTokenizer, Tokenizer
@@ -15,7 +14,15 @@ def test_vocab_is_unk_specials_then_sorted_code_points():
     """train(["hello", "hi"], ("<bos>", "<eos>")) has vocab <unk> <bos> <eos> e h i l o."""
     tok = CharTokenizer.train(["hi", "hello"], specials=("<bos>", "<eos>"))
     assert [tok.id_to_token(i) for i in range(tok.vocab_size)] == [
-        "<unk>", "<bos>", "<eos>", "e", "h", "i", "l", "o"]
+        "<unk>",
+        "<bos>",
+        "<eos>",
+        "e",
+        "h",
+        "i",
+        "l",
+        "o",
+    ]
 
 
 def test_unseen_character_is_unk():
@@ -34,7 +41,7 @@ def test_skip_special_drops_unk_bos_eos():
 
 
 def test_decomposed_accent_round_trips():
-    """"e" + U+0301 survives encode and decode unchanged (no normalization)."""
+    """ "e" + U+0301 survives encode and decode unchanged (no normalization)."""
     text = " café\t\n"
     tok = CharTokenizer.train([text])
     assert tok.decode(tok.encode(text)) == text
@@ -66,8 +73,10 @@ def test_save_load_round_trip(tmp_path):
 
 def test_load_rejects_two_character_entry(tmp_path):
     """A vocab entry of two code points, or a role outside unk/bos/eos/pad, is ValueError."""
-    for doc in ({"type": "char", "vocab": ["<unk>", "ab"], "specials": {"unk": 0}},
-                {"type": "char", "vocab": ["<unk>", "a"], "specials": {"unk": 0, "sep": 1}}):
+    for doc in (
+        {"type": "char", "vocab": ["<unk>", "ab"], "specials": {"unk": 0}},
+        {"type": "char", "vocab": ["<unk>", "a"], "specials": {"unk": 0, "sep": 1}},
+    ):
         (tmp_path / "tinyllm_char.json").write_text(json.dumps(doc), encoding="utf-8")
         with pytest.raises(ValueError):
             CharTokenizer.load(str(tmp_path))

@@ -44,7 +44,9 @@ def build(mid_module: str) -> None:
         for old, new in edits:
             n = text.count(old)
             if n != 1:
-                raise SystemExit(f"{mid_module} {m['mid']}: `{old[:60]}` occurs {n} times in {unit}")
+                raise SystemExit(
+                    f"{mid_module} {m['mid']}: `{old[:60]}` occurs {n} times in {unit}"
+                )
             i = text.index(old)
             line = text[:i].count("\n") + 1
             first_line = line if first_line is None else min(first_line, line)
@@ -61,10 +63,18 @@ def build(mid_module: str) -> None:
         (out / f"{m['mid']}.patch").write_text(diff)
         rows.append(
             "\t".join(
-                [m["mid"], unit, m["tier"], m["operator"], str(first_line),
-                 "y" if m["tier"] == "semantic" and RUNG.get(mid_module, 3) >= 3 else "n",
-                 "(hidden until pass)" if m["tier"] == "semantic" else m["public"],
-                 m["private"]]
+                [
+                    m["mid"],
+                    unit,
+                    m["tier"],
+                    m["operator"],
+                    str(first_line),
+                    "y"
+                    if m["tier"] == "semantic" and RUNG.get(mid_module, 3) >= 3
+                    else "n",
+                    "(hidden until pass)" if m["tier"] == "semantic" else m["public"],
+                    m["private"],
+                ]
             )
         )
     (out / "manifest.tsv").write_text(HEADER + "\n".join(rows) + "\n")

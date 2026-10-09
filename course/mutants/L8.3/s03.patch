@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/paged.py
++++ b/python/tinyllm/infer/paged.py
+@@ -139,7 +139,7 @@
+         ptr = self.lib.tl_kv_block_ptr(self._pool, block, layer, is_v)
+         if not ptr:
+             raise TlError("tl_kv_block_ptr", 1, self.lib.last_error())
+-        shape = (self.n_kv_heads, self.block_size, self.d_head)
++        shape = (self.block_size, self.n_kv_heads, self.d_head)
+         u16 = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_uint16))
+         return np.ctypeslib.as_array(u16, shape=shape).view(np.float16)
+ 

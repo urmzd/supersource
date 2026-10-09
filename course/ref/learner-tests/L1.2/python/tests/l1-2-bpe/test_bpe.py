@@ -72,10 +72,14 @@ def test_special_token_is_one_id_and_never_trained_on():
 
 def test_save_load_keeps_specials(tmp_path):
     """load(save(t)) has the same merges, specials, and ids."""
-    tok = BPETokenizer.train(["hello hello world"] * 3, vocab_size=270, specials=["<s>"])
+    tok = BPETokenizer.train(
+        ["hello hello world"] * 3, vocab_size=270, specials=["<s>"]
+    )
     tok.save(str(tmp_path))
     back = BPETokenizer.load(str(tmp_path))
-    assert back.special_ids == {"<s>": 0} and back.encode("<s>hello") == tok.encode("<s>hello")
+    assert back.special_ids == {"<s>": 0} and back.encode("<s>hello") == tok.encode(
+        "<s>hello"
+    )
 
 
 def test_bad_arguments_raise():

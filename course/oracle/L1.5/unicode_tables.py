@@ -43,7 +43,9 @@ def rust(name: str, rs: list[tuple[int, int]]) -> str:
 
 
 def main() -> int:
-    print(f"// Unicode {unicodedata.unidata_version}, from Python {sys.version.split()[0]} unicodedata")
+    print(
+        f"// Unicode {unicodedata.unidata_version}, from Python {sys.version.split()[0]} unicodedata"
+    )
     for name, cats in CATS.items():
         rs = ranges(cats)
         print(f"// {name}: {len(rs)} ranges, categories {' '.join(cats)}")

@@ -1,8 +1,8 @@
 --- a/python/tinyllm/num/rng.py
 +++ b/python/tinyllm/num/rng.py
-@@ -38,7 +38,7 @@
+@@ -37,7 +37,7 @@
+ 
      def __init__(self, seed: int, seq: int = 54) -> None:
-         # SOLUTION-BEGIN M06.3
          self.seed = seed & MASK64
 -        self._state = 0
 +        self._state = self.seed

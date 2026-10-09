@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/paged.py
++++ b/python/tinyllm/infer/paged.py
+@@ -208,7 +208,7 @@
+         K = np.empty((self.n_kv_heads, n, self.d_head), dtype=np.float16)
+         V = np.empty_like(K)
+         for b in range((n + B - 1) // B):
+-            m = min(B, n - b * B)
++            m = B
+             K[:, b * B : b * B + m, :] = self._slab(table[b], layer, 0)[:, :m, :]
+             V[:, b * B : b * B + m, :] = self._slab(table[b], layer, 1)[:, :m, :]
+         return K, V

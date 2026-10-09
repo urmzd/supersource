@@ -180,7 +180,7 @@ Every function keeps the shape and the float32 or float64 dtype of its input, re
 | Forward | `L7.2` | SwiGLU $= \mathrm{silu}(xW) \odot xV$ |
 | Forward | `L9.6` | `tl_silu_mul_f32` in C, checked against your Python |
 
-`L0.2`, `L3.2`, `L7.2`, and `L9.6` join `used_by` when they are authored (`course/DEVIATIONS.md` row B31-03).
+`L0.2`, `L3.2`, `L7.2`, and `L9.6` join `used_by` when they are authored (`course/DEVIATIONS.md` row B31-02).
 
 ## Going further
 

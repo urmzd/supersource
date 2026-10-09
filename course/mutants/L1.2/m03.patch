@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/pretok.py
 +++ b/python/tinyllm/tok/pretok.py
-@@ -39,7 +39,7 @@
+@@ -37,7 +37,7 @@
  
  
  def is_number(ch: str) -> bool:

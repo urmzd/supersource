@@ -1,6 +1,6 @@
 --- a/python/tinyllm/num/fp.py
 +++ b/python/tinyllm/num/fp.py
-@@ -59,8 +59,9 @@
+@@ -52,8 +52,9 @@
      a = np.abs(np.asarray(x, dtype=np.float64))
      # frexp writes a = m * 2^k with m in [0.5, 1), so floor(log2 a) = k - 1
      # exactly (log2 itself rounds near powers of two).

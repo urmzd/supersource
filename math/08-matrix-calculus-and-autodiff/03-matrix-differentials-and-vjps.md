@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/autograd/vjp.pyi`](../../course/contracts/py/tinyllm/autograd/vjp.pyi) |
 | **Tests** | `course/tests/M08.3/` (what they check: section 4) |
 | **Needs** | `M09.2` stable softmax · `M11.1` cross-entropy (the tests differentiate it) · `M04.2` numeric VJP · reading: `M03.1` matrices and matmul shapes (or `--ref-deps`) |
-| **Used by** | later: `L0.2` op VJPs, `L0.3` fused cross-entropy, `L3.1` backpropagation through time by hand, `L7.1` RMSNorm |
+| **Used by** | `L0.1` `unbroadcast` in your Tensor's backward · `L0.2` op VJPs · `L0.3` fused cross-entropy · later: `L3.1` backpropagation through time by hand, `L7.1` RMSNorm |
 | **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
 | **Optional depth** | Parr and Howard, [*The Matrix Calculus You Need for Deep Learning*](https://arxiv.org/abs/1802.01528); Minka, "Old and New Matrix Algebra Useful for Statistics" (the differential method); Petersen and Pedersen, *The Matrix Cookbook*, sections 2 and 4 |
 
@@ -208,6 +208,7 @@ LayerNorm and RMSNorm normalize the last axis; `rstd` may be passed with shape `
 | Back | `M11.1` | its `cross_entropy` is the loss whose gradient `cross_entropy_vjp` is |
 | Back | `M04.2` | `vjp_numeric` checks the softmax VJP numerically |
 | Back | `M03.1` | row-major matrices and matmul shapes |
+| Forward | `L0.1` | your Tensor's backward sums broadcast gradients back to each input's shape with `unbroadcast` |
 | Forward | `L0.2` | each op of the tensor library registers one of these VJPs |
 | Forward | `L0.3` | the fused softmax cross-entropy, $(\mathrm{softmax} - \mathrm{onehot})/n$ |
 | Forward | `L3.1` | backpropagation through time by hand chains `matmul_vjp` over steps |

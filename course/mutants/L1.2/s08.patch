@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/pretok.py
 +++ b/python/tinyllm/tok/pretok.py
-@@ -82,8 +82,6 @@
+@@ -80,8 +80,6 @@
          end = i
          while end < n and is_space(text[end]):
              end += 1

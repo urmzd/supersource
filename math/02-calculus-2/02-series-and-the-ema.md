@@ -120,6 +120,7 @@ A number in gives a Python `float` out; an array in gives a new float64 array, a
 | `test_weights_sum_to_one_minus_beta_power` | property | totals $1 - \beta^t$ and ratio $\beta$ for five $\beta$ and five $t$ | the geometric partial sum of section 2.2 |
 | `test_update_equals_weighted_sum` | differential | the recursion equals the dot product with `ema_weights` on 200 seeded inputs | two definitions, one number |
 | `test_debiased_constant_is_exact` | property, smoke | $\hat m_t = c$ for $\beta$ up to 0.9999, $t$ up to 3000 | the design's property for this module |
+| `test_matches_exact_rational_arithmetic` | golden | the float64 $m_t$ and $\hat m_t$ against the same recursion in exact rational arithmetic (`fractions.Fraction`), rounded once, after 200 seeded steps | rounding in the recursion stays at a few hundred ulps |
 | `test_bias_fades_without_correction` | property | $m_{50} = 10(1 - 0.9^{50})$ | how long the bias lasts |
 | `test_beta_zero_is_the_last_value` | boundary | $\beta = 0$ returns the latest input | annealed schedules |
 | `test_arrays_are_averaged_elementwise` | differential | an array EMA equals one scalar EMA per element; returned arrays are copies; shape changes raise | EMA weights over whole tensors in `C1` |

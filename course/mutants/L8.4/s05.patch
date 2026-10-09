@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/prefix.rs
++++ b/rust/crates/tl-engine/src/prefix.rs
+@@ -124,7 +124,7 @@
+         for &id in path.iter().rev() {
+             kept.extend_from_slice(self.tree.values(id));
+         }
+-        let duplicates = handed_back.iter().zip(kept.iter()).filter(|(a, k)| a != k).map(|(a, _)| *a).collect();
++        let duplicates = handed_back.iter().zip(kept.iter()).map(|(a, _)| *a).collect();
+         Inserted { node, duplicates }
+     }
+ 

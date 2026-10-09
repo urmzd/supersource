@@ -1,0 +1,10 @@
+--- a/python/tinyllm/infer/spec.py
++++ b/python/tinyllm/infer/spec.py
+@@ -218,7 +218,6 @@
+         if q is not None:
+             q = np.asarray(q, dtype=np.float64)[: len(drafts)]
+         rows = _forward_rows(target, pending + drafts, committed, cache)[len(pending) - 1 :]
+-        calls += 1
+         emitted, n_acc = verify_draft(rows, drafts, q if drafts else None, p, out, rng, prompt_ids)
+         drafted += len(drafts)
+         accepted += n_acc

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/quant.py
++++ b/python/tinyllm/infer/quant.py
+@@ -178,7 +178,7 @@
+         return int(sum(np.asarray(x).nbytes for x in q))
+     data = q.packed if isinstance(q, Q4Tensor) else (q.q if isinstance(q, Q8Tensor) else q.codes)
+     if isinstance(q, MXTensor) and q.elem == "fp4_e2m1":
+-        return int(data.size // 2 + np.asarray(q.scales).nbytes)  # two fp4 codes per byte when packed
++        return int(data.size + np.asarray(q.scales).nbytes)
+     return int(np.asarray(data).nbytes + np.asarray(q.scales).nbytes)
+ 
+ 

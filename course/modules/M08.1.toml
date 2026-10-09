@@ -9,9 +9,9 @@ contract  = ["contracts/py/tinyllm/autograd/dual.pyi"]
 # Dual JVPs with M04.2's jvp_numeric (catalog 4.1, M08.1 Tests column).
 deps      = ["M01.3", "M04.2"]
 reading   = ["M02.1"]   # erf as a series; dual_erf uses math.erf for the value
-# M08.2's course tests use Dual as the forward-mode oracle. L0.2 (the
-# elementwise derivative oracle) joins with its batch.
-used_by   = ["M08.2"]
+# M08.2's course tests use Dual as the forward-mode oracle; L0.2 uses it
+# as the elementwise derivative oracle.
+used_by   = ["M08.2", "L0.2"]
 units     = ["python/tinyllm/autograd/dual.py"]
 upgrades  = []
 milestone = "MS-P2"

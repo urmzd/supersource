@@ -1,0 +1,37 @@
+id        = "L9.1"
+title     = "Cache-blocked, packed, batch-invariant matmul in C"
+kind      = "build"
+lang      = ["c"]
+pass      = 6
+chapter   = "ml/08-tinyllm/p09-kernels/04-tiled-batch-invariant-matmul.md"
+contract  = ["contracts/c/include/tinyllm/matmul.h"]
+# matmul.c: rt.01's error slot and rt.03's tl_parallel_for (when a pool is
+# given). The Python tests load the library with rt.01's loader.
+deps      = ["rt.01", "rt.03"]
+# M03.1 wrote v0 of this unit (its snapshot is course/ref/history/M03.1/);
+# M09.3 derives the sqrt(K) bound the tests use (frozen close.py); M05.1's
+# roofline is beat 2's cost model. rt.02 is not called: the packing buffers
+# live on the stack, because c/ABI.md rule 1 forbids kernel allocation and
+# the signature has no arena (DEVIATIONS B84-03).
+reading   = ["M03.1", "M09.3", "M05.1", "rt.02"]
+# Inherited with matmul.c from M03.1 (DESIGN 3.4 upgrade exemption): L0.0
+# and L10.0. L9.5 builds its float32 baseline with tl_matmul_f32; L9.7 runs
+# every projection through it. L10.1 joins when it lists L9.1 in deps.
+used_by   = ["L0.0", "L10.0", "L9.5", "L9.7"]
+units     = []
+upgrades  = ["c/src/kernels/matmul.c"]
+milestone = "MS-L9"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/L9.1"
+smoke     = ["hand_example", "test_hand_example_through_ctypes"]
+sanitize  = ["thread"]              # the pool test also runs under ThreadSanitizer
+timeout_s = 120
+determinism_runs = 2
+
+[bench]                             # a B test: `ss bench L9.1 --assert`, never `ss check`
+lang   = "c"
+name   = "matmul_512"               # course/tests/L9.1/bench/matmul_512.c
+metric = "speedup_vs_naive"         # against M03.1's triple loop, compiled in the bench
+budget = ">= 10"

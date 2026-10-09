@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/eig.py
 +++ b/python/tinyllm/linalg/eig.py
-@@ -85,7 +85,7 @@
+@@ -78,7 +78,7 @@
      i = 0
      while i < n:
          if i == n - 1 or abs(T[i + 1, i]) <= 1e-12 * scale:

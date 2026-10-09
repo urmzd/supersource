@@ -1,6 +1,6 @@
 --- a/python/tinyllm/num/rng.py
 +++ b/python/tinyllm/num/rng.py
-@@ -53,6 +53,7 @@
+@@ -50,6 +50,7 @@
          self._state = (old * MULT + self._inc) & MASK64
          # Output from the OLD state (so the multiply overlaps the permutation
          # in C): xorshift high bits down, keep 32, rotate by the top 5 bits.

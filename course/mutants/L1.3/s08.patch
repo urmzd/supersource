@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -67,8 +67,6 @@
+@@ -65,8 +65,6 @@
  
  def is_bert_punctuation(ch: str) -> bool:
      o = ord(ch)

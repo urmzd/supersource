@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -448,7 +448,7 @@
+         # own |terms| (a c - b s and a s + b c have different ones).
+         g4 = gamma(4, "f32")
+         bnd[..., ia] = g4 * (np.abs(a * c) + np.abs(b * s))
+-        bnd[..., ib] = g4 * (np.abs(a * s) + np.abs(b * c))
++        bnd[..., ib] = g4 * (np.abs(a * c) + np.abs(b * s))
+         return 1, bound_ratio(got, want, bnd), f"[{T}, {H}, {D}], positions up to {top}"
+ 
+     def c_attention():

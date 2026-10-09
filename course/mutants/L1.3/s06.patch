@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -176,7 +176,7 @@
+@@ -174,7 +174,7 @@
              else:
                  out.append(ch)
          s = "".join(out)

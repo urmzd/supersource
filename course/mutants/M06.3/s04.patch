@@ -1,9 +1,9 @@
 --- a/python/tinyllm/num/rng.py
 +++ b/python/tinyllm/num/rng.py
-@@ -60,6 +60,7 @@
+@@ -55,6 +55,7 @@
+         return ((xs >> rot) | (xs << ((-rot) & 31))) & MASK32
  
      def uniform(self) -> float:
-         # SOLUTION-BEGIN M06.3
 +        return self.next_u32() / 4294967296.0
          a = self.next_u32() >> 5  # 27 bits
          b = self.next_u32() >> 6  # 26 bits

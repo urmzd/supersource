@@ -1,0 +1,24 @@
+id        = "L9.2"
+title     = "Softmax in C: three-pass and online two-pass"
+kind      = "build"
+lang      = ["c"]
+pass      = 6
+chapter   = "ml/08-tinyllm/p09-kernels/05-softmax-three-pass-and-online.md"
+contract  = ["contracts/c/include/tinyllm/softmax.h"]
+# softmax.c: rt.01's error slot and M09.6's tl_expf. The Python tests load
+# the library with rt.01's loader and compare with M09.2's softmax.
+deps      = ["rt.01", "M09.6", "M09.2"]
+reading   = ["S-M05"]   # the loop invariant of the online pass
+# L9.3 and L9.4 build their C-side attention oracle from tl_softmax_f32;
+# L9.7 (the Python C backend) joins when it lists L9.2 in deps.
+used_by   = ["L9.3", "L9.4"]
+units     = ["c/src/kernels/softmax.c"]
+upgrades  = []
+milestone = "MS-L9"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/L9.2"
+smoke     = ["hand_example", "test_hand_example_through_ctypes"]
+timeout_s = 60
+determinism_runs = 2

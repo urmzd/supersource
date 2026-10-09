@@ -1,0 +1,12 @@
+--- a/go/loadgen/run.go
++++ b/go/loadgen/run.go
+@@ -215,9 +215,6 @@
+ 		s.Err = errors.New("no content before [DONE]")
+ 		return s
+ 	}
+-	if usage >= 0 {
+-		s.Tokens = usage
+-	}
+ 	return s
+ 	// SOLUTION-END
+ }

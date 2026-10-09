@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/info/entropy.pyi`](../../course/contracts/py/tinyllm/info/entropy.pyi) |
 | **Tests** | `course/tests/M11.1/` (what they check: section 4) |
 | **Needs** | `M09.2` stable numerics (`log_softmax`, or `--ref-deps`) |
-| **Used by** | `M08.3` differentiates this cross-entropy · later: `L0.3` the training loss, `L8.1` per-step entropy logging, `L8.6` acceptance rate as $1 - \mathrm{TV}$, `L12.3` the KL penalty with `kl_k3`, `M11.2` perplexity |
+| **Used by** | `M08.3` differentiates this cross-entropy · `L0.3` the training loss · later: `L8.1` per-step entropy logging, `L8.6` acceptance rate as $1 - \mathrm{TV}$, `L12.3` the KL penalty with `kl_k3`, `M11.2` perplexity |
 | **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
 | **Optional depth** | Cover and Thomas, *Elements of Information Theory* (2nd ed.), ch. 2; MacKay, *Information Theory, Inference, and Learning Algorithms*, ch. 2 and 4; Schulman, "Approximating KL Divergence" (2020 blog post) |
 

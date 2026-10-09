@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -90,8 +90,6 @@
+@@ -88,8 +88,6 @@
          strip_accents: Optional[bool] = None,
      ) -> None:
          self.vocab = dict(vocab)

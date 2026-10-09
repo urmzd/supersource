@@ -245,6 +245,14 @@ impl<K, V, S> RobinHoodMap<K, V, S> {
         // SOLUTION-END
     }
 
+    /// The table as it sits, slot by slot: `None` for an empty slot, else the
+    /// key and its displacement. For tests and the chapter's diagrams.
+    pub fn layout(&self) -> Vec<Option<(&K, usize)>> {
+        // SOLUTION-BEGIN ds.05
+        self.slots.iter().map(|s| s.as_ref().map(|b| (&b.key, b.dist))).collect()
+        // SOLUTION-END
+    }
+
     /// Removes every entry and keeps the table.
     pub fn clear(&mut self) {
         // SOLUTION-BEGIN ds.05
@@ -659,6 +667,8 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
         // SOLUTION-END
     }
 }
+
+impl<K, V> ExactSizeIterator for Iter<'_, K, V> {}
 
 /// Iterator over `(&K, &mut V)` in slot order.
 pub struct IterMut<'a, K, V> {

@@ -136,9 +136,10 @@ def armijo_step(f, grad, x, d, alpha0: float = 1.0, c: float = 1e-4, rho: float 
 | `test_rejects_bad_arguments` | boundary | $\eta \le 0$ and negative steps are `ValueError` | caller bugs |
 | `test_armijo_returns_the_first_acceptable_step` | property | the step satisfies the condition and twice it does not, on 50 Rosenbrock points | the largest acceptable step on the grid |
 | `test_armijo_accepts_alpha0` | unit | a full step that works is returned unchanged | no needless shrinking |
+| `test_armijo_keeps_halving` | unit | $f = x^2$ at 1 along $-4$ needs two halvings and gets $\alpha = 0.25$ | each trial shrinks the last one |
 | `test_armijo_rejects_nan_steps` | boundary | NaN trial values are rejected; the search returns 0.125 | functions with a restricted domain |
 | `test_armijo_needs_a_descent_direction` | boundary | ascent and orthogonal directions, bad $c$, $\rho$, $\alpha_0$ raise | no infinite halving |
-| `test_armijo_gives_up` | boundary | a lying gradient ends in `RuntimeError` | no infinite loop |
+| `test_armijo_gives_up` | boundary | a lying gradient ends in `RuntimeError`; the 60th halving, $2^{-60}$, is still tried | no infinite loop, and no reduction skipped |
 | `test_line_search_descends_rosenbrock` | property | 300 steepest-descent steps with Armijo decrease $f$ monotonically | a step size without knowing $L$ |
 
 ## 5. Pitfalls
@@ -154,6 +155,7 @@ def armijo_step(f, grad, x, d, alpha0: float = 1.0, c: float = 1e-4, rho: float 
 | 7. shrinking once more after success | steps half as long as they could be | `test_armijo_accepts_alpha0` (mutant `s09`) |
 | 8. returning a vanishing step instead of giving up | silent stalls at $\alpha = 10^{-18}$ | `test_armijo_gives_up` (mutant `s10`) |
 | 9. leaving $x_0$ out of the trajectory | every index is off by one | `test_hand_example` (mutant `s02`) |
+| 10. restarting each trial from $\alpha_0$, `alpha = alpha0 * rho` | only $\alpha_0$ and $\rho\alpha_0$ are ever tried; a search that needs two halvings gives up | `test_armijo_keeps_halving` (mutant `s12`) |
 
 ## 6. Where it's used next
 

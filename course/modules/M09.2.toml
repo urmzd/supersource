@@ -9,10 +9,11 @@ deps      = []
 # Concepts only: overflow thresholds and ULPs (M09.1), Taylor's view of
 # exp near 0 (M02.1). stable.py calls neither.
 reading   = ["M09.1", "M02.1"]
-# Call sites in the registry: M11.1 (entropy_from_logits via log_softmax)
-# and M08.3 (cross_entropy_vjp via softmax). L0.2, L0.3, L8.1, L6.7, and
-# L9.2 join with their batches (mirror rule, DEVIATIONS L00-03).
-used_by   = ["M11.1", "M08.3"]
+# Call sites: M11.1 (entropy_from_logits via log_softmax), M08.3
+# (cross_entropy_vjp via softmax), L0.2 (softmax and log-softmax ops), L0.3
+# (fused cross-entropy). L8.1, L6.7, and L9.2 join with their batches
+# (mirror rule, DEVIATIONS L00-03, B33-01).
+used_by   = ["M11.1", "M08.3", "L0.2", "L0.3"]
 units     = ["python/tinyllm/num/stable.py"]
 upgrades  = []
 milestone = "MS-P2"

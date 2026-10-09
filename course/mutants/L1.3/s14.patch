@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -124,7 +124,7 @@
+@@ -122,7 +122,7 @@
                  tok = line.rstrip("\n").rstrip("\r")
                  if tok in vocab:
                      raise ValueError(f"vocab.txt: duplicate token {tok!r}")

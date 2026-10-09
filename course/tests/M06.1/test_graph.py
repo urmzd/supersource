@@ -95,7 +95,9 @@ def test_shared_input_comes_after_every_consumer():
     root = hand_graph()
     order = toposort(root, get_parents)
     assert_valid(order, root)
-    assert names(order).index("x") > max(names(order).index("m"), names(order).index("s"))
+    assert names(order).index("x") > max(
+        names(order).index("m"), names(order).index("s")
+    )
 
 
 def test_uneven_depth_defeats_breadth_first():

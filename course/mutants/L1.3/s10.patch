@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -225,7 +225,7 @@
+@@ -223,7 +223,7 @@
          start = i = 0
          segs: list[tuple[str, Optional[int]]] = []
          while i < len(text):

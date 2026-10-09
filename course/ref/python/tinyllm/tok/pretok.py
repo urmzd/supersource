@@ -21,9 +21,9 @@ import unicodedata
 # Unicode White_Space (PropList.txt): what \s matches in the GPT-2 regex.
 # str.isspace() differs: it also accepts U+001C to U+001F.
 WHITE_SPACE = frozenset(
-    "\t\n\x0b\x0c\r \x85\xa0 "
+    "\t\n\x0b\x0c\r \x85\xa0\u1680"
     + "".join(chr(c) for c in range(0x2000, 0x200B))
-    + "    　"
+    + "\u2028\u2029\u202f\u205f\u3000"
 )
 CONTRACTIONS = ("s", "t", "re", "ve", "m", "ll", "d")
 

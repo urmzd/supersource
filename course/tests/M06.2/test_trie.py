@@ -45,10 +45,15 @@ def random_word(rng: PCG32, alphabet: str, max_len: int) -> str:
 
 
 def greedy_segment(t: Trie, s: str) -> list[list[int]]:
-    """WordPiece-style segmentation by repeated longest_prefix (L1.3)."""
+    """WordPiece-style segmentation by repeated longest_prefix (L1.3).
+
+    The match length must fit in the rest of the text. Checking it here keeps
+    a wrong length (negative, or counted from 0 instead of from i) from
+    moving i backwards and looping forever."""
     out, i = [], 0
     while i < len(s):
         n, v = t.longest_prefix(s, i)
+        assert 0 <= n <= len(s) - i, f"longest_prefix(s, {i}) gave length {n}"
         if n == 0:
             out.append([1, -1])
             i += 1

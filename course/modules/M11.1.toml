@@ -7,9 +7,9 @@ chapter   = "math/11-information-theory/01-entropy-cross-entropy-and-kl.md"
 contract  = ["contracts/py/tinyllm/info/entropy.pyi"]
 deps      = ["M09.2"]   # entropy_from_logits calls log_softmax
 reading   = []
-# M08.3's course tests differentiate this cross_entropy. L0.3, L8.1, L8.6,
-# and L12.3 join with their batches.
-used_by   = ["M08.3"]
+# M08.3's course tests differentiate this cross_entropy; L0.3's loss is
+# checked against it. L8.1, L8.6, and L12.3 join with their batches.
+used_by   = ["M08.3", "L0.3"]
 units     = ["python/tinyllm/info/entropy.py"]
 upgrades  = []
 milestone = "MS-P2"

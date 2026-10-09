@@ -11,3 +11,6 @@ s09	python/tinyllm/optim/gd.py	semantic	one-more	67	y	(hidden until pass)	return
 s10	python/tinyllm/optim/gd.py	semantic	give-up	69	y	(hidden until pass)	returns a vanishing step instead of raising
 m01	python/tinyllm/optim/gd.py	auto	cmp_flip	29	n	comparison changed in the lr check	lr = 0 accepted
 m02	python/tinyllm/optim/gd.py	auto	cond_negate	55	n	parameter check changed	boundary values of c, rho, alpha0 accepted
+s12	python/tinyllm/optim/gd.py	semantic	pitfall-10	68	y	(hidden until pass)	alpha reset to alpha0 * rho on every trial instead of shrinking the last one
+m03	python/tinyllm/optim/gd.py	auto	const_replace	19	n	the reduction limit changed	2 reductions instead of 60
+m04	python/tinyllm/optim/gd.py	auto	swapped_args	66	n	the Armijo bound uses the wrong parameter	rho in place of c

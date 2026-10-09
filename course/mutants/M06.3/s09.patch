@@ -1,11 +1,11 @@
 --- a/python/tinyllm/num/rng.py
 +++ b/python/tinyllm/num/rng.py
-@@ -119,7 +119,7 @@
+@@ -100,7 +100,7 @@
+ 
  def splitmix64(x: int) -> int:
-     # SOLUTION-BEGIN M06.3
      z = x & MASK64
 -    z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & MASK64
 +    z = ((z ^ (z >> 33)) * 0xBF58476D1CE4E5B9) & MASK64
      z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & MASK64
      return z ^ (z >> 31)
-     # SOLUTION-END
+ 

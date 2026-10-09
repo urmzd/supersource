@@ -1,0 +1,28 @@
+id        = "M09.5"
+title     = "Fixed-point iteration and a fast inverse square root in C"
+kind      = "build"
+lang      = ["c"]
+pass      = 6
+chapter   = "math/09-numerical-methods-and-floating-point/05-fixed-point-iteration-and-rsqrt.md"
+# The C half of the shared tinyllm/numerics.h (M09.5 section), linked from the
+# chapter card. The header serves M06.3 and M09.4 to M09.6 and carries no
+# `chapter:` back-pointer (DEVIATIONS M063-02, B83-01).
+contract  = []
+# rt.01: the error slot every stub reports through, and the ctypes loader the
+# Python test calls tl_rsqrt_f32 with. M01.2: the differential test holds the
+# kernel to rsqrt_newton bit for bit (DEVIATIONS B31-03 asked for this).
+deps      = ["rt.01", "M01.2"]
+reading   = ["M09.1"]   # bit patterns, ulps, subnormals; no code called
+# Call site: L9.6 tl_rmsnorm_f32 scales each row by tl_rsqrtf.
+used_by   = ["L9.6"]
+units     = ["c/src/numerics/rsqrt.c"]
+upgrades  = []
+milestone = "MS-P6"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M09.5"
+# One C and one Python name (smoke names run in every test language).
+smoke     = ["hand_example", "test_hand_example_through_ctypes"]
+timeout_s = 60
+determinism_runs = 2

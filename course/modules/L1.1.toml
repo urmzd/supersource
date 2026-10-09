@@ -8,7 +8,7 @@ contract  = ["contracts/py/tinyllm/tok/base.pyi", "contracts/py/tinyllm/tok/char
 deps      = ["M05.2"]                 # ByteTokenizer's token strings are the GPT-2 byte map
 reading   = ["L0.0"]                  # the tracer's byte ids (D32), which ByteTokenizer formalizes
 # L3.6 (char-level LMs) joins used_by with its batch: the mirror rule only
-# accepts call sites already in the registry (DEVIATIONS L1-04).
+# accepts call sites already in the registry (DEVIATIONS L1-02).
 used_by   = ["L1.2", "L1.3", "L1.4", "L1.6"]
 units     = ["python/tinyllm/tok/base.py", "python/tinyllm/tok/char.py"]
 upgrades  = []

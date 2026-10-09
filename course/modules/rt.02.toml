@@ -1,0 +1,25 @@
+id        = "rt.02"
+title     = "Arena allocator with marks"
+kind      = "build"
+lang      = ["c"]
+pass      = 6
+chapter   = "ml/08-tinyllm/p09-kernels/02-arena-allocator-with-marks.md"
+# tinyllm/arena.h is linked from the chapter card. The header names its
+# module ("module: rt.02") but has no `chapter:` back-pointer yet, which the
+# 6.5 lint needs before it can be listed here (DEVIATIONS B83-01).
+contract  = []
+deps      = ["rt.01"]   # tl_alloc and tl_free (the hook), tl_set_last_error
+reading   = []
+# Call site: L9.3 FlashAttention takes its tiles from a tl_arena scratch.
+# L9.1 lists rt.02 as reading only.
+used_by   = ["L9.3"]
+units     = ["c/src/runtime/arena.c"]
+upgrades  = []
+milestone = "MS-L9"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/rt.02"
+smoke     = ["hand_example"]
+timeout_s = 60
+determinism_runs = 2

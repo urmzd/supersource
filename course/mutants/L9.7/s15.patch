@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -355,7 +355,7 @@
+     def run(op: str, fn) -> None:
+         try:
+             calls, ratio, detail = fn()
+-        except TlError as e:  # a stubbed or failing kernel
++        except KeyError as e:  # a stubbed or failing kernel
+             out.append(OpCheck(op, 0, float("inf"), False, str(e)))
+             return
+         out.append(OpCheck(op, calls, float(ratio), bool(ratio <= 1.0), detail))

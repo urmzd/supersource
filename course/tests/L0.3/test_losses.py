@@ -34,7 +34,11 @@ from tinyllm.autograd.vjp import cross_entropy_vjp
 from tinyllm.info.entropy import cross_entropy as h_cross
 
 F64 = np.float64
-FIX = Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures")) / "L0.3" / "losses_torch.npz"
+FIX = (
+    Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures"))
+    / "L0.3"
+    / "losses_torch.npz"
+)
 LN2, LN3, LN6 = math.log(2.0), math.log(3.0), math.log(6.0)
 HAND = [[0.0, LN2, LN3], [5.0, -1.0, 2.0]]
 
@@ -109,7 +113,9 @@ def test_matches_torch(name):
     elif c["kind"] == "mse":
         y = mse(x, data[f"{k}_t"])
     else:
-        y = bce_with_logits(x, data[f"{k}_t"], data[f"{k}_pw"] if c["pos_weight"] else None)
+        y = bce_with_logits(
+            x, data[f"{k}_t"], data[f"{k}_pw"] if c["pos_weight"] else None
+        )
     tol = {} if dt == F64 else {"dtype": "float32"}
     assert y.dtype == dt
     assert_close(y.data, data[f"{k}_y"], msg=f"{name} loss", **tol)
@@ -208,7 +214,9 @@ def test_ignore_index_excluded():
     l1.backward()
     pad = rng.uniform_array((3, 6), -50, 50)
     z2 = Tensor(np.concatenate([x, pad]), requires_grad=True, dtype=F64)
-    l2 = cross_entropy(z2, np.concatenate([t, [7, 7, 7]]), ignore_index=7, label_smoothing=0.1)
+    l2 = cross_entropy(
+        z2, np.concatenate([t, [7, 7, 7]]), ignore_index=7, label_smoothing=0.1
+    )
     l2.backward()
     assert_close(l2.data, l1.data)
     assert_close(z2.grad[:4], z1.grad)
@@ -274,8 +282,11 @@ def test_float32_stays_float32():
     # CATCHES: m02
     # CHAPTER: L0.3 section 4, The interface
     z = Tensor(np.zeros((3, 4)), requires_grad=True)
-    for loss in (cross_entropy(z, np.array([0, 1, 2]), label_smoothing=0.1),
-                 mse(z, np.ones((3, 4))), bce_with_logits(z, np.ones((3, 4)))):
+    for loss in (
+        cross_entropy(z, np.array([0, 1, 2]), label_smoothing=0.1),
+        mse(z, np.ones((3, 4))),
+        bce_with_logits(z, np.ones((3, 4))),
+    ):
         assert loss.dtype == np.float32
         z.grad = None
         loss.backward()
@@ -290,7 +301,12 @@ def test_rejects_bad_inputs():
     # CATCHES: s07, m03, m04, m06
     # CHAPTER: L0.3 section 5, Pitfalls, item 2
     z = Tensor(np.zeros((2, 3)))
-    for t in (np.array([0, 3]), np.array([-1, 0]), np.array([0.0, 1.0]), np.array([0, 1, 2])):
+    for t in (
+        np.array([0, 3]),
+        np.array([-1, 0]),
+        np.array([0.0, 1.0]),
+        np.array([0, 1, 2]),
+    ):
         with pytest.raises(ValueError):
             cross_entropy(z, t)
     with pytest.raises(ValueError):

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/qr.py
 +++ b/python/tinyllm/linalg/qr.py
-@@ -41,7 +41,7 @@
+@@ -40,7 +40,7 @@
          alpha = -math.copysign(norm_x, x[0]) if x[0] != 0.0 else -norm_x
          v = x.copy()
          v[0] -= alpha

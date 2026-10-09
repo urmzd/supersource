@@ -1,0 +1,14 @@
+# Reference answers to the ethics.02 review cases (chapter section 4): one of
+# email, phone, card, ip, key, none.
+c01 = "email"  # ana.lopez@example.org
+c02 = "phone"  # +1 (415) 555-0132
+c03 = "card"   # 4539 1488 0343 6467 passes Luhn: digit sum 80
+c04 = "none"   # 4539 1488 0343 6468 fails Luhn: digit sum 81
+c05 = "none"   # an ISBN-13 (978...), not a card
+c06 = "none"   # a version string: three parts, not a dotted quad
+c07 = "ip"     # 203.0.113.42 (a documentation range, still an address)
+c08 = "ip"     # 2001:db8:85a3::8a2e:370:7334
+c09 = "key"    # the AKIA prefix of an AWS access key id
+c10 = "none"   # a date and a time
+c11 = "none"   # a W3C trace id: random hex with no key prefix, not a secret
+c12 = "key"    # a tl_<id>_<secret> gateway key (D19)

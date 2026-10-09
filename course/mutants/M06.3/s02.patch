@@ -1,6 +1,6 @@
 --- a/python/tinyllm/num/rng.py
 +++ b/python/tinyllm/num/rng.py
-@@ -41,7 +41,7 @@
+@@ -40,7 +40,7 @@
          self._state = 0
          # inc must be odd: an LCG mod 2^64 has full period only with an odd
          # increment. seq picks one of 2^63 distinct streams.

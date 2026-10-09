@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/qr.py
 +++ b/python/tinyllm/linalg/qr.py
-@@ -30,7 +30,7 @@
+@@ -29,7 +29,7 @@
      m, n = R.shape
      k = min(m, n)
      Q = np.eye(m)

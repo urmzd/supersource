@@ -68,6 +68,27 @@ def test_hand_example():
     assert_close(run_on_half_square(dict(lr=0.1, weight_decay=0.1), 1), [0.89])
 
 
+def test_lr_change_takes_effect_on_the_next_step():
+    # WHY: schedules (M10.4) set opt.lr before every step. The buffer holds
+    #      gradients and lr multiplies it when the step is taken, so a new
+    #      lr scales the whole next step: buf = 0.9 + 0.9 = 1.8 and
+    #      x = 0.9 - 0.01 * 1.8 = 0.882. A buffer that absorbed lr (u = 0.1,
+    #      then 0.09 + 0.009) matches PyTorch only while lr is constant and
+    #      lands on 0.801 here.
+    # KIND: unit
+    # CATCHES: s11
+    # CHAPTER: M10.2 section 3, Worked example by hand (changing the learning rate)
+    p = P([1.0])
+    opt = SGD([p], lr=0.1, momentum=0.9)
+    p.grad = p.data.copy()
+    opt.step()
+    opt.lr = 0.01
+    p.grad = p.data.copy()
+    opt.step()
+    assert_close(p.data, [0.882])
+    assert_close(opt.state_dict()["state"][0]["momentum_buffer"], [1.8])
+
+
 def test_matches_torch_golden():
     # WHY: 20-step trajectories of torch.optim.SGD on a two-parameter problem
     #      for five settings (plain, momentum, Nesterov, momentum with weight
@@ -176,7 +197,7 @@ def test_state_dict_resume_bitwise():
     #      save, a fresh optimizer loads the state, 10 more steps, bit for
     #      bit equal to 20 uninterrupted steps.
     # KIND: property
-    # CATCHES: s09
+    # CATCHES: s09, m04
     # CHAPTER: M10.2 section 5, Pitfalls, item 4
     rng = PCG32(seed=seed())
     W0 = rng.normal_array((3, 2))
@@ -289,7 +310,7 @@ def test_buffers_are_per_parameter():
     #      leaks the velocity of one tensor into another; with gradients of
     #      different shapes it does not even broadcast.
     # KIND: unit
-    # CATCHES: s10
+    # CATCHES: s10, m03
     # CHAPTER: M10.2 section 5, Pitfalls, item 2
     a, b = P([0.0]), P([0.0])
     opt = SGD([a, b], lr=1.0, momentum=0.5)

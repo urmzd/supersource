@@ -4,8 +4,23 @@ docstrings in the chapter, section 4. Only contract names are imported."""
 import pytest
 from tinyllm.tok.wordpiece import WordPieceTokenizer
 
-VOCAB = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "the", "un", "##aff", "##able", "##a",
-         "!", "u", "##n", "cafe", "##s"]
+VOCAB = [
+    "[PAD]",
+    "[UNK]",
+    "[CLS]",
+    "[SEP]",
+    "[MASK]",
+    "the",
+    "un",
+    "##aff",
+    "##able",
+    "##a",
+    "!",
+    "u",
+    "##n",
+    "cafe",
+    "##s",
+]
 
 
 def tok(**kw):
@@ -13,17 +28,17 @@ def tok(**kw):
 
 
 def test_unaffable_is_three_pieces():
-    """"The UNAFFABLE!" encodes to the, un, ##aff, ##able, !."""
+    """ "The UNAFFABLE!" encodes to the, un, ##aff, ##able, !."""
     assert tok().encode("The UNAFFABLE!") == [5, 6, 7, 8, 10]
 
 
 def test_unsegmentable_word_is_one_unk():
-    """"unaffablex" is a single [UNK], not three pieces and an [UNK]."""
+    """ "unaffablex" is a single [UNK], not three pieces and an [UNK]."""
     assert tok().encode("unaffablex") == [1]
 
 
 def test_continuation_pieces_only_inside_words():
-    """"unn" is un ##n; "aff" alone is [UNK]."""
+    """ "unn" is un ##n; "aff" alone is [UNK]."""
     assert tok().wordpiece("unn") == [6, 12] and tok().wordpiece("aff") == [1]
 
 
@@ -57,12 +72,12 @@ def test_ascii_symbols_and_cjk_split():
 
 
 def test_sigma_lowercases_per_code_point():
-    """"ΣΑΣ" lowercases to "σασ" (no final sigma)."""
+    """ "ΣΑΣ" lowercases to "σασ" (no final sigma)."""
     assert tok().normalize("ΣΑΣ") == "σασ"
 
 
 def test_mask_in_text_and_template():
-    """"[MASK]" is one id, "[mask]" is not; add_special wraps [CLS] ... [SEP]."""
+    """ "[MASK]" is one id, "[mask]" is not; add_special wraps [CLS] ... [SEP]."""
     assert tok().encode("the [MASK]") == [5, 4]
     assert 4 not in tok().encode("the [mask]")
     assert tok().encode("the", add_special=True) == [2, 5, 3]
@@ -76,7 +91,9 @@ def test_decode_glues_and_cleans():
 
 def test_vocab_file_and_save_load(tmp_path):
     """vocab.txt line n is id n; save then load keeps ids and casing."""
-    (tmp_path / "vocab.txt").write_text("".join(t + "\n" for t in VOCAB), encoding="utf-8")
+    (tmp_path / "vocab.txt").write_text(
+        "".join(t + "\n" for t in VOCAB), encoding="utf-8"
+    )
     t = WordPieceTokenizer.from_vocab(str(tmp_path / "vocab.txt"), lowercase=False)
     assert t.encode("the cafe") == [5, 13]
     t.save(str(tmp_path / "out"))

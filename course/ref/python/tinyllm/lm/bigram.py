@@ -188,8 +188,9 @@ class BigramLogits(Module):
     def forward(self, ids: ArrayLike) -> Tensor:
         # SOLUTION-BEGIN L0.5
         # A row gather is the one-hot matmul without the zeros: same logits,
-        # and backward adds each position's gradient into its row.
-        return F.embedding(self.weight, _as_ids(ids, self.weight.shape[0]))
+        # and backward adds each position's gradient into its row. Any shape
+        # of ids: the trainer feeds [B, T] windows. F.embedding checks them.
+        return F.embedding(self.weight, ids)
         # SOLUTION-END
 
     def to_lm(self) -> BigramLM:

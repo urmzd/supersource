@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/lu.py
 +++ b/python/tinyllm/linalg/lu.py
-@@ -63,8 +63,7 @@
+@@ -60,8 +60,7 @@
      if b.ndim not in (1, 2) or b.shape[0] != n:
          raise ValueError(f"lu_solve: b must be [{n}] or [{n}, k], got shape {b.shape}")
      d = np.diag(U)

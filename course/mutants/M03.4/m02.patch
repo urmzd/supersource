@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/eig.py
 +++ b/python/tinyllm/linalg/eig.py
-@@ -91,7 +91,7 @@
+@@ -84,7 +84,7 @@
          a, b, c, d = T[i, i], T[i, i + 1], T[i + 1, i], T[i + 1, i + 1]
          # Eigenvalues of [[a, b], [c, d]]: roots of t^2 - (a + d) t + (ad - bc).
          tr, det = a + d, a * d - b * c

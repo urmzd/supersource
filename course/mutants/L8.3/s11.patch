@@ -1,0 +1,12 @@
+--- a/python/tinyllm/infer/paged.py
++++ b/python/tinyllm/infer/paged.py
+@@ -175,7 +175,8 @@
+         for i in range(first, min(last + 1, len(table))):
+             self._private(table, i)
+         # 2. Allocate the new blocks, all or nothing.
+-        table.extend(self._alloc(max(0, last + 1 - len(table))))
++        for _ in range(max(0, last + 1 - len(table))):
++            table.extend(self._alloc(1))
+         # 3. Write, one block at a time.
+         p = start
+         while p < end:

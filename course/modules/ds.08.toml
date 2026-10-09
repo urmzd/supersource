@@ -1,0 +1,36 @@
+id        = "ds.08"
+title     = "Bloom filter"
+kind      = "build"
+lang      = ["rust"]
+pass      = 3
+chapter   = "algorithms/16-systems-data-structures/08-bloom-filter.md"
+# formats/bloom.md and py/tinyllm_rs.pyi (Bloom) are linked from the chapter
+# card; they carry no `chapter:` back-pointer yet (DEVIATIONS B43-02).
+contract  = []
+deps      = ["L1.5"]                # tl-py's crate root (L1.5) registers tinyllm_rs.Bloom
+reading   = ["S-M06b", "M06.3"]     # FP rate and optimal k; FNV-1a and the SplitMix finalizer
+# data.03 builds its exact-dedup screen with tinyllm_rs.Bloom.
+used_by   = ["data.03"]
+units     = [
+  "rust/crates/tl-ds/src/bloom.rs",
+  "rust/crates/tl-py/src/bloom.rs",
+]
+upgrades  = []
+milestone = "MS-corpus"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/ds.08"    # Python through tinyllm_rs; the Rust half is course/tests/rust/ds_08.rs
+smoke     = ["hand_example_sizing_and_bits", "golden_bytes_match_the_format", "py_matches_rust_golden"]
+timeout_s = 120
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/parity/bloom.json"]
+
+[learner_tests]                     # rung R4: properties (craft.04)
+rung      = 4
+path      = "rust/crates/tl-ds/tests/ds08_bloom.rs"
+threshold = 0.80
+required_mutants = ["s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10"]  # s11, s12 sit in tl-py: Rust tests cannot reach them
+time_budget_s = 60

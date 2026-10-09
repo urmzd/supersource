@@ -1,0 +1,11 @@
+--- a/go/loadgen/schedule.go
++++ b/go/loadgen/schedule.go
+@@ -49,7 +49,7 @@
+ func (p *poisson) Next() time.Duration {
+ 	// SOLUTION-BEGIN load.01
+ 	u := p.r.Float64()
+-	sec := -math.Log(1.0-u) / p.rate
++	sec := -math.Log(u) / p.rate
+ 	return time.Duration(sec * float64(time.Second))
+ 	// SOLUTION-END
+ }

@@ -1,6 +1,8 @@
-//! tl-serve: the tracer engine's entry point (reference, course CI only).
+//! tl-serve: the engine's entry point (reference, course CI only).
 //!
-//!   tl-serve --model-dir <dir> --port <n> --health-port <n>     (spec/cli-roles.md)
+//!   tl-serve --model-dir <dir> --port <n> --health-port <n>     the tracer (L10.0, API v0)
+//!   tl-serve --config <runtime.toml>                            API v1 (L10.5)
+//!                                                               (spec/cli-roles.md)
 //!
 //! Entry points are learner territory (DESIGN D16): this file is never
 //! overlaid into a learner's checks. `ss verify course --e2e` copies it into
@@ -48,7 +50,34 @@ fn bind(port: u16) -> TcpListener {
     })
 }
 
+/// `--config <runtime.toml>`: the v1 server of L10.5 (tokio, hyper, the
+/// continuous-batching engine); it drains on SIGTERM and exits 0.
+fn serve_config(path: &str) -> ! {
+    let cfg = tl_serve::server::ServeConfig::load(std::path::Path::new(path)).unwrap_or_else(|e| {
+        eprintln!("tl-serve: {e}");
+        process::exit(2)
+    });
+    eprintln!("tl-serve: serving {} on {} (health {})", cfg.model_dir.display(), cfg.http_listen, cfg.health_listen);
+    match tl_serve::server::run(cfg) {
+        Ok(()) => process::exit(0),
+        Err(e) => {
+            eprintln!("tl-serve: {e}");
+            process::exit(1)
+        }
+    }
+}
+
 fn main() {
+    let argv: Vec<String> = std::env::args().collect();
+    if argv.get(1).map(String::as_str) == Some("--config") {
+        match argv.get(2) {
+            Some(path) if argv.len() == 3 => serve_config(path),
+            _ => {
+                eprintln!("usage: tl-serve --config <runtime.toml>");
+                process::exit(2)
+            }
+        }
+    }
     http::exit_on_sigterm();
     let args = parse_args().unwrap_or_else(|e| {
         eprintln!("tl-serve: {e}\nusage: tl-serve --model-dir <dir> --port <n> --health-port <n>");

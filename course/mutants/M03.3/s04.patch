@@ -1,6 +1,6 @@
 --- a/python/tinyllm/linalg/qr.py
 +++ b/python/tinyllm/linalg/qr.py
-@@ -33,8 +33,7 @@
+@@ -32,8 +32,7 @@
      for j in range(min(m - 1, n)):
          x = R[j:, j]
          norm_x = math.sqrt(float(x @ x))

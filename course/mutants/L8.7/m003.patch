@@ -1,0 +1,11 @@
+--- a/python/tinyllm/infer/constrain.py
++++ b/python/tinyllm/infer/constrain.py
+@@ -47,7 +47,7 @@
+ WORD = DIGIT | _range(0x41, 0x5A) | _range(0x61, 0x7A) | _bits([0x5F])
+ SPACE = _bits(b" \t\n\r\f\v")
+ DOT = ALL & ~_bits(b"\n")
+-CLASS_ESC = {"d": DIGIT, "w": WORD, "s": SPACE, "D": ALL & ~DIGIT, "W": ALL & ~WORD, "S": ALL & ~SPACE}
++CLASS_ESC = {"d": DIGIT, "w": WORD, "s": SPACE, "D": ALL & ~DIGIT, "W": ALL & ~WORD, "S": ALL & ~DIGIT}
+ CHAR_ESC = {"n": 0x0A, "t": 0x09, "r": 0x0D, "f": 0x0C, "v": 0x0B}
+ LITERAL_ESC = set("\\.*+?()[]{}|^$/\"-,:#&~ '")
+ 

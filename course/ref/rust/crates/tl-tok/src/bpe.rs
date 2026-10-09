@@ -89,12 +89,39 @@ pub struct Merge {
 
 const NONE: usize = usize::MAX;
 
+/// The most pieces one `encode_cached` cache holds before it is cleared.
+pub const CACHE_CAP: usize = 1 << 16;
+
 /// A symbol of a pre-token while merging: a token id and its neighbours.
 #[derive(Clone, Copy, Debug)]
 struct Sym {
     id: u32,
     prev: usize,
     next: usize,
+}
+
+/// The merge queue's order: (merge rank, position of the left symbol),
+/// compared as a tuple, so the lowest rank comes first and, among equal
+/// ranks, the leftmost pair.
+pub fn by_rank(a: &(u32, usize), b: &(u32, usize)) -> Ordering {
+    // SOLUTION-BEGIN L1.5
+    a.cmp(b)
+    // SOLUTION-END
+}
+
+/// Buffers `encode_piece_with` reuses from one piece to the next.
+pub struct MergeScratch {
+    syms: Vec<Sym>,
+    pair: Vec<Option<Handle>>,
+    heap: LazyHeap<(u32, usize), fn(&(u32, usize), &(u32, usize)) -> Ordering>,
+}
+
+impl Default for MergeScratch {
+    fn default() -> Self {
+        // SOLUTION-BEGIN L1.5
+        MergeScratch { syms: Vec::new(), pair: Vec::new(), heap: LazyHeap::new(by_rank as fn(&(u32, usize), &(u32, usize)) -> Ordering) }
+        // SOLUTION-END
+    }
 }
 
 /// A byte-level BPE tokenizer.
@@ -231,7 +258,16 @@ impl ByteBpe {
     /// from a lazy heap.
     pub fn encode_piece(&self, piece: &[u8], out: &mut Vec<u32>) {
         // SOLUTION-BEGIN L1.5
-        let mut syms: Vec<Sym> = Vec::with_capacity(piece.len());
+        self.encode_piece_with(piece, out, &mut MergeScratch::default());
+        // SOLUTION-END
+    }
+
+    /// `encode_piece` reusing the buffers in `scratch`: one allocation for a
+    /// whole text instead of five per piece.
+    pub fn encode_piece_with(&self, piece: &[u8], out: &mut Vec<u32>, scratch: &mut MergeScratch) {
+        // SOLUTION-BEGIN L1.5
+        let MergeScratch { syms, pair, heap } = scratch;
+        syms.clear();
         for &b in piece {
             if let Some(id) = self.byte_ids[b as usize] {
                 let i = syms.len();
@@ -245,9 +281,9 @@ impl ByteBpe {
         syms[n - 1].next = NONE;
         if n > 1 {
             // (rank, left position): the lowest rank first, then the leftmost.
-            let by_rank = |a: &(u32, usize), b: &(u32, usize)| -> Ordering { a.cmp(b) };
-            let mut heap = LazyHeap::new(by_rank);
-            let mut pair: Vec<Option<Handle>> = vec![None; n];
+            heap.clear();
+            pair.clear();
+            pair.resize(n, None);
             for i in 0..n - 1 {
                 if let Some(m) = self.merge(syms[i].id, syms[i + 1].id) {
                     pair[i] = Some(heap.push((m.rank, i)));
@@ -299,8 +335,9 @@ impl ByteBpe {
     pub fn encode_ordinary(&self, text: &str) -> Vec<u32> {
         // SOLUTION-BEGIN L1.5
         let mut out = Vec::with_capacity(text.len() / 3 + 1);
+        let mut scratch = MergeScratch::default();
         for piece in self.pretok.split(text) {
-            self.encode_piece(piece.as_bytes(), &mut out);
+            self.encode_piece_with(piece.as_bytes(), &mut out, &mut scratch);
         }
         out
         // SOLUTION-END
@@ -330,8 +367,46 @@ impl ByteBpe {
         // SOLUTION-END
     }
 
+    /// `encode` with a piece cache: a pre-token seen before reuses its ids
+    /// (another RobinHoodMap, keyed by the piece's bytes). Real text repeats
+    /// its words, so most pieces are hits. The cache is cleared when it
+    /// reaches CACHE_CAP pieces, which bounds its memory.
+    pub fn encode_cached(&self, text: &str, cache: &mut RobinHoodMap<Vec<u8>, Vec<u32>>) -> Vec<u32> {
+        // SOLUTION-BEGIN L1.5
+        let mut out = Vec::with_capacity(text.len() / 3 + 1);
+        let all = SpecialSet::all();
+        let mut scratch = MergeScratch::default();
+        let mut piece = |p: &str, out: &mut Vec<u32>| {
+            if let Some(ids) = cache.get(p.as_bytes()) {
+                out.extend_from_slice(ids);
+                return;
+            }
+            let at = out.len();
+            self.encode_piece_with(p.as_bytes(), out, &mut scratch);
+            if cache.len() >= CACHE_CAP {
+                cache.clear();
+            }
+            cache.insert(p.as_bytes().to_vec(), out[at..].to_vec());
+        };
+        let mut rest = text;
+        while let Some((start, len, id)) = self.next_added(rest, &all) {
+            for p in self.pretok.split(&rest[..start]) {
+                piece(p, &mut out);
+            }
+            out.push(id);
+            rest = &rest[start + len..];
+        }
+        for p in self.pretok.split(rest) {
+            piece(p, &mut out);
+        }
+        out
+        // SOLUTION-END
+    }
+
     /// `encode` of each text, in order, on `threads` OS threads (0 means the
-    /// hardware concurrency). The result does not depend on `threads`.
+    /// hardware concurrency). The result does not depend on `threads`. Each
+    /// worker keeps its own piece cache (`encode_cached`), so threads never
+    /// share a lock.
     pub fn encode_batch(&self, texts: &[&str], threads: usize) -> Vec<Vec<u32>> {
         // SOLUTION-BEGIN L1.5
         let threads = if threads == 0 {
@@ -340,15 +415,16 @@ impl ByteBpe {
             threads
         };
         let threads = threads.min(texts.len()).max(1);
+        let run = |part: &[&str]| -> Vec<Vec<u32>> {
+            let mut cache = RobinHoodMap::new();
+            part.iter().map(|t| self.encode_cached(t, &mut cache)).collect()
+        };
         if threads == 1 {
-            return texts.iter().map(|t| self.encode(t)).collect();
+            return run(texts);
         }
         let chunk = texts.len().div_ceil(threads);
         std::thread::scope(|s| {
-            let workers: Vec<_> = texts
-                .chunks(chunk)
-                .map(|part| s.spawn(move || part.iter().map(|t| self.encode(t)).collect::<Vec<_>>()))
-                .collect();
+            let workers: Vec<_> = texts.chunks(chunk).map(|part| s.spawn(move || run(part))).collect();
             workers.into_iter().flat_map(|w| w.join().expect("an encode worker panicked")).collect()
         })
         // SOLUTION-END
@@ -365,16 +441,17 @@ impl Tokenizer for ByteBpe {
     fn encode_with_special(&self, text: &str, allowed: &SpecialSet) -> Vec<u32> {
         // SOLUTION-BEGIN L1.5
         let mut out = Vec::with_capacity(text.len() / 3 + 1);
+        let mut scratch = MergeScratch::default();
         let mut rest = text;
         while let Some((start, len, id)) = self.next_added(rest, allowed) {
             for piece in self.pretok.split(&rest[..start]) {
-                self.encode_piece(piece.as_bytes(), &mut out);
+                self.encode_piece_with(piece.as_bytes(), &mut out, &mut scratch);
             }
             out.push(id);
             rest = &rest[start + len..];
         }
         for piece in self.pretok.split(rest) {
-            self.encode_piece(piece.as_bytes(), &mut out);
+            self.encode_piece_with(piece.as_bytes(), &mut out, &mut scratch);
         }
         out
         // SOLUTION-END

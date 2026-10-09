@@ -1,0 +1,11 @@
+--- a/python/tinyllm/backend/c.py
++++ b/python/tinyllm/backend/c.py
+@@ -381,7 +381,7 @@
+             * g
+         )
+         got = rmsnorm(x, g, cfg.rms_norm_eps, lib)
+-        return 1, bound_ratio(got, y, gamma(d + 8, "f32") * np.abs(y)), f"[{T}, {d}]"
++        return 1, bound_ratio(got, y, gamma(1, "f32") * np.abs(y)), f"[{T}, {d}]"
+ 
+     def c_matmul():
+         names = [

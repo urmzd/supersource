@@ -1,5 +1,5 @@
-"""My tests for L0.4 (rung R2: the names and docstrings come from the chapter,
-section 4; the bodies are mine). They import only the contract."""
+"""My tests for L0.4 (rung R3: tests first, `ss tdd red`, then the code, `ss tdd green`;
+the chapter section 4 gives the interface and the first test). They import only the contract."""
 
 import numpy as np
 import pytest

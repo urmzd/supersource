@@ -12,3 +12,6 @@ s10	python/tinyllm/optim/sgd.py	semantic	pitfall-2	70	y	(hidden until pass)	one 
 s12	python/tinyllm/optim/sgd.py	semantic	decay-sign	68	y	(hidden until pass)	weight decay pushes away from zero
 m01	python/tinyllm/optim/sgd.py	auto	stmt_delete	49	n	a hyperparameter check deleted	negative momentum accepted
 m02	python/tinyllm/optim/sgd.py	auto	const_replace	78	n	the step size changed	half the learning rate
+s11	python/tinyllm/optim/sgd.py	semantic	pitfall-9	71	y	(hidden until pass)	lr folded into the momentum buffer: equal to PyTorch only while lr is constant
+m03	python/tinyllm/optim/sgd.py	auto	cond_negate	69	n	the momentum condition negated	momentum applied only when it is 0
+m04	python/tinyllm/optim/sgd.py	auto	stmt_delete	111	n	a hyperparameter is not restored on load	lr not restored by load_state_dict

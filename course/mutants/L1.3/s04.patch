@@ -1,6 +1,6 @@
 --- a/python/tinyllm/tok/wordpiece.py
 +++ b/python/tinyllm/tok/wordpiece.py
-@@ -205,7 +205,7 @@
+@@ -203,7 +203,7 @@
  
      def wordpiece(self, word: str) -> list[int]:
          """Step 7 for one word: greedy longest match, or [UNK]."""

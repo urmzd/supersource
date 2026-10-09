@@ -149,7 +149,7 @@ def gradcheck(f, inputs: list[ArrayLike], analytic: list[ArrayLike],
 | Forward | `M10.1` | gradient descent steps along $-\nabla f$ |
 | Forward | `L4.1` to `L7.9` | from rung R5 your own tests gradcheck every backward you write (DESIGN 5.12) |
 
-`L0.2` joins `used_by` when it is authored (`course/DEVIATIONS.md` row B31-03).
+`L0.2` joins `used_by` when it is authored (`course/DEVIATIONS.md` row B31-02).
 
 ## Going further
 

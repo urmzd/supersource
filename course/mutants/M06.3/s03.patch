@@ -1,8 +1,8 @@
 --- a/python/tinyllm/num/rng.py
 +++ b/python/tinyllm/num/rng.py
-@@ -50,7 +50,7 @@
+@@ -47,7 +47,7 @@
+ 
      def next_u32(self) -> int:
-         # SOLUTION-BEGIN M06.3
          old = self._state
 -        self._state = (old * MULT + self._inc) & MASK64
 +        self._state = old * MULT + self._inc
