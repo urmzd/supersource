@@ -34,6 +34,8 @@ graph LR
     EVAL --> ROUTE[Model Routing & Cascades]
     TF --> ROUTE
     LLM --> ROUTE
+    SSE --> GWY[Gateway]
+    ROUTE --> GWY
 ```
 
 ## The Split: Three Different "Distributed" Problems
@@ -61,6 +63,7 @@ A recurring confusion is that "distributed X" is one topic. It is three, and thi
 | 09 | [LLM Evaluation](09-llm-evaluation/) | Cross-entropy/perplexity/bits-per-byte, judges | [MacKay](http://www.inference.org.uk/mackay/itila/) + [HELM](https://crfm.stanford.edu/helm/) + [Ragas](https://docs.ragas.io/) | 2-3 weeks |
 | 10 | [Edge, Realtime & On-Device Inference](10-edge-realtime-inference/) | Deployment spectrum, streaming encoders, efficiency architectures | [llama.cpp](https://github.com/ggml-org/llama.cpp) + [Mistral 7B](https://arxiv.org/abs/2310.06825) + [Mamba](https://arxiv.org/abs/2312.00752) | 2-3 weeks |
 | 11 | [Model Routing & Cascades](11-model-routing-and-cascades/) | Oracle vs router, cascades, escalation, cache-aware switching, decision models | [RouteLLM](https://arxiv.org/abs/2406.18665) + [FrugalGPT](https://arxiv.org/abs/2305.05176) + [LLMRouterBench](https://arxiv.org/abs/2601.07206) | 1-2 weeks |
+| 12 | [Gateway](12-gateway/) | The reverse proxy whose payload is a stream: keys, trace propagation, then limits, routing, caching (course) | [OpenAI API reference](https://platform.openai.com/docs/api-reference) + [W3C Trace Context](https://www.w3.org/TR/trace-context/) | course passes 1, 7, 10 |
 
 ## Key Takeaways
 

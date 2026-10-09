@@ -1,0 +1,17 @@
+# primers/lang.05: HTTP/1.1, JSON, and Server-Sent Events by hand
+# (lang.05 section 4). One package, two targets:
+#
+#   src/lib.rs   the `wire` library: request parser, response writer, JSON,
+#                SSE framing; no sockets, so every rule is unit-testable
+#   src/main.rs  the `wire` server binary that serves /health, /echo, /count
+[package]
+name = "wire"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "wire"
+path = "src/main.rs"

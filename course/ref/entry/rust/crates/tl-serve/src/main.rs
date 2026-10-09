@@ -1,0 +1,74 @@
+//! tl-serve: the tracer engine's entry point (reference, course CI only).
+//!
+//!   tl-serve --model-dir <dir> --port <n> --health-port <n>     (spec/cli-roles.md)
+//!
+//! Entry points are learner territory (DESIGN D16): this file is never
+//! overlaid into a learner's checks. `ss verify course --e2e` copies it into
+//! the assembled reference learner so the milestones have an engine to start.
+
+use std::net::TcpListener;
+use std::path::PathBuf;
+use std::process;
+use std::sync::Arc;
+use std::thread;
+
+use tl_serve::http;
+
+struct Args {
+    model_dir: PathBuf,
+    port: u16,
+    health_port: u16,
+}
+
+fn parse_args() -> Result<Args, String> {
+    let mut model_dir = None;
+    let mut port = None;
+    let mut health_port = None;
+    let mut it = std::env::args().skip(1);
+    while let Some(flag) = it.next() {
+        let value = it.next().ok_or_else(|| format!("{flag} needs a value"))?;
+        match flag.as_str() {
+            "--model-dir" => model_dir = Some(PathBuf::from(value)),
+            "--port" => port = Some(value.parse().map_err(|e| format!("--port {value}: {e}"))?),
+            "--health-port" => health_port = Some(value.parse().map_err(|e| format!("--health-port {value}: {e}"))?),
+            _ => return Err(format!("unknown flag {flag}")),
+        }
+    }
+    Ok(Args {
+        model_dir: model_dir.ok_or("--model-dir is required")?,
+        port: port.ok_or("--port is required")?,
+        health_port: health_port.ok_or("--health-port is required")?,
+    })
+}
+
+fn bind(port: u16) -> TcpListener {
+    TcpListener::bind(("0.0.0.0", port)).unwrap_or_else(|e| {
+        eprintln!("tl-serve: bind 0.0.0.0:{port}: {e}");
+        process::exit(1)
+    })
+}
+
+fn main() {
+    http::exit_on_sigterm();
+    let args = parse_args().unwrap_or_else(|e| {
+        eprintln!("tl-serve: {e}\nusage: tl-serve --model-dir <dir> --port <n> --health-port <n>");
+        process::exit(2)
+    });
+    if let Err(e) = tl_sys::check_abi() {
+        eprintln!("tl-serve: {e}");
+        process::exit(1);
+    }
+    let server = Arc::new(http::Server::from_env(&args.model_dir).unwrap_or_else(|e| {
+        eprintln!("tl-serve: {e}");
+        process::exit(1)
+    }));
+    let api = bind(args.port);
+    let health = bind(args.health_port);
+    let for_health = Arc::clone(&server);
+    thread::spawn(move || http::serve(health, for_health));
+    eprintln!("tl-serve: serving {} on :{} (health :{})", args.model_dir.display(), args.port, args.health_port);
+    if let Err(e) = http::serve(api, server) {
+        eprintln!("tl-serve: {e}");
+        process::exit(1);
+    }
+}

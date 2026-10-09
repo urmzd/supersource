@@ -1,0 +1,11 @@
+--- a/c/src/kernels/matmul.c	2026-10-08 23:00:32
++++ b/c/src/kernels/matmul.c	2026-10-08 23:00:32
+@@ -55,7 +55,7 @@
+             }
+             /* beta == 0 means "overwrite": never read c[j], which may hold
+              * NaN or garbage (0 * NaN is NaN, not 0). */
+-            c[j] = beta == 0.0f ? alpha * acc : alpha * acc + beta * c[j];
++            c[j] = alpha * acc + beta * c[j];
+         }
+     }
+     return TL_OK;

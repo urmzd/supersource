@@ -1,0 +1,13 @@
+# tl-sys: hand-written bindings to libtinyllm (contracts/c/include/tinyllm.h).
+# L10.0 writes the minimal v0 (src/lib.rs); L10.1 takes it over.
+[package]
+name = "tl-sys"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+# Only one crate in a build may link a given native library; `links` makes
+# Cargo enforce that and names the library for dependents.
+links = "tinyllm"
+
+[lib]
+path = "src/lib.rs"

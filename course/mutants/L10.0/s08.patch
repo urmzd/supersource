@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-serve/src/http.rs
++++ b/rust/crates/tl-serve/src/http.rs
+@@ -1052,7 +1052,7 @@
+ 
+ /// One SSE event: `data: <payload>\n\n`.
+ pub fn sse_event(payload: &str) -> String {
+-    format!("data: {payload}\n\n")
++    format!("data: {payload}\n")
+ }
+ 
+ /// One completion chunk (or, with `usage`, the whole completion) as JSON.

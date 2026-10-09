@@ -1,0 +1,10 @@
+--- a/c/src/runtime/abi.c	2026-10-08 23:00:32
++++ b/c/src/runtime/abi.c	2026-10-08 23:00:32
+@@ -68,7 +68,6 @@
+     case TL_EFORMAT: return "TL_EFORMAT";
+     case TL_EBUSY: return "TL_EBUSY";
+     case TL_EUNSUPPORTED: return "TL_EUNSUPPORTED";
+-    case TL_EIO: return "TL_EIO";
+     default: return "TL_UNKNOWN";
+     }
+ }

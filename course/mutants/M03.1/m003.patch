@@ -1,0 +1,11 @@
+--- a/c/src/kernels/matmul.c	2026-10-08 23:00:32
++++ b/c/src/kernels/matmul.c	2026-10-08 23:00:32
+@@ -37,7 +37,7 @@
+             tl_set_last_error(trans_b ? "tl_matmul_f32: ldb < K (trans_b)" : "tl_matmul_f32: ldb < N");
+             return TL_EINVAL;
+         }
+-        if (A == NULL || B == NULL) {
++        if (A == NULL && B == NULL) {
+             tl_set_last_error("tl_matmul_f32: A or B is NULL");
+             return TL_EINVAL;
+         }

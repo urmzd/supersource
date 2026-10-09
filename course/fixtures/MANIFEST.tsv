@@ -1,0 +1,10 @@
+# path	sha256	bytes	generator	oracle_versions	upstream@revision	license
+course/fixtures/L0.0/safetensors/bigram_weight.safetensors	2f59a52737629ce82061bef136bbe7356a67317f97d7a227dee192db86d5b771	156	course/oracle/L0.0/safetensors_golden.py	safetensors==0.8.0	-	Apache-2.0
+course/fixtures/L0.0/safetensors/cases.json	26e6165e472c5739e573df5d995986fb4ca955123d3265e7d4eb009ec46680c0	2074	course/oracle/L0.0/safetensors_golden.py	safetensors==0.8.0	-	Apache-2.0
+course/fixtures/L0.0/safetensors/no_metadata.safetensors	4a6260b8f7e75ef540cb90e893a42ce958d665c2b08003a5459c777554919538	88	course/oracle/L0.0/safetensors_golden.py	safetensors==0.8.0	-	Apache-2.0
+course/fixtures/L0.0/safetensors/no_padding.safetensors	da1b472421b239c6c14e24f3489daa5c68263fd8bc2f09abc558e23045401d86	72	course/oracle/L0.0/safetensors_golden.py	safetensors==0.8.0	-	Apache-2.0
+course/fixtures/L0.0/safetensors/several_tensors.safetensors	6faeffeb0d270f383bd50df94ec28af2a8c5727ee6f6e8ccaac7f7a57f056e5d	372	course/oracle/L0.0/safetensors_golden.py	safetensors==0.8.0	-	Apache-2.0
+course/fixtures/L0.0/safetensors/unicode_metadata.safetensors	0c2236ccb128f66465c9fe2b269330c74e68613c945216af4ef04bb9ed8a8e2a	108	course/oracle/L0.0/safetensors_golden.py	safetensors==0.8.0	-	Apache-2.0
+course/fixtures/L0.0/safetensors/worked_example.safetensors	0183d3fe12fab76fec1b436d6d591fe2352ef788de2e6168c6e840b48383cb60	120	course/oracle/L0.0/safetensors_golden.py	safetensors==0.8.0	-	Apache-2.0
+course/fixtures/MS-P1/corpus.txt	6c84e49cdf7cd8dbef7bff6d349ab1f9bc7dd99056ec31b231492f84af3c7d27	2156	hand	-	-	Apache-2.0
+course/fixtures/MS-P1/greedy_once_32.json	2197dc2b68fbfde1e1dfeac81bc7a3d967ea74c335c097dfbbc2850fe2bb3c1a	180	course/oracle/MS-P1/bigram_greedy.py	-	-	Apache-2.0

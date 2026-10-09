@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-serve/src/http.rs
++++ b/rust/crates/tl-serve/src/http.rs
+@@ -50,7 +50,7 @@
+ impl Request {
+     /// The first header named `name`, ignoring ASCII case.
+     pub fn header(&self, name: &str) -> Option<&str> {
+-        self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
++        self.headers.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_str())
+     }
+ 
+     /// The target without its query string.

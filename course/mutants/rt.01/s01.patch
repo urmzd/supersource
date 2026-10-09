@@ -1,0 +1,11 @@
+--- a/c/src/runtime/abi.c	2026-10-08 23:00:32
++++ b/c/src/runtime/abi.c	2026-10-08 23:00:32
+@@ -51,7 +51,7 @@
+ static tl_allocator hook = {default_alloc, default_free, NULL};
+ 
+ uint32_t tl_abi_version(void) {
+-    return TL_ABI_VERSION;
++    return TL_ABI_VERSION + 1;
+ }
+ 
+ const char *tl_status_str(tl_status s) {

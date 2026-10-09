@@ -1,0 +1,9 @@
+--- a/c/src/runtime/abi.c	2026-10-08 23:00:32
++++ b/c/src/runtime/abi.c	2026-10-08 23:00:32
+@@ -104,5 +104,5 @@
+ 
+ void tl_free(void *p) {
+     if (p == NULL) return;
+-    hook.free(hook.user, p);
++    free(p);
+ }

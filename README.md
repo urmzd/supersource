@@ -23,6 +23,7 @@
 - [Tracks](#tracks)
 - [Prerequisite Graph](#prerequisite-graph)
 - [Study Plans](#study-plans)
+- [Course: Build Your Own LLM System](#course-build-your-own-llm-system)
 - [Role Paths](#role-paths)
 - [Read Offline (Single PDF)](#read-offline-single-pdf)
 - [Interviews](#interviews)
@@ -93,6 +94,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | 05 | [Foundation Models & Architectures](ml/05-foundation-models/) | *AI Engineering* (Huyen) + [aie-book](https://github.com/chiphuyen/aie-book) (free) | 4-5 weeks |
 | 06 | [Neural Architectures & DL History](ml/06-neural-architectures/) | [CS231n](https://cs231n.github.io/) (free) + AlexNet/LSTM papers (free) | 3-4 weeks |
 | 07 | [Training & Post-Training](ml/07-training-and-post-training/) | [Chinchilla](https://arxiv.org/abs/2203.15556) + [DPO](https://arxiv.org/abs/2305.18290) papers (free) + PyTorch/JAX docs (free) | 4-6 weeks |
+| 08 | [tinyllm: Build an LLM from Scratch](ml/08-tinyllm/) | the [course](paths/course/) spine: chapters and course tests | course passes 1 to 11 |
 
 ### Data Engineering
 
@@ -111,6 +113,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | 02 | [Software Architecture](systems/02-software-architecture/) | *Software Architecture Patterns* (O'Reilly) | 2-3 weeks |
 | 03 | [Cloud Native](systems/03-cloud-native/) | *Cloud Native DevOps with K8s* + K8s docs (free) | 3-4 weeks |
 | 04 | [Observability](systems/04-observability/) | *Observability Engineering* + Google SRE Book (free) | 2-3 weeks |
+| 05 | [Incident Response & Chaos](systems/05-incident-response-and-chaos/) | [Google SRE Book](https://sre.google/sre-book/table-of-contents/) + [SRE Workbook](https://sre.google/workbook/table-of-contents/) (free) | one drill per course pass |
 
 ### AI Platform Engineering
 
@@ -129,6 +132,7 @@ Taught as **patterns, not products** — like math, once you understand the fund
 | 09 | [LLM Evaluation](ai-platform-engineering/09-llm-evaluation/) | [MacKay](http://www.inference.org.uk/mackay/itila/) + [HELM](https://crfm.stanford.edu/helm/) + [Ragas](https://docs.ragas.io/) (free) | 2-3 weeks |
 | 10 | [Edge, Realtime & On-Device Inference](ai-platform-engineering/10-edge-realtime-inference/) | [llama.cpp](https://github.com/ggml-org/llama.cpp) + [Mistral 7B](https://arxiv.org/abs/2310.06825) + [Mamba](https://arxiv.org/abs/2312.00752) (free) | 2-3 weeks |
 | 11 | [Model Routing & Cascades](ai-platform-engineering/11-model-routing-and-cascades/) | [RouteLLM](https://arxiv.org/abs/2406.18665) + [FrugalGPT](https://arxiv.org/abs/2305.05176) + [LLMRouterBench](https://arxiv.org/abs/2601.07206) (free) | 1-2 weeks |
+| 12 | [Gateway](ai-platform-engineering/12-gateway/) | [OpenAI API reference](https://platform.openai.com/docs/api-reference) + [W3C Trace Context](https://www.w3.org/TR/trace-context/) (free) | course passes 1, 7, 10 |
 
 Three distinct "distributed" problems kept apart on purpose: distributed **training** (parallelism — PyTorch/JAX, FSDP/ZeRO, Megatron, Ray Train; served with vLLM/TensorRT-LLM; plus embeddings and small language models), distributed **data** (sharding, replication, in-memory caching with Redis and cache-invalidation patterns, Cassandra, knowledge graphs via Apache AGE, OLAP vs OLTP), and distributed **orchestration** (durable execution and the worker pattern — Temporal/Cadence/DBOS — with distributed observability and profiling). Plus the connective tissue: gRPC and serialization, SSE token streaming, the coding/design patterns these systems are built from, production-grade **retrieval** (encoders, chunking, hybrid BM25 + vector + graph fusion, multimodal, metadata/permission filtering), **authorization** (RBAC/ABAC/NGAC and the pushdown-automata complexity ladder), **evaluation** (cross-entropy, perplexity, bits-per-byte, LLM-as-judge, RAG faithfulness), and **edge/realtime inference** (the end-to-end llama.cpp + GGUF local path, streaming speech encoders, and the efficiency architectures — sliding-window attention, GQA, MoE, Mamba/SSM — behind Mistral's models).
 
@@ -210,6 +214,21 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **Superstar FDE** 14 weeks, the composed role path: LLM foundations through inference performance, field engineering, and a one-customer capstone
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
+
+## Course: Build Your Own LLM System
+
+One system, built end to end in Python, C, Rust, and Go and graded by the harness: a byte-level language model trained on your own numerics, C kernels behind a stable ABI, a Rust engine streaming completions, a Go gateway, and the containers, traces, and runbooks that run it on Kubernetes. Each chapter teaches one module from first principles; `ss check <ID>` grades your code against course tests, and a milestone at the end of every pass runs your whole system.
+
+| Pass | Path | Gate |
+|---|---|---|
+| P0 | [Setup](paths/course-p00-setup/): Python and numpy, shell and make, your repo and its CI gate | MS-P0 |
+| P1 | [The tracer](paths/course-p01-tracer/): C ABI and matmul, byte bigram, Rust engine, Go gateway, kind, one trace, one drill, one ADR | MS-P1 |
+
+Start at [paths/course](paths/course/) and its [system map](paths/course/SYSTEM.md):
+
+```bash
+practice/bin/ss doctor && practice/bin/ss course init --name <system> && practice/bin/ss learn course next
+```
 
 ## Role Paths
 

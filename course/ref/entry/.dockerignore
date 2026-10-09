@@ -1,0 +1,13 @@
+# The build context of deploy/docker/*.Dockerfile is the repo root. Keep build
+# outputs, local state, and secrets out of it: they are large, machine-specific,
+# and must never end up in an image layer.
+.git
+.ss
+artifacts
+**/target
+c/build
+**/.venv
+**/__pycache__
+**/*.pyc
+.env
+*.pem

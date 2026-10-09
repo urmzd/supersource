@@ -1,0 +1,11 @@
+--- a/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
++++ b/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
+@@ -165,8 +165,6 @@
+     the caller passes as a leading dimension."""
+     if a is None:
+         return None
+-    if str(a.dtype) != "float32":
+-        raise TypeError(f"f32_ptr needs a float32 array, got {a.dtype}")
+     if a.ndim and a.strides[-1] != 4 and a.shape[-1] > 1:
+         raise ValueError(f"f32_ptr needs unit stride in the last axis, got strides {a.strides}")
+     return a.ctypes.data_as(ctypes.POINTER(ctypes.c_float))

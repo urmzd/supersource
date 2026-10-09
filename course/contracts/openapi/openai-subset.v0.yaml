@@ -1,0 +1,255 @@
+# contracts/openapi/openai-subset.v0.yaml: the tracer HTTP surface (L10.0, gw.00).
+#
+# chapter: ml/08-tinyllm/p10-serving/00-your-first-endpoint.md
+# chapter: ai-platform-engineering/12-gateway/00-streaming-proxy.md
+#
+# Two tiers share this spec. The engine tier has no auth. The gateway tier
+# requires `Authorization: Bearer <key>` and answers 401 without it. Both
+# tiers serve the same paths and bodies.
+#
+# Conformance (`ss conform openapi:v0[:engine|:gateway]`) validates every
+# response body against the schema declared here for its path, status, and
+# content type. SSE chunks validate against the `x-tl-chunk` schema of the 200
+# `text/event-stream` content.
+openapi: 3.1.0
+info:
+  title: tinyllm OpenAI subset, v0 (tracer)
+  version: 0.1.0
+  description: |
+    The smallest OpenAI-compatible surface: text completions, plain or
+    streamed, and a health check.
+
+    Rules that a schema cannot express:
+
+    - **Model.** v0 does not route by model. The engine serves the one model
+      in its `--model-dir` whatever `model` names, and echoes the request's
+      `model` in every response and chunk. `404 model_not_found` arrives in v1.
+    - **Tokens.** A token is what the model's tokenizer emits. For the tracer
+      byte tokenizer (`formats/tokenizer.md`) one token is one byte, so
+      `usage.prompt_tokens` is the UTF-8 byte length of `prompt`.
+    - **Stopping.** Generation stops after `max_tokens` tokens with
+      `finish_reason: length`. `stop` is reserved for an end-of-sequence
+      token; the byte tokenizer has none.
+    - **Determinism.** `temperature: 0` is greedy with ties to the lowest id,
+      so two calls give the same text. With `temperature > 0`, the same
+      `seed` on the same engine gives the same text. Without `seed` the
+      engine picks one.
+    - **Unknown fields** in the request body are ignored.
+    - **Streaming** (`stream: true`). The response is `text/event-stream`.
+      Each event is exactly `data: <json>\n\n`. There is one chunk per
+      generated token, in order, all with the same `id`. A chunk's `text` is
+      the text that token completes: it is `""` while the bytes so far end in
+      an incomplete UTF-8 sequence (the incremental decoding rule of
+      `formats/tokenizer.md`). Every chunk but the last has
+      `finish_reason: null`; the last one carries the reason and flushes any
+      held-back bytes. Then `data: [DONE]\n\n` ends the stream. The streamed
+      texts concatenated equal the non-streamed `text` for the same request
+      at `temperature: 0`. A failure after the first byte sends an event
+      `data: {"error": {...}}` and then ends the stream; it never truncates
+      silently.
+    - **Errors** always have the shape `{"error": {"message", "type",
+      "param", "code"}}` with `Content-Type: application/json`.
+    - **Headers.** `traceparent` (W3C) is read and propagated: the gateway
+      sends its own span context to the engine, and the engine's server span
+      is its child. The gateway sets `X-Request-Id` on every response
+      (copied from the request, or generated) and forwards it to the engine;
+      the engine echoes it when present.
+    - **Health.** `GET /healthz` answers 200 on the health port (`9464` in
+      Kubernetes, `--health-port` locally, see `spec/cli-roles.md`) while the
+      process can serve. The gateway also serves `GET /readyz`: 200 once its
+      upstream engine answers `/healthz`, else 503.
+  x-tl-tiers:
+    engine: no auth
+    gateway: "Authorization: Bearer <key>; 401 invalid_api_key without a known key"
+paths:
+  /healthz:
+    get:
+      operationId: healthz
+      summary: Liveness, on the health port.
+      security: []
+      responses:
+        "200":
+          description: The process is up. Any body.
+  /readyz:
+    get:
+      operationId: readyz
+      summary: Readiness, on the health port (gateway tier).
+      security: []
+      responses:
+        "200":
+          description: The upstream engine answers /healthz. Any body.
+        "503":
+          description: The upstream engine is not reachable. Any body.
+  /v1/completions:
+    post:
+      operationId: createCompletion
+      summary: Complete a prompt, plain or as an SSE stream.
+      security:
+        - {}
+        - bearer: []
+      parameters:
+        - name: traceparent
+          in: header
+          required: false
+          schema:
+            type: string
+            pattern: "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+        - name: X-Request-Id
+          in: header
+          required: false
+          schema: {type: string, maxLength: 128}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompletionRequest"
+      responses:
+        "200":
+          description: "A completion, or with `stream` an SSE stream of chunks ending in `data: [DONE]`."
+          headers:
+            X-Request-Id:
+              description: Always set by the gateway tier; echoed by the engine tier when the request had one.
+              schema: {type: string}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Completion"
+            text/event-stream:
+              schema:
+                type: string
+                description: "`data: <CompletionChunk json>\\n\\n` per token, then `data: [DONE]\\n\\n`."
+              x-tl-chunk:
+                $ref: "#/components/schemas/CompletionChunk"
+        "400":
+          description: "Malformed JSON, a missing field, or a value out of range (for example `temperature: -1`). `type: invalid_request_error`, `param` names the field."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Gateway tier only: missing or unknown key. `type: invalid_request_error`, `code: invalid_api_key`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: "Gateway tier only: the upstream engine is unreachable before the first byte. `type: server_error`, `code: no_capacity`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: "Gateway tier. The key is a token the gateway was started with (`spec/cli-roles.md`); from gw.02 keys have the form `tl_<id>_<secret>`."
+  schemas:
+    CompletionRequest:
+      type: object
+      required: [model, prompt]
+      properties:
+        model:
+          type: string
+          minLength: 1
+          description: Echoed back; v0 does not route by model.
+        prompt:
+          type: string
+          minLength: 1
+          description: The text to continue. Must be non-empty (the bigram needs a previous token).
+        max_tokens:
+          type: integer
+          minimum: 1
+          maximum: 4096
+          default: 16
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 1
+        seed:
+          type: integer
+          minimum: 0
+          maximum: 9223372036854775807
+        stream:
+          type: boolean
+          default: false
+    Choice:
+      type: object
+      required: [index, text, finish_reason]
+      properties:
+        index:
+          const: 0
+        text:
+          type: string
+        finish_reason:
+          type: [string, "null"]
+          enum: [stop, length, null]
+    Usage:
+      type: object
+      required: [prompt_tokens, completion_tokens, total_tokens]
+      properties:
+        prompt_tokens: {type: integer, minimum: 0}
+        completion_tokens: {type: integer, minimum: 0}
+        total_tokens: {type: integer, minimum: 0}
+    Completion:
+      type: object
+      required: [id, object, created, model, choices, usage]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        object:
+          const: text_completion
+        created:
+          type: integer
+          description: Unix time in seconds.
+        model:
+          type: string
+        choices:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Choice"
+              - properties:
+                  finish_reason:
+                    enum: [stop, length]
+        usage:
+          $ref: "#/components/schemas/Usage"
+    CompletionChunk:
+      type: object
+      required: [id, object, created, model, choices]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: The same for every chunk of one stream.
+        object:
+          const: text_completion
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            $ref: "#/components/schemas/Choice"
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [message, type, param, code]
+          properties:
+            message: {type: string}
+            type:
+              type: string
+              enum: [invalid_request_error, server_error]
+            param: {type: [string, "null"]}
+            code: {type: [string, "null"]}

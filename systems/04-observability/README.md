@@ -98,3 +98,11 @@ Monitoring tells you WHEN something is wrong. Observability tells you WHY. In co
 | Anthropic | ML system observability, inference SLOs | GPU utilization, latency percentiles |
 | Amazon | Well-Architected Framework, COE (Correction of Errors) | Operational excellence |
 | Honeycomb | Observability 2.0 (structured events, BubbleUp) | Debugging novel problems |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `obs.00` | [One trace: gateway to engine in Jaeger (tracer)](00-one-trace.md) | practice | 1 |
+<!-- /ss:chapters -->

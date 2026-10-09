@@ -27,6 +27,26 @@
 #   ss bench  [lang] [--assert]    wall time and peak memory per predict snippet,
 #                                  against the ceilings in predict/budgets.tsv
 #
+# Course modules (course/DESIGN.md section 5), addressed by id (M03.1, L8.3,
+# rt.01, lang.02, S-M07a, ...); the heavy lifting is python -m sscourse in the
+# uv project course/harness:
+#
+#   ss course init --name <system> [--at DIR]   create your course repo
+#   ss start  <ID>                 stub the module's units into your repo
+#   ss check  <ID> [--ref-deps[=all|ID,..]] [--no-cumulative] [--kind K] [--json]
+#   ss check  --all [--ci]         every started module, in pass order
+#   ss tests  <ID>                 the annotated test catalog
+#   ss diff | show | reveal | reset <ID>
+#   ss status [--graph|--counts|--json]   ss next
+#   ss contracts sync [--to REV]   ss lint [--links] [--fix-index]
+#   ss milestone <MS-ID> [--smoke] [--ref-deps]   run a milestone through YOUR entry points
+#   ss conform openapi[:v0][:engine|gateway] [--base URL]   OpenAPI conformance
+#   ss drill list|start <name>|status|end|reset   faults in your kind cluster (gated)
+#   ss export <DIR> [--remote URL] [--allow-incomplete]   your standalone repo
+#   ss doctor [--pass N]           ss course ci   (prints the learner CI recipe)
+#   ss verify course [ID..] [--changed REF] [--global] [--e2e] [--kind]
+#   ss bench  <ID>|course|--calibrate      (course perf; `ss bench [lang]` stays predict)
+#
 # Kinds:
 #   predict     you write the exact output you expect, then diff against reality
 #   build       you implement from scratch against a self-testing reference
@@ -300,22 +320,36 @@ attempted() {
 
 MARKER_BEGIN='SOLUTION-BEGIN'
 MARKER_END='SOLUTION-END'
-# Leading comment punctuation, the marker, then optional closers like "*/".
-MARKER_RE="^[^A-Za-z0-9]*(${MARKER_BEGIN}|${MARKER_END})[^A-Za-z0-9]*$"
+# Leading comment punctuation, the marker with an optional module id
+# ("SOLUTION-BEGIN L9.1"), then optional closers like "*/".
+MARKER_RE="^[^A-Za-z0-9]*(${MARKER_BEGIN}( [A-Za-z][A-Za-z0-9.+-]*)?|${MARKER_END})[^A-Za-z0-9]*$"
 
+# strip_solution <file> [want]: a region is stubbed when its id is empty or
+# equals want; a region carrying another id keeps its body and loses only its
+# marker lines. Practice exercises carry no ids, so they behave as before.
+# (Course files get compiling stubs from the course harness instead.)
 strip_solution() {
-  awk -v b="$MARKER_BEGIN" -v e="$MARKER_END" '
-    function is_marker(line, tok) {
-      return line ~ ("^[^A-Za-z0-9]*" tok "[^A-Za-z0-9]*$")
+  awk -v b="$MARKER_BEGIN" -v e="$MARKER_END" -v want="${2:-}" '
+    function is_begin(line) { return line ~ ("^[^A-Za-z0-9]*" b "( [A-Za-z][A-Za-z0-9.+-]*)?[^A-Za-z0-9]*$") }
+    function is_end(line)   { return line ~ ("^[^A-Za-z0-9]*" e "[^A-Za-z0-9]*$") }
+    function marker_id(line,   s) {
+      s = line
+      sub("^[^A-Za-z0-9]*" b, "", s)
+      sub(/^ /, "", s)
+      sub(/[^A-Za-z0-9.+-].*$/, "", s)
+      return s
     }
-    is_marker($0, b) {
-      todo = $0
-      sub(b, "TODO: your implementation goes here.", todo)
-      print todo
-      skip = 1
+    is_begin($0) {
+      id = marker_id($0)
+      if (id == "" || id == want) {
+        todo = $0
+        sub(b "( [A-Za-z][A-Za-z0-9.+-]*)?", "TODO: your implementation goes here.", todo)
+        print todo
+        skip = 1
+      }
       next
     }
-    is_marker($0, e) { skip = 0; next }
+    is_end($0) { skip = 0; next }
     !skip { print }
   ' "$1"
 }
@@ -830,9 +864,12 @@ cmd_where() {
 # Learn
 #
 # A path is paths/<name>/path.tsv, one row per stage, tab-separated as
-#   stage  title  files  done-when
+#   stage  title  files  done-when  [check]
 # where files is a comma-separated list of repo-relative markdown files read in
-# order. A row whose first column is @<other> pulls in every stage of path
+# order. The optional fifth column ties the stage to a verdict (course/DESIGN.md
+# 5.15): module:<ID>, solve:<ID>, milestone:<ID>, drill:<ID>, conform:<suite>,
+# all:<ID>,<ID>, or -. A stage with a check is marked done only when the check
+# passes (--force marks it anyway and logs that in <path>.done.log). A row whose first column is @<other> pulls in every stage of path
 # <other>, so a role is assembled from parts: the parts stay usable on their
 # own and progress made in a part counts in every path that includes it.
 #
@@ -840,7 +877,10 @@ cmd_where() {
 # included one. Progress is one stage number per line in
 # .scratchpad/learn/<owning path>.done.
 
-PATHS_DIR="$ROOT/paths"
+PATHS_DIR="${SS_PATHS_DIR:-$ROOT/paths}"
+# Stage files are relative to the directory holding paths/ (the repo root).
+LEARN_ROOT="$(cd "$PATHS_DIR/.." 2>/dev/null && pwd)"
+COURSE_ROOT="${SS_COURSE_ROOT:-$ROOT/course}"
 
 path_names() {
   local f
@@ -856,21 +896,21 @@ learn_done_file() { echo "$SCRATCH/learn/$1.done"; }
 is_done() { grep -qx "$2" "$(learn_done_file "$1")" 2>/dev/null; }
 
 # Every stage of a path with includes resolved, one row per stage:
-#   owner  stage  title  files  done-when
+#   owner  stage  title  files  done-when  check
 # Prints a diagnostic and fails on an unknown include or a cycle; callers run
 # it inside $(...) and must propagate the failure themselves.
 expand_rows() {
-  local name="$1" stack="${2:-}" tsv stage title files when
+  local name="$1" stack="${2:-}" tsv stage title files when check
   tsv="$PATHS_DIR/$name/path.tsv"
   local chain="${stack# }"; chain="${chain// / -> }"
   [[ -f "$tsv" ]] || { echo "${RED}error:${RST} unknown path '$name'${chain:+ (included from $chain)}" >&2; return 1; }
   [[ " $stack " == *" $name "* ]] && { echo "${RED}error:${RST} include cycle: $chain -> $name" >&2; return 1; }
-  while IFS=$'\t' read -r stage title files when; do
+  while IFS=$'\t' read -r stage title files when check; do
     [[ -z "$stage" || "$stage" == \#* ]] && continue
     if [[ "$stage" == @* ]]; then
       expand_rows "${stage#@}" "$stack $name" || return 1
     else
-      printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$stage" "$title" "$files" "$when"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$stage" "$title" "$files" "$when" "${check:--}"
     fi
   done < "$tsv"
 }
@@ -891,19 +931,42 @@ learn_list() {
   done
 }
 
+# Forced marks (ss learn <path> --done <stage> --force) are logged here.
+learn_force_log() { echo "$SCRATCH/learn/$1.done.log"; }
+is_forced() { awk -F'\t' -v s="$2" '$1 == s' "$(learn_force_log "$1")" 2>/dev/null | grep -q .; }
+
 learn_stages() {
-  local top="$1" rows owner stage title files when mark prev=""
+  local top="$1" rows owner stage title files when check mark prev="" states=""
   rows="$(expand_rows "$top")" || exit 1
+  # One harness call answers every done stage that carries a check, so a path
+  # with no check column never starts the course harness.
+  local pending
+  pending="$(while IFS=$'\t' read -r owner stage title files when check; do
+    [[ -n "$check" && "$check" != - ]] && is_done "$owner" "$stage" && echo "$check"
+  done <<<"$rows" | sort -u)"
+  [[ -n "$pending" ]] && states="$(course_q _learn-status <<<"$pending" 2>/dev/null)"
   printf '%s\n' "${BLD}$(path_title "$top")${RST}"
-  while IFS=$'\t' read -r owner stage title files when; do
+  while IFS=$'\t' read -r owner stage title files when check; do
     if [[ "$owner" != "$prev" ]]; then
       printf '\n  %s\n' "${YEL}$( [[ "$owner" == "$top" ]] && echo "$top" || echo "part: $owner")  ${DIM}$(path_title "$owner")${RST}"
       prev="$owner"
     fi
-    if is_done "$owner" "$stage"; then mark="${GRN}[x]${RST}"; else mark="[ ]"; fi
+    mark="[ ]"
+    if is_done "$owner" "$stage"; then
+      mark="${GRN}[x]${RST}"
+      if is_forced "$owner" "$stage"; then
+        mark="${YEL}[~]${RST}"
+      elif [[ -n "$check" && "$check" != - ]]; then
+        case "$(awk -F'\t' -v c="$check" '$1 == c { print $2; exit }' <<<"$states")" in
+          pass) ;;
+          *)    mark="${YEL}[~]${RST}" ;;   # assisted, self-graded, spoiled, or no verdict
+        esac
+      fi
+    fi
     printf '  %s %-26s %s\n' "$mark" "$(stage_key "$top" "$owner" "$stage")" "${BLD}$title${RST}"
     printf '      %s\n' "${DIM}${files//,/  }${RST}"
     printf '      done when: %s\n' "$when"
+    [[ -n "$check" && "$check" != - ]] && printf '      check:     %s\n' "$check"
   done <<<"$rows"
   printf '\n%s\n' "${DIM}read a stage: ss learn $top <stage|next>    mark it: ss learn $top --done <stage>${RST}"
 }
@@ -938,16 +1001,16 @@ render_md() {
 }
 
 learn_read() {
-  local top="$1" row owner stage title files when f
+  local top="$1" row owner stage title files when check f
   # die inside $(...) only leaves the subshell, so propagate it by hand.
   row="$(find_row "$top" "$2")" || exit 1
   [[ -n "$row" ]] || { echo "${GRN}every stage of '$top' is done${RST}"; return 0; }
-  IFS=$'\t' read -r owner stage title files when <<<"$row"
+  IFS=$'\t' read -r owner stage title files when check <<<"$row"
   local paths=() list
   IFS=',' read -ra list <<<"$files"
   for f in "${list[@]}"; do
-    [[ -f "$ROOT/$f" ]] || die "stage $(stage_key "$top" "$owner" "$stage") names '$f', which does not exist"
-    paths+=("$ROOT/$f")
+    [[ -f "$LEARN_ROOT/$f" ]] || die "stage $(stage_key "$top" "$owner" "$stage") names '$f', which does not exist"
+    paths+=("$LEARN_ROOT/$f")
   done
   printf '%s\n' "${BLD}stage $(stage_key "$top" "$owner" "$stage"): $title${RST}" >&2
   printf '%s\n\n' "${DIM}done when: $when${RST}" >&2
@@ -955,24 +1018,71 @@ learn_read() {
 }
 
 learn_mark() {
-  local top="$1" flag="$2" row owner stage file
+  local top="$1" flag="$2" force="${4:-}" row owner stage title files when check file
   row="$(find_row "$top" "$3")" || exit 1
-  IFS=$'\t' read -r owner stage _ <<<"$row"
+  IFS=$'\t' read -r owner stage title files when check <<<"$row"
   file="$(learn_done_file "$owner")"
   mkdir -p "$(dirname "$file")"
   touch "$file"
   if [[ "$flag" == --done ]]; then
+    if [[ -n "$check" && "$check" != - ]]; then
+      if [[ -n "$force" ]]; then
+        printf '%s\tforced\t%s\t%s\n' "$stage" "$check" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$(learn_force_log "$owner")"
+        echo "${YEL}forced:${RST} $check has no passing verdict; logged in $(rel "$(learn_force_log "$owner")")"
+      elif ! course_q _learn-check "$check"; then
+        echo "${RED}not marked:${RST} stage $(stage_key "$top" "$owner" "$stage") needs $check to pass (--force marks it anyway, and logs that)"
+        return 1
+      else
+        unforce "$owner" "$stage"
+      fi
+    fi
     is_done "$owner" "$stage" || echo "$stage" >> "$file"
     echo "${GRN}stage $(stage_key "$top" "$owner" "$stage") done${RST}${owner:+$([[ "$owner" != "$top" ]] && echo " ${DIM}(counts in every path that includes $owner)${RST}")}"
   else
     grep -vx "$stage" "$file" > "$file.tmp" || true
     mv "$file.tmp" "$file"
+    unforce "$owner" "$stage"
     echo "stage $(stage_key "$top" "$owner" "$stage") unmarked"
   fi
 }
 
+# Drop a stage's forced-mark entries (an undo, or a later real pass).
+unforce() {
+  local log; log="$(learn_force_log "$1")"
+  [[ -f "$log" ]] || return 0
+  awk -F'\t' -v s="$2" '$1 != s' "$log" > "$log.tmp" || true
+  mv "$log.tmp" "$log"
+}
+
+# A check column value resolves to something the harness can run.
+check_resolves() {
+  local check="$1" kind target id
+  [[ -z "$check" || "$check" == - ]] && return 0
+  kind="${check%%:*}"; target="${check#*:}"
+  [[ "$check" == *:* && -n "$target" ]] || { echo "malformed check '$check' (want kind:target)"; return 1; }
+  case "$kind" in
+    module|solve)
+      [[ -f "$COURSE_ROOT/modules/$target.toml" ]] || { echo "check $check: no module $target in $(rel "$COURSE_ROOT")/modules"; return 1; } ;;
+    milestone)
+      [[ -f "$COURSE_ROOT/milestones/$target.toml" ]] || { echo "check $check: no milestone $(rel "$COURSE_ROOT")/milestones/$target.toml"; return 1; } ;;
+    drill)
+      [[ -f "$COURSE_ROOT/modules/$target.toml" || -f "$COURSE_ROOT/drills/$target/drill.toml" ]] || { echo "check $check: no drill $target"; return 1; } ;;
+    conform)
+      case "$target" in
+        openapi*) [[ -d "$COURSE_ROOT/contracts/openapi" ]] || { echo "check $check: no contracts/openapi"; return 1; } ;;
+        *)        [[ -d "$COURSE_ROOT/conformance/${target%%:*}" ]] || { echo "check $check: no conformance suite ${target%%:*}"; return 1; } ;;
+      esac ;;
+    all)
+      local IFS=','
+      for id in $target; do
+        [[ -f "$COURSE_ROOT/modules/$id.toml" ]] || { echo "check $check: no module $id"; return 1; }
+      done ;;
+    *) echo "check '$check': unknown kind '$kind' (want module, solve, milestone, drill, conform, all, or -)"; return 1 ;;
+  esac
+}
+
 learn_verify() {
-  local name rows owner stage title files when f rc=0 bad list
+  local name rows owner stage title files when check f rc=0 bad list why
   [[ -n "$(path_names)" ]] || die "no paths under $(rel "$PATHS_DIR")"
   for name in $(path_names); do
     bad=0
@@ -984,14 +1094,15 @@ learn_verify() {
     while read -r dup; do
       [[ -n "$dup" ]] && { echo "${RED}FAIL${RST} $name: stage $dup appears twice"; bad=1; }
     done < <(awk -F'\t' '$1 == "'"$name"'" {print $2}' <<<"$rows" | sort | uniq -d)
-    while IFS=$'\t' read -r owner stage title files when; do
+    while IFS=$'\t' read -r owner stage title files when check; do
       [[ "$owner" == "$name" ]] || continue   # included stages are checked under their own path
       [[ "$stage" =~ ^[0-9]+$ ]] || { echo "${RED}FAIL${RST} $name: stage '$stage' is not a number"; bad=1; }
       [[ -n "$title" && -n "$files" && -n "$when" ]] || { echo "${RED}FAIL${RST} $name stage $stage: empty column"; bad=1; }
       IFS=',' read -ra list <<<"$files"
       for f in "${list[@]}"; do
-        [[ -f "$ROOT/$f" ]] || { echo "${RED}FAIL${RST} $name stage $stage: missing $f"; bad=1; }
+        [[ -f "$LEARN_ROOT/$f" ]] || { echo "${RED}FAIL${RST} $name stage $stage: missing $f"; bad=1; }
       done
+      why="$(check_resolves "$check")" || { echo "${RED}FAIL${RST} $name stage $stage: $why"; bad=1; }
     done <<<"$rows"
     if [[ $bad -eq 0 ]]; then
       echo "${GRN}ok${RST}   $name ($(grep -c . <<<"$rows") stages)"
@@ -1011,11 +1122,13 @@ cmd_learn() {
     1) [[ "$1" == --verify ]] && { learn_verify; return; }
        learn_stages "$1" ;;
     2) learn_read "$1" "$2" ;;
-    3) case "$2" in
-         --done|--undo) learn_mark "$1" "$2" "$3" ;;
+    3|4)
+       [[ $# -eq 4 && "$4" != --force ]] && die "usage: ss learn <path> --done <stage> [--force]"
+       case "$2" in
+         --done|--undo) learn_mark "$1" "$2" "$3" "${4:-}" ;;
          *) die "usage: ss learn <path> --done|--undo <stage>" ;;
        esac ;;
-    *) die "usage: ss learn [<path> [<stage>|next|--done <stage>|--undo <stage>]]" ;;
+    *) die "usage: ss learn [<path> [<stage>|next|--done <stage> [--force]|--undo <stage>]]" ;;
   esac
 }
 
@@ -1039,6 +1152,32 @@ fan_out() {
 
 [[ $# -ge 1 ]] || { usage; exit 1; }
 sub="$1"; shift
+
+# ---------------------------------------------------------------------------
+# Course modules (course/DESIGN.md 5.2). One branch ahead of the practice
+# dispatch: a verb whose first argument is a course id, or a course-only verb,
+# goes to python -m sscourse in the uv project course/harness. None of the
+# practice kinds (predict, build, reattempt) match COURSE_ID_RE, so
+# `ss start build c 02` and `ss bench [lang]` keep their meaning.
+# ---------------------------------------------------------------------------
+
+COURSE_ID_RE='^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z]?|(lang|ds|rt|data|dur|gw|ag|load|dep|obs|ops|craft|ethics|review|field|iv)\.[0-9]{2}|sq\.[a-z0-9-]+|MS-[A-Za-z0-9-]+)(\+cuda)?$'
+course_q() {
+  command -v uv >/dev/null 2>&1 || { echo "${RED}error:${RST} the course harness needs uv (https://docs.astral.sh/uv/)" >&2; return 5; }
+  SS_ROOT="$ROOT" uv run --project "$ROOT/course/harness" --quiet python -m sscourse "$@"
+}
+course() { course_q "$@"; exit $?; }
+
+case "$sub" in
+  start|check|diff|show|reset|reveal|tests)
+    [[ "${1:-}" =~ $COURSE_ID_RE || "${1:-}" == --all ]] && course "$sub" "$@" ;;
+  bench)          # the existing `ss bench [lang] [--assert]` (predict budgets) keeps its meaning
+    [[ "${1:-}" =~ $COURSE_ID_RE || "${1:-}" == course || "${1:-}" == --calibrate ]] && course "$sub" "$@" ;;
+  course|status|next|milestone|conform|parity|mutate|tdd|export|drill|fetch|contracts|doctor|lint|stub|_learn-status|_learn-check)
+    course "$sub" "$@" ;;
+  verify) [[ "${1:-}" == course ]] && course "$sub" "$@" ;;
+esac
+
 case "$sub" in
   start)  [[ $# -eq 3 ]] || die "usage: ss start <kind> <lang> <id>";  cmd_start "$@" ;;
   check)  [[ $# -ge 2 ]] || die "usage: ss check <kind> <lang> [id]";  cmd_check "$@" ;;

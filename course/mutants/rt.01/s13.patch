@@ -1,0 +1,11 @@
+--- a/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
++++ b/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
+@@ -105,6 +105,8 @@
+         self.path = library_path(path)
+         self._dll = ctypes.CDLL(self.path)
+         self._sigs = dict(signatures())
++        for n in list(self._sigs):
++            getattr(self, n)
+         found = self.abi_version()
+         if found != ABI_VERSION:
+             raise AbiMismatch(self.path, found, ABI_VERSION)

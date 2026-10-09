@@ -203,3 +203,11 @@ and inner products let us measure angles and distances, enabling projection and 
 | Graphics (Pixar, NVIDIA, Unity) | Transformation matrices, projection, quaternions | Medium |
 | Robotics (Boston Dynamics, Tesla) | Kinematics use rotation matrices and coordinate transforms | Medium |
 | Amazon/Netflix | Recommendation engines use matrix factorization | Medium |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `M03.1` | [Vectors, matrices, row-major layout, and a naive matmul in C](01-vectors-matrices-and-matmul-in-c.md) | build | 1 |
+<!-- /ss:chapters -->

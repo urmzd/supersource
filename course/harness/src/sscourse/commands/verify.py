@@ -1,0 +1,987 @@
+"""ss verify course [ID...] [--changed REF] [--global] [--nightly] [--e2e|--kind [--keep DIR]] [--assemble DIR]
+maintainer checks (DESIGN 5.14)
+
+Per module (checks 1 to 14):
+   1 reference passes its course tests       8 chapter lints (6.5)
+   2 stub compiles and fails the tests       9 a build module has a module call site
+   3 determinism over seeds 0..runs-1       10 tests carry WHY and KIND; frozen helpers only
+   4 Python references match their .pyi     11 (global) ss learn --verify
+   5 markers: ownership, ids, whole bodies  12 fixtures resolve to MANIFEST.tsv rows
+   6 mutants apply and are killed           13 registry invariants (3.4)
+   7 solve keys parse                       14 seams: contract-only imports, compiles vs stubbed neighbours
+Global: headers compile standalone (-pedantic -Werror), contracts/go and tl-contracts
+build, the fully stubbed reference tree compiles in all four languages with every
+course test, fixture budgets, modules.tsv is current, paths verify.
+
+With IDs, only those modules (plus the registry rules naming them). --changed maps
+changed files to modules, verifies them fully, and runs the smoke tests of their
+reverse dependents. --nightly uses three determinism runs.
+
+--e2e assembles a learner repo from course/ref (+ ref/primers, ref/docs,
+ref/entry, ref/system.toml) and runs it as a learner would: check --all --ci,
+every `ci = "pr"` milestone with --smoke, ss conform on each declared tier, then
+ss export and the vendored tests natively. --kind does the same assembly and
+runs every milestone with a kind step in full; it needs the reference kind
+cluster. A milestone that requires a drill runs with --ref-deps (drills are
+graded by `ss drill end`). --keep DIR leaves that learner at DIR; --assemble DIR
+only builds it there (the milestone-p1-kind CI job deploys it to kind).
+
+Practice modules with an executable `check` get checks 1 and 2 too: the check
+passes in a learner assembled from the whole reference, and fails in a fresh
+learner where only `ss start <ID>` ran (both with SS_SMOKE=1)."""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import hashlib
+import json
+import re
+import shutil
+import tempfile
+import tomllib
+from pathlib import Path
+
+from .. import (
+    EXIT_FAIL,
+    EXIT_HARNESS,
+    HarnessError,
+    catalog,
+    chapter,
+    ctx,
+    ids,
+    markers,
+    paths,
+    placeholders,
+    precheck,
+    registry,
+    tree,
+    units,
+)
+from ..overlay import Overlay
+
+MiB = 1024 * 1024
+FROZEN_PY = [
+    (
+        r"^\s*(from|import)\s+tinyllm\.num\.(gradcheck|tolerance|rng)\b",
+        "imports the learner's gradcheck/tolerance/rng",
+    ),
+    (
+        r"\bnp\.random\.(seed|default_rng|rand|randn|random|normal|uniform|choice|randint|shuffle|permutation)\b",
+        "uses numpy's global or unseeded RNG",
+    ),
+    (r"^\s*(import random\b|from random import)", "uses the stdlib random module"),
+    (
+        r"\bnp\.testing\.|\bnp\.(allclose|isclose)\b|\bmath\.isclose\b",
+        "asserts closeness without _lib.close",
+    ),
+]
+FROZEN_OTHER = {
+    ".c": [
+        (r"\b(s?rand)\s*\(", "uses C rand(); construct _lib PCG32 via the contract")
+    ],
+    ".rs": [(r"\brand::|thread_rng", "uses the rand crate; use tl-contracts::testing")],
+    ".go": [(r'"math/rand(/v2)?"', "imports math/rand; use contracts/go/testing")],
+}
+
+
+class Report:
+    def __init__(self) -> None:
+        self.failures = 0
+
+    def ok(self, n, msg: str) -> None:
+        ctx.say(f"  {ctx.GRN}ok{ctx.RST}    {n:>2} {msg}")
+
+    def skip(self, n, msg: str) -> None:
+        ctx.say(f"  {ctx.DIM}skip  {n:>2} {msg}{ctx.RST}")
+
+    def fail(self, n, msg: str, detail: str = "") -> None:
+        self.failures += 1
+        ctx.say(f"  {ctx.RED}FAIL{ctx.RST}  {n:>2} {msg}")
+        if detail:
+            ctx.say(ctx.indent(ctx.tail(detail, 40), 9))
+
+
+def _ov(
+    reg, course, mid, sources, work: Path, tag: str, patches=None, seed=0
+) -> Overlay:
+    return Overlay(
+        reg,
+        course,
+        mid,
+        sources,
+        None,
+        work / mid / tag,
+        work,
+        dict(patches or {}),
+        seed,
+    )
+
+
+def _compile(ov: Overlay, langs: set[str], all_tests: bool = False) -> tuple[bool, str]:
+    out = []
+    ok = True
+    for lang in sorted(langs):
+        fn = {
+            "python": ov.compile_python,
+            "c": ov.compile_c,
+            "rust": lambda: ov.compile_rust(all_tests),
+            "go": lambda: ov.compile_go(all_tests),
+        }.get(lang)
+        if fn is None:
+            continue
+        good, msg = fn()
+        if not good:
+            ok = False
+            out.append(f"[{lang}]\n{msg}")
+    return ok, "\n".join(out)
+
+
+def _unit_langs(m) -> set[str]:
+    return {markers.lang_of(u) for u in m.owned} - {None}
+
+
+def _owner_text(course, reg, unit, owner) -> str:
+    return units.ref_text(course, reg, unit, owner)
+
+
+def check_markers(course, reg, m) -> list[str]:
+    errs = []
+    for u in m.owned:
+        try:
+            text = _owner_text(course, reg, u, m.id)
+        except Exception as e:  # noqa: BLE001
+            errs.append(str(e))
+            continue
+        where = str(units.ref_path(course, reg, u, m.id).relative_to(course))
+        try:
+            regs = markers.regions(text)
+        except markers.MarkerError as e:
+            errs.append(f"{where}: {e}")
+            continue
+        if not regs and markers.defines_functions(text, u):
+            errs.append(
+                f"{where}: no SOLUTION-BEGIN {m.id} markers, so it cannot be stubbed"
+            )
+        for r in regs:
+            if r.id != m.id:
+                errs.append(
+                    f"{where}:{r.begin + 1}: marker id {r.id or '(none)'}; every marker in this unit must carry {m.id}"
+                )
+        errs += markers.lint(text, where)
+    return errs
+
+
+def check_pyi(course, reg, m) -> list[str]:
+    errs = []
+    for u in m.owned:
+        if markers.lang_of(u) != "python":
+            continue
+        pyi = precheck.pyi_for(course / "contracts", u)
+        if pyi.is_file():
+            errs += precheck.python_unit(
+                markers.drop_markers(_owner_text(course, reg, u, m.id)),
+                pyi.read_text(),
+                u,
+            )
+    return errs
+
+
+def _apply_patch(
+    course: Path, reg, m, mutant: str, unit: str
+) -> tuple[str | None, str]:
+    patch = course / "mutants" / m.id / f"{mutant}.patch"
+    if not patch.is_file():
+        return None, f"{patch.relative_to(course)} missing"
+    with tempfile.TemporaryDirectory() as td:
+        dst = Path(td) / unit
+        dst.parent.mkdir(parents=True)
+        dst.write_text(markers.drop_markers(_owner_text(course, reg, unit, m.id)))
+        rc, out = ctx.run(["patch", "-s", "-p1", "-d", td, "-i", str(patch)])
+        if rc != 0:
+            return None, f"{mutant}: patch does not apply\n{out}"
+        return dst.read_text(), ""
+
+
+def check_mutants(course, reg, m, work, rep: Report) -> None:
+    man = course / "mutants" / m.id / "manifest.tsv"
+    if not man.is_file():
+        rep.skip(6, "no mutants committed yet (mutation runner arrives with B3)")
+        return
+    rows = [
+        line.split("\t")
+        for line in man.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+    sources = {x: "ref" for x in [m.id] + reg.closure(m.id)}
+    bad = []
+    for row in rows:
+        mutant, unit = row[0], row[1]
+        text, why = _apply_patch(course, reg, m, mutant, unit)
+        if text is None:
+            bad.append(why)
+            continue
+        runs = _ov(
+            reg, course, m.id, sources, work, f"mutant-{mutant}", {unit: text}
+        ).run_tests(m.id)
+        if all(r.ok for r in runs):
+            bad.append(f"{mutant}: survives the course tests")
+    if bad:
+        rep.fail(6, f"mutants ({len(bad)} of {len(rows)})", "\n".join(bad))
+    else:
+        rep.ok(6, f"{len(rows)} mutants apply and are killed")
+    if m.learner_tests:
+        rep.skip(
+            6, "reference learner tests vs threshold: mutation runner arrives with B3"
+        )
+
+
+def check_annotations(course, reg, m, test_dir: Path) -> list[str]:
+    errs = []
+    files = catalog.files_for(course, m.id, test_dir)
+    man = course / "mutants" / m.id / "manifest.tsv"
+    mids = (
+        {
+            line.split("\t")[0]
+            for line in man.read_text().splitlines()
+            if line.strip() and not line.startswith("#")
+        }
+        if man.is_file()
+        else None
+    )
+    for t in catalog.collect(files):
+        where = f"{t.file.relative_to(course)}:{t.line} {t.name}"
+        if "WHY" not in t.fields:
+            errs.append(f"{where}: missing `WHY:`")
+        if "KIND" not in t.fields:
+            errs.append(f"{where}: missing `KIND:`")
+        bad = [k for k in t.kinds if k not in ids.TEST_KINDS]
+        if bad:
+            errs.append(f"{where}: KIND {bad} not in the D26 vocabulary")
+        if mids is not None:
+            for c in t.catches:
+                if c not in mids:
+                    errs.append(
+                        f"{where}: CATCHES {c}, which is not in the mutants manifest"
+                    )
+    for f in files:
+        text = f.read_text()
+        rules = FROZEN_PY if f.suffix == ".py" else FROZEN_OTHER.get(f.suffix, [])
+        for pat, why in rules:
+            for i, line in enumerate(text.splitlines(), 1):
+                if re.search(pat, line):
+                    errs.append(
+                        f"{f.relative_to(course)}:{i}: {why} (D35: frozen helpers only)"
+                    )
+    return errs
+
+
+def _module_names(unit: str) -> str:
+    rel = unit.split("/", 1)[1] if unit.startswith("python/") else unit
+    return rel[:-3].replace("/", ".")
+
+
+def check_seams_static(course, reg, m) -> list[str]:
+    errs = []
+    py_units = {
+        _module_names(u): u for u in reg.all_units() if markers.lang_of(u) == "python"
+    }
+    for u in m.owned:
+        lang = markers.lang_of(u)
+        text = markers.drop_markers(_owner_text(course, reg, u, m.id))
+        if lang == "python":
+            try:
+                tree_ = ast.parse(text)
+            except SyntaxError as e:
+                errs.append(f"{u}:{e.lineno}: {e.msg}")
+                continue
+            aliases: dict[str, str] = {}
+            used: dict[str, set[str]] = {}
+            for node in ast.walk(tree_):
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and node.module in py_units
+                    and py_units[node.module] not in m.owned
+                ):
+                    used.setdefault(node.module, set()).update(
+                        a.name for a in node.names
+                    )
+                elif isinstance(node, ast.Import):
+                    for a in node.names:
+                        if a.name in py_units and py_units[a.name] not in m.owned:
+                            aliases[a.asname or a.name] = a.name
+            for node in ast.walk(tree_):
+                if isinstance(node, ast.Attribute):
+                    base = ast.unparse(node.value)
+                    if base in aliases:
+                        used.setdefault(aliases[base], set()).add(node.attr)
+            for mod, names in used.items():
+                pyi = course / "contracts" / "py" / (mod.replace(".", "/") + ".pyi")
+                if not pyi.is_file():
+                    errs.append(
+                        f"{u}: imports {mod}, which has no contract ({pyi.relative_to(course)})"
+                    )
+                    continue
+                declared = set(precheck._api(ast.parse(pyi.read_text())))
+                for n in sorted(names - declared):
+                    errs.append(
+                        f"{u}: uses {mod}.{n}, which {pyi.relative_to(course)} does not declare"
+                    )
+        elif lang == "c":
+            for i, line in enumerate(text.splitlines(), 1):
+                mm = re.match(r'^\s*#\s*include\s*"([^"]+)"', line)
+                if mm and not (
+                    mm.group(1) == "tinyllm.h" or mm.group(1).startswith("tinyllm/")
+                ):
+                    errs.append(
+                        f'{u}:{i}: includes "{mm.group(1)}"; units reach each other only through tinyllm/*.h'
+                    )
+    return errs
+
+
+def fixture_errors(course: Path, mods) -> list[str]:
+    errs = []
+    fx = course / "fixtures"
+    man = fx / "MANIFEST.tsv"
+    rows: dict[str, list[str]] = {}
+    if man.is_file():
+        for line in man.read_text().splitlines():
+            if line.strip() and not line.startswith("#"):
+                cols = line.split("\t")
+                rows[cols[0]] = cols
+    total = 0
+    if fx.is_dir():
+        for p in sorted(fx.rglob("*")):
+            if not p.is_file() or p.name in ("MANIFEST.tsv", "ASSETS.tsv", "README.md"):
+                continue
+            rel = p.relative_to(course.parent).as_posix()
+            size = p.stat().st_size
+            total += size
+            if size > 8 * MiB:
+                errs.append(
+                    f"{rel}: {size / MiB:.1f} MiB is over the 8 MiB per-file budget"
+                )
+            row = rows.get(rel)
+            if row is None:
+                errs.append(f"{rel}: no row in course/fixtures/MANIFEST.tsv")
+            elif len(row) > 1 and row[1] != hashlib.sha256(p.read_bytes()).hexdigest():
+                errs.append(
+                    f"{rel}: sha256 differs from MANIFEST.tsv (regenerate with the oracle, update the row)"
+                )
+    if total > 50 * MiB:
+        errs.append(
+            f"committed fixtures total {total / MiB:.1f} MiB, over the 50 MiB budget"
+        )
+    for m in mods:
+        for f in m.fixtures.get("files", []):
+            if f not in rows:
+                errs.append(f"{m.id}: fixture {f} has no MANIFEST.tsv row")
+            elif not (course.parent / f).is_file():
+                errs.append(f"{m.id}: fixture {f} is missing")
+    return errs
+
+
+def spec_errors(reg, course: Path) -> tuple[list[str], int]:
+    """Milestones, drills, and conformance cases parse; every committed fixture
+    a milestone names (`{fixture:...}`, `course/fixtures/...`) has a MANIFEST row;
+    every `requires` id is a module or milestone."""
+    from .. import conform, drills, milestones
+
+    errs: list[str] = []
+    rows = set()
+    man = course / "fixtures" / "MANIFEST.tsv"
+    if man.is_file():
+        rows = {
+            x.split("\t")[0]
+            for x in man.read_text().splitlines()
+            if x.strip() and not x.startswith("#")
+        }
+    ms_ids = milestones.all_ids(course)
+    n = 0
+
+    def known(i: str) -> bool:
+        return i in reg.modules or i in ms_ids
+
+    for msid in ms_ids:
+        n += 1
+        try:
+            ms = milestones.load(course, msid)
+        except Exception as e:  # report every broken spec, not just the first
+            errs.append(str(e))
+            continue
+        errs += [
+            f"{msid}: requires {r!r}, which is not a module or milestone"
+            for r in ms.requires
+            if not known(r)
+        ]
+        errs += [
+            f"{msid}: includes {i!r}, which is not a milestone"
+            for i in ms.includes
+            if i not in ms_ids
+        ]
+        for st in ms.steps:
+            blob = json.dumps([st.argv, st.expect, st.http])
+            refs = [
+                f"course/fixtures/{x}" for x in re.findall(r"\{fixture:([^}]+)\}", blob)
+            ]
+            refs += re.findall(r"\b(course/fixtures/[^\"\s]+)", blob)
+            for v in st.variants() or [{}]:
+                for f in refs:
+                    try:
+                        f2 = placeholders.expand(
+                            f, lambda k, v=v: str(v[k]) if k in v else None
+                        )
+                    except HarnessError as e:
+                        errs.append(f"{msid} step {st.name!r}: fixture path {f}: {e}")
+                        continue
+                    if f2 not in rows:
+                        errs.append(
+                            f"{msid} step {st.name!r}: fixture {f2} has no MANIFEST.tsv row"
+                        )
+    for d in (
+        (course / "drills").glob("*/drill.toml") if (course / "drills").is_dir() else []
+    ):
+        n += 1
+        try:
+            dr = drills.load_file(d)
+            errs += [
+                f"drill {dr.name}: requires {r!r}, which is not a module or milestone"
+                for r in dr.requires
+                if not known(r)
+            ]
+        except Exception as e:
+            errs.append(str(e))
+    try:
+        n += len(conform.load_cases(course))
+    except Exception as e:
+        errs.append(str(e))
+    return errs, n
+
+
+_REF_LEARNER: dict[str, Path] = {}
+
+
+def _practice_env(course: Path, lr: Path, scratch: Path) -> dict:
+    from . import e2e
+
+    env = e2e.learner_env(course, lr, scratch)
+    env.update(
+        {
+            "SS_COURSE_TREE": str(course),
+            "SS_SMOKE": "1",
+            "SS_SEED": "0",
+            "TINYLLM_FIXTURES": str(course / "fixtures"),
+            "TINYLLM_CACHE": str(ctx.cache_dir()),
+            "SS_BIN": str(ctx.root() / "practice" / "bin" / "ss"),
+        }
+    )
+    return env
+
+
+def reference_learner(reg, course: Path, work: Path) -> tuple[Path | None, str]:
+    """One learner assembled from the whole reference per verify run (e2e.assemble)."""
+    from . import e2e
+
+    if "lr" in _REF_LEARNER:
+        return _REF_LEARNER["lr"], ""
+    tmp = Path(tempfile.mkdtemp(prefix="practice-ref-", dir=work))
+    lr = tmp / "learner"
+    env = _practice_env(course, lr, tmp / "scratch")
+    ok, why = e2e.assemble(reg, course, lr, env)
+    if not ok:
+        return None, why
+    # Built as a learner's repo is by the time its practice checks run: the
+    # reference [build].steps (libtinyllm, engine, gateway, the served model).
+    from .. import services, system
+
+    if (lr / "system.toml").is_file():
+        ok, why = services.run_build(system.load(lr), tmp / "build.log", env)
+        if not ok:
+            return None, why
+    _REF_LEARNER["lr"] = lr
+    return lr, ""
+
+
+def verify_practice(reg, course: Path, m, work: Path, rep: Report) -> None:
+    """Checks 1 and 2 for a practice module with an executable artifact check
+    (H15): it passes in a learner assembled from the reference, and fails in a
+    fresh learner where only `ss start <ID>` ran. Run with SS_SMOKE=1: cluster
+    tiers belong to the milestone's kind steps (CI job milestone-p1-kind)."""
+    from . import e2e
+
+    check = course / "tests" / m.id / "check"
+    if not check.is_file():
+        rep.skip(1, "practice: no executable artifact check")
+        rep.skip(2, "practice: no executable artifact check")
+        rep.skip(3, "practice: no course tests to repeat")
+        return
+    lr, why = reference_learner(reg, course, work)
+    if lr is None:
+        rep.fail(1, "assemble the reference learner", why)
+    else:
+        env = _practice_env(course, lr, lr.parent / "scratch")
+        rc, out = ctx.run([str(check)], cwd=lr, env=env, timeout=m.timeout_s)
+        rep.ok(
+            1, "reference artifacts pass the check (SS_SMOKE=1)"
+        ) if rc == 0 else rep.fail(
+            1, f"reference artifacts fail the check (exit {rc})", out
+        )
+    tmp = Path(tempfile.mkdtemp(prefix=f"practice-{m.id}-", dir=work))
+    fresh = tmp / "learner"
+    env = _practice_env(course, fresh, tmp / "scratch")
+    rc, out = e2e._ss(env, "course", "init", "--name", "forge")
+    ok, why = (rc == 0, out)
+    if ok:
+        ok, why = e2e._start_in_process(env, [m.id])
+    if ok:
+        rc, why = e2e.commit_all(fresh, f"chore: start {m.id}")
+        ok = rc == 0
+    if not ok:
+        rep.fail(2, "set up a fresh learner", why)
+    else:
+        rc, out = ctx.run([str(check)], cwd=fresh, env=env, timeout=m.timeout_s)
+        rep.ok(
+            2, f"a fresh start fails the check (exit {rc})"
+        ) if rc != 0 else rep.fail(
+            2,
+            "the check passes on a fresh start: it does not exercise the artifacts",
+            out,
+        )
+    shutil.rmtree(tmp, ignore_errors=True)
+    rep.skip(3, "practice: determinism is covered by the check's own repeat runs")
+
+
+def verify_module(reg, course, mid: str, work: Path, runs: int, rep: Report) -> None:
+    m = reg.get(mid)
+    ctx.say(
+        f"{ctx.BLD}verify {mid}{ctx.RST}  {m.title}  ({m.kind}, {', '.join(m.lang)})"
+    )
+    closure = reg.closure(mid)
+    all_ref = {x: "ref" for x in [mid] + closure}
+    code = m.kind in ("build", "side") and bool(m.owned)
+    probe = _ov(reg, course, mid, all_ref, work, "ref")
+    test_langs = probe.test_langs(mid)
+
+    # 5 first: stubs are meaningless over broken markers.
+    errs = check_markers(course, reg, m) if m.owned else []
+    rep.fail(5, "markers", "\n".join(errs)) if errs else (
+        rep.ok(5, "markers: owner ids, whole function bodies")
+        if m.owned
+        else rep.skip(5, "no units")
+    )
+    markers_ok = not errs
+
+    if m.kind == "practice":
+        verify_practice(reg, course, m, work, rep)
+    elif not code:
+        rep.skip(1, f"{m.kind}: no reference code")
+        rep.skip(2, f"{m.kind}: no stubs")
+        rep.skip(3, f"{m.kind}: no course tests to repeat")
+    elif not test_langs:
+        rep.fail(1, f"no course tests found for {mid}")
+    else:
+        r1 = probe.run_tests(mid)
+        if all(r.ok for r in r1):
+            rep.ok(1, f"reference passes ({', '.join(r.lang for r in r1)})")
+        else:
+            rep.fail(
+                1,
+                "reference fails its own tests",
+                "\n".join(r.output for r in r1 if not r.ok),
+            )
+        if markers_ok:
+            stubbed = dict(all_ref)
+            stubbed[mid] = "stub"
+            sov = _ov(reg, course, mid, stubbed, work, "stub")
+            good, msg = _compile(sov, _unit_langs(m))
+            if not good:
+                rep.fail(2, "stubbed tree does not compile", msg)
+            else:
+                r2 = sov.run_tests(mid)
+                passing = [r.lang for r in r2 if r.ok]
+                if passing:
+                    rep.fail(
+                        2,
+                        f"tests pass on the stub ({', '.join(passing)}): they do not exercise {mid}",
+                    )
+                else:
+                    rep.ok(2, "stub compiles and fails the tests")
+        else:
+            rep.skip(2, "markers are broken")
+        bad = []
+        for seed in range(1, max(runs, 2)):
+            r3 = _ov(
+                reg, course, mid, all_ref, work, f"seed{seed}", seed=seed
+            ).run_tests(mid)
+            if [r.ok for r in r3] != [r.ok for r in r1]:
+                bad.append(
+                    f"seed {seed}: "
+                    + ", ".join(f"{r.lang}={'pass' if r.ok else 'fail'}" for r in r3)
+                )
+        rep.fail(3, "nondeterministic", "\n".join(bad)) if bad else rep.ok(
+            3, f"deterministic over {max(runs, 2)} seeded runs"
+        )
+
+    if "python" in _unit_langs(m):
+        errs = check_pyi(course, reg, m)
+        rep.fail(4, "reference vs .pyi", "\n".join(errs)) if errs else rep.ok(
+            4, "Python references match their contracts"
+        )
+
+    if code:
+        check_mutants(course, reg, m, work, rep)
+    if m.kind == "solve":
+        key = course / "solve" / m.id / "key.toml"
+        try:
+            tomllib.loads(key.read_text())
+            rep.ok(7, "solve key parses")
+            rep.skip(7, "expect/reject equivalence: solve checker arrives with B2")
+        except (OSError, tomllib.TOMLDecodeError) as e:
+            rep.fail(7, f"solve key: {e}")
+
+    errs = chapter.lint(reg, m, course.parent, course, probe.test_dir(mid))
+    rep.fail(8, "chapter", "\n".join(errs)) if errs else rep.ok(
+        8, f"chapter {m.chapter}"
+    )
+
+    errs = registry.call_site_errors(reg, m)
+    rep.fail(9, "call site", "\n".join(errs)) if errs else (
+        rep.ok(9, "call site " + ", ".join(m.used_by)) if m.kind == "build" else None
+    )
+
+    errs = check_annotations(course, reg, m, probe.test_dir(mid))
+    rep.fail(10, "test annotations", "\n".join(errs)) if errs else rep.ok(
+        10, "tests annotated, frozen helpers only"
+    )
+
+    errs = fixture_errors(course, [m]) if m.fixtures.get("files") else []
+    errs = [e for e in errs if e.startswith(m.id)]
+    rep.fail(12, "fixtures", "\n".join(errs)) if errs else None
+
+    errs = [
+        e
+        for e in registry.invariants(reg)
+        if re.search(r"(^|\W)" + re.escape(mid) + r"(\W|$)", e)
+    ]
+    rep.fail(13, "registry", "\n".join(errs)) if errs else rep.ok(
+        13, "registry invariants"
+    )
+
+    if code and markers_ok:
+        errs = check_seams_static(course, reg, m)
+        nb = {x: "stub" for x in reg.modules}
+        nb[mid] = "ref"
+        good, msg = _compile(_ov(reg, course, mid, nb, work, "seams"), _unit_langs(m))
+        if not good:
+            errs.append("does not compile against stubbed neighbours:\n" + msg)
+        rep.fail(14, "seams", "\n".join(errs)) if errs else rep.ok(
+            14, "seams: contract names only, compiles against stubbed neighbours"
+        )
+
+
+def verify_global(reg, course, work: Path, rep: Report) -> None:
+    ctx.say(f"{ctx.BLD}verify course (global){ctx.RST}  {course}")
+    errs = registry.invariants(reg)
+    if not registry.tsv_current(reg):
+        errs.append("modules.tsv is not current: run `ss lint --fix-index`")
+    rep.fail(13, "registry", "\n".join(errs)) if errs else rep.ok(
+        13, f"registry: {len(reg.modules)} modules, modules.tsv current"
+    )
+
+    inc = course / "contracts" / "c" / "include"
+    bad = []
+    for h in sorted(inc.rglob("*.h")) if inc.is_dir() else []:
+        rel = h.relative_to(inc).as_posix()
+        p = work / "hdr" / (rel.replace("/", "_") + ".c")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(f'#include "{rel}"\n')
+        rc, out = ctx.run(
+            [
+                "cc",
+                "-std=c11",
+                "-pedantic",
+                "-Wall",
+                "-Werror",
+                f"-I{inc}",
+                "-fsyntax-only",
+                str(p),
+            ]
+        )
+        if rc != 0:
+            bad.append(f"{rel}:\n{out}")
+    gomod = course / "contracts" / "go"
+    if (gomod / "go.mod").is_file():
+        env = ctx.base_env()
+        env["GOWORK"] = "off"
+        rc, out = ctx.run(["go", "build", "./..."], cwd=gomod, env=env)
+        if rc != 0:
+            bad.append(f"contracts/go:\n{out}")
+    tlc = course / "contracts" / "rust" / "tl-contracts"
+    if (tlc / "Cargo.toml").is_file():
+        env = ctx.base_env()
+        env["CARGO_TARGET_DIR"] = str(work / "target")
+        rc, out = ctx.run(
+            ["cargo", "build", "-q", "--manifest-path", str(tlc / "Cargo.toml")],
+            env=env,
+        )
+        if rc != 0:
+            bad.append(f"contracts/rust/tl-contracts:\n{out}")
+    rep.fail(4, "contracts", "\n".join(bad)) if bad else rep.ok(
+        4,
+        "headers compile standalone (-pedantic -Werror); contract crates and modules build",
+    )
+    for d, tool in (("openapi", "openapi-spec-validator"), ("proto", "buf")):
+        if (course / "contracts" / d).is_dir() and shutil.which(tool) is None:
+            rep.skip(4, f"contracts/{d}: `{tool}` not installed")
+
+    all_units = reg.all_units()
+    langs = {markers.lang_of(u) for u in all_units} - {None}
+    if langs:
+        stub_all = {x: "stub" for x in reg.modules}
+        anyid = next(iter(reg.modules))
+        good, msg = _compile(
+            _ov(reg, course, anyid, stub_all, work, "stubbed-tree"),
+            langs,
+            all_tests=True,
+        )
+        rep.fail(
+            2, "the fully stubbed reference tree does not compile", msg
+        ) if not good else rep.ok(
+            2,
+            f"fully stubbed reference tree compiles with every course test ({', '.join(sorted(langs))})",
+        )
+        # Ownership across history snapshots: each snapshot carries its owner's id.
+        snap_errs = []
+        hist = course / "ref" / "history"
+        for p in sorted(hist.rglob("*")) if hist.is_dir() else []:
+            if p.is_file():
+                owner, unit = (
+                    p.relative_to(hist).parts[0],
+                    "/".join(p.relative_to(hist).parts[1:]),
+                )
+                chain = reg.unit_chain(unit) if unit in all_units else []
+                if owner not in chain[:-1]:
+                    snap_errs.append(
+                        f"ref/history/{owner}/{unit}: {owner} is not an earlier owner of {unit} (chain {chain})"
+                    )
+        for u, chain in all_units.items():
+            for prev in chain[:-1]:
+                if not (hist / prev / u).is_file():
+                    snap_errs.append(
+                        f"{u}: {chain[-1]} took it over, but ref/history/{prev}/{u} is missing"
+                    )
+        rep.fail(5, "history snapshots", "\n".join(snap_errs)) if snap_errs else rep.ok(
+            5, "history snapshots match the owner chains"
+        )
+
+    errs = fixture_errors(course, reg.modules.values())
+    rep.fail(12, "fixtures", "\n".join(errs)) if errs else rep.ok(
+        12, "fixtures: manifest rows, hashes, budgets"
+    )
+    errs, n = spec_errors(reg, course)
+    rep.fail(
+        12, "milestone, drill, and conformance specs", "\n".join(errs)
+    ) if errs else rep.ok(
+        12,
+        f"{n} milestone, drill, and conformance spec(s) parse; their fixtures resolve",
+    )
+
+    ss = ctx.root() / "practice" / "bin" / "ss"
+    env = ctx.base_env()
+    env["SS_COURSE_ROOT"] = str(course)
+    env["SS_PATHS_DIR"] = str(paths.paths_dir(course))
+    rc, out = ctx.run(["bash", str(ss), "learn", "--verify"], env=env)
+    rep.fail(11, "paths (ss learn --verify)", out) if rc != 0 else rep.ok(
+        11, "paths: ss learn --verify"
+    )
+    order = stage_order_errors(reg, course)
+    rep.fail(11, "path stage order", "\n".join(order)) if order else None
+
+    errs = []
+    for m in reg.ordered():
+        if m.chapter and (course.parent / m.chapter).is_file():
+            errs += chapter.no_em_dash(
+                (course.parent / m.chapter).read_text(), m.chapter
+            )
+    rep.fail(8, "em dashes", "\n".join(errs)) if errs else None
+
+
+def stage_order_errors(reg, course: Path) -> list[str]:
+    """Check 11: in every path, a module's stage comes after its deps' stages."""
+    base = paths.paths_dir(course)
+    errs: list[str] = []
+    for tsv in sorted(base.glob("*/path.tsv")) if base.is_dir() else []:
+        name = tsv.parent.name
+        try:
+            rows = paths.expand(name, base)
+        except (FileNotFoundError, ValueError):
+            continue  # ss learn --verify reports broken includes
+        first: dict[str, int] = {}
+        for i, r in enumerate(rows):
+            for kind, t in paths.check_targets(r.check):
+                if kind in ("module", "solve"):
+                    first.setdefault(t, i)
+        for mid, i in first.items():
+            if mid not in reg.modules:
+                continue
+            for d in reg.get(mid).deps:
+                if d in first and first[d] > i:
+                    errs.append(
+                        f"paths/{name}: {mid} (row {i + 1}) comes before its dep {d} (row {first[d] + 1})"
+                    )
+    return errs
+
+
+def changed_modules(reg, course: Path, ref: str) -> tuple[list[str], bool]:
+    repo = ctx.git_toplevel(course)
+    if repo is None:
+        return sorted(reg.modules), True
+    files: set[str] = set()
+    for args in (
+        ["diff", "--name-only", f"{ref}...HEAD"],
+        ["diff", "--name-only", "HEAD"],
+        ["ls-files", "--others", "--exclude-standard"],
+    ):
+        rc, out = ctx.git(args, repo)
+        if rc != 0 and args[0] == "diff" and "..." in args[2]:
+            raise ValueError(f"git diff {ref}...HEAD failed:\n{out}")
+        files |= {x.strip() for x in out.splitlines() if x.strip()}
+    croot = course.relative_to(repo).as_posix()
+    under = {f[len(croot) + 1 :] for f in files if f.startswith(croot + "/")}
+    harness = any(f.startswith(("course/harness/", "practice/bin/ss")) for f in files)
+    by_us = {ids.underscore(m): m for m in reg.modules}
+    hits: set[str] = set()
+    for f in under:
+        parts = f.split("/")
+        if parts[0] == "modules" and f.endswith(".toml"):
+            hits.add(Path(f).stem)
+        elif parts[0] == "ref" and len(parts) > 2 and parts[1] == "history":
+            hits.add(parts[2])
+        elif parts[0] == "ref":
+            unit = "/".join(parts[1:])
+            hits |= set(reg.unit_chain(unit)) if unit in reg.all_units() else set()
+        elif parts[0] == "tests" and len(parts) > 2 and parts[1] in ("go", "rust"):
+            key = parts[2].removesuffix(".rs")
+            if key in by_us:
+                hits.add(by_us[key])
+        elif parts[0] in ("tests", "fixtures", "mutants", "solve") and len(parts) > 1:
+            hits.add(parts[1])
+        elif parts[0] == "contracts":
+            hits |= {
+                m.id
+                for m in reg.modules.values()
+                if any(c.removeprefix("contracts/") in f for c in m.contract)
+            }
+    for f in files:
+        hits |= {m.id for m in reg.modules.values() if m.chapter == f}
+    return sorted(h for h in hits if h in reg.modules), harness
+
+
+def main(argv: list[str]) -> int:
+    if not argv or argv[0] != "course":
+        print(__doc__)
+        return EXIT_HARNESS
+    ap = argparse.ArgumentParser(prog="ss verify course")
+    ap.add_argument("ids", nargs="*")
+    ap.add_argument("--changed")
+    ap.add_argument("--global", dest="global_only", action="store_true")
+    ap.add_argument("--nightly", action="store_true")
+    ap.add_argument("--e2e", action="store_true")
+    ap.add_argument("--kind", action="store_true")
+    ap.add_argument(
+        "--keep",
+        type=Path,
+        help="with --e2e: assemble the reference learner here and keep it",
+    )
+    ap.add_argument(
+        "--assemble",
+        type=Path,
+        help="only assemble the reference learner here (CI deploys it to kind)",
+    )
+    a = ap.parse_args(argv[1:])
+    if a.keep and not (a.e2e or a.kind):
+        raise HarnessError("--keep goes with --e2e or --kind")
+    ct = tree.resolve(None)
+    course = ct.path
+    reg = registry.load(course)
+    work = ctx.scratch() / ".course-verify"
+    work.mkdir(parents=True, exist_ok=True)
+    runs = 3 if a.nightly else 2
+    if a.assemble:
+        from . import e2e
+
+        dest = a.assemble.resolve()
+        if dest.exists() and any(dest.iterdir()):
+            raise HarnessError(
+                f"--assemble {dest}: the directory exists and is not empty"
+            )
+        ok, what = e2e.assemble(
+            reg, course, dest, e2e.learner_env(course, dest, work / "assemble-scratch")
+        )
+        if not ok:
+            ctx.err(f"assembling the reference learner failed:\n{what}")
+            return EXIT_FAIL
+        ctx.say(f"{ctx.GRN}assembled{ctx.RST} the reference learner at {dest}: {what}")
+        return 0
+    if a.e2e or a.kind:
+        from . import e2e
+
+        rep = Report()
+        e2e.run(reg, course, work, rep, kind=a.kind, keep=a.keep)
+        if rep.failures:
+            ctx.say(f"{ctx.RED}{rep.failures} check(s) failed{ctx.RST}")
+            return EXIT_FAIL
+        ctx.say(
+            f"{ctx.GRN}ss verify course --{'kind' if a.kind else 'e2e'}: ok{ctx.RST}"
+        )
+        return 0
+    with ctx.lock(work):
+        return _verify(a, reg, course, ct, work, runs)
+
+
+def _verify(a, reg, course, ct, work: Path, runs: int) -> int:
+    rep = Report()
+    smoke_only: list[str] = []
+    if a.global_only:
+        targets, glob = [], True
+    elif a.changed:
+        targets, harness = changed_modules(reg, course, a.changed)
+        if harness:
+            targets = sorted(reg.modules)
+        glob = True
+        smoke_only = sorted(
+            {d for t in targets for d in reg.dependents(t)} - set(targets)
+        )
+        ctx.say(
+            f"changed since {a.changed}: {', '.join(targets) or 'no modules'}"
+            + (f"; dependents (smoke): {', '.join(smoke_only)}" if smoke_only else "")
+        )
+    elif a.ids:
+        targets, glob = [reg.get(i).id for i in a.ids], False
+    else:
+        targets, glob = [m.id for m in reg.ordered()], True
+    if glob:
+        verify_global(reg, course, work, rep)
+    for mid in targets:
+        verify_module(
+            reg, course, mid, work, max(runs, reg.get(mid).determinism_runs), rep
+        )
+    for mid in smoke_only:
+        m = reg.get(mid)
+        if not m.smoke:
+            continue
+        sources = {x: "ref" for x in [mid] + reg.closure(mid)}
+        rs = _ov(reg, course, mid, sources, work, "smoke").run_tests(mid, m.smoke)
+        ctx.say(f"{ctx.BLD}smoke {mid}{ctx.RST}")
+        rep.fail(
+            1, "dependent smoke tests", "\n".join(r.output for r in rs if not r.ok)
+        ) if not all(r.ok for r in rs) else rep.ok(1, f"smoke: {', '.join(m.smoke)}")
+    if ct.tainted:
+        ctx.say(
+            f"{ctx.DIM}note: course/ has uncommitted changes (verdicts would be tagged tainted){ctx.RST}"
+        )
+    if rep.failures:
+        ctx.say(f"{ctx.RED}{rep.failures} check(s) failed{ctx.RST}")
+        return EXIT_FAIL
+    ctx.say(f"{ctx.GRN}ss verify course: ok{ctx.RST}")
+    return 0

@@ -154,3 +154,11 @@ See the annotated manifests: [`deployment.yaml`](manifests/deployment.yaml), [`h
 | Anthropic | K8s + GPU orchestration for inference | Scaling stateless serving workers |
 | Netflix | Titus (custom) → K8s | Resilience, graceful degradation |
 | Any platform/SRE role | You own the caveats in §4 | Operability under failure |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `dep.00` | [Tracer deploy: engine and gateway images, kind cluster, two Helm charts, Jaeger all-in-one](00-tracer-deploy.md) | practice | 1 |
+<!-- /ss:chapters -->

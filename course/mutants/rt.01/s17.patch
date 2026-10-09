@@ -1,0 +1,13 @@
+--- a/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
++++ b/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
+@@ -154,9 +154,7 @@
+ def load(path: str | None = None) -> Lib:
+     """The Lib for `path` (see library_path), loaded once per resolved path."""
+     key = os.path.realpath(library_path(path))
+-    if key not in _LOADED:
+-        _LOADED[key] = Lib(key)
+-    return _LOADED[key]
++    return Lib(key)
+ 
+ 
+ def f32_ptr(a: Any) -> Any:

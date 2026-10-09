@@ -1,0 +1,14 @@
+--- a/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
++++ b/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
+@@ -126,8 +126,10 @@
+     def __getattr__(self, name: str) -> Callable[..., Any]:
+         # Only reached when normal lookup fails: bind once, then cache in
+         # __dict__ so the next access never comes back here.
+-        if name.startswith("_") or name not in self.__dict__.get("_sigs", {}):
++        if name.startswith("_"):
+             raise AttributeError(f"{name} is not a declared libtinyllm function (see Lib.declare)")
++        if name not in self._sigs:
++            return getattr(self._dll, name)
+         restype, argtypes = self._sigs[name]
+         cfn = self._dll[name]  # dlsym happens here (a fresh object); AttributeError if missing
+         cfn.argtypes = argtypes

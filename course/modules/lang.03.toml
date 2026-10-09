@@ -1,0 +1,21 @@
+id        = "lang.03"
+title     = "C: memory, pointers, structs, the C11 toolchain, sanitizers, headers and linkage"
+kind      = "practice"
+lang      = ["c", "python"]
+pass      = 1
+chapter   = "software-craftsmanship/12-language-and-tool-primers/03-c.md"
+contract  = []
+deps      = []
+reading   = ["lang.01", "lang.02"]   # Python for the ctypes half; make and exit codes
+used_by   = []                       # a primer has no code call site; rt.01 and M03.1 list it in `reading`
+# No `units`: the exercise is C, and every C unit in the registry is linked
+# into libtinyllm and every C test binary. The check writes the starter files
+# into primers/lang.03/ on its first run (DEVIATIONS lang03-01).
+units     = []
+upgrades  = []
+milestone = "MS-P1"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/lang.03"   # `check` builds your primers/lang.03 code under ASan and UBSan
+timeout_s = 120                      # the first run fetches pytest into uv's cache

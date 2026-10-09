@@ -1,0 +1,11 @@
+--- a/c/src/runtime/abi.c	2026-10-08 23:00:32
++++ b/c/src/runtime/abi.c	2026-10-08 23:00:32
+@@ -57,6 +57,8 @@
+ const char *tl_status_str(tl_status s) {
+     /* A switch, not an array indexed by s: s comes from the caller and may be
+      * any int32_t, including negative values and codes from a newer ABI. */
++    static const char *names[] = {"TL_OK", "TL_EINVAL", "TL_ENOMEM", "TL_ESHAPE", "TL_EDTYPE", "TL_EFULL", "TL_ENOTFOUND", "TL_EFORMAT", "TL_EBUSY", "TL_EUNSUPPORTED", "TL_EIO"};
++    if (s <= TL_EIO) return names[s];
+     switch (s) {
+     case TL_OK: return "TL_OK";
+     case TL_EINVAL: return "TL_EINVAL";

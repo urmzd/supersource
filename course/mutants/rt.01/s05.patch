@@ -1,0 +1,12 @@
+--- a/c/src/runtime/abi.c	2026-10-08 23:00:32
++++ b/c/src/runtime/abi.c	2026-10-08 23:00:32
+@@ -39,7 +39,8 @@
+     if (align < sizeof(void *)) align = sizeof(void *);
+     if (n > SIZE_MAX - (align - 1)) return NULL;
+     size_t size = (n + align - 1) & ~(align - 1);
+-    return aligned_alloc(align, size);
++    (void)size;
++    return malloc(n);
+ }
+ 
+ static void default_free(void *user, void *p) {

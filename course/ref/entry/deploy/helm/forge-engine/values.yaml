@@ -1,0 +1,25 @@
+replicas: 1
+
+image:
+  repository: forge-engine
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent      # `kind load docker-image` puts it on the node
+
+# A model directory written by `{tinyllm} train bigram --out artifacts/models/bigram`
+# on your machine; the kind node mounts ./artifacts at /artifacts.
+modelDir: /artifacts/models/bigram
+artifactsHostPath: /artifacts
+
+port: 8000          # POST /v1/completions
+healthPort: 9464    # GET /healthz
+
+# OTLP/HTTP base URL (the jaeger Service in the same namespace); "" exports nothing.
+otlpEndpoint: http://jaeger:4318
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: "1"
+    memory: 256Mi

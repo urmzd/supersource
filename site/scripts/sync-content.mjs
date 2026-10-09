@@ -47,6 +47,7 @@ const TRACKS = [
 const EXTRA_TREES = [
 	['practice', 'Practice'],
 	['interviews', 'Interview Prep'],
+	['course/contracts', 'Course Contracts'],
 ];
 const START = [
 	['README.md', 'Overview'],
@@ -54,7 +55,9 @@ const START = [
 	['CS-CURRICULUM.md', 'CS Curriculum'],
 	['SOURCES.md', 'Sources'],
 ];
-const SKIP = /^(site\/|\.github\/|skills\/|CHANGELOG\.md|CODE_OF_CONDUCT\.md|SECURITY\.md)/;
+// Of course/, only the contracts are published (course/DESIGN.md 5.16): the
+// reference system, course tests, and design notes never reach the site.
+const SKIP = /^(site\/|\.github\/|skills\/|archive\/|course\/(?!contracts\/)|CHANGELOG\.md|CODE_OF_CONDUCT\.md|SECURITY\.md)/;
 const IMAGE = /\.(svg|png|jpe?g|gif|webp)$/i;
 
 const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })

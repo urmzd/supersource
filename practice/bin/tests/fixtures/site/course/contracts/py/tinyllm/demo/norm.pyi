@@ -1,0 +1,3 @@
+# contracts/py/tinyllm/demo/norm.pyi (fixture M90.2)
+# chapter: chapters/m90-2-norm.md
+def l1_normalize(xs: list[float]) -> list[float]: ...

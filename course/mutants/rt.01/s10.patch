@@ -1,0 +1,12 @@
+--- a/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
++++ b/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
+@@ -106,8 +106,7 @@
+         self._dll = ctypes.CDLL(self.path)
+         self._sigs = dict(signatures())
+         found = self.abi_version()
+-        if found != ABI_VERSION:
+-            raise AbiMismatch(self.path, found, ABI_VERSION)
++        del found
+ 
+     def declare(self, name: str, restype: Any, argtypes: list[Any]) -> None:
+         """Add or replace the signature of `name`; it binds on next access."""

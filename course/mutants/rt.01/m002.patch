@@ -1,0 +1,13 @@
+--- a/c/src/runtime/abi.c	2026-10-08 23:00:32
++++ b/c/src/runtime/abi.c	2026-10-08 23:00:32
+@@ -93,10 +93,6 @@
+         tl_set_last_error("tl_alloc: size 0");
+         return NULL;
+     }
+-    if (align == 0 || (align & (align - 1)) != 0) {
+-        tl_set_last_error("tl_alloc: align must be a power of two");
+-        return NULL;
+-    }
+     void *p = hook.alloc(hook.user, n, align);
+     if (p == NULL) tl_set_last_error("tl_alloc: the allocator hook returned NULL");
+     return p;

@@ -35,6 +35,9 @@ graph LR
     SWE --> TEST
     TEST --> LP[04 Lessons from Practice]
     PP --> LP
+    PR[12 Language & Tool Primers] --> CI[08 Code Review & CI]
+    SWE --> CI
+    SWE --> DOC[06 Documentation Writing]
 ```
 
 ## Topics
@@ -45,6 +48,9 @@ graph LR
 | 02 | [Software Engineering at Google](02-swe-at-google/) | [*SWE at Google*](https://abseil.io/resources/swe-book) (free) | 1.5-2 weeks |
 | 03 | [The Testing Mentality](03-testing-mentality/) | [*SWE at Google* testing chapters](https://abseil.io/resources/swe-book) (free) + [Testing on the Toilet](https://testing.googleblog.com/) (free) | 1 week |
 | 04 | [Lessons from Practice](04-lessons-from-practice/) | Postmortems of shipped and shelved projects (2019-2021) | 2-3 days |
+| 06 | [Documentation Writing](06-documentation-writing/) | [*SWE at Google* ch. 10](https://abseil.io/resources/swe-book/html/ch10.html) (free) + [ADRs](https://adr.github.io/) (free) | 1-2 h per record (course) |
+| 08 | [Code Review and CI](08-code-review-and-ci/) | [Conventional Commits](https://www.conventionalcommits.org/) + [GitHub Actions docs](https://docs.github.com/en/actions) (free) | course Pass 0 |
+| 12 | [Language and Tool Primers](12-language-and-tool-primers/) | Python, shell, C, Rust, HTTP, Go, containers: just enough for the course | 2-4 h per primer |
 
 ## Quick Start
 

@@ -1,0 +1,18 @@
+# id	kind	lang	pass	chapter	units	deps	used_by	milestone	(generated from modules/*.toml by `ss lint --fix-index`; do not edit)
+craft.01	practice	ops	0	software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	-	-	-	MS-P0
+lang.01	practice	python	0	software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md	primers/lang.01/worksheet.py,primers/lang.01/bigram.py	-	-	MS-P0
+lang.02	practice	c,ops	0	software-craftsmanship/12-language-and-tool-primers/02-shell-git-make.md	-	-	-	MS-P0
+rt.01	build	c,python	1	ml/08-tinyllm/p09-kernels/01-the-c-abi.md	c/src/runtime/abi.c,python/tinyllm/ffi/libtinyllm.py	-	M03.1,L0.0,L10.0	MS-P1
+M03.1	build	c	1	math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md	c/src/kernels/matmul.c	rt.01	L0.0,L10.0	MS-P1
+L0.0	build	python	1	ml/08-tinyllm/p00-foundations/00-byte-bigram.md	python/tinyllm/lm/bigram.py,python/tinyllm/io/safetensors.py	M03.1,rt.01	L10.0	MS-P1
+L10.0	build	rust	1	ml/08-tinyllm/p10-serving/00-your-first-endpoint.md	rust/crates/tl-serve/src/http.rs,rust/crates/tl-serve/src/lib.rs,rust/crates/tl-sys/src/lib.rs	M03.1,rt.01,L0.0	dep.00,obs.00	MS-P1
+craft.02	practice	docs	1	software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md	-	-	-	MS-P1
+gw.00	build	go	1	ai-platform-engineering/12-gateway/00-streaming-proxy.md	go/gateway/proxy/proxy.go	-	dep.00,obs.00	MS-P1
+dep.00	practice	ops	1	infrastructure/01-containers-kubernetes/00-tracer-deploy.md	-	L10.0,gw.00	obs.00,ops.00	MS-P1
+lang.03	practice	c,python	1	software-craftsmanship/12-language-and-tool-primers/03-c.md	-	-	-	MS-P1
+lang.04	practice	rust	1	software-craftsmanship/12-language-and-tool-primers/04-rust.md	-	-	-	MS-P1
+lang.05	practice	rust	1	software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md	-	-	-	MS-P1
+lang.06	practice	go	1	software-craftsmanship/12-language-and-tool-primers/06-go.md	primers/lang.06/proxy.go	-	-	MS-P1
+lang.07	practice	ops	1	software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md	-	-	-	MS-P1
+obs.00	practice	ops,go	1	systems/04-observability/00-one-trace.md	-	dep.00,L10.0,gw.00	-	MS-P1
+ops.00	drill	ops,docs	1	systems/05-incident-response-and-chaos/00-first-drill.md	-	dep.00	-	MS-P1

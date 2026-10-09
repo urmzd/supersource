@@ -1,0 +1,11 @@
+--- a/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
++++ b/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
+@@ -72,7 +72,7 @@
+     call. The allocator functions are left out on purpose: they take C
+     function pointers, and no callback crosses the boundary (c/ABI.md)."""
+     f32p = ctypes.POINTER(ctypes.c_float)
+-    i64 = ctypes.c_int64
++    i64 = ctypes.c_int
+     return {
+         "tl_abi_version": (ctypes.c_uint32, []),
+         "tl_status_str": (ctypes.c_char_p, [ctypes.c_int32]),

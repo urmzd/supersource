@@ -1,0 +1,280 @@
+"""ss verify course --e2e: the reference learner, end to end (DESIGN 5.14,
+CI job `reference-learner-e2e`).
+
+Assembles a learner repo from the reference (`assemble`): `ss course init`,
+`ss start` for every build and practice module in pass order, each unit
+replaced by its current owner's reference with markers dropped,
+course/ref/primers and course/ref/docs (markers dropped), then course/ref/entry
+and course/ref/system.toml on top, committed as a conventional commit. Then,
+through practice/bin/ss exactly as a learner runs it:
+
+  1. ss check --all --ci                      every started module passes (practice checks without their cluster tier)
+  2. ss milestone <MS> --smoke                 every `ci = "pr"` milestone; --ref-deps when it requires a drill
+  3. ss conform openapi:<v> --target <tier>    each tier system.toml declares, each version with cases
+  4. ss export <tmp> --allow-incomplete        then the vendored tests run natively through the glue
+
+`ss verify course --e2e --keep DIR` assembles the learner at DIR and leaves it
+there, so the B1 verification sequence can run `ss milestone` against it.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+import os
+import secrets
+import time
+import shutil
+import tempfile
+from pathlib import Path
+
+from .. import conform, ctx, kube, markers, milestones, paths, units
+
+
+def _ss(env: dict, *args: str, timeout: float = 1800) -> tuple[int, str]:
+    t0 = time.monotonic()
+    rc, out = ctx.run(
+        ["bash", str(ctx.root() / "practice" / "bin" / "ss"), *args],
+        env=env,
+        timeout=timeout,
+    )
+    ctx.say(
+        f"  {ctx.DIM}ss {' '.join(args[:3])}: exit {rc} in {time.monotonic() - t0:.1f}s{ctx.RST}"
+    )
+    return rc, out
+
+
+def learner_env(course: Path, lr: Path, scratch: Path) -> dict:
+    env = ctx.base_env()
+    env.update(
+        {
+            "SS_COURSE_ROOT": str(course),
+            "SS_COURSE_HOME": str(lr),
+            "SS_SCRATCH": str(scratch),
+            "SS_PATHS_DIR": str(paths.paths_dir(course)),
+            # A deployed reference (CI milestone-p1-kind) holds the caller's key
+            # in its Secret; otherwise any fresh key serves the local services.
+            "TL_API_KEY": os.environ.get("TL_API_KEY")
+            or f"tl_e2e_{secrets.token_hex(8)}",
+        }
+    )
+    env.pop("VIRTUAL_ENV", None)
+    return env
+
+
+def started_kinds(m) -> bool:
+    """Modules the reference learner starts: code modules and practice
+    artifacts. Drills are graded by `ss drill end` against a cluster."""
+    return (m.kind in ("build", "side") and bool(m.owned)) or m.kind == "practice"
+
+
+def _start_in_process(env: dict, ids_: list[str]) -> tuple[bool, str]:
+    from .. import cli
+
+    keys = ("SS_COURSE_ROOT", "SS_COURSE_HOME", "SS_SCRATCH", "SS_PATHS_DIR")
+    saved = {k: os.environ.get(k) for k in keys}
+    os.environ.update({k: env[k] for k in keys})
+    try:
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            for mid in ids_:
+                if cli.main(["start", mid]) != 0:
+                    return False, f"ss start {mid}\n{buf.getvalue()}"
+        return True, ""
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def _copy_dropping_markers(src: Path, dest: Path) -> None:
+    """Copy a tree; text files with SOLUTION markers lose the marker lines."""
+    for f in sorted(src.rglob("*")):
+        rel = f.relative_to(src)
+        if any(
+            part in ("target", "__pycache__", ".venv", "build") for part in rel.parts
+        ):
+            continue
+        out = dest / rel
+        if f.is_dir():
+            out.mkdir(parents=True, exist_ok=True)
+            continue
+        out.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, out)
+        try:
+            text = f.read_text()
+        except (UnicodeDecodeError, OSError):
+            continue
+        if markers.has_markers(text):
+            out.write_text(markers.drop_markers(text))
+
+
+def commit_all(lr: Path, msg: str) -> tuple[int, str]:
+    rc, out = ctx.git(["add", "-A"], lr)
+    if rc != 0:
+        return rc, out
+    return ctx.git(
+        [
+            "-c",
+            "user.name=ss e2e",
+            "-c",
+            "user.email=e2e@localhost",
+            "commit",
+            "-qm",
+            msg,
+            "--allow-empty",
+        ],
+        lr,
+    )
+
+
+def assemble(
+    reg, course: Path, lr: Path, env: dict, only: list[str] | None = None
+) -> tuple[bool, str]:
+    """A learner repo built from the reference: `ss course init`, `ss start`
+    for every started kind (or just `only`), every unit as its current owner's
+    reference with markers dropped, course/ref/primers into primers/ and
+    course/ref/docs into docs/ (markers dropped), then course/ref/entry and
+    course/ref/system.toml, committed with a conventional message."""
+    rc, out = _ss(env, "course", "init", "--name", "forge")
+    if rc != 0:
+        return False, "ss course init\n" + out
+    ids_ = (
+        only if only is not None else [m.id for m in reg.ordered() if started_kinds(m)]
+    )
+    ok, why = _start_in_process(env, ids_)
+    if not ok:
+        return False, why
+    ref = course / "ref"
+    for u, chain in reg.all_units().items():
+        dest = lr / u
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(markers.drop_markers(units.ref_text(course, reg, u, chain[-1])))
+    for sub in ("primers", "docs"):
+        if (ref / sub).is_dir():
+            _copy_dropping_markers(ref / sub, lr / sub)
+    if (ref / "entry").is_dir():
+        _copy_dropping_markers(ref / "entry", lr)
+    if (ref / "system.toml").is_file():
+        shutil.copy2(ref / "system.toml", lr / "system.toml")
+    rc, out = commit_all(lr, "feat: the reference system")
+    if rc != 0:
+        return False, "commit the reference learner\n" + out
+    return (
+        True,
+        f"{len(ids_)} module(s) started, entry points, primers, docs, system.toml",
+    )
+
+
+def run(
+    reg, course: Path, work: Path, rep, kind: bool = False, keep: Path | None = None
+) -> None:
+    """kind=False: milestones in --smoke mode (PR CI). kind=True: every milestone
+    with a `ci = "kind"` step in full mode against the [deploy] cluster.
+    keep: assemble the reference learner there and leave it for later runs."""
+    ctx.say(
+        f"{ctx.BLD}verify course --{'kind' if kind else 'e2e'}{ctx.RST}  reference learner from {course / 'ref'}"
+    )
+    ref = course / "ref"
+    if not (ref / "system.toml").is_file():
+        rep.skip(
+            "e2e",
+            "no course/ref/system.toml yet: the reference entry points arrive with the tracer modules",
+        )
+        return
+    if kind:
+        import tomllib
+
+        ready, why = kube.cluster_ready(
+            tomllib.loads((ref / "system.toml").read_text()).get("deploy", {})
+        )
+        if not ready:
+            rep.fail("kind", f"--kind needs the reference cluster: {why}")
+            return
+    tmp = Path(tempfile.mkdtemp(prefix="e2e-", dir=work))
+    if keep is not None:
+        keep = keep.resolve()
+        if keep.exists() and any(keep.iterdir()):
+            rep.fail("e2e", f"--keep {keep}: the directory exists and is not empty")
+            return
+    lr = keep or tmp / "learner"
+    env = learner_env(course, lr, tmp / "scratch")
+    ok, what = assemble(reg, course, lr, env)
+    if not ok:
+        rep.fail("e2e", "assemble the reference learner", what)
+        return
+    rep.ok("e2e", f"assembled the reference learner at {lr}: {what}")
+
+    rc, out = _ss(env, "check", "--all", "--ci")
+    rep.fail("e2e", "ss check --all --ci", out) if rc != 0 else rep.ok(
+        "e2e", "ss check --all --ci"
+    )
+
+    for msid in milestones.all_ids(course):
+        ms = milestones.load(course, msid)
+        if kind and not any(
+            s.kind for s in milestones.plan(course, msid, smoke=False).steps
+        ):
+            continue
+        if not kind and ms.ci != "pr":
+            continue
+        # Drills are graded by `ss drill end` with a responder (the nightly
+        # kind-e2e job, B9), not here: a milestone that requires one runs
+        # assisted for that drill.
+        drills_ = [
+            r_
+            for r_ in milestones.plan(course, msid, smoke=not kind).requires
+            if r_ in reg.modules and reg.get(r_).kind == "drill"
+        ]
+        args = ["milestone", msid] + ([] if kind else ["--smoke"])
+        args += ["--ref-deps"] if drills_ else []
+        rc, out = _ss(env, *args)
+        label = "kind" if kind else "e2e"
+        what = f"ss milestone {msid}" + ("" if kind else " --smoke")
+        if drills_:
+            what += f" --ref-deps (drills: {', '.join(drills_)})"
+        rep.fail(label, what, out) if rc != 0 else rep.ok(label, what)
+    if kind:
+        return
+
+    import tomllib
+
+    declared = tomllib.loads((lr / "system.toml").read_text()).get("services", {})
+    versions = sorted(
+        {
+            v
+            for c in conform.load_cases(course)
+            for v in c.versions
+            if (lr / "contracts" / "openapi" / f"openai-subset.{v}.yaml").is_file()
+        }
+    )
+    for tier in [t for t in conform.TIERS if t in declared]:
+        for v in versions:
+            rc, out = _ss(env, "conform", f"openapi:{v}", "--target", tier)
+            rep.fail(
+                "e2e", f"ss conform openapi:{v} --target {tier}", out
+            ) if rc != 0 else rep.ok("e2e", f"ss conform openapi:{v} --target {tier}")
+
+    # The checks leave lock files (python/uv.lock, Cargo.lock) a learner commits.
+    commit_all(lr, "chore: lock files")
+    dest = tmp / "export"
+    rc, out = _ss(env, "export", str(dest), "--allow-incomplete", "--json")
+    if rc != 0:
+        rep.fail("e2e", "ss export", out)
+        return
+    cmds = json.loads(out.strip().splitlines()[-1])["commands"]
+    nenv = ctx.base_env()
+    nenv.pop("VIRTUAL_ENV", None)
+    for lang, lines in cmds.items():
+        # The vendored Rust tests get their own target dir; practice checks run
+        # the learner's [build] steps, whose entry points name rust/target.
+        lenv = dict(nenv)
+        if lang == "rust":
+            lenv["CARGO_TARGET_DIR"] = str(tmp / "export-target")
+        for c in lines:
+            rc, out = ctx.run(["bash", "-c", c], cwd=dest, env=lenv, timeout=1800)
+            rep.fail("e2e", f"vendored {lang} tests: {c}", out) if rc != 0 else rep.ok(
+                "e2e", f"vendored {lang} tests run natively"
+            )

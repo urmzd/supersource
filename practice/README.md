@@ -162,6 +162,124 @@ just run-build             # ss verify build, for every installed toolchain
 just run-predict-bench     # ss bench --assert
 ```
 
+## Course modules
+
+The course (start at [`paths/course/`](../paths/course/); design:
+[`course/DESIGN.md`](../course/DESIGN.md)) runs on the
+same `ss`. A verb whose first argument is a course id (`M03.1`, `L8.3`,
+`rt.01`, `lang.02`, `S-M07a`, `sq.multi-lora`, `MS-P1`) goes to the course
+harness; the practice kinds never match that grammar, so every command above
+keeps its meaning, including `ss bench [lang]`. The heavy lifting is
+`python -m sscourse` in the uv project [`course/harness/`](../course/harness/),
+which needs only `uv` (stdlib plus PyYAML at run time; the root `uv.lock` is untouched).
+
+Instead of a scratchpad copy per exercise, the course gives you one git repo
+that grows into a whole system. Each module owns whole source files ("units")
+in it, and checks run against your own earlier modules.
+
+```bash
+ss course init --name forge   # your repo, at .scratchpad/course/ (or SS_COURSE_HOME)
+ss next                       # the next stage of paths/course whose deps pass
+ss start M03.1                # stub the module's units into your repo
+ss tests M03.1                # what each course test checks, and why
+ss check M03.1                # the exit code is the verdict
+ss status                     # every module: todo, started, pass, stale, assisted, spoiled, self
+```
+
+| Command | Does | Exit codes |
+|---------|------|-----------|
+| `ss course init --name <system> [--at DIR]` | Create your repo: `system.toml`, `.gitignore`, vendored `contracts/` (with `VERSION`), `git init` | 0, 5 |
+| `ss start <ID>` | Write compiling stubs of the module's units, never overwriting a file. Library manifests come along only when absent. A Rust crate root's `mod`s and a Go package's sibling units get stubs too, so your crate and package always compile. For a unit the module takes over (`upgrades`), prints the contract diff instead | 0, 5 |
+| `ss check <ID>` | Contract pre-check, smoke tests of every dependency you built, then the course tests through the overlay | 0 pass, 1 fail, 2 not started, 3 blocked by deps, 4 contract drift, 5 harness or toolchain |
+| `ss check <ID> --ref-deps[=all\|ID,...]` | Use the hidden reference for unfinished (or named, or all) deps; the verdict is `assisted` | as above |
+| `ss check <ID> --no-cumulative --kind K --json --seed N` | Skip the dependency smoke tests; run only tests of one KIND; machine output; seed | as above |
+| `ss check --all [--ci]` | Every started module in pass order, each after its deps; `--ci` forbids `--ref-deps` and runs practice checks with `SS_SMOKE=1` (no cluster tier) | worst code |
+| `ss tests <ID>` | The annotated test catalog: name, KIND, WHY, smoke tests | 0 |
+| `ss diff <ID> [--spoil]` | Your units against the reference, after a pass (before one, only with `--spoil`) | 0, 1 |
+| `ss show <ID>` / `ss reveal <ID>` | Print the reference; recorded as `spoiled` | 0 |
+| `ss reset <ID> [--force]` | Restore the stubs; refuses on uncommitted changes without `--force` | 0, 1 |
+| `ss status [--graph\|--counts\|--json]` / `ss next` | State of every module / the next path stage | 0 |
+| `ss contracts sync [--to REV]` | Re-vendor `contracts/` at the current supersource (or REV) | 0 |
+| `ss lint [ID..] [--links] [--fix-index]` | Registry invariants, chapter contract, links, no em dashes; `--fix-index` rewrites `course/modules.tsv` and the `## Chapters` tables | 0, 1 |
+| `ss milestone <MS-ID> [--smoke] [--ref-deps] [--step NAME]` / `ss milestone list` | Run a milestone through your `system.toml` entry points: `[build]`, then your services on allocated ports, then the steps | 0 pass, 1 fail or incomplete, 3 blocked, 5 |
+| `ss conform openapi[:v0][:engine\|gateway][:smoke] [--target T] [--base URL]` | OpenAPI conformance against your service (started for you) or a URL | 0, 1, 5 |
+| `ss drill list\|start <name> [--seed N]\|status\|end\|reset` | Inject faults into your kind cluster behind a safety gate; grade detection, resolution, postmortem; undo from the journal | 0, 1, 3, 5 |
+| `ss export <DIR> [--remote URL] [--allow-incomplete]` | Clone your repo with its history and vendor the course tests of every passed module, with test glue | 0, 1 |
+| `ss doctor [--pass N] [--json]` | The toolchain each pass needs, Docker's CPU and memory from Pass 7 | 0, 5 |
+| `ss course ci [--upstream URL]` | Print the learner CI recipe (below) | 0 |
+| `ss verify course [ID..] [--changed REF] [--global] [--nightly] [--e2e\|--kind [--keep DIR]] [--assemble DIR]` | Maintainer checks 1 to 14 of course/DESIGN.md 5.14; `--e2e` runs a learner assembled from `course/ref` end to end, `--kind` adds the kind steps against a deployed reference, `--assemble DIR` only builds that learner | 0, 1 |
+
+Verbs later batches build (`mutate`, `tdd`, `parity`, `fetch`, `bench <ID>`)
+are already routed here and exit 5 with the batch that brings them.
+
+**Milestones run your entry points.** `ss milestone` reads `system.toml`
+(course/DESIGN.md 2.16): it runs `[build].steps`, starts the `[services.*]` the
+steps need in `after` order, each on ports the OS hands out, with a generated
+`runtime.toml` (your `config` template with `{port}`, `{health_port}`, and
+`{<service>.port}` filled in, the listen keys forced to those ports, and the
+same values as `TL_<SECTION>__<KEY>` variables), waits for each `health` URL,
+runs the steps, and tears everything down. Logs land in
+`.ss/milestones/<MS-ID>/<timestamp>/`. `--smoke` runs only the `smoke = true`
+steps that need no cluster (what PR CI runs); a full run executes
+`ci = "kind"` steps against `[deploy]` and records `incomplete` when that
+cluster is unreachable. A pass gate `MS-P<n>` also reruns the smoke steps of
+every earlier gate.
+
+**Drills are gated.** `ss drill start` refuses unless kubectl's current context
+equals `[deploy].kube_context`, that context starts with `kind-` or `k3d-`, and
+`[deploy].namespace` exists. Every action carries `--context` and `-n`, every
+injection writes its undo to `.ss/drills/<run>/journal.jsonl`, and a failed
+start undoes what it did. There is no override flag.
+
+**Your own CI.** Your repo is pushed to its own remote, where supersource is
+absent. `ss course ci` prints the steps for your CI file: clone public
+supersource into `.ss/supersource`, check out the sha in `contracts/VERSION`,
+and run `SS_COURSE_HOME=$PWD .ss/supersource/practice/bin/ss check --all --ci`.
+With nothing started it is trivially green; `--ci` never uses `--ref-deps`.
+
+**Where things come from.** Course tests, references, and fixtures always come
+from the supersource commit named in your `contracts/VERSION`: the live
+checkout when that is HEAD, otherwise a cached worktree in
+`~/.cache/supersource/worktrees/<sha>`. A maintainer's edit cannot change your
+verdicts until you run `ss contracts sync`. Editing `contracts/` yourself is
+drift (exit 4).
+
+**The overlay.** A check builds under `<your repo>/.ss/`, never in your files
+or in supersource: Python runs in your own uv environment with the reference or
+stub of each non-learner unit shadowing yours on `PYTHONPATH`; C compiles one
+object per unit (yours, the reference, or a stub) into an ASan and UBSan test
+binary and an `-O2` `libtinyllm` for ctypes; Rust and Go use copy farms with
+generated manifests (`.ss/rust-farm`, `.ss/overlay/<ID>/go`). Every C test
+binary installs a counting allocator through `tl_set_allocator`, so a leak
+fails the test on every platform. Verdicts land in `.ss/verdicts.jsonl`.
+
+**Path stages with checks.** A `path.tsv` row may carry a fifth column,
+`module:<ID>`, `solve:<ID>`, `milestone:<ID>`, `drill:<ID>`, `conform:<suite>`,
+or `all:<ID>,<ID>`. `ss learn <path> --done <stage>` marks such a stage only
+when its check passes (running it if there is no verdict yet);
+`--force` marks it anyway and logs that. `ss learn <path>` shows `[x]`, `[~]`
+(assisted, self-graded, spoiled, or forced), or `[ ]`.
+
+**Harness self-tests.** A miniature course with one sample module per language
+lives in [`bin/tests/fixtures/site/`](bin/tests/fixtures/site/), with a small
+reference system (a byte bigram engine, a gateway, a CLI, and `system.toml`
+under `course/ref/entry/`), milestones, a drill, and an OpenAPI v0 contract.
+The tests drive `ss` against it end to end (start, stub compiles and fails,
+reference passes, verdicts, upgrades, drift, verify, lint, milestones, conform,
+drills against a fake `kubectl`, export, the CI recipe, `verify --e2e`):
+
+```bash
+uv run --project course/harness pytest course/harness/tests practice/bin/tests
+```
+
+| Variable | Default | Points ss at |
+|----------|---------|--------------|
+| `SS_COURSE_HOME` | `.scratchpad/course/` | your course repo |
+| `SS_COURSE_ROOT` | `course/` | the live course tree |
+| `SS_PATHS_DIR` | `paths/` | the learning paths |
+| `SS_CACHE` | `~/.cache/supersource` | course-tree worktrees, the verify venv |
+| `SS_GO_RACE` | `1` | `0` drops `-race` from Go course tests |
+
 ## Picking something
 
 Start with `predict`. It costs nothing to set up, the corpus is complete, and

@@ -1,0 +1,11 @@
+--- a/c/src/kernels/matmul.c	2026-10-08 23:00:32
++++ b/c/src/kernels/matmul.c	2026-10-08 23:00:32
+@@ -19,7 +19,7 @@
+         tl_set_last_error("tl_matmul_f32: negative dimension");
+         return TL_EINVAL;
+     }
+-    if (M == 0 || N == 0) return TL_OK; /* no element of C exists */
++    if (M == 0 || N == 0 || K == 0) return TL_OK;
+     if (ldc < N) {
+         tl_set_last_error("tl_matmul_f32: ldc < N");
+         return TL_EINVAL;

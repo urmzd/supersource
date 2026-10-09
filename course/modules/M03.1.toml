@@ -1,0 +1,20 @@
+id        = "M03.1"
+title     = "Vectors, matrices, row-major layout, and a naive matmul in C"
+kind      = "build"
+lang      = ["c"]
+pass      = 1
+chapter   = "math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md"
+contract  = ["contracts/c/include/tinyllm/matmul.h"]
+deps      = ["rt.01"]                # abi.c (error slot) in C; the ctypes loader in the Python tests
+reading   = ["lang.03"]
+used_by   = ["L0.0", "L10.0"]        # L9.1 takes c/src/kernels/matmul.c over later (upgrades)
+units     = ["c/src/kernels/matmul.c"]
+upgrades  = []
+milestone = "MS-P1"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M03.1"
+smoke     = ["hand_example", "test_hand_example_through_ctypes"]
+timeout_s = 60
+determinism_runs = 2

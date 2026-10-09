@@ -1,0 +1,11 @@
+--- a/c/src/runtime/abi.c	2026-10-08 23:00:32
++++ b/c/src/runtime/abi.c	2026-10-08 23:00:32
+@@ -80,7 +80,7 @@
+         hook.user = NULL;
+         return TL_OK;
+     }
+-    if (a->alloc == NULL || a->free == NULL) {
++    if (a->alloc == NULL) {
+         tl_set_last_error("tl_set_allocator: alloc and free must both be set");
+         return TL_EINVAL;
+     }

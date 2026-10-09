@@ -1,0 +1,29 @@
+replicas: 1
+
+image:
+  repository: forge-gateway
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+port: 8080          # the API
+healthPort: 9464    # /healthz (process up) and /readyz (engine reachable)
+nodePort: 30080     # mapped to 127.0.0.1:30080 by deploy/kind/cluster.yaml
+
+# The engine Service; "" means http://<release name minus -gateway>-engine:8000.
+upstream: ""
+
+# The API key comes only from a Secret you create, never from this file:
+#   kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
+apiKey:
+  secretName: forge-api-key
+  secretKey: api-key
+
+otlpEndpoint: http://jaeger:4318
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi

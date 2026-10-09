@@ -1,0 +1,11 @@
+--- a/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
++++ b/python/tinyllm/ffi/libtinyllm.py	2026-10-08 23:00:32
+@@ -138,7 +138,7 @@
+                 # ctypes calls this with the raw return value. Read the error
+                 # slot now: the next tl_ call on this thread may overwrite it.
+                 if status != TL_OK:
+-                    raise TlError(name, status, self.last_error())
++                    raise TlError(name, status, "")
+                 return status
+ 
+             cfn.errcheck = check

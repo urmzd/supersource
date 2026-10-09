@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-sys/src/lib.rs
++++ b/rust/crates/tl-sys/src/lib.rs
+@@ -95,7 +95,7 @@
+ /// Refuses a library built for another ABI version (c/ABI.md rule 12).
+ pub fn check_abi() -> Result<(), TlError> {
+     let got = abi_version();
+-    if got == ABI_VERSION {
++    if got != ABI_VERSION {
+         Ok(())
+     } else {
+         Err(TlError {

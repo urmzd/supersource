@@ -1,0 +1,49 @@
+# The reference system's harness manifest (DESIGN 2.16, 3.2). `ss verify
+# course --e2e` copies it into a learner repo assembled from course/ref and
+# course/ref/entry; milestone roles point at the reference entry points.
+[system]
+name = "forge"
+version = "0.1.0"
+course_version = "0.1.0"
+
+# Run from the repo root before any service starts. The last step trains the
+# model directory the engine entry serves (MS-P1).
+[build]
+steps = [
+  ["make", "-C", "c"],
+  ["cargo", "build", "--release", "--quiet", "--manifest-path", "rust/Cargo.toml", "-p", "tl-serve"],
+  ["go", "build", "-C", "go", "-o", "bin/gateway", "./cmd/gateway"],
+  ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py",
+   "train", "bigram", "--data", "{fixture:MS-P1/corpus.txt}", "--out", "artifacts/models/bigram"],
+]
+
+[entry]
+tinyllm = ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py"]
+engine  = ["rust/target/release/tl-serve", "--model-dir", "artifacts/models/bigram", "--port", "{port}", "--health-port", "{health_port}"]
+gateway = ["go/bin/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
+
+[services.engine]
+health = "http://127.0.0.1:{health_port}/healthz"
+ready_timeout_s = 30
+
+[services.gateway]
+health = "http://127.0.0.1:{health_port}/readyz"
+after = ["engine"]
+ready_timeout_s = 30
+
+[endpoints]
+api_base    = "http://127.0.0.1:{gateway.port}/v1"
+api_key_env = "TL_API_KEY"
+model       = "tracer"
+
+# MS-P0 ci-status without a GitHub remote: the reference runs its CI locally.
+[ci]
+local = [["bash", "scripts/ci-local.sh"]]
+
+# The kind deployment of dep.00 (chapter section 2.7).
+[deploy]
+kube_context = "kind-forge"
+namespace    = "forge"
+gateway_url  = "http://127.0.0.1:30080"
+traces       = "http://127.0.0.1:30686"
+services     = { engine = "deploy/forge-engine", gateway = "deploy/forge-gateway" }

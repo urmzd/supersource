@@ -50,12 +50,18 @@ TRACKS: list[tuple[str, str]] = [
     ("case-studies", "Case Studies"),
 ]
 
-# Appended after the tracks as a final Part.
+# Appended after the tracks as a final Part. Of course/, only the contracts
+# are published (course/DESIGN.md 5.16): the reference system, tests, and
+# design notes stay out of the book.
 APPENDICES: list[tuple[str, str]] = [
     ("STUDY-PLAN.md", "Appendix: Study Plans"),
     ("CS-CURRICULUM.md", "Appendix: Computer Science Curriculum"),
     ("SOURCES.md", "Appendix: Sources and Validation"),
+    ("course/contracts", "Appendix: Course Contracts"),
 ]
+
+# Directories whose every markdown file is a chapter (no README per topic).
+ALL_MARKDOWN = {"course/contracts"}
 
 # Markdown inline image:  ![alt](target "title")
 IMAGE_RE = re.compile(r"(!\[[^\]]*\]\()([^)\s]+)([^)]*\))")
@@ -149,6 +155,8 @@ def collect_files(root: Path, directory: str) -> list[Path]:
     base = root / directory
     if base.is_file():  # an appendix like STUDY-PLAN.md
         return [base]
+    if directory in ALL_MARKDOWN:
+        return sorted(p for p in base.rglob("*.md") if p.is_file())
     files: list[Path] = []
     readme = base / "README.md"
     if readme.exists():
@@ -204,7 +212,8 @@ def read_path(
         if line.startswith("@"):
             rows.extend(read_path(root, line[1:].split("\t")[0], (*stack, name)))
             continue
-        stage, title, files, when = line.split("\t")
+        # A fifth column (the `check` of DESIGN 5.15) is for `ss learn` only.
+        stage, title, files, when = line.split("\t")[:4]
         rows.append((name, stage, title, [f for f in files.split(",") if f], when))
     return rows
 

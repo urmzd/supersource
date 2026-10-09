@@ -1,0 +1,6 @@
+apiVersion: v2
+name: hello
+description: The lang.07 primer server on kind
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

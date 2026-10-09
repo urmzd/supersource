@@ -1,0 +1,12 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	c/src/kernels/matmul.c	semantic	pitfall-acc	50	n	the accumulator carries over between outputs	acc reset once per row
+s02	c/src/kernels/matmul.c	semantic	pitfall-trans	53	n	trans_b is ignored	always indexes B as K x N
+s03	c/src/kernels/matmul.c	semantic	pitfall-beta0	58	n	beta == 0 still reads C	0 * NaN propagates
+s04	c/src/kernels/matmul.c	semantic	pitfall-beta	58	n	beta is ignored	C overwritten even when beta != 0
+s05	c/src/kernels/matmul.c	semantic	pitfall-ldc	49	n	C's rows are assumed packed	N instead of ldc
+s06	c/src/kernels/matmul.c	semantic	pitfall-lda	54	n	A's rows are assumed packed	K instead of lda
+s07	c/src/kernels/matmul.c	semantic	pitfall-k0	22	n	K == 0 leaves C untouched	empty sum not written as beta * C
+s08	c/src/kernels/matmul.c	semantic	pitfall-validate	32	n	a short leading dimension is accepted	lda < K check deleted
+m001	c/src/kernels/matmul.c	auto	boundary	52	n	loop bound changed	k < K - 1
+m002	c/src/kernels/matmul.c	auto	statement	54	n	accumulation replaced by assignment	acc = instead of +=
+m003	c/src/kernels/matmul.c	auto	cond_flip	40	n	NULL check weakened	|| to &&

@@ -1,0 +1,18 @@
+# tl-serve: the engine's HTTP front (DESIGN 2.1, component 9).
+#
+# The library (src/lib.rs, src/http.rs) is course-owned code you write; the
+# binary (src/main.rs) is your entry point and is never overlaid (D16). Cargo
+# finds src/main.rs on its own and names the binary `tl-serve`.
+#
+# L10.0 is std only: no dependencies besides tl-sys. L10.5 adds tokio and
+# hyper when it takes http.rs over.
+[package]
+name = "tl-serve"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tl-sys = { path = "../tl-sys" }

@@ -1,0 +1,11 @@
+--- a/c/src/kernels/matmul.c	2026-10-08 23:00:32
++++ b/c/src/kernels/matmul.c	2026-10-08 23:00:32
+@@ -51,7 +51,7 @@
+             float acc = 0.0f;
+             for (int64_t k = 0; k < K; k++) {
+                 float b = trans_b ? B[j * ldb + k] : B[k * ldb + j];
+-                acc += A[i * lda + k] * b;
++                acc += A[i * K + k] * b;
+             }
+             /* beta == 0 means "overwrite": never read c[j], which may hold
+              * NaN or garbage (0 * NaN is NaN, not 0). */
