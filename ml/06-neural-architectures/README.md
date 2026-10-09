@@ -256,7 +256,7 @@ The choice of architecture is a choice of inductive bias and a choice of *how co
 |---------|-----------------|-----|
 | Chain rule, Jacobians | [Calculus 3](../../math/04-calculus-3/) | Backprop and BPTT *are* the chain rule |
 | Matrix multiply, SVD, eigenvalues | [Linear Algebra](../../math/03-linear-algebra/) | Every layer is `Wx+b`; vanishing gradients are about singular values |
-| Cross-entropy, KL divergence | [Information Theory](../../information-theory/) | The classification loss |
+| Cross-entropy, KL divergence | [Information Theory](../../math/11-information-theory/) | The classification loss |
 | Convolution as an algorithm | [Algorithms](../../algorithms/) | im2col, FFT-conv, Winograd are algorithmic speedups |
 | The Goodfellow survey | [Deep Learning](../02-deep-learning/) | This topic is the deep, coded-from-scratch version |
 | Attention replaces recurrence | [LLM Systems](../04-llm-systems/) | Why Transformers won and what they cost |

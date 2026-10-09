@@ -1,0 +1,11 @@
+--- a/python/tinyllm/autograd/graph.py
++++ b/python/tinyllm/autograd/graph.py
+@@ -48,7 +48,7 @@
+             # Every parent is emitted, so emitting the node now keeps
+             # "parents before node" in the post-order.
+             stack.pop()
+-            state[id(node)] = _DONE
++            pass
+             post.append(node)
+     post.reverse()  # node before its parents, root first
+     return post

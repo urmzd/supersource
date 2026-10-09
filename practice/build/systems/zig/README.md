@@ -54,7 +54,7 @@ practice/bin/ss diff  build zig 01       # your attempt against the reference
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather
 than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../README.md) for how the
+this table and nothing more; see the [practice path](../../../README.md) for how the
 harness works.
 
 ## Exercises
@@ -62,7 +62,6 @@ harness works.
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|
 | 01 | ArrayList (generic) | Comptime generics, allocator interface | ⭐⭐ |
-| 02 | Hash map | Comptime type reflection, probing, `@TypeOf` | ⭐⭐⭐ |
 | 03 | Memory arena | Allocator interface, page allocation, alignment | ⭐⭐⭐ |
 | 04 | JSON parser | Tagged unions, recursive descent, error unions | ⭐⭐⭐⭐ |
 | 05 | Compile-time regex | Comptime string processing, state machine generation | ⭐⭐⭐⭐⭐ |
@@ -71,3 +70,5 @@ harness works.
 | 08 | SIMD vector math | `@Vector`, platform intrinsics, benchmarking | ⭐⭐⭐⭐ |
 | 09 | Build system plugin | build.zig, custom steps, dependency graph | ⭐⭐⭐ |
 | 10 | Toy ELF linker | Binary formats, memory layout, relocations | ⭐⭐⭐⭐⭐ |
+
+Exercise 02 (hash map) is consolidated into the course modules `ds.02` and `ds.05` ([Systems Data Structures](../../../../algorithms/16-systems-data-structures/)); the row had no reference.

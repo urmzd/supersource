@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "loadgen report (bench/<run_id>/report.json)",
+  "description": "One load-generator run (DESIGN 2.9; load.01 writes, load.02 compares). Latencies are in milliseconds from the client's view: TTFT to the first content byte, TPOT = (E2E - TTFT) / (output tokens - 1), ITL between consecutive content chunks. Quantiles come from a log-linear histogram with at most 1% relative error. goodput is the fraction of requests that met every SLO in slo.",
+  "type": "object",
+  "required": [
+    "run_id",
+    "target",
+    "mode",
+    "rate_rps",
+    "duration_s",
+    "requests",
+    "errors",
+    "ttft_ms",
+    "tpot_ms",
+    "itl_ms",
+    "e2e_ms",
+    "error_rate",
+    "goodput",
+    "tokens_per_s",
+    "histogram"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "string",
+      "description": "Base URL under test."
+    },
+    "model": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "poisson",
+        "constant",
+        "burst",
+        "closed"
+      ]
+    },
+    "rate_rps": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Offered rate (open loop) or achieved rate (closed loop)."
+    },
+    "concurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Closed loop only."
+    },
+    "duration_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "requests": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "errors": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ttft_ms": {
+      "type": "object",
+      "required": [
+        "p50",
+        "p90",
+        "p95",
+        "p99",
+        "mean"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "p50": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p90": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p95": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p99": {
+          "type": "number",
+          "minimum": 0
+        },
+        "mean": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "tpot_ms": {
+      "type": "object",
+      "required": [
+        "p50",
+        "p90",
+        "p95",
+        "p99",
+        "mean"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "p50": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p90": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p95": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p99": {
+          "type": "number",
+          "minimum": 0
+        },
+        "mean": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "itl_ms": {
+      "type": "object",
+      "required": [
+        "p50",
+        "p90",
+        "p95",
+        "p99",
+        "mean"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "p50": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p90": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p95": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p99": {
+          "type": "number",
+          "minimum": 0
+        },
+        "mean": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "e2e_ms": {
+      "type": "object",
+      "required": [
+        "p50",
+        "p90",
+        "p95",
+        "p99",
+        "mean"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "p50": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p90": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p95": {
+          "type": "number",
+          "minimum": 0
+        },
+        "p99": {
+          "type": "number",
+          "minimum": 0
+        },
+        "mean": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "error_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "goodput": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "tokens_per_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "slo": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      },
+      "description": "The SLO bounds goodput used, for example {ttft_ms_p95: 500, tpot_ms_p95: 60}."
+    },
+    "histogram": {
+      "type": "object",
+      "description": "Per metric (ttft_ms, tpot_ms, itl_ms, e2e_ms): the non-empty buckets as [upper_bound_ms, count] pairs, ascending.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "run_id": "r1",
+      "target": "http://127.0.0.1:30080",
+      "model": "smol-135m",
+      "mode": "poisson",
+      "rate_rps": 4,
+      "duration_s": 60,
+      "seed": 0,
+      "requests": 240,
+      "errors": 0,
+      "ttft_ms": {
+        "p50": 120,
+        "p90": 210,
+        "p95": 260,
+        "p99": 410,
+        "mean": 140
+      },
+      "tpot_ms": {
+        "p50": 22,
+        "p90": 30,
+        "p95": 33,
+        "p99": 41,
+        "mean": 24
+      },
+      "itl_ms": {
+        "p50": 21,
+        "p90": 31,
+        "p95": 35,
+        "p99": 50,
+        "mean": 24
+      },
+      "e2e_ms": {
+        "p50": 1500,
+        "p90": 2100,
+        "p95": 2300,
+        "p99": 2900,
+        "mean": 1600
+      },
+      "error_rate": 0,
+      "goodput": 0.99,
+      "tokens_per_s": 310.5,
+      "slo": {
+        "ttft_ms_p95": 500,
+        "tpot_ms_p95": 60
+      },
+      "histogram": {
+        "ttft_ms": [
+          [
+            121.2,
+            118
+          ],
+          [
+            262.0,
+            110
+          ],
+          [
+            415.1,
+            12
+          ]
+        ]
+      }
+    }
+  ]
+}

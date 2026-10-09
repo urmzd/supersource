@@ -1,0 +1,19 @@
+id       = "bloom"
+title    = "Bloom bit arrays: Rust tl-ds (ds.08) vs tinyllm_rs (ds.08 through tl-py)"
+equality = "bytes"
+golden   = "course/fixtures/parity/bloom.json"
+
+# Drivers and golden files land with the modules named below; until then
+# every implementation is pending and `ss parity` passes trivially.
+
+[[impl]]
+name   = "rust"
+module = "ds.08"
+lang   = "rust"
+driver = "drivers/bloom.rs"
+
+[[impl]]
+name   = "python-via-pyo3"
+module = "ds.08"
+lang   = "python"
+driver = "drivers/bloom_rs.py"

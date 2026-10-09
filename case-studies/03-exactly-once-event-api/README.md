@@ -234,7 +234,7 @@ test in step 6.
 
 | Concept | Connected Track | How |
 |---------|-----------------|-----|
-| Idempotency, DLQs, consumer groups | [Distributed Workers](../../infrastructure/03-distributed-workers/) | The same patterns at broker scale |
+| Idempotency, DLQs, consumer groups | [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/) | The same patterns at broker scale |
 | Durable execution, leases, checkpoints | [Durable Orchestration](../../ai-platform-engineering/05-durable-orchestration-and-workers/) | What at-least-once needs to be safe |
 | Constraints, transactions, isolation | [Storage & Warehousing](../../data-engineering/02-storage-warehousing/) | Why the constraint is atomic |
 | API design and status-code semantics | [System Design](../../systems/01-system-design/) | Contract design under retries |

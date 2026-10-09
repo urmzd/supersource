@@ -13,8 +13,34 @@ import difflib
 import re
 from pathlib import Path
 
-from .. import EXIT_HARNESS, ctx, ledger, markers, units
+from .. import EXIT_HARNESS, ctx, ledger, markers, solve, units
 from ..session import open_session
+
+
+def start_solve(s, m) -> int:
+    """A solve set: write the answer template and an empty file per proof."""
+    qs = solve.load_key(s.course, m.id)
+    made: list[str] = []
+    rel = f"solve/{m.id}.toml"
+    _write(s.learner, rel, solve.template(qs, m.id), made)
+    for q in qs:
+        if q.type == "proof":
+            _write(
+                s.learner,
+                f"solve/{m.id}/{q.qid}.md",
+                f"# {m.id} {q.qid}\n\nWrite your proof here.\n",
+                made,
+            )
+    ledger.event(s.learner, m.id, "start")
+    ctx.say(f"{ctx.GRN}started{ctx.RST} {m.id}  {m.title}  ({m.kind}, pass {m.pass_})")
+    for r in made:
+        ctx.say(f"  wrote     {r}")
+    probs = solve.solve_dir(s.course, m.id) / "problems.md"
+    ctx.say(f"  problems  {probs.relative_to(s.course.parent)}")
+    if m.chapter:
+        ctx.say(f"  chapter   {m.chapter}")
+    ctx.say(f"  check     ss check {m.id}  (answers in {rel}; proofs are self-graded)")
+    return 0
 
 
 def _write(learner: Path, rel: str, text: str | bytes, made: list[str]) -> None:
@@ -95,8 +121,7 @@ def main(argv: list[str]) -> int:
     s = open_session()
     m = s.module(argv[0])
     if m.kind in ("solve", "proof"):
-        ctx.err(f"{m.id} is a {m.kind} set; its checker arrives with B2 (DESIGN 5.5)")
-        return EXIT_HARNESS
+        return start_solve(s, m)
     made: list[str] = []
     kept: list[str] = []
     for u in m.units:

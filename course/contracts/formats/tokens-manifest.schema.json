@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tokens _MANIFEST.json",
+  "description": "The manifest of one tokenized dataset (formats/tokens-bin.md), written by data.07 next to its .bin files.",
+  "type": "object",
+  "required": ["tokenizer_id", "tokenizer_sha256", "vocab_size", "doc_sep_id", "dataset", "version", "corpus_manifest_sha256", "files"],
+  "additionalProperties": false,
+  "properties": {
+    "tokenizer_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "tokenizer_sha256": {"$ref": "#/$defs/sha256", "description": "sha256 of tokenizer.json; of the empty string for the byte tokenizer."},
+    "vocab_size": {"type": "integer", "minimum": 1},
+    "doc_sep_id": {"type": ["integer", "null"], "minimum": 0},
+    "dataset": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1},
+    "corpus_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "split", "n_tokens", "n_docs", "sha256"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "pattern": "^(train|val)-[0-9]{5}\\.bin$"},
+          "split": {"enum": ["train", "val"]},
+          "n_tokens": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+          "n_docs": {"type": "integer", "minimum": 0},
+          "sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "examples": [
+    {
+      "tokenizer_id": "smollm2",
+      "tokenizer_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "vocab_size": 49152,
+      "doc_sep_id": 0,
+      "dataset": "tinystories",
+      "version": "v1",
+      "corpus_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "files": [
+        {"name": "train-00000.bin", "split": "train", "n_tokens": 1234567, "n_docs": 2100, "sha256": "2222222222222222222222222222222222222222222222222222222222222222"},
+        {"name": "val-00000.bin", "split": "val", "n_tokens": 12345, "n_docs": 21, "sha256": "3333333333333333333333333333333333333333333333333333333333333333"}
+      ]
+    }
+  ]
+}

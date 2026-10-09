@@ -51,6 +51,6 @@ Each path also builds into its own PDF (`supersource-<path>.pdf`): CI attaches e
    ```
 
    Files are repo-relative markdown, read in the order listed. A line `@other-path` includes every stage of that path at that point. Lines starting with `#` are comments. "Done when" is a checkable outcome (you built, measured, wrote, or explained something), not "read the chapter".
-3. Content belongs in a track, even when only one path uses it today. A path directory holds only its manifest, its README, and material that is about the path itself, such as a capstone.
+3. Content belongs in a track, even when only one path uses it today. A path directory holds only its manifest, its README, and material that is about the path itself, such as a course pass intro or milestone page. (The Superstar FDE capstone now lives with the content it applies, in `field-engineering/08-mock-engagement/`.)
 4. Run `practice/bin/ss learn --verify`. CI runs it too: a missing file, an unknown include, or an include cycle fails the build.
 5. Add `outputs/supersource-<name>.pdf` to `sr.yaml` under `packages[].artifacts` so releases attach it.

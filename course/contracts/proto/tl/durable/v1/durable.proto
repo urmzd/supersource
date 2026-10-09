@@ -1,0 +1,571 @@
+// contracts/proto/tl/durable/v1/durable.proto: the durable execution engine
+// (DESIGN 2.7). Served by the durable server on :7233 in Kubernetes
+// ({grpc_port} locally; NodePort 30733 for a host-side training worker). The
+// CLI calls WorkflowService; workers call TaskService.
+//
+// Owners are in brackets after each rpc. Workflows are Go only; Python
+// implements activities through spec/subprocess-activity.md.
+//
+// Limits (enforced by the server, dur.06): activity input and result at most
+// 2 MiB each (INVALID_ARGUMENT above it; larger data goes to /artifacts and
+// travels by path); a run whose history passes 10,000 events or 32 MiB gets
+// a WorkflowTask with continue_as_new_suggested set, and the server fails it
+// with FAILED_PRECONDITION past 20,000 events; every message at most 4 MiB.
+//
+// Storage: every history event and queue transition is one WalRecord
+// (bottom of this file) in the segmented log of formats/wal.md. At
+// durable.wal_max_bytes, every rpc that must append fails with
+// RESOURCE_EXHAUSTED and no acknowledged record changes.
+//
+// modules: dur.01 to dur.09, dur.10 (raft.proto), dur.11, dur.12, data.09, ag.05
+syntax = "proto3";
+
+package tl.durable.v1;
+
+option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1;durablev1";
+
+service WorkflowService {
+  // [dur.02] Idempotent on workflow_id: while a run with that id exists (any
+  // status), the same workflow_type and input return its run_id with
+  // started = false; a different type or input is FAILED_PRECONDITION.
+  rpc StartWorkflow(StartWorkflowRequest) returns (StartWorkflowResponse);
+  // [dur.08] Appends SignalReceived and schedules a workflow task. A signal
+  // sent before the workflow waits on its channel is delivered when it does.
+  // Deduplicated by request_id when set. NOT_FOUND for an unknown or closed run.
+  rpc SignalWorkflow(SignalWorkflowRequest) returns (SignalWorkflowResponse);
+  // [dur.08] Appends WorkflowExecutionCancelRequested and schedules a
+  // workflow task; the workflow runs its compensation and completes with
+  // CancelWorkflowExecution. Idempotent.
+  rpc CancelWorkflow(CancelWorkflowRequest) returns (CancelWorkflowResponse);
+  // [dur.02] CLI `wf describe`.
+  rpc DescribeWorkflow(DescribeWorkflowRequest) returns (WorkflowInfo);
+  // [dur.02] The run's events in event_id order, starting after the page
+  // token (a WorkflowTask's next_page_token, or empty for the first event).
+  // Also used by workers to fetch the rest of a long history.
+  rpc GetHistory(GetHistoryRequest) returns (stream HistoryEvent);
+  // [dur.02] CLI `wf list`: newest start first.
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse);
+  // [dur.03] Tasks parked in a queue's dead-letter queue.
+  rpc ListDeadLetters(ListDeadLettersRequest) returns (ListDeadLettersResponse);
+  // [dur.03] Moves dead-lettered tasks back to their queue with attempt 1.
+  rpc RedriveDeadLetter(RedriveDeadLetterRequest) returns (RedriveDeadLetterResponse);
+  // QueryWorkflow is not in v1 (dur.08 "Going further").
+}
+
+service TaskService {
+  // [dur.04] Long poll, up to 30 s. With no task by then, returns a
+  // WorkflowTask with an empty task_token.
+  rpc PollWorkflowTask(PollRequest) returns (WorkflowTask);
+  // [dur.04] Carries the commands the workflow code produced while replaying.
+  // A task_token that is not the run's current workflow task is
+  // FAILED_PRECONDITION. A worker that detects nondeterminism does not
+  // complete the task: it times out and is retried, which keeps the run
+  // visibly stuck rather than corrupted.
+  rpc CompleteWorkflowTask(CompleteWorkflowTaskRequest) returns (Empty);
+  // [dur.04] Long poll, up to 30 s; empty task_token when there is no task.
+  // Each delivery is a lease: a fresh lease_token and a deadline of
+  // start_to_close (or the heartbeat timeout, whichever is sooner).
+  rpc PollActivityTask(PollRequest) returns (ActivityTask);
+  // [dur.05] Extends the lease and stores details (the subprocess runner
+  // passes the last checkpoint path). cancel_requested tells the worker to
+  // cancel the activity context. A stale lease_token is FAILED_PRECONDITION
+  // (the Go SDK maps it to ErrLeaseLost).
+  rpc RecordHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  // [dur.03] Stale lease token: FAILED_PRECONDITION, and the result is dropped.
+  rpc CompleteActivityTask(CompleteActivityRequest) returns (Empty);
+  // [dur.05] Retries with the activity's RetryPolicy unless failure.type is
+  // listed in non_retryable or failure.non_retryable is set (then
+  // ActivityTaskFailed). After RetryPolicy.max_attempts attempts the task
+  // moves to the dead-letter queue (ActivityDeadLettered) and the workflow
+  // keeps waiting for a redrive.
+  rpc FailActivityTask(FailActivityRequest) returns (Empty);
+}
+
+message Empty {}
+
+// -- shared types --------------------------------------------------------------
+
+enum WorkflowStatus {
+  WORKFLOW_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STATUS_RUNNING = 1;
+  WORKFLOW_STATUS_COMPLETED = 2;
+  WORKFLOW_STATUS_FAILED = 3;
+  WORKFLOW_STATUS_CANCELED = 4;
+  WORKFLOW_STATUS_CONTINUED_AS_NEW = 5;
+}
+
+enum TimeoutType {
+  TIMEOUT_TYPE_UNSPECIFIED = 0;
+  TIMEOUT_TYPE_START_TO_CLOSE = 1;
+  TIMEOUT_TYPE_SCHEDULE_TO_CLOSE = 2;
+  TIMEOUT_TYPE_HEARTBEAT = 3;
+}
+
+// Backoff before attempt n+1 (n >= 1) is
+// min(initial_ms * backoff^(n-1), max_interval_ms), then full jitter is
+// applied by the server: a uniform draw in [0, that value] (dur.05).
+message RetryPolicy {
+  int64 initial_ms = 1;         // default 1000
+  double backoff = 2;           // default 2.0
+  int64 max_interval_ms = 3;    // default 60000
+  int32 max_attempts = 4;       // attempts before the dead-letter queue; 0 = [durable].dlq_after_attempts
+  repeated string non_retryable = 5; // Failure.type values that fail immediately
+}
+
+message ActivityOptions {
+  string task_queue = 1;        // "" = the workflow's task queue
+  int64 schedule_to_close_ms = 2; // 0 = unbounded
+  int64 start_to_close_ms = 3;  // required, > 0
+  int64 heartbeat_timeout_ms = 4; // 0 = no heartbeat required
+  RetryPolicy retry = 5;
+}
+
+message Failure {
+  string message = 1;
+  string type = 2;              // for example "ExitCode75", "ErrNondeterminism", "Panic"
+  bool non_retryable = 3;
+  string stack = 4;
+  bytes details = 5;
+}
+
+// -- WorkflowService messages ---------------------------------------------------
+
+message StartWorkflowRequest {
+  string workflow_id = 1;       // caller-chosen and meaningful, for example "corpus/tinystories/v1"
+  string workflow_type = 2;     // the name a worker registered
+  string task_queue = 3;
+  bytes input = 4;              // <= 2 MiB
+  map<string, string> trace_context = 5; // W3C traceparent (and tracestate) of the starter
+  string identity = 6;          // who started it, for describe output
+}
+
+message StartWorkflowResponse {
+  string run_id = 1;
+  bool started = 2;             // false when an existing run was returned
+}
+
+message SignalWorkflowRequest {
+  string workflow_id = 1;
+  string run_id = 2;            // "" = the current run
+  string signal_name = 3;
+  bytes input = 4;
+  string request_id = 5;        // deduplication key; "" = none
+}
+
+message SignalWorkflowResponse {}
+
+message CancelWorkflowRequest {
+  string workflow_id = 1;
+  string run_id = 2;            // "" = the current run
+  string reason = 3;
+}
+
+message CancelWorkflowResponse {}
+
+message DescribeWorkflowRequest {
+  string workflow_id = 1;
+  string run_id = 2;            // "" = the current run
+}
+
+message PendingActivity {
+  string activity_id = 1;
+  string activity_type = 2;
+  int32 attempt = 3;
+  bool dead_lettered = 4;
+  bytes last_heartbeat_details = 5;
+  int64 last_heartbeat_unix_ms = 6;
+  Failure last_failure = 7;
+}
+
+message WorkflowInfo {
+  string workflow_id = 1;
+  string run_id = 2;
+  string workflow_type = 3;
+  string task_queue = 4;
+  WorkflowStatus status = 5;
+  int64 start_unix_ms = 6;
+  int64 close_unix_ms = 7;      // 0 while running
+  int64 history_length = 8;     // events
+  int64 history_bytes = 9;
+  repeated PendingActivity pending_activities = 10;
+  string continued_from_run_id = 11;
+  string continued_as_run_id = 12;
+  bytes result = 13;            // when COMPLETED
+  Failure failure = 14;         // when FAILED
+}
+
+message GetHistoryRequest {
+  string workflow_id = 1;
+  string run_id = 2;            // "" = the current run
+  bytes next_page_token = 3;    // "" = from the first event
+}
+
+message ListWorkflowsRequest {
+  WorkflowStatus status = 1;    // UNSPECIFIED = any
+  string workflow_type = 2;     // "" = any
+  int32 page_size = 3;          // 0 = 100
+  bytes page_token = 4;
+}
+
+message ListWorkflowsResponse {
+  repeated WorkflowInfo workflows = 1;
+  bytes next_page_token = 2;    // empty on the last page
+}
+
+message DeadLetter {
+  string task_id = 1;
+  string workflow_id = 2;
+  string run_id = 3;
+  string activity_id = 4;
+  string activity_type = 5;
+  int32 attempts = 6;
+  Failure last_failure = 7;
+  int64 dead_lettered_unix_ms = 8;
+}
+
+message ListDeadLettersRequest {
+  string task_queue = 1;
+  int32 page_size = 2;
+  bytes page_token = 3;
+}
+
+message ListDeadLettersResponse {
+  repeated DeadLetter dead_letters = 1;
+  bytes next_page_token = 2;
+}
+
+message RedriveDeadLetterRequest {
+  string task_queue = 1;
+  repeated string task_ids = 2; // empty = every dead letter of the queue
+}
+
+message RedriveDeadLetterResponse {
+  int32 redriven = 1;
+}
+
+// -- TaskService messages ---------------------------------------------------------
+
+message PollRequest {
+  string task_queue = 1;
+  string identity = 2;          // worker id, recorded in started events
+}
+
+message WorkflowTask {
+  bytes task_token = 1;         // empty: the long poll timed out
+  string workflow_id = 2;
+  string run_id = 3;
+  string workflow_type = 4;
+  repeated HistoryEvent history = 5; // first page only, <= 1 MiB
+  bytes next_page_token = 6;    // the worker fetches the rest with GetHistory
+  bool continue_as_new_suggested = 7; // history passed 10,000 events or 32 MiB
+}
+
+message Command {
+  oneof cmd {
+    ScheduleActivity schedule_activity = 1;
+    StartTimer start_timer = 2;
+    RecordMarker record_marker = 3;
+    CompleteWorkflow complete = 4;
+    FailWorkflow fail = 5;
+    ContinueAsNew continue_as_new = 6;
+    CancelTimer cancel_timer = 7;
+    RequestCancelActivity cancel_activity = 8;
+    CancelWorkflowExecution cancel_workflow = 9;
+  }
+}
+
+message ScheduleActivity {
+  string activity_id = 1;       // unique within the run; the SDK uses the command's sequence number
+  string activity_type = 2;
+  bytes input = 3;              // <= 2 MiB
+  ActivityOptions options = 4;
+}
+
+message StartTimer {
+  string timer_id = 1;
+  int64 duration_ms = 2;
+}
+
+// SideEffect records marker_name "SideEffect" and GetVersion records
+// "Version" (details: the change id and the chosen version, as JSON).
+message RecordMarker {
+  string marker_name = 1;
+  bytes details = 2;
+}
+
+message CompleteWorkflow {
+  bytes result = 1;             // <= 2 MiB
+}
+
+message FailWorkflow {
+  Failure failure = 1;
+}
+
+message ContinueAsNew {
+  bytes input = 1;
+  string workflow_type = 2;     // "" = the same type
+  string task_queue = 3;        // "" = the same queue
+}
+
+message CancelTimer {
+  string timer_id = 1;
+}
+
+message RequestCancelActivity {
+  string activity_id = 1;
+}
+
+message CancelWorkflowExecution {
+  bytes details = 1;
+}
+
+message CompleteWorkflowTaskRequest {
+  bytes task_token = 1;
+  repeated Command commands = 2;
+  string identity = 3;
+}
+
+message ActivityTask {
+  bytes task_token = 1;         // empty: the long poll timed out
+  string workflow_id = 2;
+  string activity_id = 3;
+  string activity_type = 4;
+  bytes input = 5;
+  int32 attempt = 6;            // 1-based
+  string idempotency_key = 7;   // "<workflow_id>/<activity_id>", stable across attempts
+  bytes last_heartbeat_details = 8;
+  map<string, string> trace_context = 9; // the starter's context (WorkflowExecutionStarted.trace_context)
+  uint64 lease_token = 10;      // fences this delivery; increases on every redelivery
+  string run_id = 11;
+  int64 deadline_unix_ms = 12;  // lease deadline; heartbeats extend it
+  int64 heartbeat_timeout_ms = 13;
+}
+
+message HeartbeatRequest {
+  bytes task_token = 1;
+  uint64 lease_token = 2;
+  bytes details = 3;
+}
+
+message HeartbeatResponse {
+  bool cancel_requested = 1;
+  int64 deadline_unix_ms = 2;   // the extended lease deadline
+}
+
+message CompleteActivityRequest {
+  bytes task_token = 1;
+  uint64 lease_token = 2;
+  bytes result = 3;             // <= 2 MiB
+  string identity = 4;
+}
+
+message FailActivityRequest {
+  bytes task_token = 1;
+  uint64 lease_token = 2;
+  Failure failure = 3;
+  bytes last_heartbeat_details = 4;
+  string identity = 5;
+}
+
+// -- history ------------------------------------------------------------------------
+
+message HistoryEvent {
+  int64 event_id = 1;           // 1-based, dense within a run
+  int64 ts_unix_ms = 2;         // server time; workflow.Now returns the timestamp of the current workflow task's started event
+  oneof attrs {
+    WorkflowExecutionStarted started = 10;
+    WorkflowTaskScheduled wt_scheduled = 11;
+    WorkflowTaskStarted wt_started = 12;
+    WorkflowTaskCompleted wt_completed = 13;
+    ActivityTaskScheduled act_scheduled = 14;
+    ActivityTaskStarted act_started = 15;
+    ActivityTaskCompleted act_completed = 16;
+    ActivityTaskFailed act_failed = 17;
+    ActivityTaskTimedOut act_timed_out = 18;
+    TimerStarted timer_started = 19;
+    TimerFired timer_fired = 20;
+    SignalReceived signal = 21;
+    MarkerRecorded marker = 22;
+    WorkflowExecutionCompleted completed = 23;
+    WorkflowExecutionFailed failed = 24;
+    WorkflowExecutionCanceled canceled = 25;
+    WorkflowExecutionContinuedAsNew continued = 26;
+    ActivityDeadLettered dead_lettered = 27;
+    WorkflowExecutionCancelRequested cancel_requested = 28;
+    TimerCanceled timer_canceled = 29;
+    ActivityTaskCancelRequested act_cancel_requested = 30;
+    ActivityTaskCanceled act_canceled = 31;
+  }
+}
+
+message WorkflowExecutionStarted {
+  string workflow_type = 1;
+  string task_queue = 2;
+  bytes input = 3;
+  map<string, string> trace_context = 4;
+  string continued_from_run_id = 5;
+  string identity = 6;
+}
+
+message WorkflowTaskScheduled {
+  string task_queue = 1;
+  int32 attempt = 2;
+}
+
+message WorkflowTaskStarted {
+  int64 scheduled_event_id = 1;
+  string identity = 2;
+}
+
+message WorkflowTaskCompleted {
+  int64 scheduled_event_id = 1;
+  int64 started_event_id = 2;
+  string identity = 3;
+}
+
+message ActivityTaskScheduled {
+  string activity_id = 1;
+  string activity_type = 2;
+  bytes input = 3;
+  ActivityOptions options = 4;
+  int64 workflow_task_completed_event_id = 5;
+}
+
+// Recorded when an attempt completes, fails for good, or times out, so a
+// history holds one started event per closed attempt that mattered.
+message ActivityTaskStarted {
+  int64 scheduled_event_id = 1;
+  string identity = 2;
+  int32 attempt = 3;
+  uint64 lease_token = 4;
+}
+
+message ActivityTaskCompleted {
+  int64 scheduled_event_id = 1;
+  int64 started_event_id = 2;
+  bytes result = 3;
+  string identity = 4;
+}
+
+// Terminal failure: only a non-retryable one. A retryable failure that
+// exhausts its attempts goes to the dead-letter queue instead.
+message ActivityTaskFailed {
+  int64 scheduled_event_id = 1;
+  int64 started_event_id = 2;
+  Failure failure = 3;
+}
+
+message ActivityTaskTimedOut {
+  int64 scheduled_event_id = 1;
+  int64 started_event_id = 2;
+  TimeoutType timeout_type = 3;
+  Failure last_failure = 4;
+  bytes last_heartbeat_details = 5;
+}
+
+message TimerStarted {
+  string timer_id = 1;
+  int64 duration_ms = 2;
+  int64 fire_at_unix_ms = 3;
+  int64 workflow_task_completed_event_id = 4;
+}
+
+message TimerFired {
+  string timer_id = 1;
+  int64 started_event_id = 2;
+}
+
+message SignalReceived {
+  string signal_name = 1;
+  bytes input = 2;
+  string request_id = 3;
+}
+
+message MarkerRecorded {
+  string marker_name = 1;
+  bytes details = 2;
+  int64 workflow_task_completed_event_id = 3;
+}
+
+message WorkflowExecutionCompleted {
+  bytes result = 1;
+}
+
+message WorkflowExecutionFailed {
+  Failure failure = 1;
+}
+
+message WorkflowExecutionCanceled {
+  bytes details = 1;
+}
+
+message WorkflowExecutionContinuedAsNew {
+  string new_run_id = 1;
+  bytes input = 2;
+  string workflow_type = 3;
+  string task_queue = 4;
+}
+
+// Informational: the task is parked in the dead-letter queue and the
+// workflow keeps waiting. A redrive delivers it again with attempt 1.
+message ActivityDeadLettered {
+  int64 scheduled_event_id = 1;
+  string task_queue = 2;
+  string task_id = 3;
+  int32 attempts = 4;
+  Failure last_failure = 5;
+}
+
+message WorkflowExecutionCancelRequested {
+  string reason = 1;
+}
+
+message TimerCanceled {
+  string timer_id = 1;
+  int64 started_event_id = 2;
+}
+
+message ActivityTaskCancelRequested {
+  int64 scheduled_event_id = 1;
+}
+
+message ActivityTaskCanceled {
+  int64 scheduled_event_id = 1;
+  bytes details = 2;
+}
+
+// -- storage ------------------------------------------------------------------------
+
+// A queue transition that is not a history event: leases, retries, the
+// dead-letter queue, and redrives. Replaying every WalRecord in seq order
+// rebuilds histories and queues exactly.
+message TaskTransition {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_ENQUEUED = 1;          // a workflow or activity task became pollable
+    KIND_LEASED = 2;            // delivered with lease_token until visible_at_unix_ms
+    KIND_RETRY_SCHEDULED = 3;   // failed or timed out; pollable again at visible_at_unix_ms
+    KIND_DEAD_LETTERED = 4;
+    KIND_REDRIVEN = 5;
+    KIND_ACKED = 6;             // completed; the task leaves the queue
+  }
+  Kind kind = 1;
+  string task_queue = 2;
+  string task_id = 3;
+  int32 attempt = 4;
+  uint64 lease_token = 5;
+  int64 visible_at_unix_ms = 6;
+  Failure failure = 7;
+  bytes heartbeat_details = 8;
+}
+
+// The payload of one framed record in the WAL (formats/wal.md) and of one
+// Raft log entry (raft.proto).
+message WalRecord {
+  string workflow_id = 1;
+  string run_id = 2;
+  oneof record {
+    HistoryEvent event = 3;
+    TaskTransition task = 4;
+  }
+}

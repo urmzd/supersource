@@ -25,7 +25,7 @@ flowchart LR
 | [Inference Performance](../inference-performance/) | engine internals, quantization, frameworks, serving and load, platforms | performance engineer (MTS) |
 | [AI Full Stack](../ai-full-stack/) | streaming, retrieval, evaluation, routing | AI application engineer |
 | [Field Engineering](../field-engineering/) | discovery, sizing, performance testing, POC, migration, commercials, escalation | sales engineer, solutions architect |
-| [Capstone](capstone.md) | one mock customer through every part | this role |
+| [Capstone](../../field-engineering/08-mock-engagement/capstone.md) | one mock customer through every part | this role |
 
 The technical parts build depth; Field Engineering turns it into customer outcomes, and the capstone proves both. If you already work in inference, start with Field Engineering to see what the depth is for, then fill the gaps it exposes.
 

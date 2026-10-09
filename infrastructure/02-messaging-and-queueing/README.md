@@ -11,7 +11,7 @@
   - [The Raft paper: *In Search of an Understandable Consensus Algorithm*](https://raft.github.io/raft.pdf) (free) -- the consensus behind KRaft and Redpanda
   - [ZooKeeper: Wait-free coordination for Internet-scale systems](https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf) (free) -- ZAB and the coordinator Kafka shed
   - [KIP-500](https://cwiki.apache.org/confluence/display/KAFKA/KIP-500%3A+Replace+ZooKeeper+with+a+Self-Managed+Metadata+Quorum) (KRaft), [KIP-405](https://cwiki.apache.org/confluence/display/KAFKA/KIP-405%3A+Kafka+Tiered+Storage) (tiered storage), [KIP-932](https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka) (share groups) (all free)
-- **Prerequisites**: [Concurrency & Systems](../../algorithms/12-concurrency-systems/), [System Design](../../systems/01-system-design/)
+- **Prerequisites**: [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/), [System Design](../../systems/01-system-design/)
 - **Estimated time**: 1-2 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -28,7 +28,7 @@
 - Run [`code/backpressure_demo.py`](code/backpressure_demo.py) (`python3`, no deps) and [`code/backpressure-demo.go`](code/backpressure-demo.go) (`go run`). Watch the push model drop messages while the pull model converts the surplus into lag -- nothing lost.
 - Run [`code/raft_election.go`](code/raft_election.go) (`go run`) and trace terms and votes. Confirm a minority partition can never elect a leader. This is the KRaft controller quorum in miniature.
 - Stand up a single-broker [Redpanda](https://redpanda.com/) (no ZooKeeper, Kafka-API compatible) and a vanilla [Kafka in KRaft mode](https://kafka.apache.org/documentation/#kraft). Produce 1000 messages to `orders`; start a second consumer *group* and replay from offset 0 -- prove fan-out and retention.
-- For the operational side of consuming (rebalancing, DLQs, sizing the pool), continue to [Distributed Workers](../03-distributed-workers/).
+- For the operational side of consuming (rebalancing, DLQs, sizing the pool), continue to [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/).
 
 ---
 
@@ -124,7 +124,7 @@ graph LR
     P0-->A0; P1-->A0; P2-->A0; P3-->A0
 ```
 
-(The *operational* corollary -- a 5th worker in `order-workers` sits idle because there is no partition left to own -- lives in [Distributed Workers](../03-distributed-workers/), where partition count = parallelism ceiling.)
+(The *operational* corollary -- a 5th worker in `order-workers` sits idle because there is no partition left to own -- lives in [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/), where partition count = parallelism ceiling.)
 
 ## 4. Delivery semantics: where the crash window is
 
@@ -145,7 +145,7 @@ sequenceDiagram
     W->>K: commit offset n
 ```
 
-**The real fix is idempotency**: make applying the same message twice equal applying it once (dedupe on a natural key, conditional writes, `SETNX` on an idempotency key). The *operational* mechanics -- the idempotency key, the transactional outbox, DLQs, retry topics -- are handled in [Distributed Workers](../03-distributed-workers/). Here you only need the conceptual frame: **assume at-least-once everywhere; the duplicate is not a bug, it is the contract.**
+**The real fix is idempotency**: make applying the same message twice equal applying it once (dedupe on a natural key, conditional writes, `SETNX` on an idempotency key). The *operational* mechanics -- the idempotency key, the transactional outbox, DLQs, retry topics -- are handled in [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/). Here you only need the conceptual frame: **assume at-least-once everywhere; the duplicate is not a bug, it is the contract.**
 
 ## 5. The math: Little's Law and backpressure as an integral
 
@@ -214,10 +214,10 @@ A cluster of brokers needs a single, agreed-upon answer to "who is the controlle
 | Concept | Connected Track | How |
 |---------|-----------------|-----|
 | The replayable log, stream processing | [Batch & Streaming](../../data-engineering/03-batch-streaming/) | The data-engineering view of the same Kafka (watermarks, compaction, Kappa) |
-| Consuming, rebalancing, DLQs, sizing | [Distributed Workers](../03-distributed-workers/) | The operational worker side of these dynamics |
+| Consuming, rebalancing, DLQs, sizing | [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/) | The operational worker side of these dynamics |
 | Lag-based autoscaling | [Containers, Kubernetes & Workloads](../01-containers-kubernetes/) | KEDA scales a consumer group on lag |
 | Raft, ZAB, quorums, linearizability | [System Design](../../systems/01-system-design/) | Consensus and replicated-state-machine fundamentals |
-| Backpressure, producer/consumer | [Concurrency & Systems](../../algorithms/12-concurrency-systems/) | The same flow-control problem in-process |
+| Backpressure, producer/consumer | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | The same flow-control problem in-process |
 | Delivery semantics as invariants | [The Testing Mentality](../../software-craftsmanship/03-testing-mentality/) | "Exactly-once is idempotency" is a property to test |
 
 ## Company Relevance

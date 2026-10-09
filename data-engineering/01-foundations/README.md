@@ -110,8 +110,8 @@ A data engineer's job is to take data that was produced for one purpose (running
 | Concept | Connected Track | Application |
 |---------|-----------------|-------------|
 | CAP, replication, consistency | [System Design](../../systems/01-system-design/) | Shared distributed-systems core |
-| Compression, entropy | [Information Theory](../../information-theory/) | Why columnar compresses well |
-| Concurrency, partitioning | [Concurrency & Systems](../../algorithms/12-concurrency-systems/) | Parallel ingestion and processing |
+| Compression, entropy | [Information Theory](../../math/11-information-theory/) | Why columnar compresses well |
+| Concurrency, partitioning | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | Parallel ingestion and processing |
 | Feature pipelines | [LLM Systems](../../ml/04-llm-systems/) | Feeding data to models |
 
 ## Company Relevance

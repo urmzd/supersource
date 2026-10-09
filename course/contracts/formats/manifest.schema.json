@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MANIFEST.json (checkpoints and released models)",
+  "description": "Integrity record of a checkpoint step directory or a released model directory (formats/checkpoint.md). It lists every other file in the directory with its sha256; it is written last, so a directory whose MANIFEST.json is present and verifies is complete.",
+  "type": "object",
+  "required": [
+    "kind",
+    "files"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "enum": [
+        "checkpoint",
+        "release"
+      ]
+    },
+    "model_id": {
+      "type": "string",
+      "description": "release only"
+    },
+    "version": {
+      "type": "string",
+      "description": "release only"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Sorted by name (byte order); paths relative to the directory, '/' separated.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "sha256",
+          "bytes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "kind": "checkpoint",
+      "created_at": "2026-10-09T12:00:00Z",
+      "files": [
+        {
+          "name": "config.json",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 412
+        },
+        {
+          "name": "model.safetensors",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 40001536
+        },
+        {
+          "name": "optimizer.safetensors",
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "bytes": 80001536
+        },
+        {
+          "name": "trainer_state.json",
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "bytes": 301
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,438 @@
+# contracts/openapi/admin.v1.yaml: the gateway's admin API (DESIGN 2.6).
+#
+# modules: gw.02 (keys), gw.05 (workers, routes, drain), gw.06 (cache purge),
+# gw.07 (usage; owns the server side of this file), gw.08 (policy),
+# dur.12 (the ModelRelease canary calls PUT routes), the umbrella CLI
+#
+# Served by the gateway on its API port under /admin/v1. Every call needs a
+# key with the `admin` scope (`Authorization: Bearer tl_<id>_<secret>`);
+# errors use the OpenAI error shape of openai-subset.v1.yaml. Conformance:
+# `ss conform admin:v1`.
+openapi: 3.1.0
+info:
+  title: tinyllm gateway admin API, v1
+  version: 1.0.0
+  description: |
+    Keys, workers, routes, drains, usage, the usage policy, and the
+    response cache.
+
+    Rules that a schema cannot express:
+
+    - **Keys.** `POST /admin/v1/keys` returns the plaintext key once, as
+      `tl_<key_id>_<secret>` (`key_id` 12 lowercase base32 characters,
+      `secret` 32). The gateway stores only HMAC-SHA256(pepper, secret)
+      (D19) in `[gateway].keys_file`; a lookup splits the presented key at
+      the second `_` and finds the record by id in O(1). A revoked key stops
+      working within the gateway's key-cache TTL (at most 5 s).
+    - **Routes** use optimistic concurrency. `GET` returns the table with an
+      `ETag`. `PUT` must send `If-Match` with that ETag: a stale ETag is 412
+      `etag_mismatch`, a missing one is 428 `if_match_required`. A
+      successful `PUT` replaces the whole table, returns the new ETag, and
+      increases `route_epoch` (sent to engines in HeartbeatAck). The table
+      validates against the same rules as `[[gateway.routes]]` in
+      config/runtime.schema.json.
+    - **Drain** of a model stops routing new requests to its workers at once
+      (`HeartbeatAck.drain`), lets in-flight requests finish until
+      `deadline_s`, and returns 202 immediately.
+    - **Usage** comes from the usage ledger (formats/usage.v1.sql), one row
+      per request; `since` and `until` are RFC 3339 times, `until`
+      exclusive.
+    - **Policy** documents follow formats/policy.v1.schema.json; a `PUT`
+      that fails validation is 400 with `param` naming the JSON pointer of
+      the first error, and the old policy stays active.
+security:
+  - bearer: []
+paths:
+  /admin/v1/keys:
+    post:
+      operationId: createKey
+      summary: Create an API key; the plaintext is returned once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/KeyCreate"}
+      responses:
+        "201":
+          description: The new key, with its plaintext.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/KeyCreated"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    get:
+      operationId: listKeys
+      summary: Every key, without secrets or hashes.
+      parameters:
+        - {name: tenant, in: query, required: false, schema: {type: string}}
+      responses:
+        "200":
+          description: The keys, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: {type: array, items: {$ref: "#/components/schemas/KeyInfo"}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/v1/keys/{key_id}:
+    delete:
+      operationId: revokeKey
+      summary: Revoke a key.
+      parameters:
+        - {name: key_id, in: path, required: true, schema: {$ref: "#/components/schemas/KeyId"}}
+      responses:
+        "204": {description: Revoked (also when it was already revoked).}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/v1/workers:
+    get:
+      operationId: listWorkers
+      summary: The worker registry (tl.control.v1 heartbeats).
+      responses:
+        "200":
+          description: Every worker that has not been evicted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, route_epoch]
+                properties:
+                  data: {type: array, items: {$ref: "#/components/schemas/Worker"}}
+                  route_epoch: {type: integer, minimum: 0}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/v1/routes:
+    get:
+      operationId: getRoutes
+      summary: The route table.
+      responses:
+        "200":
+          description: The table and its ETag.
+          headers:
+            ETag: {$ref: "#/components/headers/ETag"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RouteTable"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    put:
+      operationId: putRoutes
+      summary: Replace the route table (models, aliases, cascades, canary weights).
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string, minLength: 1}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RouteTable"}
+      responses:
+        "200":
+          description: The table as stored, with its new ETag.
+          headers:
+            ETag: {$ref: "#/components/headers/ETag"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RouteTable"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "412": {$ref: "#/components/responses/PreconditionFailed"}
+        "428": {$ref: "#/components/responses/PreconditionRequired"}
+  /admin/v1/models/{model}:drain:
+    post:
+      operationId: drainModel
+      summary: Stop routing new work to a model's workers, then let in-flight requests finish.
+      parameters:
+        - {name: model, in: path, required: true, schema: {type: string, minLength: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deadline_s]
+              properties:
+                deadline_s: {type: integer, minimum: 0, maximum: 3600}
+      responses:
+        "202":
+          description: Draining started.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [model, workers]
+                properties:
+                  model: {type: string}
+                  workers: {type: integer, minimum: 0, description: Workers told to drain.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/v1/usage:
+    get:
+      operationId: getUsage
+      summary: Token accounting from the usage ledger.
+      parameters:
+        - {name: tenant, in: query, required: false, schema: {type: string}}
+        - {name: key_id, in: query, required: false, schema: {$ref: "#/components/schemas/KeyId"}}
+        - {name: since, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: until, in: query, required: false, schema: {type: string, format: date-time}}
+        - name: group_by
+          in: query
+          required: false
+          schema: {type: string, enum: [none, model, tenant, key_id, api_version], default: none}
+      responses:
+        "200":
+          description: One row per group (one row in total for `none`), sorted by the group key.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  since: {type: [string, "null"]}
+                  until: {type: [string, "null"]}
+                  data: {type: array, items: {$ref: "#/components/schemas/UsageRow"}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/v1/policy:
+    get:
+      operationId: getPolicy
+      summary: The active usage policy (gw.08).
+      responses:
+        "200":
+          description: The policy document.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PolicyDocument"}
+            application/yaml:
+              schema: {$ref: "#/components/schemas/PolicyDocument"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    put:
+      operationId: putPolicy
+      summary: Replace the usage policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PolicyDocument"}
+          application/yaml:
+            schema: {$ref: "#/components/schemas/PolicyDocument"}
+      responses:
+        "200":
+          description: The policy as stored.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PolicyDocument"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/v1/cache:purge:
+    post:
+      operationId: purgeCache
+      summary: Purge the response cache, for one model or all.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: {type: string, minLength: 1}
+      responses:
+        "200":
+          description: Entries removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [purged]
+                properties:
+                  purged: {type: integer, minimum: 0}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: "A key with the `admin` scope."
+  headers:
+    ETag:
+      description: "A strong ETag of the route table, quoted."
+      schema: {type: string, pattern: '^"[^"]+"$'}
+  responses:
+    BadRequest:
+      description: "`invalid_request_error`; `param` names the field."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Unauthorized:
+      description: "`invalid_request_error` / `invalid_api_key`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Forbidden:
+      description: "`permission_error` / `insufficient_scope`: the key lacks `admin`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    NotFound:
+      description: "`invalid_request_error` / `not_found`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    PreconditionFailed:
+      description: "`invalid_request_error` / `etag_mismatch`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    PreconditionRequired:
+      description: "`invalid_request_error` / `if_match_required`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+  schemas:
+    KeyId:
+      type: string
+      pattern: "^[a-z2-7]{12}$"
+    Scope:
+      type: string
+      enum: [infer, embed, admin, debug]
+    KeyCreate:
+      type: object
+      required: [tenant, name, scopes]
+      properties:
+        tenant: {type: string, pattern: "^[a-z0-9][a-z0-9-]{0,62}$"}
+        name: {type: string, minLength: 1, maxLength: 128}
+        scopes: {type: array, minItems: 1, items: {$ref: "#/components/schemas/Scope"}}
+        rpm: {type: integer, minimum: 0, default: 60, description: "Requests per minute; 0 = unlimited."}
+        tpm: {type: integer, minimum: 0, default: 100000, description: "Tokens per minute; 0 = unlimited."}
+        priority: {type: integer, minimum: -100, maximum: 100, default: 0, description: "Sent to engines as X-TL-Priority."}
+        models: {type: array, items: {type: string}, description: "Allowed models; empty or absent = all."}
+        expires_at: {type: [string, "null"], format: date-time}
+    KeyInfo:
+      type: object
+      required: [key_id, tenant, name, scopes, rpm, tpm, priority, models, created_at, expires_at, revoked]
+      properties:
+        key_id: {$ref: "#/components/schemas/KeyId"}
+        tenant: {type: string}
+        name: {type: string}
+        scopes: {type: array, items: {$ref: "#/components/schemas/Scope"}}
+        rpm: {type: integer, minimum: 0}
+        tpm: {type: integer, minimum: 0}
+        priority: {type: integer}
+        models: {type: array, items: {type: string}}
+        created_at: {type: string, format: date-time}
+        expires_at: {type: [string, "null"], format: date-time}
+        revoked: {type: boolean}
+    KeyCreated:
+      allOf:
+        - $ref: "#/components/schemas/KeyInfo"
+        - type: object
+          required: [key]
+          properties:
+            key: {type: string, pattern: "^tl_[a-z2-7]{12}_[A-Za-z0-9]{32}$", description: Shown once.}
+    Worker:
+      type: object
+      required: [worker_id, role, model, http_address, kv_format, queue_depth, running, kv_free_blocks, kv_total_blocks, draining, last_heartbeat_unix_ms]
+      properties:
+        worker_id: {type: string}
+        role: {type: string, enum: [unified, prefill, decode]}
+        model: {type: string}
+        http_address: {type: string}
+        grpc_address: {type: string}
+        kv_address: {type: string}
+        kv_format: {type: integer, minimum: 1}
+        queue_depth: {type: integer, minimum: 0}
+        running: {type: integer, minimum: 0}
+        kv_free_blocks: {type: integer, minimum: 0}
+        kv_total_blocks: {type: integer, minimum: 0}
+        draining: {type: boolean}
+        last_heartbeat_unix_ms: {type: integer}
+    CascadeStep:
+      type: object
+      required: [model]
+      properties:
+        model: {type: string, minLength: 1}
+        accept_if:
+          type: string
+          description: "`<metric> <op> <number>`, metric in {mean_logprob, min_logprob}, op in {>, >=, <, <=}; every step but the last has one, the last has none."
+          pattern: "^(mean_logprob|min_logprob) (>|>=|<|<=) -?[0-9]+(\\.[0-9]+)?$"
+    Backend:
+      type: object
+      required: [served_model, weight]
+      properties:
+        served_model: {type: string, minLength: 1, description: "The model id the workers report (WorkerStatus.model)."}
+        weight: {type: number, minimum: 0, maximum: 1}
+    Route:
+      type: object
+      required: [model]
+      properties:
+        model: {type: string, minLength: 1, description: The public model id clients send.}
+        aliases: {type: array, items: {type: string, minLength: 1}}
+        targets:
+          type: array
+          items: {type: string, enum: [unified, disaggregated]}
+          default: [unified]
+          description: "Worker roles to route to: unified engines, or a prefill plus a decode engine (2.7)."
+        backends:
+          type: array
+          minItems: 1
+          items: {$ref: "#/components/schemas/Backend"}
+          description: "Weighted split across served models (a canary); weights sum to 1. Absent: one backend, served_model = model."
+        cascade:
+          type: array
+          minItems: 2
+          items: {$ref: "#/components/schemas/CascadeStep"}
+    RouteTable:
+      type: object
+      required: [routes]
+      properties:
+        route_epoch: {type: integer, minimum: 0, description: "Read only; ignored in a PUT."}
+        routes: {type: array, items: {$ref: "#/components/schemas/Route"}}
+    UsageRow:
+      type: object
+      required: [requests, prompt_tokens, completion_tokens, cached_tokens]
+      properties:
+        tenant: {type: string}
+        key_id: {type: string}
+        model: {type: string}
+        api_version: {type: string}
+        requests: {type: integer, minimum: 0}
+        errors: {type: integer, minimum: 0}
+        prompt_tokens: {type: integer, minimum: 0}
+        completion_tokens: {type: integer, minimum: 0}
+        cached_tokens: {type: integer, minimum: 0}
+    PolicyDocument:
+      type: object
+      required: [version, rules]
+      description: "A policy.v1 document; the full schema is formats/policy.v1.schema.json."
+      x-tl-schema: ../formats/policy.v1.schema.json
+      properties:
+        version: {const: 1}
+        rules: {type: array}
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [message, type, param, code]
+          properties:
+            message: {type: string}
+            type: {type: string, enum: [invalid_request_error, permission_error, server_error]}
+            param: {type: [string, "null"]}
+            code:
+              type: [string, "null"]
+              enum: [invalid_api_key, insufficient_scope, not_found, etag_mismatch, if_match_required, internal_error, null]

@@ -1,0 +1,680 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tokenizer.json (the HF subset)",
+  "description": "The subset of the Hugging Face tokenizers JSON format the course loads (formats/tokenizer.md; L1.3 to L1.6, tl-tok). Files of GPT-2, SmolLM2, and BERT load unchanged. Rules a schema cannot express (normalized added tokens only without a normalizer, merge semantics) are in formats/tokenizer.md.",
+  "type": "object",
+  "required": [
+    "model"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0"
+    },
+    "truncation": {
+      "description": "Ignored."
+    },
+    "padding": {
+      "description": "Ignored."
+    },
+    "added_tokens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "content",
+          "special"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "single_word": {
+            "const": false
+          },
+          "lstrip": {
+            "const": false
+          },
+          "rstrip": {
+            "const": false
+          },
+          "normalized": {
+            "type": "boolean"
+          },
+          "special": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "normalizer": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "enum": [
+                    "NFC",
+                    "NFKC",
+                    "Lowercase"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "BertNormalizer"
+                },
+                "clean_text": {
+                  "type": "boolean"
+                },
+                "handle_chinese_chars": {
+                  "type": "boolean"
+                },
+                "strip_accents": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "lowercase": {
+                  "type": "boolean"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "normalizers"
+          ],
+          "properties": {
+            "type": {
+              "const": "Sequence"
+            },
+            "normalizers": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "NFC",
+                          "NFKC",
+                          "Lowercase"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "BertNormalizer"
+                      },
+                      "clean_text": {
+                        "type": "boolean"
+                      },
+                      "handle_chinese_chars": {
+                        "type": "boolean"
+                      },
+                      "strip_accents": {
+                        "type": [
+                          "boolean",
+                          "null"
+                        ]
+                      },
+                      "lowercase": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "pre_tokenizer": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "ByteLevel"
+                },
+                "add_prefix_space": {
+                  "type": "boolean"
+                },
+                "trim_offsets": {
+                  "type": "boolean"
+                },
+                "use_regex": {
+                  "const": true
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "Digits"
+                },
+                "individual_digits": {
+                  "type": "boolean"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "BertPreTokenizer"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "Metaspace"
+                },
+                "replacement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1
+                },
+                "prepend_scheme": {
+                  "enum": [
+                    "always",
+                    "first",
+                    "never"
+                  ]
+                },
+                "split": {
+                  "type": "boolean"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "pretokenizers"
+          ],
+          "properties": {
+            "type": {
+              "const": "Sequence"
+            },
+            "pretokenizers": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "ByteLevel"
+                      },
+                      "add_prefix_space": {
+                        "type": "boolean"
+                      },
+                      "trim_offsets": {
+                        "type": "boolean"
+                      },
+                      "use_regex": {
+                        "const": true
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "Digits"
+                      },
+                      "individual_digits": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "BertPreTokenizer"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "Metaspace"
+                      },
+                      "replacement": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1
+                      },
+                      "prepend_scheme": {
+                        "enum": [
+                          "always",
+                          "first",
+                          "never"
+                        ]
+                      },
+                      "split": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "post_processor": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "const": "ByteLevel"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "single"
+          ],
+          "properties": {
+            "type": {
+              "const": "TemplateProcessing"
+            },
+            "single": {
+              "type": "array"
+            },
+            "pair": {
+              "type": "array"
+            },
+            "special_tokens": {
+              "type": "object"
+            }
+          }
+        }
+      ]
+    },
+    "decoder": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "ByteLevel"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "WordPiece"
+                },
+                "prefix": {
+                  "type": "string"
+                },
+                "cleanup": {
+                  "type": "boolean"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "Metaspace"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "decoders"
+          ],
+          "properties": {
+            "type": {
+              "const": "Sequence"
+            },
+            "decoders": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "ByteLevel"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "WordPiece"
+                      },
+                      "prefix": {
+                        "type": "string"
+                      },
+                      "cleanup": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "Metaspace"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "vocab",
+            "merges"
+          ],
+          "properties": {
+            "type": {
+              "const": "BPE"
+            },
+            "vocab": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "merges": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[^ ]+ [^ ]+$"
+                  },
+                  {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                ]
+              }
+            },
+            "dropout": {
+              "type": "null"
+            },
+            "unk_token": {
+              "type": "null"
+            },
+            "continuing_subword_prefix": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "const": ""
+                }
+              ]
+            },
+            "end_of_word_suffix": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "const": ""
+                }
+              ]
+            },
+            "fuse_unk": {
+              "const": false
+            },
+            "byte_fallback": {
+              "const": false
+            },
+            "ignore_merges": {
+              "const": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "vocab",
+            "unk_token"
+          ],
+          "properties": {
+            "type": {
+              "const": "WordPiece"
+            },
+            "vocab": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "unk_token": {
+              "type": "string",
+              "minLength": 1
+            },
+            "continuing_subword_prefix": {
+              "type": "string"
+            },
+            "max_input_chars_per_word": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "vocab",
+            "unk_id"
+          ],
+          "properties": {
+            "type": {
+              "const": "Unigram"
+            },
+            "vocab": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "unk_id": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "byte_fallback": {
+              "const": false
+            }
+          }
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "version": "1.0",
+      "truncation": null,
+      "padding": null,
+      "added_tokens": [
+        {
+          "id": 3,
+          "content": "<|endoftext|>",
+          "single_word": false,
+          "lstrip": false,
+          "rstrip": false,
+          "normalized": false,
+          "special": true
+        }
+      ],
+      "normalizer": null,
+      "pre_tokenizer": {
+        "type": "ByteLevel",
+        "add_prefix_space": false,
+        "trim_offsets": true,
+        "use_regex": true
+      },
+      "post_processor": null,
+      "decoder": {
+        "type": "ByteLevel",
+        "add_prefix_space": true,
+        "trim_offsets": true,
+        "use_regex": true
+      },
+      "model": {
+        "type": "BPE",
+        "dropout": null,
+        "unk_token": null,
+        "continuing_subword_prefix": null,
+        "end_of_word_suffix": null,
+        "fuse_unk": false,
+        "byte_fallback": false,
+        "ignore_merges": false,
+        "vocab": {
+          "a": 0,
+          "b": 1,
+          "ab": 2,
+          "<|endoftext|>": 3
+        },
+        "merges": [
+          "a b"
+        ]
+      }
+    }
+  ]
+}

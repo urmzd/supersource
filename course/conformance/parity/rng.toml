@@ -1,0 +1,34 @@
+id       = "rng"
+title    = "PCG32 (spec/pcg32.md): u32 stream, uniform_f64, Box-Muller normals"
+equality = "exact"                 # bit-exact: u32 integers and doubles
+golden   = "course/fixtures/parity/rng.json"
+
+[fuzz]
+generator = "gen/rng.py"           # random 64-bit seeds and streams
+cases     = 200
+
+# Drivers land with their modules (the Python and C ports in M06.3, the Rust
+# port in L10.1, the Go port in load.01); until then each is pending.
+[[impl]]
+name   = "python"
+module = "M06.3"
+lang   = "python"
+driver = "drivers/rng.py"
+
+[[impl]]
+name   = "c"
+module = "M06.3"
+lang   = "c"
+driver = "drivers/rng.c"
+
+[[impl]]
+name   = "rust"
+module = "L10.1"
+lang   = "rust"
+driver = "drivers/rng.rs"
+
+[[impl]]
+name   = "go"
+module = "load.01"
+lang   = "go"
+driver = "drivers/rng.go"

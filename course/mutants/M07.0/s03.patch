@@ -1,0 +1,12 @@
+--- a/python/tinyllm/prob/rv.py
++++ b/python/tinyllm/prob/rv.py
+@@ -50,8 +50,7 @@
+     # SOLUTION-BEGIN M07.0
+     x, p = _table(values, probs)
+     mu = float(x @ p)
+-    d = x - mu  # two passes: center first, then square
+-    return float((d * d) @ p)
++    return float((x * x) @ p - mu * mu)
+     # SOLUTION-END
+ 
+ 

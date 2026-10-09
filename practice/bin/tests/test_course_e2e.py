@@ -53,7 +53,7 @@ def test_kind_mode_needs_the_cluster(ss):
 
 def test_verify_global_parses_milestones_and_their_fixtures(ss):
     out = ss("verify", "course", "--global", rc=0).out
-    assert "milestone, drill, and conformance spec(s) parse" in out
+    assert "milestone, drill, conformance, and parity spec(s) parse" in out
     ms = ss.course / "milestones/MS-M90.toml"
     ms.write_text(
         ms.read_text()

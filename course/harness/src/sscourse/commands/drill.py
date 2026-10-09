@@ -3,8 +3,12 @@ ss drill start <name|id> [--seed N]   inject, then print only the pager symptom
 ss drill status                      elapsed time only
 ss drill end                         grade: detected (TTD), resolved (TTM), trace evidence, postmortem
 ss drill reset                       replay the undo journal in reverse
+ss drill run <name|id> [--seed N] --respond   start, wait for the alert, run the
+                                     scripted responder (respond.sh), grade without the time limit (CI)
 
-Faults go into YOUR kind deployment (DESIGN 5.10). The safety gate refuses
+Faults go into YOUR kind deployment (DESIGN 5.10); git-branch and
+contract-bump drills work on a branch made in a scratch copy of your repo
+and need no cluster. The safety gate refuses
 unless `kubectl config current-context` equals [deploy].kube_context, that
 context starts with kind- or k3d-, and [deploy].namespace exists; every action
 stays in that namespace. Every injection writes its undo to
@@ -75,7 +79,14 @@ def cmd_start(r: Run, name: str, seed: int | None) -> int:
             f"{ctx.YEL}BLOCKED{ctx.RST} {d.id} needs {', '.join(waiting)} to pass first"
         )
         return EXIT_BLOCKED
-    k = kube.safety_gate(r.system.deploy)
+    k = kube.safety_gate(r.system.deploy) if d.needs_cluster else None
+    if d.slo_profile:
+        errs = drills.slo_errors(r.learner, d)
+        if errs:
+            raise kube.GateRefused(
+                f"drill {d.id} runs under the `{d.slo_profile}` SLO profile, and your alert rules are not ready:\n"
+                + ctx.indent("\n".join(errs))
+            )
     seed = seed if seed is not None else int(time.time()) % 100000
     rng = random.Random(seed)
     run = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"-{d.name}"
@@ -91,8 +102,9 @@ def cmd_start(r: Run, name: str, seed: int | None) -> int:
         "started": time.time(),
         "injected": None,
         "picks": [],
-        "context": k.context,
-        "namespace": k.namespace,
+        "context": k.context if k else None,
+        "namespace": k.namespace if k else None,
+        "slo_profile": d.slo_profile,
     }
     _save(r, run, state)
     j = drills.Journal.open(rdir)
@@ -120,7 +132,30 @@ def cmd_start(r: Run, name: str, seed: int | None) -> int:
 def _inject_all(r: Run, d, k, j, rng, state: dict, seed: int, rdir) -> None:
     run = state["run"]
     lk = placeholders.chain(r.lookup)
-    for n, inj in enumerate(d.injects):
+    extra = {
+        "learner": r.learner,
+        "course": r.course,
+        "reg": r.reg,
+        "run_dir": rdir,
+        "env": r.env(seed),
+        "drill": d.name,
+        "role": lambda role: r.system.entry(role, f"drill {d.id}"),
+    }
+    injects = list(d.injects)
+    cm = (r.system.deploy or {}).get("slo_configmap")
+    if d.slo_profile and cm and k is not None:
+        # Switch the learner's SLO windows to the drill profile for the run;
+        # the journal switches them back.
+        injects.insert(
+            0,
+            {
+                "kind": "config-drift",
+                "configmap": cm,
+                "set": {"slo_profile": d.slo_profile},
+                "target": (r.system.deploy or {}).get("slo_reloader", ""),
+            },
+        )
+    for n, inj in enumerate(injects):
         at = drills.AT.match(str(inj.get("at", "start")))
         delay = float(at.group(3) or 0)
         if at.group(2):  # loadgen+Ns: start the learner's loadgen first
@@ -145,7 +180,7 @@ def _inject_all(r: Run, d, k, j, rng, state: dict, seed: int, rdir) -> None:
             )
         if delay:
             time.sleep(delay)
-        did, undo, pick = drills.inject(k, inj, rng, lk)
+        did, undo, pick = drills.inject(k, inj, rng, lk, extra)
         j.append(
             {
                 "n": n,
@@ -171,7 +206,7 @@ def cmd_status(r: Run) -> int:
     return EXIT_PASS
 
 
-def cmd_end(r: Run) -> int:
+def cmd_end(r: Run, scripted: bool = False) -> int:
     cur = _current(r)
     if not cur or cur[1].get("status") != "active":
         raise HarnessError("no active drill: ss drill start <name>")
@@ -312,15 +347,27 @@ def cmd_end(r: Run) -> int:
         )
         ok &= not errs
     limit = float(d.raw.get("time_limit_min", 45)) * 60
-    within = now - st["started"] <= limit
-    lines.append(
-        (
-            "time limit",
-            within,
-            f"{(now - st['started']) / 60:.1f} of {limit / 60:.0f} min",
+    if scripted:
+        # CI's scripted responder (5.10): detection and resolution count, not the clock.
+        lines.append(("time limit", True, "not graded (scripted responder)"))
+    else:
+        within = now - st["started"] <= limit
+        lines.append(
+            (
+                "time limit",
+                within,
+                f"{(now - st['started']) / 60:.1f} of {limit / 60:.0f} min",
+            )
         )
-    )
-    ok &= within
+        ok &= within
+    if st.get("slo_profile"):
+        lines.append(
+            (
+                "slo profile",
+                True,
+                f"{st['slo_profile']}: windows {drills.SLO_PROFILES[st['slo_profile']]}",
+            )
+        )
 
     for label, good, detail in lines:
         ctx.say(
@@ -351,9 +398,20 @@ def cmd_end(r: Run) -> int:
             "result": "pass" if ok else "fail",
             "assisted": False,
             "drill": d.name,
+            **({"responder": "scripted"} if scripted else {}),
             **report,
         },
     )
+    if pm and not scripted:
+        from .. import rubric
+
+        try:
+            items = rubric.items(r.course, "postmortem")
+            ctx.say(
+                f"  {ctx.DIM}self-review your postmortem against course/rubrics/postmortem.md ({len(items)} items){ctx.RST}"
+            )
+        except HarnessError:
+            pass
     pend = len(drills.Journal.open(_runs_dir(r) / run).pending_undos())
     ctx.say(
         f"{ctx.GRN + 'PASS' if ok else ctx.RED + 'FAIL'}{ctx.RST} drill {d.id}"
@@ -373,15 +431,19 @@ def cmd_reset(r: Run) -> int:
         return EXIT_PASS
     run, st = cur
     j = drills.Journal.open(_runs_dir(r) / run)
-    if not j.pending_undos():
+    pending = j.pending_undos()
+    if not pending:
         ctx.say(f"drill run {run}: nothing to undo")
     else:
-        k = kube.safety_gate(r.system.deploy)
-        if (k.context, k.namespace) != (st.get("context"), st.get("namespace")):
-            raise kube.GateRefused(
-                f"refusing: run {run} injected into {st.get('context')}/{st.get('namespace')}, "
-                f"but [deploy] now names {k.context}/{k.namespace}"
-            )
+        local = ("kill", "http", "git-branch-remove")
+        k = None
+        if any(a[0] not in local for e in pending for a in e["undo"]):
+            k = kube.safety_gate(r.system.deploy)
+            if (k.context, k.namespace) != (st.get("context"), st.get("namespace")):
+                raise kube.GateRefused(
+                    f"refusing: run {run} injected into {st.get('context')}/{st.get('namespace')}, "
+                    f"but [deploy] now names {k.context}/{k.namespace}"
+                )
         for what in drills.undo(k, j):
             ctx.say(f"  undid {what}")
     if st.get("status") == "active":
@@ -391,15 +453,66 @@ def cmd_reset(r: Run) -> int:
     return EXIT_PASS
 
 
+def cmd_run(
+    r: Run, name: str, seed: int | None, respond: bool, poll_s: float, max_wait_s: float
+) -> int:
+    """start, wait for the alert, run the scripted responder, wait for the
+    resolve checks to hold, then grade without the time limit (CI, 5.10)."""
+    code = cmd_start(r, name, seed)
+    if code != EXIT_PASS:
+        return code
+    d = drills.find(r.course, name)
+    det = d.raw.get("detect")
+    prom = str(r.system.deploy.get("prometheus", "")).rstrip("/")
+    if det and prom:
+        q = f'ALERTS{{alertname="{det["alert"]}",alertstate="firing"}}'
+        deadline = time.monotonic() + min(float(det.get("within_s", 300)), max_wait_s)
+        while time.monotonic() < deadline:
+            res, _ = matchers.promql_instant(prom, q)
+            if res:
+                ctx.say(f"  {ctx.DIM}{det['alert']} is firing{ctx.RST}")
+                break
+            time.sleep(poll_s)
+    if respond:
+        script = d.path.parent / "respond.sh"
+        if not script.is_file():
+            raise HarnessError(f"drill {d.name} has no scripted responder ({script})")
+        rc, out = ctx.run(
+            ["bash", str(script), str(r.learner)],
+            cwd=r.learner,
+            env=r.env(),
+            timeout=max_wait_s,
+        )
+        ctx.say(f"  {ctx.DIM}respond.sh exited {rc}{ctx.RST}")
+        if rc != 0:
+            ctx.say(ctx.indent(ctx.tail(out, 20), 4))
+    hold = max(
+        [
+            float(c.get("hold_s", 0))
+            for c in (d.raw.get("resolve") or {}).get("check", [])
+            if "promql" in c
+        ]
+        + [0.0]
+    )
+    if hold:
+        time.sleep(min(hold + float(d.raw.get("step_s", 15)), max_wait_s))
+    return cmd_end(r, scripted=respond)
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(
         prog="ss drill",
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("verb", choices=["list", "start", "status", "end", "reset"])
+    ap.add_argument("verb", choices=["list", "start", "status", "end", "reset", "run"])
     ap.add_argument("name", nargs="?")
     ap.add_argument("--seed", type=int)
+    ap.add_argument(
+        "--respond", action="store_true", help="run: use the drill's scripted responder"
+    )
+    ap.add_argument("--poll-s", type=float, default=5.0)
+    ap.add_argument("--max-wait-s", type=float, default=900.0)
     a = ap.parse_args(argv)
     r = open_run(need_learner=a.verb != "list")
     if a.verb == "list":
@@ -419,4 +532,10 @@ def main(argv: list[str]) -> int:
             return cmd_status(r)
         if a.verb == "end":
             return cmd_end(r)
+        if a.verb == "run":
+            if not a.name:
+                raise HarnessError(
+                    "usage: ss drill run <name|id> [--seed N] [--respond]"
+                )
+            return cmd_run(r, a.name, a.seed, a.respond, a.poll_s, a.max_wait_s)
         return cmd_reset(r)

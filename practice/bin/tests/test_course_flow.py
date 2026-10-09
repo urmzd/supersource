@@ -11,7 +11,7 @@ def test_dispatch_keeps_practice_kinds(ss):
     assert "unknown subcommand" not in ss("check", "build", "c", "02").out
     # Course ids and course-only verbs reach the harness.
     assert "no learner repo" in ss("status", rc=5).out
-    assert "not built yet" in ss("mutate", "M90.1", rc=5).out
+    assert "no learner repo" in ss("mutate", "M90.1", rc=5).out  # routed to the harness
     assert "no learner repo" in ss("milestone", "MS-P1", rc=5).out
 
 

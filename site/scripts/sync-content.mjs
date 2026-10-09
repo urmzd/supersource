@@ -31,15 +31,13 @@ const GITHUB = 'https://github.com/urmzd/supersource';
 const TRACKS = [
 	['math', 'Mathematics'],
 	['algorithms', 'Algorithms'],
-	['information-theory', 'Information Theory'],
 	['ml', 'Machine Learning & AI'],
 	['systems', 'Systems & Architecture'],
 	['data-engineering', 'Data Engineering'],
 	['ai-platform-engineering', 'AI Platform Engineering'],
-	['programming-languages', 'Programming Languages'],
 	['software-craftsmanship', 'Software Craftsmanship'],
-	['diagramming-and-documentation', 'Diagramming & Documentation'],
 	['infrastructure', 'Infrastructure'],
+	['responsible-ai', 'Responsible AI'],
 	['competitive-programming', 'Competitive Programming'],
 	['field-engineering', 'Field Engineering'],
 	['case-studies', 'Case Studies'],
@@ -50,6 +48,7 @@ const EXTRA_TREES = [
 	['course/contracts', 'Course Contracts'],
 ];
 const START = [
+	['paths/course/README.md', 'The course'],
 	['README.md', 'Overview'],
 	['STUDY-PLAN.md', 'Study Plans'],
 	['CS-CURRICULUM.md', 'CS Curriculum'],
@@ -213,7 +212,8 @@ function tree(dir, label) {
 	const files = sources.filter((f) => path.posix.dirname(f) === dir && f !== readme).sort();
 	const subdirs = [...dirs]
 		.filter((d) => path.posix.dirname(d) === dir && sources.some((f) => f.startsWith(`${d}/`)))
-		.sort();
+		// Capstones close a spine, so they sort after every numbered part.
+		.sort((a, b) => (a.endsWith('/capstones') - b.endsWith('/capstones')) || a.localeCompare(b));
 	const items = [];
 	if (sources.includes(readme)) items.push({ label: 'Overview', link: navOf(readme) });
 	for (const f of files) items.push({ label: shortLabel(titles.get(f)), link: navOf(f) });
@@ -254,18 +254,28 @@ for (const [f, { title, body }] of pages) {
 }
 
 const pathNames = [...dirs].filter((d) => /^paths\/[^/]+$/.test(d) && sources.includes(`${d}/README.md`));
+const isCourse = (d) => /^paths\/course(-|$)/.test(d);
+const pathItem = (d) => ({ label: shortLabel(titles.get(`${d}/README.md`)), link: navOf(`${d}/README.md`) });
+// The course comes first: its front door, the system map, then one entry per
+// pass in order. The tracks follow as the "Library" the chapters live in.
+const courseItems = [
+	...(sources.includes('paths/course/SYSTEM.md') ? [{ label: 'The system', link: navOf('paths/course/SYSTEM.md') }] : []),
+	...pathNames.filter((d) => isCourse(d) && d !== 'paths/course').sort().map(pathItem),
+];
 const sidebar = [
 	{ label: 'Start here', items: START.filter(([f]) => sources.includes(f)).map(([f, label]) => ({ label, link: navOf(f) })) },
+	...(courseItems.length ? [{ label: 'Course', items: courseItems }] : []),
 	{
 		label: 'Role paths',
 		items: [
 			{ label: 'All paths', link: navOf('paths/README.md') },
 			...pathNames
+				.filter((d) => !isCourse(d))
 				.sort((a, b) => (a.endsWith('superstar-fde') ? -1 : b.endsWith('superstar-fde') ? 1 : a.localeCompare(b)))
-				.map((d) => ({ label: shortLabel(titles.get(`${d}/README.md`)), link: navOf(`${d}/README.md`) })),
+				.map(pathItem),
 		],
 	},
-	{ label: 'Tracks', items: TRACKS.filter(([d]) => dirs.has(d)).map(([d, label]) => tree(d, label)) },
+	{ label: 'Library', items: TRACKS.filter(([d]) => dirs.has(d)).map(([d, label]) => tree(d, label)) },
 	...EXTRA_TREES.filter(([d]) => dirs.has(d)).map(([d, label]) => ({ ...tree(d, label), collapsed: true })),
 ];
 

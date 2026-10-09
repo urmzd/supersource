@@ -32,10 +32,10 @@ CLRS chapter references are noted in each topic README where applicable. For com
 | 09 | [Backtracking](09-backtracking/) | [Combination Sum](09-backtracking/combination-sum.js), [Map Coloring](09-backtracking/example-2.py) | JS/Python | [Patterns](09-backtracking/README.md) |
 | 10 | [Math & Bit Manipulation](10-math-bit/) | [Count Bits](10-math-bit/count-number-of-bits.js), [Number of 1 Bits](10-math-bit/number-of-1-bits.js), [Reverse Bits](10-math-bit/reverse-bits.js), [Sum of Two Integers](10-math-bit/sum-of-two-integers.js) | JS | [Patterns](10-math-bit/README.md) |
 | 11 | [Recursion & Divide-and-Conquer](11-recursion-divide-conquer/) | [Tree Path](11-recursion-divide-conquer/example-1.py), [Max Subarray D&C](11-recursion-divide-conquer/example-3.py) | Python | [Patterns](11-recursion-divide-conquer/README.md) |
-| 12 | [Concurrency & Systems](12-concurrency-systems/) | [C Miner](12-concurrency-systems/miner/), [Test Suite](12-concurrency-systems/tests/) | C/Python | [Patterns](12-concurrency-systems/README.md) |
-| 13 | [Functional Programming](13-functional-programming/) | [BST](13-functional-programming/bst.scm), [Factors](13-functional-programming/Factors.scm), [Primes](13-functional-programming/IsPrime.scm), [Visitors](13-functional-programming/list-visitor.scm), [Iterators](13-functional-programming/new-sqrt-iterator.scm), [I/O](13-functional-programming/io.scm) | Scheme | [Patterns](13-functional-programming/README.md) |
-| 14 | [ML & Statistics](14-ml-statistics/) | [Linear Regression](14-ml-statistics/linear-regression.py), [Clustering](14-ml-statistics/clustering.py), [PyTorch](14-ml-statistics/learn-pytorch.py), [Framework](14-ml-statistics/framework.py), [Linear Algebra & Models](14-ml-statistics/ml-linear-algebra-and-linear-models.py), [Logistic Reg & NNs](14-ml-statistics/ml-logistic-regression-and-neural-nets.py), [Naive Bayes & GMM](14-ml-statistics/ml-naive-bayes-and-gmm.py), [CNN & RNN](14-ml-statistics/ml-clustering-cnn-rnn.py), [NLP Labs](14-ml-statistics/nlp/), [R Exercises](14-ml-statistics/r-exercises/) | Python/R | [Patterns](14-ml-statistics/README.md) |
 | 15 | [Probabilistic Structures](15-probabilistic-structures/) | [Bloom Filter](15-probabilistic-structures/bloom.py) | Python | [Patterns](15-probabilistic-structures/README.md) |
+| 16 | [Systems Data Structures](16-systems-data-structures/) | Course modules `ds.01` to `ds.09`: Swiss and Robin Hood hash maps, heaps and top-k, LRU, radix tree, Bloom filter, bounded-load consistent hashing | C/Rust/Go | [Patterns](16-systems-data-structures/README.md) |
+
+Topics 12 to 14 were historical coursework (a C miner, Scheme exercises, ML and NLP labs) and moved to [`archive/algorithms/`](../archive/algorithms/); the numbers stay reserved so links and the study plan keep their order. Topics 01 to 11 and 15 are the interview-pattern chapters (off the course spine, used by the interview drills); topic 16 hosts course modules.
 
 ## Interviews
 
@@ -47,4 +47,4 @@ See [`interviews/README.md`](../interviews/README.md) for the full breakdown.
 
 Standalone implementations for hands-on practice.
 
-See [`practice/`](../practice/) for exercises including K-Means clustering and TF-IDF vector search.
+See [`practice/`](../practice/) for exercises. The K-Means clustering and TF-IDF vector search scripts are archived in [`archive/algorithms/14-ml-statistics/`](../archive/algorithms/14-ml-statistics/), where the course cites them as worked examples for `ag.07`.

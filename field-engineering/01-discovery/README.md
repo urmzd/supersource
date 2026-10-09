@@ -169,7 +169,7 @@ Then write it in the open questions list and reply by Thursday even if the answe
 | TTFT, TPOT, prefix caching, batch versus online | [LLM Systems & Inference](../../ml/04-llm-systems/) | Understanding what each workload question changes |
 | Percentiles, SLIs, SLOs | [Observability](../../systems/04-observability/) | Asking where and how latency is measured |
 | Eval sets, judges, rubrics | [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/) | The quality-bar questions |
-| Writing for a reader who was not in the room | [Documentation Writing](../../diagramming-and-documentation/02-documentation-writing/) | Notes sent the same day |
+| Writing for a reader who was not in the room | [Documentation Writing](../../software-craftsmanship/06-documentation-writing/) | Notes sent the same day |
 
 ## Company Relevance
 

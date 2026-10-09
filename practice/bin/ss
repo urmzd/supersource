@@ -40,8 +40,12 @@
 #   ss status [--graph|--counts|--json]   ss next
 #   ss contracts sync [--to REV]   ss lint [--links] [--fix-index]
 #   ss milestone <MS-ID> [--smoke] [--ref-deps]   run a milestone through YOUR entry points
-#   ss conform openapi[:v0][:engine|gateway] [--base URL]   OpenAPI conformance
-#   ss drill list|start <name>|status|end|reset   faults in your kind cluster (gated)
+#   ss conform openapi[:v0|v1|v2][:engine|gateway] [--base URL]   OpenAPI conformance
+#   ss mutate <ID> [-j N] [--reveal-survivors]   the mutation grade of YOUR tests
+#   ss tdd red|green <ID>          red then green (rung R3 and up)
+#   ss parity [<suite>..] [--fuzz] [--ref]   every implementation vs one oracle
+#   ss fetch <asset>.. | --list    pinned large assets (ASSETS.tsv, sha256)
+#   ss drill list|start <name>|status|end|reset|run <name> --respond   faults (gated)
 #   ss export <DIR> [--remote URL] [--allow-incomplete]   your standalone repo
 #   ss doctor [--pass N]           ss course ci   (prints the learner CI recipe)
 #   ss verify course [ID..] [--changed REF] [--global] [--e2e] [--kind]

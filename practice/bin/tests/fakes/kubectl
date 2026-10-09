@@ -94,6 +94,20 @@ def main(argv):
                     data.pop(k, None)
                 else:
                     data[k] = v
+    elif verb == "debug":
+        st.setdefault("debug", []).append(rest[1:])
+    elif verb == "apply":
+        with open(rest[rest.index("-f") + 1]) as f:
+            doc = json.load(f)
+        st.setdefault("applied", []).extend(doc.get("items", [doc]))
+    elif verb == "wait":
+        print(f"{rest[-2] if rest[-1].startswith('--timeout') else rest[-1]} condition met")
+        return 0
+    elif verb == "logs":
+        print(st.get("job_logs", ""))
+        return 0
+    elif verb == "delete" and rest[1] in ("job", "configmap"):
+        st.setdefault("deleted_objects", []).append(f"{rest[1]}/{rest[2]}")
     elif verb == "rollout" and rest[1] == "restart":
         o = obj(rest[2])
         o.setdefault("restarts", 0)

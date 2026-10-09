@@ -49,6 +49,18 @@ SAN_FLAGS = [
     "-Wno-unused-parameter",
 ]
 LIB_FLAGS = ["-std=c11", "-O2", "-fPIC", "-Wall", "-Wextra", "-Wno-unused-parameter"]
+# A third C build for modules whose [tests].sanitize lists "thread" (rt.03's
+# pool, DESIGN 4.4): ThreadSanitizer cannot share a binary with ASan.
+TSAN_FLAGS = [
+    "-std=c11",
+    "-O1",
+    "-g",
+    "-fsanitize=thread",
+    "-fno-omit-frame-pointer",
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+]
 PY_TEST_DEPS = ["pytest", "pytest-randomly", "hypothesis", "numpy"]
 SKIP_DIRS = {"target", ".git", "__pycache__", ".venv", "node_modules"}
 CONTRACTS_GO_MODULE = "supersource.urmzd.com/tl/contracts"
@@ -115,6 +127,7 @@ class Overlay:
     seed: int = 0
     _files: dict[str, Resolved] = field(default_factory=dict)
     _lib: Path | None = None
+    _pyext: Path | None = None
 
     # -- resolution -----------------------------------------------------------
 
@@ -272,15 +285,27 @@ class Overlay:
         extra["UV_PROJECT_ENVIRONMENT"] = str(ctx.cache_dir() / "verify-venv")
         return proj, extra
 
-    def run_python(self, mid: str, names: list[str] | None, timeout: float) -> TestRun:
+    def py_env(self) -> tuple[list[str], dict]:
+        """The `uv run` prefix and environment every Python run in this overlay
+        uses: the learner's project env plus the harness test deps, and
+        PYTHONPATH = pyext : subst : learner/python : stubs : course tests :
+        python testkit."""
         subst, stubs = self.build_python()
         proj, extra = self._py_project()
         env = self.env()
         env.update(extra)
+        if self.needs_pyext():
+            ext, err = self.build_pyext(env)
+            if ext is None:
+                raise HarnessError("building tinyllm_rs (tl-py) failed:\n" + err)
+            env["TINYLLM_PYEXT_DIR"] = str(ext)
         path = [str(subst)]
         if self.learner:
             path.append(str(self.learner / "python"))
         path += [str(stubs), str(self.course / "tests")]
+        tk = self.course / "testkit" / "python"
+        if tk.is_dir():
+            path.append(str(tk))
         if env.get("TINYLLM_PYEXT_DIR"):
             path.insert(0, env["TINYLLM_PYEXT_DIR"])
         env["PYTHONPATH"] = os.pathsep.join(path)
@@ -288,7 +313,14 @@ class Overlay:
         cmd = ["uv", "run", "--project", str(proj), "--quiet"]
         for dep in PY_TEST_DEPS:
             cmd += ["--with", dep]
-        cmd += [
+        return cmd, env
+
+    def run_python(self, mid: str, names: list[str] | None, timeout: float) -> TestRun:
+        try:
+            prefix, env = self.py_env()
+        except HarnessError as e:
+            return TestRun("python", False, False, str(e))
+        cmd = prefix + [
             "python",
             "-m",
             "pytest",
@@ -384,16 +416,31 @@ class Overlay:
         return lib, ""
 
     def run_c(self, mid: str, names: list[str] | None, timeout: float) -> TestRun:
-        objs, err = self.c_objects(SAN_FLAGS, "asan")
+        r = self._run_c_build(mid, names, timeout, SAN_FLAGS, "asan")
+        sans = self.reg.get(mid).tests.get("sanitize", [])
+        if r.ok and "thread" in sans and os.environ.get("SS_TSAN", "1") != "0":
+            t = self._run_c_build(mid, names, timeout, TSAN_FLAGS, "tsan")
+            return TestRun("c", t.ok, t.compiled, r.output + "\n[tsan]\n" + t.output)
+        return r
+
+    def _run_c_build(
+        self,
+        mid: str,
+        names: list[str] | None,
+        timeout: float,
+        flags: list[str],
+        tag: str,
+    ) -> TestRun:
+        objs, err = self.c_objects(flags, tag)
         if err:
             return TestRun("c", False, False, err)
         tests = sorted(self.test_dir(mid).glob("*.c"))
         out_dir = self.work / "build" / mid
         out_dir.mkdir(parents=True, exist_ok=True)
-        exe = out_dir / "test-asan"
+        exe = out_dir / f"test-{tag}"
         cmd = [
             "cc",
-            *SAN_FLAGS,
+            *flags,
             "-DSS_COUNTING_ALLOC=1",
             f"-I{self._c_include()}",
             *map(str, tests),
@@ -411,6 +458,7 @@ class Overlay:
         env["ASAN_OPTIONS"] = (
             "detect_leaks=1" if platform.system() == "Linux" else "detect_leaks=0"
         )
+        env["TSAN_OPTIONS"] = "halt_on_error=1:second_deadlock_stack=1"
         if names:
             env["SS_ONLY"] = ",".join(names)
         rc, out = ctx.run([str(exe)], cwd=self.work, env=env, timeout=timeout)
@@ -507,10 +555,15 @@ class Overlay:
         desired["Cargo.toml"] = tomlw.dumps(
             self._fix_paths(ws, root.resolve(), root)
         ).encode()
-        deps = {pkg: {"path": f"../{d}"} for d, pkg in crates}
+        # tl-py is a Python extension (its symbols resolve inside the
+        # interpreter), never a dependency of the course test crate.
+        deps = {pkg: {"path": f"../{d}"} for d, pkg in crates if pkg != "tl-py"}
         tlc = self.contracts / "rust" / "tl-contracts"
         if (tlc / "Cargo.toml").is_file():
             deps["tl-contracts"] = {"path": str(tlc)}
+        tk = self.course / "testkit" / "rust" / "tl-testkit"
+        if (tk / "Cargo.toml").is_file():
+            deps["tl-testkit"] = {"path": str(tk)}  # failpoints and the fake clock
         desired["ss-tests/Cargo.toml"] = tomlw.dumps(
             {
                 "package": {
@@ -585,20 +638,134 @@ class Overlay:
                 ).is_file()
             ]
         farm = self.build_rust(test_ids)
+        cmd = [
+            "cargo",
+            "test",
+            "-q",
+            "--no-run",
+            "--workspace",
+            "--manifest-path",
+            str(farm / "Cargo.toml"),
+        ]
+        ext = (farm / "crates" / "tl-py" / "Cargo.toml").is_file()
+        if (
+            ext
+        ):  # an extension module links only inside Python: check it, do not link tests
+            cmd += ["--exclude", "tl-py"]
+        rc, out = ctx.run(cmd, env=self._cargo_env(), timeout=600)
+        if rc == 0 and ext:
+            rc, more = ctx.run(
+                [
+                    "cargo",
+                    "check",
+                    "-q",
+                    "--manifest-path",
+                    str(farm / "Cargo.toml"),
+                    "-p",
+                    "tl-py",
+                ],
+                env=self._cargo_env(),
+                timeout=600,
+            )
+            out += more
+        return rc == 0, out
+
+    # -- tl-py: the PyO3 extension tinyllm_rs (DESIGN 2.5) ------------------------
+
+    def _tl_py_manifest(self) -> Path | None:
+        for root in ([self.learner / "rust"] if self.learner else []) + [
+            self.course / "ref" / "rust"
+        ]:
+            p = root / "crates" / "tl-py" / "Cargo.toml"
+            if p.is_file():
+                return p
+        return None
+
+    def needs_pyext(self) -> bool:
+        """Python tests reach Rust through tinyllm_rs: build it when a tl-py
+        crate exists and the module's closure holds a Rust unit."""
+        if self._tl_py_manifest() is None:
+            return False
+        return any(self.resolve(u).active for u in self.units_in("rust"))
+
+    def _interpreter(self, env: dict) -> str:
+        """The learner's uv interpreter: PYO3_PYTHON for the tl-py build."""
+        proj, extra = self._py_project()
+        e = dict(env)
+        e.update(extra)
         rc, out = ctx.run(
             [
-                "cargo",
-                "test",
-                "-q",
-                "--no-run",
-                "--workspace",
-                "--manifest-path",
-                str(farm / "Cargo.toml"),
+                "uv",
+                "run",
+                "--project",
+                str(proj),
+                "--quiet",
+                "python",
+                "-c",
+                "import sys; print(sys.executable)",
             ],
-            env=self._cargo_env(),
-            timeout=600,
+            env=e,
+            timeout=300,
         )
-        return rc == 0, out
+        lines = [x for x in out.splitlines() if x.strip()]
+        if rc != 0 or not lines:
+            raise HarnessError(
+                f"cannot find the learner's Python for PYO3_PYTHON:\n{out}"
+            )
+        return lines[-1].strip()
+
+    def build_pyext(self, env: dict | None = None) -> tuple[Path | None, str]:
+        """`cargo rustc -p tl-py --lib --crate-type cdylib` in the shared farm
+        with PYO3_PYTHON set to the learner's interpreter and, on macOS, the
+        `-undefined dynamic_lookup` link args (no maturin); the library is
+        copied to <work>/pyext/tinyllm_rs.so, which goes first on PYTHONPATH."""
+        if self._pyext is not None:
+            return self._pyext, ""
+        farm = self.build_rust([])
+        man_path = farm / "crates" / "tl-py" / "Cargo.toml"
+        if not man_path.is_file():
+            return None, "no rust/crates/tl-py/Cargo.toml in the farm"
+        man = tomllib.loads(man_path.read_text())
+        pkg = man.get("package", {}).get("name", "tl-py")
+        libname = (man.get("lib") or {}).get("name") or pkg.replace("-", "_")
+        cenv = self._cargo_env()
+        try:
+            cenv["PYO3_PYTHON"] = self._interpreter(env or self.env())
+        except HarnessError as e:
+            return None, str(e)
+        cmd = [
+            "cargo",
+            "rustc",
+            "-q",
+            "--manifest-path",
+            str(farm / "Cargo.toml"),
+            "-p",
+            pkg,
+            "--lib",
+            "--crate-type",
+            "cdylib",
+        ]
+        if platform.system() == "Darwin":
+            cmd += ["--", "-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
+        rc, out = ctx.run(cmd, env=cenv, timeout=900)
+        if rc != 0:
+            return None, out
+        ext = "dylib" if platform.system() == "Darwin" else "so"
+        built = Path(cenv["CARGO_TARGET_DIR"]) / "debug" / f"lib{libname}.{ext}"
+        if not built.is_file():
+            return None, f"cargo built no {built.name} (is crate-type cdylib?)"
+        dest = self.work / "pyext"
+        dest.mkdir(parents=True, exist_ok=True)
+        target = dest / "tinyllm_rs.so"
+        if not target.is_file() or target.read_bytes() != built.read_bytes():
+            # A new inode every time: macOS caches a loaded Mach-O's code
+            # signature per vnode, and rewriting the file in place gets the
+            # next process that loads it killed.
+            tmp = dest / ".tinyllm_rs.so.tmp"
+            shutil.copy2(built, tmp)
+            os.replace(tmp, target)
+        self._pyext = dest
+        return dest, ""
 
     # -- Go -----------------------------------------------------------------------
 
@@ -655,10 +822,14 @@ class Overlay:
             mods.append(self.contracts / "go")
         if (self.course / "tests" / "go" / "go.mod").is_file():
             mods.append(self.course / "tests" / "go")
+        if (self.course / "testkit" / "go" / "go.mod").is_file():
+            mods.append(
+                self.course / "testkit" / "go"
+            )  # supersource.urmzd.com/tl/testkit
         version = max((_go_version(m / "go.mod") for m in mods), default=(1, 22))
         work = self.work / "go.work"
         body = (
-            f"go {version[0]}.{version[1]}\n\nuse (\n"
+            f"go {go_version_str(version)}\n\nuse (\n"
             + "".join(f"\t{m}\n" for m in mods)
             + ")\n"
         )
@@ -773,6 +944,179 @@ class Overlay:
                 runs.append(self.run_go(mid, names, timeout))
         return runs
 
+    # -- the learner's graded tests (DESIGN 5.6), run against this overlay -------
+
+    def learner_test_files(self, rel: str) -> list[Path]:
+        return graded_files(self.learner, rel) if self.learner else []
+
+    def run_learner_tests(
+        self, rel: str, timeout: float, extra_env: dict | None = None
+    ) -> TestRun:
+        """Run the graded tests at <learner>/<rel> against this overlay's units
+        (reference, reference plus one mutant, or the learner's own)."""
+        lang = markers.lang_of(rel) or rel.split("/", 1)[0]
+        files = self.learner_test_files(rel)
+        if not files:
+            return TestRun(lang, False, False, f"no graded test files under {rel}")
+        if self.needs_c_lib([lang]) and self._lib is None:
+            lib, err = self.build_c_lib()
+            if lib is None:
+                return TestRun("c", False, False, "building libtinyllm failed:\n" + err)
+        if lang == "python":
+            try:
+                prefix, env = self.py_env()
+            except HarnessError as e:
+                return TestRun("python", False, False, str(e))
+            env.update(extra_env or {})
+            base = self.learner / rel
+            root = base if base.is_dir() else base.parent
+            cmd = prefix + [
+                "python",
+                "-m",
+                "pytest",
+                "-q",
+                "-p",
+                "no:cacheprovider",
+                "-p",
+                "_lib.ss_hypothesis",
+                f"--randomly-seed={self.seed}",
+                f"--rootdir={root}",
+                f"--confcutdir={root}",
+                *map(str, files),
+            ]
+            rc, out = ctx.run(cmd, cwd=self.work, env=env, timeout=timeout)
+            compiled = not re.search(
+                r"(SyntaxError|IndentationError|ImportError|ModuleNotFoundError) while|ERROR collecting",
+                out,
+            )
+            return TestRun("python", rc == 0, compiled, out)
+        if lang == "c":
+            objs, err = self.c_objects(SAN_FLAGS, "asan")
+            if err:
+                return TestRun("c", False, False, err)
+            exe = self.work / "build" / "learner-tests"
+            exe.parent.mkdir(parents=True, exist_ok=True)
+            cmd = [
+                "cc",
+                *SAN_FLAGS,
+                "-DSS_COUNTING_ALLOC=1",
+                f"-I{self._c_include()}",
+                *map(str, files),
+                *map(str, objs),
+                "-o",
+                str(exe),
+            ]
+            if platform.system() != "Darwin":
+                cmd += ["-lm", "-lpthread"]
+            rc, out = ctx.run(cmd)
+            if rc != 0:
+                return TestRun("c", False, False, out)
+            env = self.env()
+            env.update(extra_env or {})
+            env["UBSAN_OPTIONS"] = "halt_on_error=1:print_stacktrace=1"
+            env["ASAN_OPTIONS"] = (
+                "detect_leaks=1" if platform.system() == "Linux" else "detect_leaks=0"
+            )
+            rc, out = ctx.run([str(exe)], cwd=self.work, env=env, timeout=timeout)
+            return TestRun("c", rc == 0, True, out)
+        if lang == "rust":
+            farm = self.build_rust([])
+            env = self._cargo_env()
+            env.update(extra_env or {})
+            by_pkg: dict[str, list[str]] = {}
+            for f in files:
+                farm_rel = f.relative_to(self.learner / "rust")
+                crate = farm_rel.parts[: farm_rel.parts.index("tests")]
+                man = tomllib.loads((farm.joinpath(*crate) / "Cargo.toml").read_text())
+                pkg = man.get("package", {}).get("name", crate[-1])
+                by_pkg.setdefault(pkg, []).append(f.stem)
+            outs, ok, compiled = [], True, True
+            for pkg, stems in sorted(by_pkg.items()):
+                base = [
+                    "cargo",
+                    "test",
+                    "-q",
+                    "--manifest-path",
+                    str(farm / "Cargo.toml"),
+                    "-p",
+                    pkg,
+                ]
+                for st in stems:
+                    base += ["--test", st]
+                rc, out = ctx.run(
+                    base + ["--no-run"], env=env, timeout=max(timeout, 300)
+                )
+                if rc != 0:
+                    return TestRun("rust", False, False, out)
+                rc, out = ctx.run(
+                    base + ["--", "--test-threads=1"], env=env, timeout=timeout
+                )
+                outs.append(out)
+                ok &= rc == 0
+            return TestRun("rust", ok, compiled, "\n".join(outs))
+        if lang == "go":
+            farm, work = self.build_go()
+            env = self._go_env(work)
+            env.update(extra_env or {})
+            pkgs = sorted(
+                {
+                    "./" + f.parent.relative_to(self.learner / "go").as_posix()
+                    for f in files
+                }
+            )
+            rc, out = ctx.run(
+                ["go", "vet", *pkgs], cwd=farm, env=env, timeout=max(timeout, 300)
+            )
+            if rc != 0:
+                return TestRun("go", False, False, out)
+            rc, out = ctx.run(
+                ["go", "test", f"-shuffle={self.seed if self.seed else 'off'}", *pkgs],
+                cwd=farm,
+                env=env,
+                timeout=timeout,
+            )
+            return TestRun("go", rc == 0, True, out)
+        return TestRun(
+            lang, False, False, f"graded tests under {rel}: unknown language"
+        )
+
+    def run_cmd(
+        self, argv: list[str], timeout: float, extra_env: dict | None = None
+    ) -> tuple[int, str]:
+        """A learner command (an eval or benchmark script) under this overlay's
+        Python environment, from the learner repo."""
+        prefix, env = self.py_env()
+        if self.needs_c_lib(["python"]) and self._lib is None:
+            self.build_c_lib()
+            env = self.py_env()[1]
+        env.update(extra_env or {})
+        cmd = prefix + argv if argv and argv[0] == "python" else argv
+        return ctx.run(cmd, cwd=self.learner or self.work, env=env, timeout=timeout)
+
+
+def graded_files(learner: Path, rel: str) -> list[Path]:
+    """The learner's graded test files at `rel` (a file or a directory)."""
+    base = learner / rel
+    lang = markers.lang_of(rel) or rel.split("/", 1)[0]
+    pick = {
+        "python": lambda p: (
+            p.suffix == ".py"
+            and (p.name.startswith("test_") or p.name.endswith("_test.py"))
+        ),
+        "c": lambda p: p.suffix == ".c",
+        "rust": lambda p: p.suffix == ".rs" and "tests" in p.parts,
+        "go": lambda p: p.name.endswith("_test.go"),
+    }.get(lang, lambda p: False)
+    if base.is_file():
+        return [base] if pick(base) else []
+    if not base.is_dir():
+        return []
+    deep = lang in ("python", "c")
+    it = base.rglob("*") if deep else base.iterdir()
+    return sorted(
+        p for p in it if p.is_file() and "__pycache__" not in p.parts and pick(p)
+    )
+
 
 def _headers_hash(inc: Path) -> str:
     if not inc.is_dir():
@@ -785,12 +1129,22 @@ def _headers_hash(inc: Path) -> str:
     )
 
 
-def _go_version(gomod: Path) -> tuple[int, int]:
+def _go_version(gomod: Path) -> tuple[int, ...]:
+    """The go line of a go.mod as a comparable tuple. A release such as
+    1.25.0 sorts above the language version 1.25 (Go 1.21 rules), so a
+    go.work built from the max accepts a module that says `go 1.25.0`."""
     try:
-        m = re.search(r"^go\s+(\d+)\.(\d+)", gomod.read_text(), re.M)
+        m = re.search(r"^go\s+(\d+)\.(\d+)(?:\.(\d+))?", gomod.read_text(), re.M)
     except OSError:
         return (1, 22)
-    return (int(m.group(1)), int(m.group(2))) if m else (1, 22)
+    if not m:
+        return (1, 22)
+    v = (int(m.group(1)), int(m.group(2)))
+    return v + (int(m.group(3)),) if m.group(3) is not None else v
+
+
+def go_version_str(v: tuple[int, ...]) -> str:
+    return ".".join(str(x) for x in v)
 
 
 def need_tool(tool: str) -> None:

@@ -63,16 +63,28 @@ def no_em_dash(text: str, where: str) -> list[str]:
     return errs
 
 
+CODE_SPAN = re.compile(r"(`+)(?!`).*?(?<!`)\1(?!`)")
+
+
 def links(text: str, src: Path, root: Path) -> list[str]:
+    """Relative links that do not resolve to a file or directory in the repo.
+
+    Fenced blocks and inline code spans are not links (`operator[](key)`), and
+    a target must stay inside the repository: `../../../../../x` that only
+    resolves because a sibling checkout happens to have `x` is broken.
+    """
     errs = []
     fence = False
+    root_r = root.resolve()
+    where = src.relative_to(root) if src.is_relative_to(root) else src
     for i, line in enumerate(text.splitlines(), 1):
-        if line.startswith("```"):
+        if line.lstrip().startswith(("```", "~~~")):
             fence = not fence
+            continue
         if fence:
             continue
-        for target in LINK.findall(line):
-            if re.match(r"^[a-z]+:", target) or target.startswith("#"):
+        for target in LINK.findall(CODE_SPAN.sub("code", line)):
+            if re.match(r"^[a-z]+:", target) or target.startswith(("#", "{")):
                 continue
             path = target.split("#", 1)[0]
             if not path:
@@ -81,11 +93,9 @@ def links(text: str, src: Path, root: Path) -> list[str]:
                 (src.parent / path)
                 if not path.startswith("/")
                 else (root / path.lstrip("/"))
-            )
-            if not dest.exists():
-                errs.append(
-                    f"{src.relative_to(root) if src.is_relative_to(root) else src}:{i}: broken link {target}"
-                )
+            ).resolve()
+            if not dest.exists() or not dest.is_relative_to(root_r):
+                errs.append(f"{where}:{i}: broken link {target}")
     return errs
 
 

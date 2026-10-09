@@ -166,6 +166,34 @@ def rust_manifests(learner: Path, unit_list: list[str], ref_rust: Path) -> list[
             )
         if "lib" not in m and not (man.parent / "src" / "lib.rs").is_file():
             errs.append(f"rust/crates/{crate}: needs a lib target (src/lib.rs)")
+        if crate == "tl-py":
+            errs += tl_py_contract(learner, m)
+    return errs
+
+
+def tl_py_contract(learner: Path, man: dict) -> list[str]:
+    """The tl-py build contract (DESIGN 2.5): a cdylib, PyO3 with `abi3-py311`
+    and `extension-module`, and on macOS `-undefined dynamic_lookup` in
+    rust/.cargo/config.toml or the crate's build.rs (no maturin needed)."""
+    errs = []
+    where = "rust/crates/tl-py/Cargo.toml"
+    if "cdylib" not in (man.get("lib") or {}).get("crate-type", []):
+        errs.append(f'{where}: [lib] crate-type must include "cdylib"')
+    py = (man.get("dependencies") or {}).get("pyo3")
+    feats = set(py.get("features", [])) if isinstance(py, dict) else set()
+    for f in ("abi3-py311", "extension-module"):
+        if f not in feats:
+            errs.append(f"{where}: the pyo3 dependency needs feature {f!r}")
+    cfg = learner / "rust" / ".cargo" / "config.toml"
+    build = learner / "rust" / "crates" / "tl-py" / "build.rs"
+    text = (cfg.read_text() if cfg.is_file() else "") + (
+        build.read_text() if build.is_file() else ""
+    )
+    if "dynamic_lookup" not in text:
+        errs.append(
+            "tl-py: on macOS the extension links with `-undefined dynamic_lookup`; put the "
+            "link args in rust/.cargo/config.toml ([target.'cfg(target_os = \"macos\")'] rustflags) or build.rs"
+        )
     return errs
 
 

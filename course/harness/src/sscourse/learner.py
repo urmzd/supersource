@@ -82,6 +82,8 @@ def started(learner: Path, course: Path, reg: Registry, mid: str) -> bool:
     if ledger.has_event(learner, mid, "start"):
         return True
     m = reg.get(mid)
+    if m.kind in ("solve", "proof") and (learner / "solve" / f"{mid}.toml").is_file():
+        return True
     if ledger.artifact_files(learner, m.artifacts):
         return True
     for u in m.units:

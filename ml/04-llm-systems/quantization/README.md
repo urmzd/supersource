@@ -8,7 +8,7 @@ A deep dive into LLM quantization, organized as **math first, then the code that
 
 - **Foundational papers** (all free on arXiv): [LLM.int8()](https://arxiv.org/abs/2208.07339) (2208.07339), [GPTQ](https://arxiv.org/abs/2210.17323) (2210.17323), [SmoothQuant](https://arxiv.org/abs/2211.10438) (2211.10438), [AWQ](https://arxiv.org/abs/2306.00978) (2306.00978), [QLoRA/NF4](https://arxiv.org/abs/2305.14314) (2305.14314), [QuIP#](https://arxiv.org/abs/2402.04396) (2402.04396), [QJL](https://arxiv.org/abs/2406.03482) (2406.03482), [**TurboQuant**](https://arxiv.org/abs/2504.19874) (2504.19874)
 - **The current stack**: [llama.cpp / GGUF](https://github.com/ggml-org/llama.cpp) k-quants, [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes) (NF4, LLM.int8()), [AutoAWQ](https://github.com/casper-hansen/AutoAWQ) / [GPTQModel](https://github.com/ModelCloud/GPTQModel), [`compressed-tensors`](https://github.com/neuralmagic/compressed-tensors) + [Marlin/Machete](https://github.com/vllm-project/vllm) kernels in vLLM, [torchao](https://github.com/pytorch/ao), [TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/) FP8, and [Burn](https://burn.dev/) for Rust
-- **Prerequisites**: [LLM Systems & Inference](../), [Linear Algebra](../../../math/03-linear-algebra/), [Information Theory](../../../information-theory/) (rate-distortion), C/CUDA basics
+- **Prerequisites**: [LLM Systems & Inference](../), [Linear Algebra](../../../math/03-linear-algebra/), [Information Theory](../../../math/11-information-theory/) (rate-distortion), C/CUDA basics
 - **Estimated time**: 2-3 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -30,7 +30,7 @@ A deep dive into LLM quantization, organized as **math first, then the code that
 
 ## Core Insight
 
-A quantizer is a function `Q: ℝ → {l₀, …, l_{2^b−1}}` mapping reals to `2^b` levels, plus a decoder `D` mapping levels back to reals. The **distortion** is `E[(x − D(Q(x)))²]`, and rate-distortion theory ([Information Theory](../../../information-theory/)) says the achievable distortion at `b` bits depends on the *entropy* of the source. So the whole game is: **make the source easy** (rotate it to be Gaussian/uniform), then **spend your levels where the mass is** (Lloyd–Max, quantile codebooks), while **protecting what matters** (salient weights, inner products).
+A quantizer is a function `Q: ℝ → {l₀, …, l_{2^b−1}}` mapping reals to `2^b` levels, plus a decoder `D` mapping levels back to reals. The **distortion** is `E[(x − D(Q(x)))²]`, and rate-distortion theory ([Information Theory](../../../math/11-information-theory/)) says the achievable distortion at `b` bits depends on the *entropy* of the source. So the whole game is: **make the source easy** (rotate it to be Gaussian/uniform), then **spend your levels where the mass is** (Lloyd–Max, quantile codebooks), while **protecting what matters** (salient weights, inner products).
 
 ## 1. The Core Math: Affine and Symmetric Quantization
 
@@ -93,7 +93,7 @@ Smaller `c` shrinks granular noise but raises clipping error. **Calibration** pi
 - **Percentile**: `c = 99.9th percentile` — clip the tail
 - **MSE-optimal**: grid/golden-section search `c` minimizing measured `D(c)` (what AWQ/GPTQ calibration and `compressed-tensors` do)
 
-This is a [rate-distortion](../../../information-theory/) problem: at fixed rate `b`, choose the quantizer minimizing expected distortion for the source distribution.
+This is a [rate-distortion](../../../math/11-information-theory/) problem: at fixed rate `b`, choose the quantizer minimizing expected distortion for the source distribution.
 
 ## 4. Where the Speed Comes From: Dequant-Fused GEMM
 
@@ -319,10 +319,10 @@ A runnable example (autodiff/NdArray backend, quantize → dequantize → measur
 
 | Concept | Connected Track | Application |
 |---------|-----------------|-------------|
-| Rate-distortion, entropy, quantile coding | [Information Theory](../../../information-theory/) | Why NF4/Lloyd–Max are optimal |
+| Rate-distortion, entropy, quantile coding | [Information Theory](../../../math/11-information-theory/) | Why NF4/Lloyd–Max are optimal |
 | Hessian, Cholesky, orthogonal/Hadamard matrices | [Linear Algebra](../../../math/03-linear-algebra/) | GPTQ, QuIP#, TurboQuant rotations |
 | Beta/Gaussian marginals, concentration | [Probability & Statistics](../../../math/07-probability-statistics/) | TurboQuant coordinate distribution |
-| Memory bandwidth, CUDA kernels, dp4a/mma | [Concurrency & Systems](../../../algorithms/12-concurrency-systems/) | Dequant-fused GEMM |
+| Memory bandwidth, CUDA kernels, dp4a/mma | [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/) | Dequant-fused GEMM |
 | KV cache, serving throughput | [LLM Systems & Inference](../) | What quantization buys you |
 
 ## Company Relevance

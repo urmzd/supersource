@@ -202,7 +202,7 @@ The paradigms differ only in *where the training signal comes from*. Each owns a
 | KV cache, GQA/MLA, FlashAttention, serving | [LLM Systems & Inference](../04-llm-systems/) | Running these models |
 | GGUF/AWQ/FP8 quantization | [Quantization](../04-llm-systems/quantization/) | Making models fit |
 | candle/diffusers/transformers runtimes | [Inference Frameworks](../04-llm-systems/frameworks/) | Where they execute |
-| KL divergence, score, entropy | [Information Theory](../../information-theory/) | Diffusion + VAE objectives |
+| KL divergence, score, entropy | [Information Theory](../../math/11-information-theory/) | Diffusion + VAE objectives |
 | RLHF/DPO alignment | [Deep Learning §12](../02-deep-learning/) | Post-training foundation models |
 | Self-supervision, Siamese/contrastive, JEPA | [Deep Learning §10](../02-deep-learning/) | The pretraining objective (§7) |
 | LLM lifecycle vs software SDLC | [Software Craftsmanship](../../software-craftsmanship/) | Building responsibly (§7) |

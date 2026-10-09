@@ -115,7 +115,7 @@ Where and how you lay data on disk determines everything downstream: a write-opt
 | Storage engines, replication, CAP | [System Design](../../systems/01-system-design/) | Shared distributed-storage core |
 | Bloom filters | [Probabilistic Structures](../../algorithms/15-probabilistic-structures/) | File/block skipping |
 | B-trees, sorting, hashing | [Trees](../../algorithms/05-trees/) | Index internals |
-| Compression | [Information Theory](../../information-theory/) | Columnar encoding |
+| Compression | [Information Theory](../../math/11-information-theory/) | Columnar encoding |
 | Object storage as model store | [LLM Systems](../../ml/04-llm-systems/) | Loading weights from S3/GCS |
 
 ## Company Relevance

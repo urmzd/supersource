@@ -1,0 +1,25 @@
+id        = "M10.2"
+title     = "The Optimizer protocol: SGD, momentum, Nesterov, weight decay"
+kind      = "build"
+lang      = ["python"]
+pass      = 2
+chapter   = "math/10-optimization/02-optimizer-protocol-and-sgd.md"
+contract  = ["contracts/py/tinyllm/optim/sgd.pyi"]
+deps      = ["M10.1"]   # the course tests compare plain SGD with gradient_descent
+reading   = []
+# L0.5, L2.2, and L3.6 train with it; they join with their batches. M10.3
+# and M10.4 read the protocol (reading, not deps).
+used_by   = []
+units     = ["python/tinyllm/optim/sgd.py"]
+upgrades  = []
+milestone = "MS-P2"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M10.2"
+smoke     = ["test_hand_example", "test_state_dict_resume_bitwise"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/M10.2/torch_sgd.npz"]

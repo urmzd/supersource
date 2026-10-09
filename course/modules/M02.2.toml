@@ -1,0 +1,24 @@
+id        = "M02.2"
+title     = "Series convergence, EMA as a geometric series, bias correction"
+kind      = "build"
+lang      = ["python"]
+pass      = 2
+chapter   = "math/02-calculus-2/02-series-and-the-ema.md"
+contract  = ["contracts/py/tinyllm/num/ema.pyi"]
+deps      = ["M00.3"]       # ema_weights and the bias-correction total are geometric sums
+reading   = []
+# Catalog call sites: L0.5 smooths the loss curve with EMA, C1 keeps EMA
+# weights. M10.3 (Adam) lists this module in `reading` (it re-derives the
+# correction on its moments). L0.5 is not in the registry yet, and the mirror
+# rule only accepts registered modules (DEVIATIONS B31-03).
+used_by   = []
+units     = ["python/tinyllm/num/ema.py"]
+upgrades  = []
+milestone = "MS-P2"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M02.2"
+smoke     = ["test_hand_example", "test_debiased_constant_is_exact"]
+timeout_s = 60
+determinism_runs = 2

@@ -1,0 +1,12 @@
+# Harness fixture only: a local stand-in named `pyo3` so the tl-py manifest
+# carries the contract's features without a crates.io download. The fixture
+# extension calls the CPython C API directly.
+[package]
+name = "pyo3"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[features]
+abi3-py311 = []
+extension-module = []

@@ -43,7 +43,7 @@ Software engineering is programming integrated over time. Google's lessons are a
 **Key concepts**:
 - **Style guides and rules** -- consistency beats personal preference. Google's style guides exist to make code *readable by others*, not *writable by you*
 - **Code review** -- every change is reviewed. Reviews are about readability and correctness, not gatekeeping. Keep changes small
-- **Documentation** -- treat docs like code: version it, review it, test it, deprecate it (see [Documentation & Technical Writing](../../diagramming-and-documentation/02-documentation-writing/))
+- **Documentation** -- treat docs like code: version it, review it, test it, deprecate it (see [Documentation & Technical Writing](../06-documentation-writing/))
 - **Testing overview** -- small tests (unit), medium tests (integration), large tests (end-to-end). Pyramid shape: many small, few large (deepened in [The Testing Mentality](../03-testing-mentality/))
 - **Deprecation** -- removing old systems is as important as building new ones. Budget for it. Make it incremental
 
@@ -91,7 +91,7 @@ Software engineering is programming integrated over time. Google's lessons are a
 | Code review, testing | [Systems & Architecture](../../systems/) | System design interviews test whether you'd build maintainable systems |
 | CI/CD, build systems | [Cloud Native](../../systems/03-cloud-native/) | Practical implementation of these processes |
 | Deprecation, LSCs | [Observability](../../systems/04-observability/) | Need observability to safely deprecate |
-| Docs-as-code | [Documentation & Technical Writing](../../diagramming-and-documentation/02-documentation-writing/) | The hands-on counterpart to "treat docs like code" |
+| Docs-as-code | [Documentation & Technical Writing](../06-documentation-writing/) | The hands-on counterpart to "treat docs like code" |
 | SDLC vs the LLM development lifecycle | [Foundation Models §7](../../ml/05-foundation-models/) | Why building an LLM (grow weights from data) is a different discipline than the software SDLC |
 
 ## Company Relevance

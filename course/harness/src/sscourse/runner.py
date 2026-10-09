@@ -78,7 +78,7 @@ class Run:
             if not p.exists():
                 raise HarnessError(
                     f"{{{name}}}: asset {asset!r} is not in {ctx.cache_dir() / 'assets'} "
-                    f"(fetch it with `ss fetch {asset}`, which arrives with B4)"
+                    f"(fetch it with `ss fetch {asset}`)"
                 )
             return str(p)
         if name == "models":
@@ -150,7 +150,41 @@ class Run:
             model=m,
             api_key=self.api_key(),
             health_base=health_base,
+            count_tokens=self._token_counter(),
         )
+
+    def _token_counter(self):
+        """chat.usage compares prompt_tokens with YOUR tokenizer's count of the
+        templated prompt when your CLI answers `{tinyllm} tokenize --chat-json
+        <messages>` with a last line {"count": N}; otherwise it checks only the
+        usage arithmetic."""
+        if self.system is None or "tinyllm" not in self.system.raw.get("entry", {}):
+            return None
+
+        def count(messages: list[dict]) -> int | None:
+            import json as _json
+
+            try:
+                argv = self.system.entry("tinyllm", "chat.usage") + [
+                    "tokenize",
+                    "--chat-json",
+                    _json.dumps(messages),
+                ]
+            except HarnessError:
+                return None
+            rc, out = ctx.run(argv, cwd=self.learner, env=self.env(), timeout=120)
+            if rc != 0:
+                return None
+            for line in reversed(out.strip().splitlines()):
+                try:
+                    v = _json.loads(line)
+                except ValueError:
+                    continue
+                n = v.get("count") if isinstance(v, dict) else None
+                return n if isinstance(n, int) else None
+            return None
+
+        return count
 
 
 def open_run(need_learner: bool = True) -> Run:

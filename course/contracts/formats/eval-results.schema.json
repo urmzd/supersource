@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "eval-results",
+  "description": "The report an eval suite writes (`{tinyllm} eval --suite <name>`, EvalSuite dur.11). The model zoo (L6.7, D36) is the suite `zoo`: one row per model family trained so far, each loaded through the checkpoint contract by its tl_arch and scored on its task: bpb for language models, EM with beam search for seq2seq and transformer, accuracy for classifiers, Spearman for word2vec. A row that could not be scored says why (status skipped or error) instead of disappearing.",
+  "type": "object",
+  "required": [
+    "format",
+    "suite",
+    "seed",
+    "rows"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "description": "Report format version.",
+      "const": "tl.eval-results.v1"
+    },
+    "suite": {
+      "description": "zoo, quality, bias, safety, or a learner suite name.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]*$"
+    },
+    "seed": {
+      "description": "The SS_SEED the suite ran with (every sampled quantity derives from it).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "manifest": {
+      "description": "The model manifest the suite read (zoo: {out}/zoo.json), as given on the command line.",
+      "type": "string"
+    },
+    "created": {
+      "description": "UTC time the report was written, RFC 3339.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "required": [
+        "model",
+        "task",
+        "metric",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "description": "The model id in the manifest.",
+          "type": "string",
+          "minLength": 1
+        },
+        "tl_arch": {
+          "description": "Family, from the checkpoint's config.json (formats/config.schema.json).",
+          "enum": [
+            "bigram",
+            "nplm",
+            "word2vec",
+            "rnnlm",
+            "seq2seq",
+            "transformer",
+            "gpt",
+            "bert",
+            "electra",
+            "llama",
+            "elmo",
+            "t5"
+          ]
+        },
+        "checkpoint": {
+          "description": "The model directory the row loaded.",
+          "type": "string"
+        },
+        "task": {
+          "description": "The evaluation data or task (ts-val, dates, add5, sst2-2k, word-sim).",
+          "type": "string",
+          "minLength": 1
+        },
+        "metric": {
+          "enum": [
+            "bpb",
+            "ppl",
+            "loss",
+            "em",
+            "accuracy",
+            "spearman",
+            "f1",
+            "score"
+          ]
+        },
+        "higher_is_better": {
+          "type": "boolean"
+        },
+        "value": {
+          "description": "The metric; null only when status is not ok.",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ci95": {
+          "description": "A 95% confidence interval [lo, hi] (bootstrap or analytic), lo <= value <= hi.",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "n": {
+          "description": "Evaluation items (tokens for bpb, examples otherwise).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "params": {
+          "description": "Trainable parameters of the model.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "decode": {
+          "description": "How outputs were produced for EM rows.",
+          "enum": [
+            "greedy",
+            "beam"
+          ]
+        },
+        "beam": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "skipped",
+            "error"
+          ]
+        },
+        "reason": {
+          "description": "Why a row is skipped or failed.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "format": "tl.eval-results.v1",
+      "suite": "zoo",
+      "seed": 0,
+      "manifest": "out/zoo.json",
+      "created": "2026-10-09T12:00:00Z",
+      "rows": [
+        {
+          "model": "kn4",
+          "tl_arch": "bigram",
+          "checkpoint": "out/kn",
+          "task": "ts-val",
+          "metric": "bpb",
+          "higher_is_better": false,
+          "value": 2.31,
+          "ci95": [
+            2.29,
+            2.33
+          ],
+          "n": 200000,
+          "params": 0,
+          "status": "ok"
+        },
+        {
+          "model": "gpt-tiny",
+          "tl_arch": "gpt",
+          "checkpoint": "out/gpt",
+          "task": "ts-val",
+          "metric": "bpb",
+          "higher_is_better": false,
+          "value": 1.42,
+          "ci95": [
+            1.41,
+            1.43
+          ],
+          "n": 200000,
+          "params": 812544,
+          "status": "ok"
+        },
+        {
+          "model": "xfmr-add5",
+          "tl_arch": "transformer",
+          "task": "add5",
+          "metric": "em",
+          "higher_is_better": true,
+          "value": 0.97,
+          "n": 1000,
+          "decode": "beam",
+          "beam": 4,
+          "status": "ok"
+        },
+        {
+          "model": "electra-sst2",
+          "tl_arch": "electra",
+          "task": "sst2-2k",
+          "metric": "accuracy",
+          "higher_is_better": true,
+          "value": null,
+          "status": "skipped",
+          "reason": "no checkpoint at out/electra (not trained in this run)"
+        }
+      ]
+    }
+  ]
+}

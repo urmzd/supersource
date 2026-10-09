@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "progress.jsonl event",
+  "description": "One line of the progress file a subprocess activity writes (spec/subprocess-activity.md; dur.09). The Go runner tails it, heartbeats with the last ckpt path, and logs metric events. Lines are appended and flushed one at a time; a reader ignores a final line without a newline (it may still be being written).",
+  "type": "object",
+  "required": [
+    "ts",
+    "kind"
+  ],
+  "properties": {
+    "ts": {
+      "type": "number",
+      "description": "Unix time in seconds."
+    },
+    "kind": {
+      "enum": [
+        "step",
+        "ckpt",
+        "metric",
+        "done"
+      ]
+    },
+    "step": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "loss": {
+      "type": "number"
+    },
+    "lr": {
+      "type": "number",
+      "minimum": 0
+    },
+    "tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tokens seen so far."
+    },
+    "ckpt": {
+      "type": "string",
+      "description": "kind ckpt: the checkpoint directory just made durable, relative to /artifacts."
+    },
+    "name": {
+      "type": "string",
+      "description": "kind metric: the metric name."
+    },
+    "value": {
+      "type": "number",
+      "description": "kind metric: its value."
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "kind done: the paths the activity produced, relative to /artifacts."
+    }
+  },
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "not": {
+            "properties": {
+              "kind": {
+                "const": "ckpt"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        {
+          "required": [
+            "ckpt",
+            "step"
+          ]
+        }
+      ]
+    },
+    {
+      "anyOf": [
+        {
+          "not": {
+            "properties": {
+              "kind": {
+                "const": "metric"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        {
+          "required": [
+            "name",
+            "value"
+          ]
+        }
+      ]
+    },
+    {
+      "anyOf": [
+        {
+          "not": {
+            "properties": {
+              "kind": {
+                "const": "step"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        {
+          "required": [
+            "step"
+          ]
+        }
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "ts": 1760000000.5,
+      "kind": "step",
+      "step": 500,
+      "loss": 2.31,
+      "lr": 0.0009,
+      "tokens": 8192000
+    },
+    {
+      "ts": 1760000001.0,
+      "kind": "ckpt",
+      "step": 500,
+      "ckpt": "runs/train-1/ckpt/step-000500"
+    },
+    {
+      "ts": 1760000002.0,
+      "kind": "done",
+      "outputs": [
+        "runs/train-1/ckpt/step-020000"
+      ]
+    }
+  ]
+}

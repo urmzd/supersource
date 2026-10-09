@@ -38,6 +38,8 @@ graph LR
     POC --> C
     P --> E[07 Escalation and Handoff]
     M --> E
+    E --> MOCK[08 Mock Engagement]
+    C --> MOCK
 ```
 
 ## Topics
@@ -51,6 +53,7 @@ graph LR
 | 05 | [Migration and Cutover](05-migration-and-cutover/) | [Model Loading: tokenizers and chat templates](../ml/04-llm-systems/model-loading/) (free, in repo) | 3 days |
 | 06 | [Commercials and Security](06-commercials-and-security/) | [AICPA SOC 2](https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2) (free) + [GDPR text](https://gdpr-info.eu/) (free) | 3-4 days |
 | 07 | [Escalation and Handoff](07-escalation-and-handoff/) | [*Postmortem Culture*](https://sre.google/sre-book/postmortem-culture/) (free) | 2 days |
+| 08 | [Mock Engagement](08-mock-engagement/) | Topics 01 to 07 applied to your own platform from the [course](../paths/course/); the role-path [capstone](08-mock-engagement/capstone.md) | course pass 11 |
 
 ## Role Landscape
 

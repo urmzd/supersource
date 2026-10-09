@@ -233,6 +233,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "env": {
+          "description": "Extra environment variables for this instance, typically TL_<SECTION>__<KEY> overrides of runtime.toml (for example TL_ENGINE__ROLE = \"decode\" for a decode engine sharing the engine template). Values may hold placeholders.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     }

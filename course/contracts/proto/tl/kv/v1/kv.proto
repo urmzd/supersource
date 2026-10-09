@@ -1,0 +1,71 @@
+// contracts/proto/tl/kv/v1/kv.proto: KV block transfer from a prefill worker
+// to a decode worker, deduplicated by content hash (DESIGN 2.7, D6). Served
+// by decode workers on :50052 in Kubernetes ({kv_port} locally).
+//
+// The bytes of every block travel in the export envelope of
+// formats/kv-block.md. A block hash is meaningful only within one model: the
+// gateway pairs a prefill and a decode worker that serve the same model
+// (tl.control.v1 WorkerStatus.model).
+//
+// owners: tl-engine/src/kv_transfer.rs (L10.6, upgraded by craft.13) serves
+// and calls it; go/gateway/route (gw.05) calls Release.
+//
+// modules: L10.6, craft.13 (KV format v2), gw.05 (Release)
+syntax = "proto3";
+
+package tl.kv.v1;
+
+option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/kv/v1;kvv1";
+
+service KvTransferService {
+  // For each hash, whether this decode worker already holds that full block
+  // in its prefix index (tl_kv_lookup). Answering does not take a reference;
+  // PushKv does. FAILED_PRECONDITION when kv_format is not one it reads.
+  rpc HasBlocks(HasBlocksRequest) returns (HasBlocksResponse);
+  // A client stream of the blocks of one handle, in block_index order. The
+  // stream carries every block of the prompt: a block the decode side
+  // reported present is sent with an empty payload (block_hash set), which
+  // makes the decode side take a reference on its cached copy (deduped).
+  // The ack arrives after the last chunk (block_index == n_blocks_total - 1).
+  // Errors: FAILED_PRECONDITION for a kv_format mismatch; DATA_LOSS for a
+  // crc32c mismatch or an envelope tl_kv_import rejects (TL_EFORMAT);
+  // RESOURCE_EXHAUSTED when the pool has no free blocks; NOT_FOUND when a
+  // block sent empty is no longer cached (the prefill side then resends it
+  // with its payload in a new stream). On any error the decode side frees
+  // every block it took for this handle.
+  rpc PushKv(stream KvChunk) returns (KvAck);
+  // Frees the blocks held for handle_id (the gateway's abort path, and the
+  // cleanup when a resume never arrives). Idempotent: an unknown handle is OK.
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+}
+
+message HasBlocksRequest {
+  repeated uint64 block_hashes = 1;
+  uint32 kv_format = 2;
+}
+
+message HasBlocksResponse {
+  repeated bool present = 1;    // same length and order as block_hashes
+}
+
+message KvChunk {
+  string handle_id = 1;
+  uint64 block_hash = 2;        // 0 for the partial tail block
+  uint32 block_index = 3;       // 0-based position of the block in the prompt
+  uint32 n_blocks_total = 4;    // same in every chunk of the stream
+  uint32 kv_format = 5;         // mismatch: FAILED_PRECONDITION
+  bytes payload = 6;            // one block in the formats/kv-block.md export envelope (n_blocks = 1), <= 4 MiB; empty = deduped
+  uint32 crc32c = 7;            // CRC-32C (Castagnoli) of payload; 0 when payload is empty
+}
+
+message KvAck {
+  string handle_id = 1;
+  uint32 blocks_received = 2;   // chunks that carried a payload
+  uint32 blocks_deduped = 3;    // chunks sent empty and served from the cache
+}
+
+message ReleaseRequest {
+  string handle_id = 1;
+}
+
+message ReleaseResponse {}

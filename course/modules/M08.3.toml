@@ -1,0 +1,27 @@
+id        = "M08.3"
+title     = "Matrix differentials, the trace trick, and closed-form VJPs"
+kind      = "build"
+lang      = ["python"]
+pass      = 2
+chapter   = "math/08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md"
+contract  = ["contracts/py/tinyllm/autograd/vjp.pyi"]
+# cross_entropy_vjp calls M09.2's softmax; the course tests differentiate
+# M11.1's cross_entropy and compare with M04.2's vjp_numeric.
+deps      = ["M09.2", "M11.1", "M04.2"]
+reading   = ["M03.1"]   # row-major matrices and matmul shapes
+# L0.2 (op VJPs), L0.3 (fused cross-entropy), L3.1 (BPTT), and L7.1
+# (RMSNorm) are the call sites; they join with their batches.
+used_by   = []
+units     = ["python/tinyllm/autograd/vjp.py"]
+upgrades  = []
+milestone = "MS-P2"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M08.3"
+smoke     = ["test_hand_example", "test_cross_entropy_ignore_index"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/M08.3/torch_vjp.npz"]

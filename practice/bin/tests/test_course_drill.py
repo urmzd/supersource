@@ -214,7 +214,7 @@ def test_end_fails_without_detection_or_hold(ss, fake_http):
     ss("drill", "reset", rc=0)
 
 
-def test_loadgen_and_unbuilt_injectors(ss, fake_http):
+def test_loadgen_netem_and_aborted_start(ss, fake_http):
     _setup(ss, fake_http)
     d = ss.course / "drills/flood"
     d.mkdir()
@@ -256,6 +256,42 @@ def test_loadgen_and_unbuilt_injectors(ss, fake_http):
         time.sleep(0.05)
     else:
         raise AssertionError("reset did not stop the loadgen")
-    assert "netem injector arrives with B13" in ss("drill", "start", "ops.92", rc=5).out
+    # netem: tc in an ephemeral debug container on a ready pod; reset deletes the qdisc.
+    ss("drill", "start", "ops.92", "--seed", "3", rc=0)
+    dbg = ss.kube()["debug"]
+    assert (
+        dbg[-1][-10:]
+        == [
+            "tc",
+            "qdisc",
+            "add",
+            "dev",
+            "eth0",
+            "root",
+            "netem",
+            "delay",
+            "300ms",
+            "loss",
+            "5%",
+        ][-10:]
+    )
+    assert "--profile=netadmin" in dbg[-1]
+    ss("drill", "end", rc=None)
+    ss("drill", "reset", rc=0)
+    assert (
+        ss.kube()["debug"][-1][-5:]
+        == ["tc", "qdisc", "del", "dev", "eth0", "root"][-5:]
+    )
+    # A start that fails half way undoes what it did and leaves no active run.
+    b = ss.course / "drills/broken"
+    b.mkdir()
+    (b / "drill.toml").write_text(
+        'id = "ops.93"\n[[inject]]\nkind = "scale-zero"\ntarget = "{deploy.services.prefill}"\n'
+        '[[inject]]\nkind = "clock-skew"\nurl = "http://127.0.0.1:9/debug/clock"\n'
+    )
+    ss.commit_site("a broken drill")
+    ss("contracts", "sync", rc=0)
+    out = ss("drill", "start", "broken", rc=5).out
+    assert "clock-skew: POST" in out and "undid scale-zero" in out
     ss("drill", "start", "flood", rc=0)  # an aborted start left no active run behind
     ss("drill", "reset", rc=0)

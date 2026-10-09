@@ -54,7 +54,7 @@ Systems programming depth:
 - Phase 2: Concurrency (pthreads → channels → async, across C/Rust/Zig/Go)
 - Phase 3: Performance (profiling, cache-awareness, SIMD, zero-copy)
 - Phase 4: Systems projects (allocator, network server, file system)
-- Pair with algorithms/12-concurrency-systems/ content
+- Pair with the C runtime chapters in ml/08-tinyllm/p09-kernels/ (rt.02 arena, rt.03 thread pool); the old algorithms/12 coursework is in archive/algorithms/12-concurrency-systems/
 
 ### full-stack [weeks]
 Comprehensive curriculum:

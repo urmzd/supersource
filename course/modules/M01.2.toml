@@ -1,0 +1,23 @@
+id        = "M01.2"
+title     = "Newton's method"
+kind      = "build"
+lang      = ["python"]
+pass      = 2
+chapter   = "math/01-calculus-1/02-newtons-method.md"
+contract  = ["contracts/py/tinyllm/num/newton.pyi"]
+deps      = ["M01.1"]       # newton(f, None, x0) differentiates with central_diff
+reading   = []
+# Catalog call sites: M09.5 (C rsqrt, B8) ports rsqrt_newton and checks
+# against it; M10.6 (optional Newton-Schulz). Neither is in the registry
+# yet, and the mirror rule only accepts registered modules (DEVIATIONS B31-03).
+used_by   = []
+units     = ["python/tinyllm/num/newton.py"]
+upgrades  = []
+milestone = "MS-P2"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M01.2"
+smoke     = ["test_hand_example", "test_rsqrt_hand_example"]
+timeout_s = 60
+determinism_runs = 2

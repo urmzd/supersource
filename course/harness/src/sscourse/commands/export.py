@@ -63,8 +63,8 @@ for ext in ("dylib", "so"):
         os.environ.setdefault("TINYLLM_LIB", str(lib))
         os.environ.setdefault("TINYLLM_C_LIB_DIR", str(lib.parent))
         break
-for p in (str(HERE), str(ROOT / "python")):
-    if p not in sys.path:
+for p in (str(HERE.parent / "testkit" / "python"), str(HERE), str(ROOT / "python")):
+    if p not in sys.path and Path(p).is_dir():
         sys.path.insert(0, p)
 # Tests that start a child Python (a fresh interpreter for the ctypes loader)
 # need the same path.
@@ -168,7 +168,12 @@ def _crates(lr: Path) -> list[tuple[str, str]]:
         except tomllib.TOMLDecodeError:
             continue
         name = doc.get("package", {}).get("name")
-        if name and ("lib" in doc or (man.parent / "src" / "lib.rs").is_file()):
+        # tl-py is a Python extension (DESIGN 2.5), never a test dependency.
+        if (
+            name
+            and name != "tl-py"
+            and ("lib" in doc or (man.parent / "src" / "lib.rs").is_file())
+        ):
             out.append((man.parent.relative_to(root).as_posix(), name))
     return out
 
@@ -234,6 +239,9 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
     # Frozen helpers and the pytest glue (always: your own tests may use them too).
     if (course / "tests" / "_lib").is_dir():
         _copy_tree(course / "tests" / "_lib", v / "tests" / "_lib")
+    # The fault and determinism kit (4.4): Go module, Python package, Rust crate.
+    if (course / "testkit").is_dir():
+        _copy_tree(course / "testkit", v / "testkit")
     (v / "tests").mkdir(parents=True, exist_ok=True)
     (v / "tests" / "conftest.py").write_text(CONFTEST)
     man = course / "fixtures" / "MANIFEST.tsv"
@@ -280,7 +288,18 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         for name in ("go.mod", "go.sum"):
             if (course / "tests" / "go" / name).is_file():
                 shutil.copy2(course / "tests" / "go" / name, v / "tests" / "go" / name)
-        work = "go 1.22\n\nuse (\n\t../../go\n\t./tests/go\n)\n\n"
+        from ..overlay import _go_version, go_version_str
+
+        gv = max(
+            _go_version(m)
+            for m in (
+                s.learner / "go" / "go.mod",
+                course / "tests" / "go" / "go.mod",
+                s.learner / "contracts" / "go" / "go.mod",
+            )
+        )
+        kit = "\t./testkit/go\n" if (v / "testkit" / "go" / "go.mod").is_file() else ""
+        work = f"go {go_version_str(gv)}\n\nuse (\n\t../../go\n\t./tests/go\n{kit})\n\n"
         if (s.learner / "contracts" / "go" / "go.mod").is_file():
             work += "replace supersource.urmzd.com/tl/contracts v0.0.0 => ../../contracts/go\n"
         (v / "go.work").write_text(work)
@@ -291,6 +310,8 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         }
         if (s.learner / "contracts" / "rust" / "tl-contracts" / "Cargo.toml").is_file():
             deps["tl-contracts"] = {"path": "../../../../contracts/rust/tl-contracts"}
+        if (v / "testkit" / "rust" / "tl-testkit" / "Cargo.toml").is_file():
+            deps["tl-testkit"] = {"path": "../../testkit/rust/tl-testkit"}
         (v / "rust" / "Cargo.toml").write_text(
             tomlw.dumps({"workspace": {"resolver": "2", "members": ["ss-tests"]}})
         )

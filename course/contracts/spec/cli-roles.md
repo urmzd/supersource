@@ -109,7 +109,7 @@ The tracer engine is std-only Rust and has no TOML parser, so it takes flags.
 {engine} --config <runtime.toml>
 ```
 
-Reads `[engine]` from `runtime.toml` (schema `config/runtime.schema.json`, arriving with L10.5), with `TL_ENGINE__<KEY>` overrides. The runner fills `http_listen`, `grpc_listen`, `kv_listen`, and `health_listen` with allocated ports.
+Reads `[engine]` from `runtime.toml` (schema `config/runtime.schema.json`), with `TL_ENGINE__<KEY>` overrides. The runner fills `http_listen`, `grpc_listen`, `kv_listen`, and `health_listen` with allocated ports.
 
 ## `gateway`
 
@@ -134,3 +134,32 @@ The front door: API keys, then SSE passed through without buffering.
 ```
 
 Reads `[gateway]` from `runtime.toml` with `TL_GATEWAY__<KEY>` overrides; keys and routes come from the files it names.
+
+## Verbs of later passes
+
+Milestones from Pass 2 on call the verbs below. The CLI is yours (D16), so no module owns a verb; the milestone that first calls it (`course/milestones/<MS-ID>.toml`) fixes its exact flags and the keys of its final JSON line when that milestone is authored. This index fixes the names, so two milestones never use one verb for different jobs. Every verb follows the rules above (exit codes, final JSON line, `TINYLLM_LIB`).
+
+| Role, verb | First called by | Contract |
+|---|---|---|
+| `{tinyllm} gradcheck --suite <id>` | MS-L0 | exit 0 when every check passes |
+| `{tinyllm} train <arch>` (`mlp`, `gpt`, `bert`, `electra`, `rnnlm`, `seq2seq`, `llama`, ...) | MS-L0 to MS-L11 | flags per milestone |
+| `{tinyllm} train --spec <file> --progress <file>` | MS-durable (`TrainRun`), MS-C1 | spec/subprocess-activity.md |
+| `{tinyllm} generate` (`--cache`, `--spec`, `--backend`) | MS-P1, extended in MS-L8 and MS-L9 | final line `{ids, text, ...}`, generated ids only |
+| `{tinyllm} logits` (`--prompts`, `--out`) | MS-P1 (near-tie rule), extended in MS-L7 | final line `{logits}`, or the output path |
+| `{tinyllm} eval` (`ppl`, `--suite <id>`, `--spec <file>`) | MS-L2, MS-L6, MS-C1 | `formats/eval-result.schema.json` outputs |
+| `{tinyllm} export --spec <file>` | MS-C1 (`ModelRelease`) | `formats/export-spec.schema.json` |
+| `{tinyllm} info` (`--native`, `--model`) | MS-P1, MS-L7 | final line `{abi_version, lib}` or `{params, ...}` |
+| `{tinyllm} pull <hf repo>` | MS-L7 | final line `{dir}` |
+| `{tinyllm} tok <encode, train, bench>` | MS-L1 | per milestone |
+| `{tinyllm} lm train <ngram, nplm>` | MS-L2 | per milestone |
+| `{tinyllm} bench <matmul, decode>`, `--backend` | MS-L8, MS-L9 (`perf` steps) | per milestone |
+| `{tinyllm} finetune classify` | MS-L6 | per milestone |
+| `{tinyllm} post <sft, dpo, grpo>` | MS-C2 | per milestone |
+| `{corpus} run` (`--config`, `--until <stage>`, `--stage <s>`, `--workers`) | MS-corpus, `CorpusBuild` | `formats/corpus-shard.md`, spec/subprocess-activity.md |
+| `{corpus} ledger verify`, `{corpus} datasheet` | MS-corpus | exit 65 on an unknown license |
+| `{tl-tok} encode`, `{tl-tok} bench` | MS-L1 | per milestone |
+| `{durable} --data <dir> --port <n>` (`--test-clock`, `--replicas 3`) | MS-durable, MS-durable-ha | proto/tl/durable/v1 |
+| `{worker} --queue <q> --durable <addr>` (`--test-activities`) | MS-durable | above |
+| `{ctl} <train, eval, release, data build, wf, keys, usage, agent, rag>` | MS-durable to MS-agent | each verb calls `tl.durable.v1` or `admin.v1` |
+| `{loadgen} --target <url> --rate <rps> --duration <d>`; `{loadgen} compare <base> <head> --metric <m> --max-regress <pct>` | MS-L10, MS-gateway, MS-prod, drills | `formats/loadgen-report.schema.json`; `compare` exits 1 on a regression |
+| `{agent}` | MS-agent | per milestone |

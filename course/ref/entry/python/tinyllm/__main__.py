@@ -1,9 +1,16 @@
-"""The `tinyllm` CLI, Pass 1 verbs (contracts/spec/cli-roles.md).
+"""The `tinyllm` CLI (contracts/spec/cli-roles.md).
+
+Pass 1 verbs:
 
     train bigram --data <file> --out <dir> [--alpha A]
     generate --model <dir> --prompt <text> [--max-tokens N] [--greedy | --temperature T] [--seed S]
     logits --model <dir> --prompt <text> [--prefix-ids a,b,...]
     info --native
+
+Pass 2 verbs and flags (course/milestones/MS-L0.toml, glue in cli_train.py):
+
+    gradcheck --suite all
+    train bigram --method autograd ...      train mlp ...
 
 Entry-point territory (D16): this file is yours. It is glue over L0.0
 (BigramLM, safetensors) and rt.01 (the ctypes loader); the reference is used
@@ -39,7 +46,7 @@ CONFIG = {
 
 
 class UsageError(Exception):
-    pass
+    exit_code = 2
 
 
 def encode(text: str) -> list[int]:
@@ -64,8 +71,12 @@ def load_model(model_dir: str) -> BigramLM:
 
 
 def cmd_train(a: argparse.Namespace) -> dict:
-    if a.what != "bigram":
-        raise UsageError(f"train: unknown model {a.what!r} (Pass 1 trains `bigram`)")
+    if a.what != "bigram" or a.method != "counts":
+        from tinyllm.cli_train import cmd_train_p2
+
+        return cmd_train_p2(a)
+    if a.out is None:
+        raise UsageError("train bigram needs --out <dir>")
     ids = np.frombuffer(Path(a.data).read_bytes(), dtype=np.uint8).astype(np.int64)
     if ids.size < 2:
         raise ValueError(f"{a.data}: need at least two bytes to count a bigram")
@@ -117,15 +128,37 @@ def cmd_info(a: argparse.Namespace) -> dict:
     return {"abi_version": int(lib.abi_version()), "lib": os.path.abspath(path)}
 
 
+def cmd_gradcheck(a: argparse.Namespace) -> dict:
+    from tinyllm.cli_train import cmd_gradcheck as run
+
+    return run(a)
+
+
 def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="tinyllm")
     sub = ap.add_subparsers(dest="verb", required=True)
     t = sub.add_parser("train")
     t.add_argument("what")
     t.add_argument("--data", required=True)
-    t.add_argument("--out", required=True)
+    t.add_argument("--out")
     t.add_argument("--alpha", type=float, default=1.0)
+    # Pass 2 (MS-L0): the autograd bigram, the token-stream run, the MLP.
+    t.add_argument("--method", choices=["counts", "autograd"], default="counts")
+    t.add_argument("--seed", type=int, default=0)
+    t.add_argument("--lr", type=float)
+    t.add_argument("--steps", type=int, default=300)
+    t.add_argument("--max-steps", type=int)
+    t.add_argument("--batch", type=int)
+    t.add_argument("--seq-len", type=int)
+    t.add_argument("--ckpt-every", type=int)
+    t.add_argument("--resume", action="store_true")
+    t.add_argument("--hidden", type=int, default=64)
+    t.add_argument("--epochs", type=int, default=30)
+    t.add_argument("--ckpt")
     t.set_defaults(fn=cmd_train)
+    gc = sub.add_parser("gradcheck")
+    gc.add_argument("--suite", required=True)
+    gc.set_defaults(fn=cmd_gradcheck)
     g = sub.add_parser("generate")
     g.add_argument("--model", required=True)
     g.add_argument("--prompt", required=True)
@@ -149,12 +182,15 @@ def main(argv: list[str] | None = None) -> int:
     a = parser().parse_args(argv)  # argparse exits 2 on a usage error
     try:
         result = a.fn(a)
-    except UsageError as e:
-        print(f"tinyllm: {e}", file=sys.stderr)
-        return 2
     except Exception as e:  # noqa: BLE001 - every failure is reported, not traced
-        print(f"tinyllm {a.verb}: {type(e).__name__}: {e}", file=sys.stderr)
-        return 1
+        # A usage error exits 2; a check that ran and failed prints its final
+        # line and exits 1 (cli_train.CheckFailed); anything else exits 1.
+        code = getattr(e, "exit_code", 1)
+        why = str(e) if hasattr(e, "exit_code") else f"{type(e).__name__}: {e}"
+        print(f"tinyllm{'' if code == 2 else ' ' + a.verb}: {why}", file=sys.stderr)
+        if getattr(e, "result", None) is not None:
+            print(json.dumps(e.result), flush=True)
+        return code
     print(json.dumps(result), flush=True)
     return 0
 

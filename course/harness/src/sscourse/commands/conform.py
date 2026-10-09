@@ -49,6 +49,59 @@ def run_suite(
     return conform.run(client, cases, suite, r.module_passed)
 
 
+def _fake_cases(r: Run, suite: conform.Suite) -> list[conform.Case]:
+    return [
+        c
+        for c in conform.load_cases(r.course)
+        if c.upstream == "fake"
+        and suite.version in c.versions
+        and suite.tier in c.tiers
+        and (c.smoke or not suite.smoke)
+    ]
+
+
+def _fake_upstream_pass(
+    r: Run, suite: conform.Suite, logdir, env: dict, model: str | None, say
+) -> list[conform.Result]:
+    """Cases that must see what the gateway sends upstream (priority.internal):
+    the services the gateway comes after are replaced by one recording fake
+    engine, whose port fills their {<service>.port} placeholders."""
+    m = model or (r.system.endpoints.get("model") if r.system else None) or "tracer"
+    fake = conform.FakeUpstream(m)
+    try:
+        with services.Stack(
+            r.system,
+            logdir / "fake-upstream",
+            r.lookup,
+            env,
+            f"ss conform {suite.id} (recording upstream)",
+        ) as stack:
+            for name in r.system.start_order([suite.tier], stack.who):
+                if name == suite.tier:
+                    continue
+                svc = r.system.service(name, stack.who)
+                ports = {p: fake.port for p in services.PORT_NAMES}
+                stack.instances[name] = services.Instance(
+                    svc,
+                    ports,
+                    logdir,
+                    logdir / f"{name}.fake.toml",
+                    logdir / f"{name}.fake.log",
+                )
+            stack.start([suite.tier])
+            inst = stack.instances[suite.tier]
+            say(
+                f"  {ctx.DIM}gateway against the recording upstream on :{fake.port}{ctx.RST}"
+            )
+            client = r.conform_client(
+                suite, inst.base, f"http://127.0.0.1:{inst.ports['health_port']}", model
+            )
+            client.fake_upstream = fake
+            return conform.run(client, _fake_cases(r, suite), suite, r.module_passed)
+    finally:
+        fake.close()
+
+
 def report(results: list[conform.Result], say=ctx.say) -> tuple[int, int, int]:
     counts = {"pass": 0, "fail": 0, "pending": 0}
     for res in results:
@@ -118,6 +171,10 @@ def main(argv: list[str]) -> int:
                     f"http://127.0.0.1:{inst.ports['health_port']}",
                     a.model,
                 )
+            if suite.tier == "gateway" and _fake_cases(r, suite):
+                fake = _fake_upstream_pass(r, suite, logdir, env, a.model, say)
+                done = {x.case for x in fake}
+                results = [x for x in results if x.case not in done] + fake
         except services.ServiceError as e:
             say(f"{ctx.RED}FAIL{ctx.RST} {e}")
             return _record(r, suite, "fail", [], a.json, reason=str(e))

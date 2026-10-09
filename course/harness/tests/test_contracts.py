@@ -128,12 +128,11 @@ def test_headers_compile_and_declare_v0(tmp_path):
         assert r.returncode == 0, f"{h} alone, twice:\n{r.stderr}"
 
 
-def test_umbrella_is_v0_scope():
+def test_umbrella_keeps_the_v0_units():
+    # Contract 0.2.0 adds every other ABI v1 unit (test_contracts_b2_b13.py).
     text = (C / "c/include/tinyllm.h").read_text()
-    assert re.findall(r'#include "([^"]+)"', text) == [
-        "tinyllm/abi.h",
-        "tinyllm/matmul.h",
-    ]
+    inc = re.findall(r'#include "([^"]+)"', text)
+    assert inc[0] == "tinyllm/abi.h" and "tinyllm/matmul.h" in inc
 
 
 # -- OpenAPI v0 --------------------------------------------------------------

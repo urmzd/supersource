@@ -6,7 +6,7 @@
   - [*SWE at Google* -- Testing chapters (11-14)](https://abseil.io/resources/swe-book) -- free, testing at scale
   - [Google Testing Blog / Testing on the Toilet](https://testing.googleblog.com/) -- free, one-page lessons
 - **Supplementary**: [Hypothesis docs](https://hypothesis.readthedocs.io/) (property-based testing), [Principles of Chaos Engineering](https://principlesofchaos.org/) (free), Martin Fowler on [Contract Tests](https://martinfowler.com/bliki/ContractTest.html) (free), [*Foundations of Software Testing* notes]
-- **Prerequisites**: [Software Engineering at Google](../02-swe-at-google/) (the testing chapters), [Documentation & Technical Writing](../../diagramming-and-documentation/02-documentation-writing/) (tests are executable documentation)
+- **Prerequisites**: [Software Engineering at Google](../02-swe-at-google/) (the testing chapters), [Documentation & Technical Writing](../06-documentation-writing/) (tests are executable documentation)
 - **Estimated time**: 1 week at 4-6 hrs/week
 
 ## Key Takeaways
@@ -91,8 +91,8 @@ The mentality applies everywhere knowledge can be wrong:
 
 - **Infrastructure** -- `terraform plan` in CI, `kubeconform`/`kubeval` to validate manifests, policy tests (OPA/Conftest) for "no container runs as root." A misconfigured manifest is a bug.
 - **Data** -- pipeline tests with [Great Expectations](https://greatexpectations.io/) / dbt tests: "no nulls in `order_id`," "row count within 3σ of yesterday." Bad data is a production incident.
-- **Documentation** -- run the code samples ([Documentation & Technical Writing](../../diagramming-and-documentation/02-documentation-writing/)). An example that doesn't compile is a failing test.
-- **Diagrams** -- `d2 *.d2` in CI fails if a diagram no longer compiles ([Diagramming & the C4 Model](../../diagramming-and-documentation/01-diagramming-c4/)).
+- **Documentation** -- run the code samples ([Documentation & Technical Writing](../06-documentation-writing/)). An example that doesn't compile is a failing test.
+- **Diagrams** -- `d2 *.d2` in CI fails if a diagram no longer compiles ([Diagramming & the C4 Model](../05-diagramming-c4/)).
 
 ## 6. Testing in production (because you already are)
 
@@ -117,6 +117,28 @@ You cannot fully reproduce production, so test *against* it deliberately rather 
 | Data quality tests | Any data pipeline |
 | Canary + synthetic monitoring | Every production release |
 | Chaos experiments | Systems claiming resilience -- prove it |
+
+## The course testing ladder
+
+In the course this topic hosts the testing ladder: one practice module per rung, each placed in the pass where your system first needs that kind of test. Your own tests are graded by mutation testing (what they catch, course principle P10), so each rung is practised on the system you are building, not on toy code.
+
+| Module | Topic | Kind | Pass |
+|---|---|---|---|
+| `craft.03` | TDD, unit tests, and how you are graded (rungs R0 to R3): includes the mutation-testing primer (what a mutant is, killed vs survived, how the score and required semantic mutants work) before the first mutation grade | practice | 2 |
+| `craft.04` | Property-based tests (R4) with Hypothesis, proptest, `rapid`, and `ss_prop.h` | practice | 3 |
+| `craft.07` | Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors | practice | 4 |
+| `craft.05` | Oracles, golden and differential tests, gradcheck as a test (R5) | practice | 5 |
+| `craft.06` | Benchmarks and perf gates (R7) | practice | 6 |
+| `craft.20` | Contract tests (R6): consumer-driven tests for gateway to engine | practice | 7 |
+| `craft.21` | Resilience tests (R10) | practice | 8 |
+| `craft.22` | Model evals as tests (R8) | practice | 9 |
+| `craft.23` | Agent evals as tests (R9) | practice | 10 |
+
+## Chapters
+
+<!-- ss:chapters -->
+No chapters yet: they arrive with authoring batch B3 (craft.03), B4 (craft.04), B6 (craft.07), B7 (craft.05), B8 (craft.06), B9 (craft.20), B10 (craft.21), B11 (craft.22), and B12 (craft.23) (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+<!-- /ss:chapters -->
 
 ## Connections to Other Tracks
 

@@ -96,6 +96,8 @@ class Runner:
         self.prev_out: Path | None = None
         self.started = time.time()
         self.target = plan.target.id
+        self.seed = seed
+        self.recorder: dict | None = None
 
     def who(self) -> str:
         return f"milestone {self.target}"
@@ -110,6 +112,12 @@ class Runner:
         def f(name: str):
             if name in matrix:
                 return str(matrix[name])
+            if self.smoke and name in step.smoke_vars:
+                return step.smoke_vars[name]
+            if name in step.vars:
+                return step.vars[name]
+            if name == "seed":
+                return str(self.seed)
             if name == "out":
                 return str(out)
             if name.startswith("out:"):
@@ -204,6 +212,9 @@ class Runner:
             run_role=self.run_role,
             step_argv=argv,
             step_role=step.run,
+            step_key=f"{step.origin}/{step.name}",
+            smoke=self.smoke,
+            recorder=self.recorder,
         )
         v = matchers.evaluate(step.expect, so, mc)
         self.outs[label] = out
@@ -224,6 +235,12 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--step", action="append", default=[])
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument(
+        "--record-thresholds",
+        action="store_true",
+        help="maintainers: run over --seeds reference seeds and write ref-thresholds.tsv rows",
+    )
+    ap.add_argument("--seeds", type=int, default=5)
     a = ap.parse_args(argv)
     r = open_run(need_learner=a.id not in (None, "list"))
     if a.id in (None, "list"):
@@ -236,9 +253,54 @@ def main(argv: list[str]) -> int:
         )
         return EXIT_HARNESS
     with ctx.lock(r.learner / ".ss" / "milestones"):
+        if a.record_thresholds:
+            return record_thresholds(r, a.id, a.smoke, a.step, a.seeds)
         return run_milestone(
             r, a.id, a.smoke, a.ref_deps is not None, a.step, a.json, a.seed
         )
+
+
+def record_thresholds(
+    r: Run, msid: str, smoke: bool, only: list[str], seeds: int
+) -> int:
+    """Run the milestone over seeds 0..seeds-1 (`{seed}` and SS_SEED) against
+    this system (the reference learner), collect every `calibrated` metric,
+    and write mean +/- 3 sd rows to course/fixtures/ref-thresholds.tsv."""
+    from .. import thresholds
+
+    if not r.tree.live:
+        raise HarnessError(
+            "--record-thresholds writes the live course tree; this learner's contracts/VERSION "
+            "names another commit (ss contracts sync)"
+        )
+    seen: dict[tuple[str, str, str], list[float]] = {}
+    for sd in range(seeds):
+        rec: dict = {}
+        code = run_milestone(r, msid, smoke, True, only, False, sd, recorder=rec)
+        if code != EXIT_PASS:
+            ctx.err(
+                f"seed {sd}: the milestone did not pass on this system; no thresholds written"
+            )
+            return EXIT_FAIL
+        for k, v in rec.items():
+            seen.setdefault(k, []).append(v)
+    if not seen:
+        ctx.err(f"{msid} has no `calibrated` metric in the steps that ran")
+        return EXIT_HARNESS
+    mode = "smoke" if smoke else "full"
+    rows = [
+        thresholds.compute(k, m, d, mode, v) for (k, m, d), v in sorted(seen.items())
+    ]
+    p = thresholds.write(ctx.live_course(), rows)
+    for row in rows:
+        ctx.say(
+            f"  {row.key} {row.metric} ({mode}): mean {row.mean:.6g}, sd {row.sd:.3g}, "
+            f"threshold {row.threshold:.6g} over {row.n} seeds"
+        )
+    ctx.say(
+        f"{ctx.GRN}wrote{ctx.RST} {len(rows)} row(s) to {p} (and its MANIFEST.tsv row)"
+    )
+    return EXIT_PASS
 
 
 def run_milestone(
@@ -249,6 +311,7 @@ def run_milestone(
     only: list[str],
     as_json: bool,
     seed: int = 0,
+    recorder: dict | None = None,
 ) -> int:
     say = (lambda *_: None) if as_json else ctx.say
     plan = ms_mod.plan(r.course, msid, smoke)
@@ -264,6 +327,8 @@ def run_milestone(
         code = {"pass": EXIT_PASS, "blocked": EXIT_BLOCKED, "error": EXIT_HARNESS}.get(
             result, EXIT_FAIL
         )
+        if recorder is not None:
+            return code  # a recording run is not a verdict
         v = ledger.append(
             r.learner,
             {
@@ -327,6 +392,7 @@ def run_milestone(
     )
     logdir.mkdir(parents=True, exist_ok=True)
     run = Runner(r, plan, smoke, logdir, seed)
+    run.recorder = recorder
     results: list[dict] = []
 
     local = [s for s in steps if not s.kind]

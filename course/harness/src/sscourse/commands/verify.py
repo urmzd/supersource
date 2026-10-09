@@ -9,7 +9,7 @@ Per module (checks 1 to 14):
    5 markers: ownership, ids, whole bodies  12 fixtures resolve to MANIFEST.tsv rows
    6 mutants apply and are killed           13 registry invariants (3.4)
    7 solve keys parse                       14 seams: contract-only imports, compiles vs stubbed neighbours
-Global: headers compile standalone (-pedantic -Werror), contracts/go and tl-contracts
+Global: headers compile standalone (-pedantic -Werror), contracts/go, tl-contracts, and tl-proto
 build, the fully stubbed reference tree compiles in all four languages with every
 course test, fixture budgets, modules.tsv is current, paths verify.
 
@@ -37,10 +37,10 @@ import ast
 import difflib
 import hashlib
 import json
+import os
 import re
 import shutil
 import tempfile
-import tomllib
 from pathlib import Path
 
 from .. import (
@@ -204,10 +204,33 @@ def _apply_patch(
         return dst.read_text(), ""
 
 
+def _course_tests_hash(course: Path, reg, m) -> str:
+    probe = _ov(reg, course, m.id, {}, Path("/nonexistent"), "hash")
+    files = catalog.files_for(course, m.id, probe.test_dir(m.id))
+    d = probe.test_dir(m.id)
+    if d.is_dir():
+        files += [
+            p for p in d.rglob("*") if p.is_file() and "__pycache__" not in p.parts
+        ]
+    lib = course / "tests" / "_lib"
+    if lib.is_dir():
+        files += [p for p in lib.rglob("*.py") if "__pycache__" not in p.parts]
+    h = hashlib.sha256()
+    for p in sorted(set(files)):
+        h.update(str(p.relative_to(course)).encode() + b"\0" + p.read_bytes() + b"\0")
+    return h.hexdigest()
+
+
 def check_mutants(course, reg, m, work, rep: Report) -> None:
+    """Check 6: every committed patch applies and the course tests kill it
+    (cached by ref unit hash, course test hash, and patch hash, so an unchanged
+    mutant is never rerun); then the reference learner tests reach the
+    module's mutation threshold through the same pipeline as `ss mutate`."""
+    from .. import mutation
+
     man = course / "mutants" / m.id / "manifest.tsv"
     if not man.is_file():
-        rep.skip(6, "no mutants committed yet (mutation runner arrives with B3)")
+        rep.skip(6, "no mutants committed for this module")
         return
     rows = [
         line.split("\t")
@@ -215,26 +238,72 @@ def check_mutants(course, reg, m, work, rep: Report) -> None:
         if line.strip() and not line.startswith("#")
     ]
     sources = {x: "ref" for x in [m.id] + reg.closure(m.id)}
-    bad = []
+    cache = mutation.Cache(work / "mutation-cache.json")
+    thash = _course_tests_hash(course, reg, m)
+    bad, hits = [], 0
     for row in rows:
         mutant, unit = row[0], row[1]
         text, why = _apply_patch(course, reg, m, mutant, unit)
         if text is None:
             bad.append(why)
             continue
+        patch = course / "mutants" / m.id / f"{mutant}.patch"
+        key = hashlib.sha256(
+            b"course-kill/v1\0"
+            + _owner_text(course, reg, unit, m.id).encode()
+            + b"\0"
+            + thash.encode()
+            + b"\0"
+            + patch.read_bytes()
+        ).hexdigest()
+        if cache.data["mutants"].get(key, {}).get("status") == "killed":
+            hits += 1
+            continue
         runs = _ov(
             reg, course, m.id, sources, work, f"mutant-{mutant}", {unit: text}
         ).run_tests(m.id)
         if all(r.ok for r in runs):
             bad.append(f"{mutant}: survives the course tests")
+        else:
+            cache.data["mutants"][key] = {"status": "killed"}
+    cache.save()
     if bad:
         rep.fail(6, f"mutants ({len(bad)} of {len(rows)})", "\n".join(bad))
     else:
-        rep.ok(6, f"{len(rows)} mutants apply and are killed")
-    if m.learner_tests:
-        rep.skip(
-            6, "reference learner tests vs threshold: mutation runner arrives with B3"
+        rep.ok(
+            6,
+            f"{len(rows)} mutants apply and are killed"
+            + (f" ({hits} from the kill cache)" if hits else ""),
         )
+    if m.learner_tests:
+        try:
+            root = mutation.scratch_tests_root(course, m, work)
+        except HarnessError as e:
+            rep.fail(6, "reference learner tests", str(e))
+            return
+        if root is None:
+            rep.fail(
+                6,
+                f"no reference learner tests at course/ref/learner-tests/{m.id}/ to prove the threshold reachable",
+            )
+            return
+        g = mutation.Grader(
+            reg, course, m, root, work, work, cache, impl_sources=None
+        ).grade()
+        if g.passed:
+            rep.ok(
+                6,
+                f"reference learner tests reach the threshold: {g.score:.2f} >= {g.threshold:.2f} ({g.killed}/{g.total})",
+            )
+        else:
+            surv = [r.mid for r in g.results if r.status == "survived"]
+            rep.fail(
+                6,
+                f"reference learner tests miss the threshold: {g.score:.2f} < {g.threshold:.2f}"
+                + ("" if g.required_ok else " or a required mutant survives"),
+                (g.reason + "\n" if g.reason else "")
+                + (f"survivors: {', '.join(surv)}" if surv else ""),
+            )
 
 
 def check_annotations(course, reg, m, test_dir: Path) -> list[str]:
@@ -421,6 +490,29 @@ def spec_errors(reg, course: Path) -> tuple[list[str], int]:
             if i not in ms_ids
         ]
         for st in ms.steps:
+            if st.expect.get("match") == "tokens-equal" and not st.expect.get(
+                "near_tie"
+            ):
+                # Without a near_tie rerun the oracle must be margin-filtered.
+                for v in st.variants() or [{}]:
+                    f = st.expect.get("file", "")
+                    try:
+                        f2 = placeholders.expand(
+                            f, lambda k, v=v: str(v[k]) if k in v else None
+                        )
+                    except HarnessError:
+                        continue
+                    fp = course.parent / f2 if f2.startswith("course/") else course / f2
+                    try:
+                        doc = json.loads(fp.read_text())
+                    except (OSError, ValueError):
+                        continue
+                    margins = doc.get("margins") if isinstance(doc, dict) else None
+                    if isinstance(margins, list) and margins and min(margins) < 1e-3:
+                        errs.append(
+                            f"{msid} step {st.name!r}: {f2} holds a near tie (top-2 margin {min(margins):.3g} < 1e-3); "
+                            "oracle files keep only margin-filtered prompts (5.7)"
+                        )
             blob = json.dumps([st.argv, st.expect, st.http])
             refs = [
                 f"course/fixtures/{x}" for x in re.findall(r"\{fixture:([^}]+)\}", blob)
@@ -456,6 +548,43 @@ def spec_errors(reg, course: Path) -> tuple[list[str], int]:
         n += len(conform.load_cases(course))
     except Exception as e:
         errs.append(str(e))
+    from .. import assets, parity
+
+    try:
+        pinned = {r.asset for r in assets.load(course)}
+    except HarnessError as e:
+        pinned = set()
+        errs.append(str(e))
+    for msid in ms_ids:
+        try:
+            blob = milestones.path_of(course, msid).read_text()
+        except OSError:
+            continue
+        for a in sorted(set(re.findall(r"\{asset:([^/}]+)", blob))):
+            if a not in pinned:
+                errs.append(
+                    f"{msid}: {{asset:{a}/...}} has no row in course/fixtures/ASSETS.tsv"
+                )
+    try:
+        suites = parity.load_all(course)
+    except Exception as e:
+        suites = []
+        errs.append(str(e))
+    for su in suites:
+        n += 1
+        live = [im for im in su.impls if im.module in reg.modules]
+        for im in live:
+            if not (parity.suite_dir(course) / im.driver).is_file():
+                errs.append(
+                    f"parity {su.id}: {im.module} is in the registry, but its driver {im.driver} is missing"
+                )
+        if live and su.golden:
+            if not (course.parent / su.golden).is_file():
+                errs.append(f"parity {su.id}: golden {su.golden} is missing")
+            elif su.golden not in rows:
+                errs.append(
+                    f"parity {su.id}: golden {su.golden} has no MANIFEST.tsv row"
+                )
     return errs, n
 
 
@@ -662,14 +791,13 @@ def verify_module(reg, course, mid: str, work: Path, runs: int, rep: Report) -> 
 
     if code:
         check_mutants(course, reg, m, work, rep)
-    if m.kind == "solve":
-        key = course / "solve" / m.id / "key.toml"
-        try:
-            tomllib.loads(key.read_text())
-            rep.ok(7, "solve key parses")
-            rep.skip(7, "expect/reject equivalence: solve checker arrives with B2")
-        except (OSError, tomllib.TOMLDecodeError) as e:
-            rep.fail(7, f"solve key: {e}")
+    if m.kind in ("solve", "proof"):
+        from .. import solve
+
+        errs = solve.verify_key(course, m.id)
+        rep.fail(7, "solve key", "\n".join(errs)) if errs else rep.ok(
+            7, "solve key parses; every expect passes and every reject canary fails"
+        )
 
     errs = chapter.lint(reg, m, course.parent, course, probe.test_dir(mid))
     rep.fail(8, "chapter", "\n".join(errs)) if errs else rep.ok(
@@ -758,13 +886,58 @@ def verify_global(reg, course, work: Path, rep: Report) -> None:
         )
         if rc != 0:
             bad.append(f"contracts/rust/tl-contracts:\n{out}")
+    tlp = course / "contracts" / "rust" / "tl-proto"
+    if (tlp / "Cargo.toml").is_file():
+        # Build a copy so Cargo.lock never lands in the course tree.
+        cp = work / "tl-proto"
+        shutil.rmtree(cp, ignore_errors=True)
+        shutil.copytree(tlp, cp)
+        env = ctx.base_env()
+        env["CARGO_TARGET_DIR"] = str(work / "target")
+        rc, out = ctx.run(
+            ["cargo", "build", "-q", "--manifest-path", str(cp / "Cargo.toml")],
+            env=env,
+            timeout=900,
+        )
+        if rc != 0:
+            bad.append(f"contracts/rust/tl-proto:\n{out}")
+    gen = course / "oracle" / "contracts" / "gen-proto.sh"
+    buf = shutil.which("buf") or str(Path.home() / "go" / "bin" / "buf")
+    if gen.is_file() and Path(buf).is_file():
+        env = ctx.base_env()
+        env["PATH"] = str(Path(buf).parent) + os.pathsep + env.get("PATH", "")
+        rc, out = ctx.run(["bash", str(gen), "--check"], env=env, timeout=900)
+        if rc != 0:
+            bad.append(f"generated proto code (gen-proto.sh --check):\n{out}")
+    from .. import schema as jschema
+
+    nex = 0
+    fmt = course / "contracts" / "formats"
+    for sp in sorted(fmt.glob("*.schema.json")) if fmt.is_dir() else []:
+        try:
+            sch = json.loads(sp.read_text())
+        except json.JSONDecodeError as e:
+            bad.append(f"{sp.relative_to(course)}: {e}")
+            continue
+        for i, ex in enumerate(sch.get("examples", [])):
+            nex += 1
+            errs = jschema.validate(ex, sch, sch)
+            if errs:
+                bad.append(
+                    f"{sp.relative_to(course)} example {i + 1}:\n"
+                    + "\n".join(errs[:10])
+                )
     rep.fail(4, "contracts", "\n".join(bad)) if bad else rep.ok(
         4,
-        "headers compile standalone (-pedantic -Werror); contract crates and modules build",
+        "headers compile standalone (-pedantic -Werror); contract crates and modules build; "
+        f"formats/*.schema.json validate their {nex} example(s)",
     )
-    for d, tool in (("openapi", "openapi-spec-validator"), ("proto", "buf")):
-        if (course / "contracts" / d).is_dir() and shutil.which(tool) is None:
-            rep.skip(4, f"contracts/{d}: `{tool}` not installed")
+    if (course / "contracts" / "openapi").is_dir() and shutil.which(
+        "openapi-spec-validator"
+    ) is None:
+        rep.skip(4, "contracts/openapi: `openapi-spec-validator` not installed")
+    if (course / "contracts" / "proto").is_dir() and not Path(buf).is_file():
+        rep.skip(4, "contracts/proto: `buf` not installed, generated code not compared")
 
     all_units = reg.all_units()
     langs = {markers.lang_of(u) for u in all_units} - {None}
@@ -815,7 +988,7 @@ def verify_global(reg, course, work: Path, rep: Report) -> None:
         12, "milestone, drill, and conformance specs", "\n".join(errs)
     ) if errs else rep.ok(
         12,
-        f"{n} milestone, drill, and conformance spec(s) parse; their fixtures resolve",
+        f"{n} milestone, drill, conformance, and parity spec(s) parse; their fixtures resolve",
     )
 
     ss = ctx.root() / "practice" / "bin" / "ss"
@@ -930,6 +1103,13 @@ def main(argv: list[str]) -> int:
         type=Path,
         help="only assemble the reference learner here (CI deploys it to kind)",
     )
+    ap.add_argument(
+        "--record-thresholds",
+        action="store_true",
+        help="run the reference tests of the given modules over 5 seeds and write "
+        "the learning tests' ref-thresholds.tsv rows (_lib.thresholds.check)",
+    )
+    ap.add_argument("--seeds", type=int, default=5)
     a = ap.parse_args(argv[1:])
     if a.keep and not (a.e2e or a.kind):
         raise HarnessError("--keep goes with --e2e or --kind")
@@ -955,6 +1135,10 @@ def main(argv: list[str]) -> int:
             return EXIT_FAIL
         ctx.say(f"{ctx.GRN}assembled{ctx.RST} the reference learner at {dest}: {what}")
         return 0
+    if a.record_thresholds:
+        if not a.ids:
+            raise HarnessError("--record-thresholds needs module ids")
+        return record_thresholds(reg, course, work, a.ids, a.seeds)
     if a.e2e or a.kind:
         from . import e2e
 
@@ -969,6 +1153,50 @@ def main(argv: list[str]) -> int:
         return 0
     with ctx.lock(work):
         return _verify(a, reg, course, ct, work, runs)
+
+
+def record_thresholds(
+    reg, course: Path, work: Path, mids: list[str], seeds: int
+) -> int:
+    """Learning tests: run each module's reference tests with SS_SEED = 0..seeds-1
+    while `_lib.thresholds.check` records instead of asserting, then write
+    mean +/- 3 sd rows (DESIGN 5.11 `ref-thresholds`)."""
+    import os
+
+    from .. import thresholds
+
+    obs = work / "thresholds.jsonl"
+    all_rows = []
+    for mid in mids:
+        m = reg.get(mid)
+        sources = {x: "ref" for x in [m.id] + reg.closure(m.id)}
+        obs.unlink(missing_ok=True)
+        os.environ["SS_RECORD_THRESHOLDS"] = str(obs)
+        try:
+            for sd in range(seeds):
+                runs = _ov(
+                    reg, course, mid, sources, work, f"thr{sd}", seed=sd
+                ).run_tests(mid)
+                if not all(r.ok for r in runs):
+                    ctx.err(
+                        f"{mid} seed {sd}: the reference tests fail\n"
+                        + "\n".join(r.output for r in runs if not r.ok)
+                    )
+                    return EXIT_FAIL
+        finally:
+            os.environ.pop("SS_RECORD_THRESHOLDS", None)
+        lines = obs.read_text().splitlines() if obs.is_file() else []
+        if not lines:
+            ctx.err(f"{mid}: no test called _lib.thresholds.check")
+            return EXIT_FAIL
+        all_rows += thresholds.from_observations(lines, "full")
+    p = thresholds.write(ctx.live_course(), all_rows)
+    for row in all_rows:
+        ctx.say(
+            f"  {row.key} {row.metric}: mean {row.mean:.6g}, sd {row.sd:.3g}, threshold {row.threshold:.6g} ({row.n} seeds)"
+        )
+    ctx.say(f"{ctx.GRN}wrote{ctx.RST} {len(all_rows)} row(s) to {p}")
+    return 0
 
 
 def _verify(a, reg, course, ct, work: Path, runs: int) -> int:

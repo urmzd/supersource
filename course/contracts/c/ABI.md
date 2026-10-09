@@ -2,16 +2,39 @@
 
 `include/tinyllm.h` is an umbrella header over one header per unit in `include/tinyllm/`. One module owns one header and one source file, which is what lets the course swap a single unit for a stub or a reference. These rules hold for every header, now and after later units land.
 
-## Contract v0
-
-Contract v0 holds the Pass 1 units only:
+## Headers
 
 | Header | Unit | Owner |
 |---|---|---|
 | [`tinyllm/abi.h`](include/tinyllm/abi.h) | `c/src/runtime/abi.c` | `rt.01` |
+| [`tinyllm/arena.h`](include/tinyllm/arena.h) | `c/src/runtime/arena.c` | `rt.02` |
+| [`tinyllm/pool.h`](include/tinyllm/pool.h) | `c/src/runtime/pool.c` | `rt.03` |
+| [`tinyllm/kv_pool.h`](include/tinyllm/kv_pool.h) | `c/src/runtime/kv_pool.c` | `rt.04`, upgraded by `craft.13` |
+| [`tinyllm/kv_pool_v2.h`](include/tinyllm/kv_pool_v2.h) | `c/src/runtime/kv_pool.c` | `craft.13`; not in `tinyllm.h` until that migration (D13) |
+| [`tinyllm/ds.h`](include/tinyllm/ds.h) | `c/src/ds/vec.c`, `swiss.c`, `list.c`, `lru.c` | `ds.01`, `ds.02`, `ds.03` |
+| [`tinyllm/topk.h`](include/tinyllm/topk.h) | `c/src/ds/topk.c` | `ds.04` |
+| [`tinyllm/numerics.h`](include/tinyllm/numerics.h) | `c/src/numerics/rng.c`, `lowp.c`, `rsqrt.c`, `expf.c` | `M06.3`, `M09.4`, `M09.5`, `M09.6` |
 | [`tinyllm/matmul.h`](include/tinyllm/matmul.h) | `c/src/kernels/matmul.c` | `M03.1` (v0), taken over by `L9.1` |
+| [`tinyllm/softmax.h`](include/tinyllm/softmax.h) | `c/src/kernels/softmax.c` | `L9.2` |
+| [`tinyllm/attention.h`](include/tinyllm/attention.h) | `c/src/kernels/flash_attn.c`, `paged_attn.c` | `L9.3`, `L9.4` |
+| [`tinyllm/qmatmul.h`](include/tinyllm/qmatmul.h) | `c/src/kernels/qmatmul.c` | `L9.5` |
+| [`tinyllm/elementwise.h`](include/tinyllm/elementwise.h) | `c/src/kernels/elementwise.c` | `L9.6` |
 
-Every other header (arena, pool, KV pool, data structures, top-k, numerics, softmax, attention, quantized matmul, elementwise) arrives with its unit's batch, as a minor version bump of `contracts/VERSION`.
+A header that names several units is split by function: each unit defines exactly the functions of its section. Units not started yet are linked as stubs (rule 11), so including the whole umbrella is always safe.
+
+### Struct layouts (64-bit targets)
+
+| Struct | Size | Fields (offset) |
+|---|---|---|
+| `tl_allocator` | 24 | `alloc` 0, `free` 8, `user` 16 |
+| `tl_arena_mark` | 16 | `offset` 0, `block` 8 |
+| `tl_arena_stats` | 32 | `bytes_used` 0, `bytes_reserved` 8, `high_water` 16, `n_blocks` 24 |
+| `tl_kv_cfg` | 28 | `n_blocks` 0, `block_tokens` 4, `n_layers` 8, `n_kv_heads` 12, `head_dim` 16, `dtype` 20, `format` 24 |
+| `tl_kv_stats` | 16 | `free` 0, `used` 4, `cached` 8, `evictions` 12 |
+| `tl_vec` | 32 | `data` 0, `len` 8, `cap` 16, `elem` 24 |
+| `tl_list_node` | 16 | `prev` 0, `next` 8 |
+| `tl_lru` | 24 | `head` 0, `len` 16 |
+| `tl_pcg32` | 16 | `state` 0, `inc` 8 |
 
 ## Rules
 

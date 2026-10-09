@@ -11,7 +11,7 @@
 | tokens-equal    | file (JSON ids list or {"ids": [...]}), near_tie = {logits, margin, argv} |
 | numeric         | values, rtol, atol                                                   |
 | json-schema     | schema (path or inline table)                                        |
-| file-produced   | glob, min_count, schema, contains                                    |
+| file-produced   | glob, min_count, schema, contains, rows (parquet total, e.g. ">= 1000") |
 | sse             | min_chunks; the stream is framed byte for byte (2.6)                 |
 | suite           | suite (openapi:...), service (local) or base                         |
 | promql          | query, base (default [deploy].prometheus), bound, hold_s, interval_s |
@@ -76,6 +76,9 @@ class MatchCtx:
     run_role: Callable | None = None  # (role, argv) -> (rc, stdout)
     step_argv: list[str] = field(default_factory=list)
     step_role: str | None = None
+    step_key: str = ""  # <MS-ID>/<step name>: the ref-thresholds key
+    smoke: bool = False  # a --smoke run reads the `smoke` thresholds
+    recorder: dict | None = None  # --record-thresholds: (key, metric, dir) -> value
 
 
 def normalize(text: str) -> str:
@@ -117,9 +120,7 @@ def _cmp(value: float, spec: str) -> tuple[bool, str]:
         )
     op, rhs = m.groups()
     if rhs == "calibrated":
-        raise HarnessError(
-            "`calibrated` thresholds need ref-thresholds, which arrive with B11"
-        )
+        raise HarnessError("`calibrated` needs a step context (json-last-line)")
     b = float(rhs)
     ok = {
         ">=": value >= b,
@@ -181,9 +182,33 @@ def m_json_last_line(e, out, mc) -> Verdict:
         ):
             bad.append(f"{name}: missing or not a number")
             continue
-        ok, why = _cmp(float(obj[name]), spec)
+        m = re.fullmatch(r"\s*(<=|>=)\s*calibrated\s*", str(spec))
+        if m:
+            ok, why = _calibrated(float(obj[name]), name, m.group(1), e, mc)
+        else:
+            ok, why = _cmp(float(obj[name]), spec)
         (good if ok else bad).append(f"{name}: {why}")
     return Verdict("fail", "; ".join(bad)) if bad else Verdict("pass", "; ".join(good))
+
+
+def _calibrated(
+    value: float, metric: str, op: str, e: dict, mc: MatchCtx
+) -> tuple[bool, str]:
+    """`<= calibrated` (lower is better) or `>= calibrated`: the bar is the
+    reference mean +/- 3 sd over 5 reference seeds (ref-thresholds.tsv)."""
+    from . import thresholds
+
+    key = str(e.get("key") or mc.step_key)
+    direction = "max" if op == "<=" else "min"
+    if mc.recorder is not None:
+        mc.recorder[(key, metric, direction)] = value
+        return True, f"{value:.6g} recorded for the reference thresholds"
+    row = thresholds.lookup(mc.run.course, key, metric, "smoke" if mc.smoke else "full")
+    if row.direction != direction:
+        raise HarnessError(
+            f"{key} {metric}: recorded as {row.direction}, the step says {op}"
+        )
+    return thresholds.passes(row, value)
 
 
 def _ids(v) -> list[int] | None:
@@ -204,13 +229,16 @@ def m_tokens_equal(e, out, mc) -> Verdict:
         )
     path = mc.run.course_file(placeholders.expand(e.get("file", ""), mc.lookup))
     try:
-        want = _ids(json.loads(path.read_text()))
+        doc = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as err:
         raise HarnessError(
             f"step {mc.step_name}: expected ids file {path}: {err}"
         ) from None
+    want = _ids(doc)
     if want is None:
         raise HarnessError(f'{path}: want a JSON list of ids or {{"ids": [...]}}')
+    # An oracle file may carry the oracle's own top-2 margin at every step.
+    oracle_margins = doc.get("margins") if isinstance(doc, dict) else None
     if got == want:
         return Verdict("pass", f"{len(got)} ids equal")
     k = next(
@@ -221,10 +249,24 @@ def m_tokens_equal(e, out, mc) -> Verdict:
     nt = e.get("near_tie")
     if not nt or k >= len(want):
         return Verdict("fail", msg)
+    limit = float(nt.get("margin", 1e-3))
+    if isinstance(oracle_margins, list) and k < len(oracle_margins):
+        # The oracle recorded its margin: no rerun needed. Margin-filtered
+        # oracle files (DESIGN 5.7) never fall under the limit, so this only
+        # fires for unfiltered files (learner-trained models).
+        om = float(oracle_margins[k])
+        if om < limit:
+            return Verdict(
+                "near-tie",
+                f"{msg}; the oracle's top-2 margin there is {om:.3g} < {limit:g}",
+            )
+        return Verdict(
+            "fail",
+            f"{msg}; the oracle's top-2 margin there is {om:.3g} >= {limit:g}, so this is a real divergence",
+        )
     margin = _near_tie_margin(nt, want[:k], mc)
     if margin is None:
         return Verdict("fail", msg + "; the near-tie rerun printed no logits")
-    limit = float(nt.get("margin", 1e-3))
     if margin < limit:
         return Verdict(
             "near-tie",
@@ -321,9 +363,15 @@ def m_file_produced(e, out, mc) -> Verdict:
             f"{len(files)} file(s) match {pat}, want at least {e.get('min_count', 1)}",
         )
     if "rows" in e:
-        raise HarnessError(
-            "file-produced `rows` (parquet row counts via pyarrow) arrives with B6"
-        )
+        total, err = _parquet_rows(files, mc)
+        if total is None:
+            return Verdict("fail", err)
+        ok, why = _cmp(float(total), str(e["rows"]))
+        if not ok:
+            return Verdict(
+                "fail",
+                f"{len(files)} parquet file(s) hold {why.split(' ')[0]} rows; want {e['rows']}",
+            )
     sch = _load_schema(e["schema"], mc) if "schema" in e else None
     for f in files:
         if sch is not None:
@@ -336,6 +384,37 @@ def m_file_produced(e, out, mc) -> Verdict:
         if "contains" in e and e["contains"] not in f.read_text(errors="replace"):
             return Verdict("fail", f"{f} lacks {e['contains']!r}")
     return Verdict("pass", f"{len(files)} file(s)")
+
+
+PARQUET_ROWS = """
+import sys
+import pyarrow.parquet as pq
+print(sum(pq.ParquetFile(p).metadata.num_rows for p in sys.argv[1:]))
+"""
+
+
+def _parquet_rows(files: list[Path], mc) -> tuple[int | None, str]:
+    """Row counts from the parquet footers, read with pyarrow in YOUR python
+    environment (the corpus modules depend on it; the harness does not)."""
+    learner = mc.run.learner
+    proj = (
+        learner / "python"
+        if learner and (learner / "python" / "pyproject.toml").is_file()
+        else None
+    )
+    cmd = ["uv", "run", "--quiet"] + (
+        ["--project", str(proj)] if proj else ["--no-project", "--with", "pyarrow"]
+    )
+    cmd += ["python", "-c", PARQUET_ROWS, *map(str, files)]
+    env = mc.run.env()
+    rc, out = ctx.run(cmd, cwd=learner, env=env, timeout=300)
+    lines = out.strip().splitlines()
+    if rc != 0 or not lines or not lines[-1].strip().isdigit():
+        return (
+            None,
+            f"reading parquet row counts failed (is pyarrow in python/pyproject.toml?):\n{ctx.tail(out, 10)}",
+        )
+    return int(lines[-1]), ""
 
 
 def m_sse(e, out, mc) -> Verdict:
@@ -604,9 +683,18 @@ def m_ci_status(e, out, mc) -> Verdict:
 
 
 def m_perf(e, out, mc) -> Verdict:
-    raise HarnessError(
-        "the `perf` matcher needs `ss bench --calibrate`, which arrives with B8"
-    )
+    """Throughput or latency relative to `ss bench --calibrate` (5.11):
+    expect = { match = "perf", metric = "tokens_per_s", budget = ">= 0.5 * decode_tok_s" }
+    against the last stdout JSON line; `in_cluster = true` uses the Job's calibration."""
+    from . import bench
+
+    obj = last_json(out.stdout)
+    metric = str(e.get("metric", ""))
+    if obj is None or not isinstance(obj.get(metric), (int, float)):
+        return Verdict("fail", f"the last stdout line has no number {metric!r}")
+    calib = bench.load_calibration(bool(e.get("in_cluster", False)))
+    ok, why = bench.check_budget(float(obj[metric]), str(e.get("budget", "")), calib)
+    return Verdict("pass" if ok else "fail", f"{metric}: {why}")
 
 
 MATCHERS = {
@@ -634,7 +722,6 @@ NO_COMMAND = {
     "git-log",
     "ci-status",
     "file-produced",
-    "perf",
 }
 
 

@@ -50,6 +50,8 @@ class Module:
     # a pass goes stale when they change, and their presence counts as
     # started (DEVIATIONS I16).
     artifacts: list[str] = field(default_factory=list)
+    # [bench]: a course perf budget relative to machine calibration (5.11)
+    bench: dict = field(default_factory=dict)
     source: Path | None = None
 
     @property
@@ -222,6 +224,7 @@ def parse(path: Path) -> Module:
         fixtures=raw.get("fixtures", {}),
         learner_tests=raw.get("learner_tests"),
         artifacts=lists["artifacts"],
+        bench=dict(raw.get("bench", {})),
         source=path,
     )
     if path.stem != mid:
@@ -244,6 +247,12 @@ def parse(path: Path) -> Module:
         errs.append(
             "`artifacts` is for practice modules and drills; build units go in `units`"
         )
+    if m.bench:
+        missing = [k for k in ("lang", "name", "metric", "budget") if k not in m.bench]
+        if missing:
+            errs.append(f"[bench] needs {', '.join(missing)}")
+        elif m.bench["lang"] not in ids.CODE_LANGS:
+            errs.append(f"[bench].lang {m.bench['lang']!r} not in {ids.CODE_LANGS}")
     if m.milestone and not m.milestone.startswith("MS-"):
         errs.append(f"milestone {m.milestone!r} is not an MS- id")
     if errs:

@@ -28,6 +28,7 @@ REPO = Path(__file__).resolve().parents[3]
 SS_BIN = REPO / "practice" / "bin" / "ss"
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "site"
 FAKES = Path(__file__).resolve().parent / "fakes"
+EXTRAS = FIXTURE.parent / "extras"
 MARKER = re.compile(r"^[^A-Za-z0-9]*SOLUTION-(BEGIN|END)\b.*$")
 collect_ignore = [
     "fixtures",
@@ -68,15 +69,22 @@ class SS:
         self.env.pop("VIRTUAL_ENV", None)
 
     def __call__(
-        self, *args: str, rc: int | None = None, env: dict | None = None
+        self,
+        *args: str,
+        rc: int | None = None,
+        env: dict | None = None,
+        input: str | None = None,
+        timeout: float = 120,
     ) -> subprocess.CompletedProcess:
         p = subprocess.run(
             ["bash", str(SS_BIN), *args],
             env={**self.env, **(env or {})},
             cwd=REPO,
+            input=input,
+            stdin=None if input is not None else subprocess.DEVNULL,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=timeout,
         )
         p.out = p.stdout + p.stderr  # type: ignore[attr-defined]
         if rc is not None:
@@ -126,6 +134,16 @@ class SS:
             text = re.sub(rf"^{k}\s*=.*$", f"{k} = {json.dumps(v)}", text, flags=re.M)
         (self.learner / "system.toml").write_text(text)
         self.commit_learner("feat: add the tracer entry points")
+
+    def add_extras(self, *names: str) -> None:
+        """Overlay fixtures/extras/<name>/ onto the site (extra modules a test
+        needs), regenerate modules.tsv, and commit, before `init`."""
+        for n in names:
+            shutil.copytree(EXTRAS / n, self.site, dirs_exist_ok=True)
+        self(
+            "lint", "--fix-index"
+        )  # rewrites modules.tsv even when a chapter lints dirty
+        self.commit_site("extras: " + ", ".join(names))
 
     def commit_learner(self, msg: str) -> None:
         git(self.learner, "add", "-A")
@@ -233,11 +251,23 @@ class FakeHTTP:
             def log_message(self, *a):
                 pass
 
+            def do_POST(self):
+                n = int(self.headers.get("Content-Length") or 0)
+                raw = self.rfile.read(n)
+                try:
+                    q = json.loads(raw or b"{}")
+                except json.JSONDecodeError:
+                    q = {"raw": raw.decode(errors="replace")}
+                self._answer(urllib.parse.urlsplit(self.path).path, q)
+
             def do_GET(self):
                 u = urllib.parse.urlsplit(self.path)
                 q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
-                outer.calls.append((u.path, q))
-                fn = outer.routes.get(u.path)
+                self._answer(u.path, q)
+
+            def _answer(self, path, q):
+                outer.calls.append((path, q))
+                fn = outer.routes.get(path)
                 status, body = fn(q) if fn else (404, {"error": "no route"})
                 data = json.dumps(body).encode()
                 self.send_response(status)
@@ -273,10 +303,8 @@ def fake_http():
 def ss(tmp_path: Path) -> SS:
     site = tmp_path / "site"
     shutil.copytree(FIXTURE, site)
-    shutil.copy2(
-        REPO / "course" / "contracts" / "c" / "include" / "ss_test.h",
-        site / "course" / "contracts" / "c" / "include",
-    )
+    for h in sorted((REPO / "course" / "contracts" / "c" / "include").glob("ss_*.h")):
+        shutil.copy2(h, site / "course" / "contracts" / "c" / "include")
     shutil.copytree(
         REPO / "course" / "tests" / "_lib",
         site / "course" / "tests" / "_lib",
@@ -284,6 +312,12 @@ def ss(tmp_path: Path) -> SS:
     )
     shutil.copy2(REPO / "course" / "tests" / "conftest.py", site / "course" / "tests")
     shutil.copytree(REPO / "course" / "conformance", site / "course" / "conformance")
+    shutil.copytree(
+        REPO / "course" / "testkit",
+        site / "course" / "testkit",
+        ignore=shutil.ignore_patterns("__pycache__", "target"),
+    )
+    shutil.copytree(REPO / "course" / "rubrics", site / "course" / "rubrics")
     git(site, "init", "-q")
     s = SS(tmp_path, site)
     s.commit_site("fixture")

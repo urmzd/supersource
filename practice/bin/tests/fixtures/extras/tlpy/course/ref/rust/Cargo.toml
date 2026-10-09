@@ -1,0 +1,3 @@
+[workspace]
+resolver = "2"
+members = ["crates/tl-demo", "crates/tl-py", "crates/pyo3"]

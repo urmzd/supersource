@@ -5,10 +5,11 @@ This is the preprocessor behind ``scripts/build-book.sh``. It does three things
 that a naive ``cat`` of every README cannot:
 
 1. Orders tracks and topics into a coherent learning sequence (a track's
-   README first, then its numbered topic READMEs in order).
-2. Rewrites *relative* image paths (e.g. ``../diagrams/c4-context.svg``) to
-   absolute paths, so links survive being concatenated into one document in a
-   different directory.
+   README first, then, recursively, numbered chapter files and numbered topic
+   and part directories in order).
+2. Rewrites *relative* image paths (e.g. ``diagrams/c4-context.svg``) to
+   absolute paths, and relative links to repository URLs, so both survive
+   being concatenated into one document in a different directory.
 3. Injects LaTeX ``\\part{...}`` dividers so the PDF has a real
    Part / Chapter hierarchy and a clean table of contents.
 
@@ -30,21 +31,21 @@ import re
 import sys
 from pathlib import Path
 
-# Ordered learning sequence: (directory, Part title). Within each directory we
-# include README.md, then every <subdir>/README.md sorted by name (so the
-# 01-, 02-, ... topic prefixes order naturally).
+# Ordered learning sequence: (directory, Part title). Within each directory the
+# chapters are discovered recursively (see collect_files): the README first,
+# then numbered chapter files, then numbered topic and part directories, so the
+# 01-, 02-, p00-, p01-, ... prefixes order naturally. course/ (except the
+# contracts appendix) and archive/ are never part of the book (DESIGN 3.1).
 TRACKS: list[tuple[str, str]] = [
     ("math", "Mathematics Foundations"),
     ("algorithms", "Algorithm Mastery"),
-    ("information-theory", "Information Theory"),
     ("ml", "Machine Learning & AI"),
     ("systems", "Systems & Architecture"),
     ("data-engineering", "Data Engineering"),
     ("ai-platform-engineering", "AI Platform Engineering"),
-    ("programming-languages", "Programming Languages"),
     ("software-craftsmanship", "Software Craftsmanship"),
-    ("diagramming-and-documentation", "Diagramming & Documentation"),
     ("infrastructure", "Infrastructure"),
+    ("responsible-ai", "Responsible AI"),
     ("competitive-programming", "Competitive Programming"),
     ("field-engineering", "Field Engineering"),
     ("case-studies", "Case Studies"),
@@ -135,6 +136,35 @@ def rewrite_images(text: str, base_dir: Path) -> str:
     return IMAGE_RE.sub(repl, text)
 
 
+REPO_URL = "https://github.com/urmzd/supersource"
+# Markdown inline link that is not an image:  [text](target)
+LINK_RE = re.compile(r"(?<!!)(\[[^\]]*\]\()([^)\s]+)([^)]*\))")
+
+
+def rewrite_links(text: str, base_dir: Path, root: Path) -> str:
+    """Point relative links at the repository, so they work in the PDF.
+
+    A relative link means nothing once every chapter sits in one file; this
+    also renders course contract links as repository URLs (DESIGN 3.1).
+    """
+
+    def repl(m: re.Match[str]) -> str:
+        prefix, target, suffix = m.group(1), m.group(2), m.group(3)
+        if is_remote_or_absolute(target) or target.startswith(("mailto:", "{")):
+            return m.group(0)
+        path, _, frag = target.partition("#")
+        resolved = (base_dir / path).resolve()
+        try:
+            rel = resolved.relative_to(root)
+        except ValueError:
+            return m.group(0)
+        kind = "tree" if resolved.is_dir() else "blob"
+        url = f"{REPO_URL}/{kind}/main/{rel.as_posix()}" + (f"#{frag}" if frag else "")
+        return f"{prefix}{url}{suffix}"
+
+    return LINK_RE.sub(repl, text)
+
+
 def latex_escape(title: str) -> str:
     for char, repl in (
         ("\\", r"\textbackslash{}"),
@@ -151,18 +181,45 @@ def part_divider(title: str) -> str:
     return f"\n```{{=latex}}\n\\part{{{latex_escape(title)}}}\n```\n\n"
 
 
+# Directories a chapter walk descends into: numbered topics (`05-trees`),
+# spine parts (`p08-inference`), and the capstone chapters of the spine.
+CHAPTER_DIR_RE = re.compile(r"^(\d\d|p\d\d)-|^capstones$")
+CHAPTER_FILE_RE = re.compile(r"^\d\d-.*\.md$")
+# Never part of the book, wherever they appear.
+EXCLUDED = ("course", "archive")
+
+
+def chapter_files(base: Path) -> list[Path]:
+    """README.md, then [0-9][0-9]-*.md, then each chapter directory, recursively."""
+    files: list[Path] = []
+    readme = base / "README.md"
+    if readme.exists():
+        files.append(readme)
+    files.extend(
+        sorted(
+            p for p in base.iterdir() if p.is_file() and CHAPTER_FILE_RE.match(p.name)
+        )
+    )
+    # Capstones close a spine, so they sort after every numbered part.
+    subs = sorted(
+        (p for p in base.iterdir() if p.is_dir()),
+        key=lambda p: (p.name == "capstones", p.name),
+    )
+    for sub in subs:
+        if CHAPTER_DIR_RE.match(sub.name):
+            files.extend(chapter_files(sub))
+    return files
+
+
 def collect_files(root: Path, directory: str) -> list[Path]:
     base = root / directory
     if base.is_file():  # an appendix like STUDY-PLAN.md
         return [base]
     if directory in ALL_MARKDOWN:
         return sorted(p for p in base.rglob("*.md") if p.is_file())
-    files: list[Path] = []
-    readme = base / "README.md"
-    if readme.exists():
-        files.append(readme)
-    files.extend(sorted(base.glob("*/README.md")))
-    return files
+    if directory.split("/")[0] in EXCLUDED or not base.is_dir():
+        return []
+    return chapter_files(base)
 
 
 def assemble(root: Path) -> tuple[str, int]:
@@ -177,6 +234,7 @@ def assemble(root: Path) -> tuple[str, int]:
         for path in files:
             text = path.read_text(encoding="utf-8")
             text = single_chapter(text)
+            text = rewrite_links(text, path.parent, root)
             text = substitute_glyphs(rewrite_images(text, path.parent))
             chunks.append(text)
             chunks.append("\n\n")
@@ -239,6 +297,7 @@ def stage_text(root: Path, stage: str, files: list[str], note: str) -> list[str]
         text = single_chapter(path.read_text(encoding="utf-8"))
         if i == 0:
             text = after_title(text, note)
+        text = rewrite_links(text, path.parent, root)
         chunks.append(substitute_glyphs(rewrite_images(text, path.parent)))
         chunks.append("\n\n")
     return chunks

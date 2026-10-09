@@ -27,18 +27,41 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import HarnessError, placeholders
+from . import HarnessError, ctx, placeholders
 from .kube import Kube
 
-BUILT = ("pod-kill", "deploy-patch", "scale-zero", "resource-limit", "config-drift")
-LATER = {
-    "netem": "B13 (ops.12)",
-    "wal-quota": "B13 (ops.11)",
-    "clock-skew": "B10 (dur.07)",
-    "activity-poison": "B10 (ops.03)",
-    "tenant-flood": "B13 (ops.09)",
-    "git-branch": "B13 (ops.06 to ops.08)",
-    "contract-bump": "B13 (ops.04, ops.05)",
+BUILT = (
+    "pod-kill",
+    "deploy-patch",
+    "scale-zero",
+    "resource-limit",
+    "config-drift",
+    "netem",
+    "wal-quota",
+    "clock-skew",
+    "activity-poison",
+    "tenant-flood",
+    "git-branch",
+    "contract-bump",
+)
+LATER: dict[str, str] = {}
+# Injectors that act on the cluster: a drill that uses one needs the safety gate.
+CLUSTER = {
+    "pod-kill",
+    "deploy-patch",
+    "scale-zero",
+    "resource-limit",
+    "config-drift",
+    "netem",
+    "wal-quota",
+    "activity-poison",
+}
+# The two SLO window profiles of otel/slo.schema.json (DESIGN 2.11): pairs of
+# (long window, short window, burn-rate factor). `drill` compresses `prod` 12x
+# so a burn alert can fire within minutes.
+SLO_PROFILES = {
+    "prod": [("1h", "5m", 14.4), ("6h", "30m", 6.0)],
+    "drill": [("5m", "25s", 14.4), ("30m", "150s", 6.0)],
 }
 AT = re.compile(r"^(start|(loadgen)?\+(\d+(?:\.\d+)?)s)$")
 
@@ -65,6 +88,16 @@ class Drill:
     def requires(self) -> list[str]:
         return list(self.raw.get("requires", []))
 
+    @property
+    def needs_cluster(self) -> bool:
+        return any(i.get("kind") in CLUSTER for i in self.injects) or any(
+            "rollout" in c for c in (self.raw.get("resolve") or {}).get("check", [])
+        )
+
+    @property
+    def slo_profile(self) -> str | None:
+        return self.raw.get("slo_profile")
+
 
 def all_drills(course: Path) -> list[Drill]:
     d = course / "drills"
@@ -80,6 +113,10 @@ def load_file(p: Path) -> Drill:
     except tomllib.TOMLDecodeError as e:
         raise HarnessError(f"{p}: {e}") from None
     d = Drill(p.parent.name, p, raw)
+    if d.slo_profile is not None and d.slo_profile not in SLO_PROFILES:
+        raise HarnessError(
+            f"{p}: slo_profile {d.slo_profile!r} is not one of {', '.join(SLO_PROFILES)}"
+        )
     for i, inj in enumerate(d.injects):
         k = inj.get("kind")
         if k not in BUILT and k not in LATER:
@@ -134,8 +171,12 @@ class Journal:
         ]
 
 
-def undo(k: Kube, j: Journal) -> list[str]:
-    """Replay every pending undo in reverse order; returns what was undone."""
+def undo(k: Kube | None, j: Journal) -> list[str]:
+    """Replay every pending undo in reverse order; returns what was undone.
+    Actions: ["kill", pid], ["http", method, url, json], ["git-branch-remove",
+    learner, scratch, branch], or a kubectl argv (needs the gate's Kube)."""
+    from . import scratchcopy, web
+
     did = []
     for e in reversed(j.pending_undos()):
         for action in e["undo"]:
@@ -144,7 +185,21 @@ def undo(k: Kube, j: Journal) -> list[str]:
                     os.killpg(int(action[1]), signal.SIGTERM)
                 except (ProcessLookupError, PermissionError):
                     pass
+            elif action[0] == "http":
+                r = web.request(
+                    action[1], action[2], json_body=json.loads(action[3]), timeout=20
+                )
+                if not 200 <= r.status < 300:
+                    raise HarnessError(
+                        f"undo {action[1]} {action[2]}: HTTP {r.status} {r.error}"
+                    )
+            elif action[0] == "git-branch-remove":
+                scratchcopy.remove(Path(action[1]), Path(action[2]), action[3])
             else:
+                if k is None:
+                    raise HarnessError(
+                        "this undo needs the cluster (kubectl) and no safety gate passed"
+                    )
                 k.must(action)
         j.append({"undone": e["n"]})
         did.append(f"{e['kind']} {e.get('target', '')}".strip())
@@ -191,14 +246,53 @@ def ready_pods(k: Kube, target: str) -> list[str]:
     return sorted(out)
 
 
+def _env_patch(
+    k: Kube, target: str, idx: int, updates: dict[str, str]
+) -> tuple[list, list]:
+    """JSON-patch ops (and their undo) setting env vars on one container."""
+    c = _container(k.json(["get", target]), idx)
+    base = f"/spec/template/spec/containers/{idx}"
+    old_env = c.get("env")
+    env = [dict(x) for x in (old_env or [])]
+    for name, value in updates.items():
+        for x in env:
+            if x.get("name") == name:
+                x.clear()
+                x.update({"name": name, "value": value})
+                break
+        else:
+            env.append({"name": name, "value": value})
+    undo = (
+        {"op": "add", "path": f"{base}/env", "value": old_env}
+        if old_env is not None
+        else {"op": "remove", "path": f"{base}/env"}
+    )
+    return [{"op": "add", "path": f"{base}/env", "value": env}], [undo]
+
+
 def inject(
-    k: Kube, inj: dict, rng: random.Random, lookup
+    k: Kube | None, inj: dict, rng: random.Random, lookup, extra: dict | None = None
 ) -> tuple[str, list[list[str]], dict]:
+    """`extra` carries what non-cluster injectors need: learner, course, reg,
+    run_dir, env, drill name, the loadgen/ctl argv builder (`role`)."""
     kind = inj["kind"]
     if kind in LATER:
         raise HarnessError(f"the {kind} injector arrives with {LATER[kind]}")
+    extra = extra or {}
     target = placeholders.expand(str(inj.get("target", "")), lookup, f"inject {kind}")
     idx = int(inj.get("container", 0))
+    if kind in CLUSTER and k is None:
+        raise HarnessError(f"the {kind} injector needs the cluster safety gate")
+    if kind in (
+        "netem",
+        "wal-quota",
+        "clock-skew",
+        "activity-poison",
+        "tenant-flood",
+        "git-branch",
+        "contract-bump",
+    ):
+        return _inject_more(k, kind, inj, target, idx, rng, lookup, extra)
     if kind == "pod-kill":
         pods = ready_pods(k, target)
         if not pods:
@@ -321,6 +415,158 @@ def inject(
     raise HarnessError(f"unknown injector {kind!r}")
 
 
+def _inject_more(k, kind, inj, target, idx, rng, lookup, extra):
+    where = f"inject {kind}"
+    if kind == "netem":
+        pods = ready_pods(k, target)
+        if not pods:
+            raise HarnessError(f"netem: {target} has no ready pod")
+        pod = rng.choice(pods)
+        cname = _container(k.json(["get", target]), idx).get("name", "")
+        image = str(inj.get("image", "nicolaka/netshoot:v0.13"))
+        delay = str(inj.get("delay", "300ms"))
+        loss = str(inj.get("loss", "5%"))
+        base = [
+            "debug",
+            f"pod/{pod}",
+            f"--image={image}",
+            f"--target={cname}",
+            "--profile=netadmin",
+            "--",
+        ]
+        k.must(
+            base
+            + [
+                "tc",
+                "qdisc",
+                "add",
+                "dev",
+                "eth0",
+                "root",
+                "netem",
+                "delay",
+                delay,
+                "loss",
+                loss,
+            ]
+        )
+        return (
+            f"netem delay {delay} loss {loss} on pod {pod}",
+            [base + ["tc", "qdisc", "del", "dev", "eth0", "root"]],
+            {"pod": pod},
+        )
+    if kind in ("wal-quota", "activity-poison"):
+        if kind == "wal-quota":
+            updates = {"TL_DURABLE__WAL_MAX_BYTES": str(inj.get("bytes", 1048576))}
+        else:
+            fp = str(inj.get("failpoint", "dur/activity/poison"))
+            c = _container(k.json(["get", target]), idx)
+            cur = next(
+                (
+                    e.get("value", "")
+                    for e in c.get("env") or []
+                    if e.get("name") == "TL_FAILPOINTS"
+                ),
+                "",
+            )
+            updates = {
+                "TL_FAILPOINTS": ";".join(
+                    x for x in (cur, f"{fp}={inj.get('action', 'panic')}") if x
+                )
+            }
+        ops, undo_ops = _env_patch(k, target, idx, updates)
+        k.must(_patch(k, target, ops))
+        did = f"set {', '.join(f'{a}={b}' for a, b in updates.items())} on {target}"
+        if kind == "wal-quota" and inj.get("burst_argv"):
+            role = extra.get("role")
+            argv = placeholders.expand_argv(
+                role("ctl") + list(inj["burst_argv"]), lookup, where
+            )
+            rc, out = ctx.run(
+                argv,
+                cwd=extra.get("learner"),
+                env=extra.get("env"),
+                timeout=float(inj.get("burst_timeout_s", 300)),
+            )
+            did += f"; burst `{' '.join(argv)}` exited {rc}"
+        return did, [_patch(k, target, undo_ops)], {}
+    if kind == "clock-skew":
+        from . import web
+
+        url = placeholders.expand(
+            str(inj.get("url", "{deploy.durable_debug_url}/debug/clock")), lookup, where
+        )
+        skew = float(inj.get("skew_s", 3600))
+        r = web.request("POST", url, json_body={"skew_s": skew}, timeout=20)
+        if not 200 <= r.status < 300:
+            raise HarnessError(f"clock-skew: POST {url}: HTTP {r.status} {r.error}")
+        return (
+            f"skewed the durable clock by {skew:g}s",
+            [["http", "POST", url, json.dumps({"skew_s": 0})]],
+            {},
+        )
+    if kind == "tenant-flood":
+        role = extra.get("role")
+        tenant = str(inj.get("tenant", "tenant-noisy"))
+        args = list(
+            inj.get(
+                "argv",
+                [
+                    "--tenant",
+                    tenant,
+                    "--rate",
+                    str(inj.get("rate", 200)),
+                    "--target",
+                    "{deploy.gateway_url}",
+                ],
+            )
+        )
+        argv = placeholders.expand_argv(role("loadgen") + args, lookup, where)
+        pid = start_loadgen(
+            argv,
+            extra["learner"],
+            extra["env"],
+            Path(extra["run_dir"]) / f"flood-{tenant}.log",
+        )
+        return (
+            f"flooding as {tenant}: {' '.join(argv)}",
+            [["kill", str(pid)]],
+            {"tenant": tenant},
+        )
+    from . import scratchcopy
+
+    name = str(inj.get("branch") or extra.get("drill", "drill"))
+    scratch = Path(extra["run_dir"]) / f"scratch-{name}"
+    if kind == "git-branch":
+        commits = [dict(c) for c in inj.get("commit", [])]
+        if not commits:
+            raise HarnessError(
+                "git-branch needs [[inject.commit]] tables (seeded, run, or write)"
+            )
+    else:  # contract-bump: `ss contracts sync --to <rev>` on a branch
+        to = placeholders.expand(str(inj.get("to", "")), lookup, where)
+        if not to:
+            raise HarnessError("contract-bump needs `to` (a tag or sha, e.g. kv/v2)")
+        ss = str(Path(ctx.root()) / "practice" / "bin" / "ss")
+        commits = [
+            {
+                "kind": "run",
+                "argv": ["bash", ss, "contracts", "sync", "--to", to],
+                "env": {"SS_COURSE_HOME": "{scratch}", "SS_ROOT": str(ctx.root())},
+                "message": str(inj.get("message", f"chore(contracts): sync to {to}")),
+            }
+        ]
+    built = scratchcopy.build(
+        Path(extra["learner"]), scratch, name, commits, extra["course"], extra["reg"]
+    )
+    scratchcopy.publish(Path(extra["learner"]), built)
+    return (
+        f"created branch {built.branch} with {len(built.commits)} commit(s)",
+        [["git-branch-remove", str(extra["learner"]), str(scratch), built.branch]],
+        {"branch": built.branch, "commits": built.commits},
+    )
+
+
 def start_loadgen(argv: list[str], cwd: Path, env: dict, log: Path) -> int:
     with open(log, "w") as f:
         p = subprocess.Popen(
@@ -333,6 +579,45 @@ def start_loadgen(argv: list[str], cwd: Path, env: dict, log: Path) -> int:
             start_new_session=True,
         )
     return p.pid
+
+
+# ---------------------------------------------------------------------------
+# SLO profile (DESIGN 2.11)
+
+
+def slo_errors(learner: Path, d: Drill) -> list[str]:
+    """A drill under an SLO profile needs the learner's alert rules (files
+    under deploy/observability/) to define the [detect] alert, written with
+    the profile's short windows, so the alert can fire within the drill."""
+    det = d.raw.get("detect")
+    if not det:
+        return []
+    alert = str(det.get("alert", ""))
+    obs = learner / "deploy" / "observability"
+    files = (
+        sorted(p for p in obs.rglob("*") if p.suffix in (".yaml", ".yml"))
+        if obs.is_dir()
+        else []
+    )
+    text = "\n".join(p.read_text(errors="replace") for p in files)
+    errs = []
+    if not files:
+        errs.append(
+            "no alert rules under deploy/observability/ (otel/slo.schema.json names the required alerts)"
+        )
+    elif not re.search(rf"\balert:\s*{re.escape(alert)}\b", text):
+        errs.append(f"no rule defines alert {alert} (required by the drill's [detect])")
+    windows = SLO_PROFILES[d.slo_profile]
+    # PromQL range selectors: rate(x[5m]) and rate(x[25s]).
+    missing = [
+        w for long_, short, _ in windows for w in (long_, short) if f"[{w}]" not in text
+    ]
+    if files and missing:
+        errs.append(
+            f"the `{d.slo_profile}` profile windows {sorted(set(missing))} appear in no rule "
+            f"(want {', '.join(f'{a}/{b} at {f:g}x' for a, b, f in windows)})"
+        )
+    return errs
 
 
 # ---------------------------------------------------------------------------

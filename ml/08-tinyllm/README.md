@@ -43,10 +43,21 @@ A language model is a function from a prefix of token ids to a distribution over
 | Part | Directory | Chapters so far | Course pass |
 |---|---|---|---|
 | p00 | [Foundations](p00-foundations/) | L0.0 byte bigram | 1 (tracer), 2 |
+| p01 | [Tokenizers](p01-tokenizers/) | none yet (B4) | 3 |
+| p02 | [Statistical LMs](p02-statistical-lm/) | none yet (B5) | 3 |
+| p03 | [Recurrent Networks](p03-recurrent/) | none yet (B6) | 4 |
+| p04 | [Attention Origins](p04-attention-origins/) | none yet (B6) | 4 |
+| p05 | [The Transformer (2017)](p05-transformer-2017/) | none yet (B7) | 5 |
+| p06 | [Objectives and Adaptation](p06-objectives/) | none yet (B7) | 5 |
+| p07 | [The Modern Decoder Block](p07-modern-block/) | none yet (B7) | 5 |
+| p08 | [Inference](p08-inference/) | none yet (B8) | 6 |
 | p09 | [Kernels in C](p09-kernels/) | rt.01 the C ABI | 1 (tracer), 6 |
 | p10 | [Serving](p10-serving/) | L10.0 your first endpoint | 1 (tracer), 7 |
+| p11 | [Training at Scale](p11-training-at-scale/) | none yet (B11) | 9 |
+| p12 | [Post-Training (optional)](p12-post-training/) | none yet (B12) | 10 |
+| C1, C2 | [Capstones](capstones/) | none yet (B11, B12) | 9, 10 |
 
-The other parts arrive with their batches; the [course path](../../paths/course/) lists what is available.
+Each part README lists its planned modules; chapters arrive with their authoring batches, and the [course path](../../paths/course/) lists what is available.
 
 ## Connections to Other Tracks
 

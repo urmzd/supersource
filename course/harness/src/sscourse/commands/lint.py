@@ -3,13 +3,15 @@
 registry     every modules/*.toml parses, the 3.4 invariants hold, modules.tsv is current
 chapters     the 6.5 rules for each module's chapter (all modules, or the ids given)
 em dashes    none in chapters, course/**/*.md, or registry titles
---links      relative links in chapters, course/**/*.md, and paths/course*/ resolve
+--links      relative links resolve, inside the repository: in the chapters given, or
+             with no ids in every markdown file git tracks or would track (DESIGN 8)
 --fix-index  rewrite modules.tsv and the `## Chapters` table of each topic README"""
 
 from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 
 from .. import EXIT_FAIL, HarnessError, chapter, ctx, paths, registry, tree
 from ..overlay import Overlay
@@ -44,6 +46,21 @@ def fix_index(reg, root) -> list[str]:
             readme.write_text(new)
             changed.append(str(readme))
     return changed
+
+
+def all_markdown(root) -> list:
+    """Every markdown file git tracks or would track (untracked, not ignored)."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-co", "--exclude-standard", "*.md"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split("\n")
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    return [root / f for f in out if f and (root / f).is_file()]
 
 
 def run(
@@ -92,7 +109,12 @@ def run(
             targets += md
             pdir = paths.paths_dir(course)
             targets += sorted(pdir.glob("course*/*.md")) if pdir.is_dir() else []
+            targets += all_markdown(root)
+        seen = set()
         for p in targets:
+            if p in seen:
+                continue
+            seen.add(p)
             errs += chapter.links(p.read_text(), p, root)
     return errs
 

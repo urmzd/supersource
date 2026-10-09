@@ -18,6 +18,7 @@
     ci        = "pr"                   # pr | nightly | local | kind
     services  = ["engine"]
     matrix    = { cache = ["none", "paged"] }
+    vars      = { steps = "20000" }    # `{steps}`; smoke_vars = { steps = "200" } under --smoke
     expect    = { match = "tokens-equal", file = "course/fixtures/..." }
     timeout_s = 120
 
@@ -56,6 +57,10 @@ class Step:
     queue: str = "default"
     model_dir: str | None = None
     env: dict = field(default_factory=dict)
+    vars: dict = field(default_factory=dict)  # `{name}` placeholders of this step
+    smoke_vars: dict = field(
+        default_factory=dict
+    )  # their values under --smoke (C1: 200 steps)
 
     @property
     def kind(self) -> bool:
@@ -126,6 +131,8 @@ def load(course: Path, msid: str) -> Milestone:
             queue=s.get("queue", "default"),
             model_dir=s.get("model_dir"),
             env=dict(s.get("env", {})),
+            vars={k: str(v) for k, v in dict(s.get("vars", {})).items()},
+            smoke_vars={k: str(v) for k, v in dict(s.get("smoke_vars", {})).items()},
         )
         _check_step(p, st)
         steps.append(st)
@@ -160,6 +167,13 @@ def _check_step(p: Path, s: Step) -> None:
     for k, v in s.matrix.items():
         if not isinstance(v, list) or not v:
             raise HarnessError(f"{where}: matrix.{k} must be a non-empty list")
+    extra = sorted(set(s.smoke_vars) - set(s.vars))
+    if extra:
+        raise HarnessError(f"{where}: smoke_vars {extra} override no `vars` entry")
+    if m == "perf" and s.ci != "local":
+        raise HarnessError(
+            f'{where}: a perf step is ci = "local" (benchmarks never run in CI)'
+        )
 
 
 def all_ids(course: Path) -> list[str]:

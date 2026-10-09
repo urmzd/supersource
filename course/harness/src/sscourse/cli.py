@@ -40,13 +40,7 @@ VERBS = {
     "doctor": "doctor",
     "bench": "bench",
 }
-PENDING = {
-    "parity": "B4",
-    "mutate": "B3",
-    "tdd": "B3",
-    "fetch": "B4",
-    "bench": "B8 (course perf budgets and calibration)",
-}
+PENDING: dict[str, str] = {}
 
 
 def main(argv: list[str] | None = None) -> int:

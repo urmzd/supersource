@@ -1,0 +1,12 @@
+--- a/c/src/numerics/rng.c
++++ b/c/src/numerics/rng.c
+@@ -46,8 +46,8 @@
+ /* SOLUTION-BEGIN M06.3 */
+     const unsigned char *p = (const unsigned char *)data;
+     for (size_t i = 0; i < n; i++) {
++        h *= TL_FNV1A64_PRIME;
+         h ^= (uint64_t)p[i];
+-        h *= TL_FNV1A64_PRIME;
+     }
+     return h;
+ /* SOLUTION-END */

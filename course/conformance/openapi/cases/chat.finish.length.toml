@@ -1,0 +1,8 @@
+id       = "chat.finish.length"
+title    = "max_tokens=4 gives finish_reason length and usage.completion_tokens == 4"
+versions = ["v1", "v2"]
+tiers    = ["engine"]
+check    = "chat_length"
+
+[params]
+max_tokens = 4

@@ -137,6 +137,21 @@ def tree_hash(learner: Path, reg: Registry, mid: str) -> str:
             + p.read_bytes()
             + b"\0"
         )
+    if m.kind in ("solve", "proof"):
+        sdir = learner / "solve"
+        files = [sdir / f"{mid}.toml"] + (
+            sorted(x for x in (sdir / mid).rglob("*") if x.is_file())
+            if (sdir / mid).is_dir()
+            else []
+        )
+        for p in files:
+            h.update(
+                b"solve\0"
+                + p.relative_to(learner).as_posix().encode()
+                + b"\0"
+                + (p.read_bytes() if p.is_file() else b"<missing>")
+                + b"\0"
+            )
     lt = (m.learner_tests or {}).get("path")
     if lt:
         base = learner / lt

@@ -8,3 +8,24 @@ course/fixtures/L0.0/safetensors/unicode_metadata.safetensors	0c2236ccb128f66465
 course/fixtures/L0.0/safetensors/worked_example.safetensors	0183d3fe12fab76fec1b436d6d591fe2352ef788de2e6168c6e840b48383cb60	120	course/oracle/L0.0/safetensors_golden.py	safetensors==0.8.0	-	Apache-2.0
 course/fixtures/MS-P1/corpus.txt	6c84e49cdf7cd8dbef7bff6d349ab1f9bc7dd99056ec31b231492f84af3c7d27	2156	hand	-	-	Apache-2.0
 course/fixtures/MS-P1/greedy_once_32.json	2197dc2b68fbfde1e1dfeac81bc7a3d967ea74c335c097dfbbc2850fe2bb3c1a	180	course/oracle/MS-P1/bigram_greedy.py	-	-	Apache-2.0
+course/fixtures/parity/rng.json	dacadc5c875abd29cbc134b572f93afcdba86f693ebbb42bbdc50d9dc4b54279	40934	course/oracle/parity/rng_golden.py	-	-	Apache-2.0
+course/fixtures/parity/matmul.json	d044b08156e248f9b9345911cae064ccd198a624d4ef0e124b3beeacc971e767	44003	course/oracle/parity/matmul_golden.py	numpy==2.2.6	-	Apache-2.0
+course/fixtures/M05.2/gpt2_bytes_to_unicode.json	a92153ef8fda1bf5b3f39b796cd0eb5d52157c6278ad043935bac9f50c59df52	1975	course/oracle/M05.2/gpt2_byte_map.py	transformers==4.46.3,tokenizers==0.20.3	huggingface/transformers@v4.46.3	Apache-2.0
+course/fixtures/MS-L0/corpus.bin	f9b78af7ffcc73858340bc4e5ead5c83265b011d705795066144afb0b5c10bac	5336	course/oracle/MS-L0/fixtures.py	-	-	Apache-2.0
+course/fixtures/small-corpora/digits.npz	96d7ed3e4c8d54aad6bdb49294a84ea90e6b2a8cfcc4c376cbdf1ea77359ad89	139796	course/oracle/MS-L0/digits.py	numpy==2.2.6	uci:80/optdigits.zip@sha256:0d7b054fea010270e9b3f06411c654c5e59547732ad626381980baffe0a23fb0	CC-BY-4.0
+course/fixtures/M10.3/adam_torch.json	87e9db005206c9bade77205d1c76f8973203c7b926c74332d269768bcbed680b	71518	course/oracle/M10.3/adamw_golden.py	torch==2.14.1	-	Apache-2.0
+course/fixtures/M06.2/segmentation.json	cd4e2ebe8003f8ab8eaee1c367ce8e14fadb28cf0d46bdb073a8ed6f9b231a59	3718	course/oracle/M06.2/segment_golden.py	-	-	Apache-2.0
+course/fixtures/M10.4/schedule_hf.json	2d26c4175456fef2f118a843a9dee2b98048f40c6e5caed4a96e959659b217d4	10890	course/oracle/M10.4/schedule_golden.py	torch==2.14.1,transformers==5.19.0	-	Apache-2.0
+course/fixtures/M07.3/init_torch.json	e7cd3777dedbd292f994766cda1e8af79f458a2f58b7e0a3b799df8c52a4d175	3326	course/oracle/M07.3/init_golden.py	torch==2.14.1	-	Apache-2.0
+course/fixtures/M00.1/units.json	2b27b9be786960433ff548ecfdea5060788506d5f5d8183d2941e25d91ff836a	6651	course/oracle/M00.1/units_golden.py	mpmath==1.3.0	-	Apache-2.0
+course/fixtures/M00.2/rotation.json	2dfc53abfb7527b1fa9cb971d23421362dc66d2be915b16a61994263bcacd2a6	9015	course/oracle/M00.2/rotation_golden.py	torch==2.14.1	-	Apache-2.0
+course/fixtures/M00.3/ladders.json	0244e5f484272c089eea9508d65c69f5a999d5e68618647d8fbed33842188811	20497	course/oracle/M00.3/ladders_golden.py	torch==2.14.1,transformers==5.19.0	-	Apache-2.0
+course/fixtures/M00.4/poly.json	6ce4e31d890384c89fadd2f6fb9fb7e2fdb83ae3443877018da46311361d43e8	3445	course/oracle/M00.4/poly_golden.py	mpmath==1.3.0	-	Apache-2.0
+course/fixtures/M09.2/scipy_golden.npz	6eb9dacf0c767db2a3d0210dae4a7d8e6c7c1462013dab152cf50549cf491a63	37981	course/oracle/M09.2/scipy_golden.py	scipy==1.17.1 numpy==2.4.2	-	Apache-2.0
+course/fixtures/M11.1/scipy_golden.npz	4073cfaf892f7e2d95a1b154026690c00fa308deb570391cc33f5093681adfd6	11594	course/oracle/M11.1/scipy_golden.py	scipy==1.17.1 numpy==2.4.2	-	Apache-2.0
+course/fixtures/M08.3/torch_vjp.npz	622d39c2cbe844d076308c11be8a89c11842957e57bef02b32d4854301484976	17868	course/oracle/M08.3/torch_vjp_golden.py	torch==2.14.1 numpy==2.4.2	-	Apache-2.0
+course/fixtures/M10.2/torch_sgd.npz	0425d81fb552961a0c0969d4b7d5a2788a8cbc14533989a48beb3246777d935d	10398	course/oracle/M10.2/torch_sgd_golden.py	torch==2.14.1 numpy==2.4.2	-	Apache-2.0
+course/fixtures/M11.2/golden.json	fe67a2db73014d867679bea6ff523c08b30332205bb5d526f74fb61044b1f7f4	4484	course/oracle/M11.2/ppl_golden.py	mpmath==1.3.0,numpy==2.2.6	-	Apache-2.0
+course/fixtures/M06.3/pcg32.vectors.json	6b698329f60d59f7a9e0f8f40b7948150873c03d7e3f22e4753e485c60d48cc5	49293	course/oracle/M06.3/vectors.py	-	spec/pcg32.md	Apache-2.0
+course/fixtures/M09.1/round_f32.npz	e3ac55ae33f9ae326d8bd978a32f11aa2978609ee5e543f72b6206310b5c4469	38341	course/oracle/M09.1/lowp_golden.py	numpy==2.4.6	-	Apache-2.0
+course/fixtures/M01.3/activations_torch.npz	b574a7898b9fa2426317cd283a00c7bf0e6204d8d123eb845d450ed24ce029f5	124698	course/oracle/M01.3/activations_torch.py	torch==2.14.1	-	Apache-2.0

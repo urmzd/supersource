@@ -71,6 +71,10 @@ Comprehensive interview preparation for the **world's hardest companies to get i
 | Unique Round | -- | AI coding | -- | Culture deep dive | Bar Raiser | Bug Bash + Integration | GPU/CUDA | Probability/Math | -- | Take-home (4hr) |
 | Total Rounds | 5-7 | 5-6 | 5-6 | 4-5 | 5-6 | 5 | 4-6 | 5-7 | 4-5 | 7-9 |
 
+## Defend Your System
+
+[Defend Your System](defend-your-system/) is the course's interview module (`iv.01`, Pass 11): a question bank answered against the system you built, with the ADRs, load reports, and postmortems that back each answer.
+
 ## How to Use This Guide
 
 1. **Start with shared concepts** -- Build the foundation that applies everywhere

@@ -1,0 +1,4 @@
+# The tl-py extension resolves Python's symbols inside the interpreter that
+# imports it (DESIGN 2.5).
+[target.'cfg(target_os = "macos")']
+rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]

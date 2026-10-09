@@ -111,14 +111,13 @@ def check_one(
     as_json: bool = False,
     seed: int = 0,
     quiet: bool = False,
+    ci: bool = False,
+    regrade: bool = False,
 ) -> int:
     m = s.module(mid)
     say = (lambda *_: None) if as_json else ctx.say
     if m.kind in ("solve", "proof"):
-        say(
-            f"{ctx.YEL}skip{ctx.RST} {m.id}: {m.kind} checker arrives with B2 (DESIGN 5.5)"
-        )
-        return EXIT_HARNESS
+        return check_solve(s, m, ci, as_json, say, regrade)
     if m.kind == "drill":
         from .. import drills
 
@@ -279,10 +278,13 @@ def check_one(
         return finish(EXIT_HARNESS, None)
     ok = _print_runs(runs, mid, say) and ok
 
-    if m.learner_tests:
+    grade = None
+    if m.learner_tests and not ok:
         say(
-            f"  {ctx.DIM}mutation grade of your tests: `ss mutate {mid}` arrives with B3; not part of this verdict yet{ctx.RST}"
+            f"  {ctx.DIM}mutation grade of your tests: skipped while the course tests fail{ctx.RST}"
         )
+    elif m.learner_tests:
+        ok, grade = _mutation_grade(s, m, sources, seed, ci, say)
     result = "pass" if ok else "fail"
     # Smoke only when the check really skipped its cluster tier under
     # SS_SMOKE (_lib/practice.py says so); a check without one is a full pass.
@@ -297,6 +299,7 @@ def check_one(
         smoke=smoke,
         regressions=regressions,
         **({"kind_filter": kind} if kind else {}),
+        **({"mutation": grade} if grade else {}),
     )
     tag = " (assisted)" if v["assisted"] else ""
     if ok:
@@ -310,6 +313,121 @@ def check_one(
     return finish(EXIT_PASS if ok else EXIT_FAIL, v)
 
 
+def _mutation_grade(
+    s: Session, m, sources: dict, seed: int, ci: bool, say
+) -> tuple[bool, dict]:
+    """[learner_tests]: the red-then-green journal (R3 and up), then the
+    mutation grade: the cached full grade when your tests are unchanged since
+    `ss mutate`; otherwise --ci computes the full grade and a local check runs
+    the required mutants plus a seeded sample of up to 8 (an estimate)."""
+    from . import mutate as mut_cmd
+    from .tdd import journal_errors
+
+    ok = True
+    for e in journal_errors(s, m):
+        say(f"  {ctx.RED}TDD{ctx.RST}  {e}")
+        ok = False
+    grader = mut_cmd.grader_for(s, m, sources, seed)
+    g = grader.cached_grade()
+    label = "mutation grade (full, cached)"
+    if g is None:
+        g = grader.grade(sample=not ci, sample_seed=seed)
+        label = "mutation grade" + (" (estimate)" if g.sampled else "")
+    mut_cmd.report(g, False, say, label)
+    revealed = bool(ledger.fresh_pass(s.learner, s.reg, m.id)) or ledger.has_event(
+        s.learner, m.id, "spoiled"
+    )
+    mut_cmd.survivors(s.course, m, g, revealed, say)
+    if g.reason and g.results:
+        say(ctx.indent(g.reason, 4))
+    if g.sampled:
+        say(
+            f"  {ctx.DIM}`ss mutate {m.id}` computes the full grade once and caches it{ctx.RST}"
+        )
+    return ok and g.passed, g.summary()
+
+
+def check_solve(
+    s: Session, m, ci: bool, as_json: bool, say, regrade: bool = False
+) -> int:
+    """A solve set (DESIGN 5.5): SymPy-checked answers, self-graded proofs.
+    --ci never asks a rubric: an ungraded proof is reported `self` (skipped)."""
+    from .. import rubric, solve
+
+    if not learner.started(s.learner, s.course, s.reg, m.id):
+        say(f"{ctx.DIM}not started{ctx.RST} {m.id}: ss start {m.id}")
+        return EXIT_NOT_STARTED
+
+    def recorded(qid: str, h: str) -> bool | None:
+        for e in reversed(ledger.entries(s.learner)):
+            if (
+                e.get("id") == m.id
+                and e.get("event") == "rubric"
+                and e.get("qid") == qid
+                and e.get("hash") == h
+            ):
+                return bool(e.get("ok"))
+        return None
+
+    def ask(qid: str, lines: list[str], h: str):
+        if ci or as_json:
+            return None
+        res = rubric.ask(lines)
+        if res is not None:
+            ledger.event(s.learner, m.id, "rubric", qid=qid, hash=h, ok=all(res))
+        return res
+
+    say(f"{ctx.BLD}check {m.id}{ctx.RST}  {m.title}")
+    results = solve.grade(
+        s.course, s.learner, m.id, ask, None if regrade else recorded, say
+    )
+    color = {"pass": ctx.GRN, "self": ctx.GRN, "self-skipped": ctx.DIM}
+    for r in results:
+        label = {"self-skipped": "self (skipped)", "missing": "missing"}.get(
+            r.status, r.status.upper() if r.status in ("pass", "fail") else r.status
+        )
+        say(
+            f"  {color.get(r.status, ctx.RED)}{label:<14}{ctx.RST} {r.qid}"
+            + (f"  {r.msg}" if r.msg and r.status != "pass" else "")
+        )
+    skipped = [r.qid for r in results if r.status == "self-skipped"]
+    bad = [r.qid for r in results if r.status in ("fail", "missing")]
+    if skipped and not ci:
+        bad += skipped  # a proof nobody graded is not a pass outside --ci
+    result = "fail" if bad else "pass"
+    is_self = any(r.status in ("self", "self-skipped") for r in results)
+    v = ledger.append(
+        s.learner,
+        {
+            "id": m.id,
+            "kind": m.kind,
+            "tree": ledger.tree_hash(s.learner, s.reg, m.id),
+            "sources": {},
+            "result": result,
+            "assisted": False,
+            "self": is_self,
+            **({"self_skipped": skipped} if skipped else {}),
+            "questions": {r.qid: r.status for r in results},
+            "tainted": s.tree.tainted,
+            "course_sha": s.tree.sha[:12],
+        },
+    )
+    if as_json:
+        print(
+            json.dumps({"id": m.id, "exit": 0 if result == "pass" else 1, "verdict": v})
+        )
+    elif result == "pass":
+        say(
+            f"{ctx.GRN}PASS{ctx.RST} {m.id}"
+            + (" (self-graded proofs)" if is_self else "")
+        )
+    else:
+        say(
+            f"{ctx.RED}FAIL{ctx.RST} {m.id}  {len(bad)} of {len(results)} question(s) not done: {', '.join(bad)}"
+        )
+    return EXIT_PASS if result == "pass" else EXIT_FAIL
+
+
 def check_all(s: Session, ci: bool, as_json: bool) -> int:
     rows = []
     worst = 0
@@ -320,20 +438,26 @@ def check_all(s: Session, ci: bool, as_json: bool) -> int:
     for m in s.reg.ordered():
         if not learner.started(s.learner, s.course, s.reg, m.id):
             continue
-        if m.kind in ("solve", "proof", "drill"):
-            # --ci never runs an interactive rubric: a proof is reported `self` and skipped.
-            note = {
-                "proof": "self-graded rubric, skipped in --ci"
-                if ci
-                else "proof rubric arrives with B2",
-                "solve": "answer checker arrives with B2",
-                "drill": "graded by `ss drill end`",
-            }[m.kind]
-            rows.append(
-                (m.id, "self" if (ci and m.kind == "proof") else "skipped", note)
-            )
+        if m.kind == "drill":
+            rows.append((m.id, "skipped", "graded by `ss drill end`"))
             continue
-        code = check_one(s, m.id, "none", set(), True, None, False, quiet=True)
+        if m.kind in ("solve", "proof"):
+            # --ci never runs an interactive rubric: a proof is reported `self` and skipped.
+            code = check_solve(s, m, ci, False, lambda *_: None)
+            v = ledger.latest(s.learner, m.id) or {}
+            st = {0: "pass", 1: "fail", 2: "not started"}.get(code, "error")
+            if code == 0 and v.get("self"):
+                st = "self"
+            note = (
+                "self-graded rubric, skipped in --ci"
+                if v.get("self_skipped")
+                else ("proofs self-graded" if v.get("self") else "")
+            )
+            rows.append((m.id, st, note))
+            if code != EXIT_NOT_STARTED:
+                worst = max(worst, code)
+            continue
+        code = check_one(s, m.id, "none", set(), True, None, False, quiet=True, ci=ci)
         st = {0: "pass", 1: "fail", 2: "not started", 3: "blocked", 4: "drift"}.get(
             code, "error"
         )
@@ -367,6 +491,11 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--kind")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument(
+        "--regrade",
+        action="store_true",
+        help="solve sets: ask every proof rubric again",
+    )
     a = ap.parse_args(argv)
     s = open_session()
     with ctx.lock(s.learner / ".ss"):
@@ -382,4 +511,15 @@ def _run(s: Session, a, ap) -> int:
         ap.print_usage()
         return EXIT_HARNESS
     mode, chosen = parse_ref_deps(a.ref_deps)
-    return check_one(s, a.id, mode, chosen, not a.no_cumulative, a.kind, a.json, a.seed)
+    return check_one(
+        s,
+        a.id,
+        mode,
+        chosen,
+        not a.no_cumulative,
+        a.kind,
+        a.json,
+        a.seed,
+        ci=a.ci,
+        regrade=a.regrade,
+    )

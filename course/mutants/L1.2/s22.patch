@@ -1,0 +1,11 @@
+--- a/python/tinyllm/tok/pretok.py
++++ b/python/tinyllm/tok/pretok.py
+@@ -103,7 +103,7 @@
+             if start < i:
+                 out.append(text[start:i])
+             end = i + 1
+-            if not individual:
++            if individual:
+                 while end < n and is_number(text[end]):
+                     end += 1
+             out.append(text[i:end])

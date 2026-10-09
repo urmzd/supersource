@@ -1,0 +1,23 @@
+id       = "matmul"
+title    = "C matmul (M03.1 v0, then L9.1) against numpy float64"
+equality = "matmul-bound"          # |c - c64| <= 4 eps32 sqrt(K) max(|A| @ |B|)
+golden   = "course/fixtures/parity/matmul.json"
+
+[fuzz]
+generator = "gen/matmul.py"
+oracle    = "gen/matmul_oracle.py"     # float64 answers the C output is held to
+cases     = 100
+
+# One implementation at a time owns c/src/kernels/matmul.c (L9.1 upgrades
+# M03.1), so the reference overlay of either module builds that owner's file.
+[[impl]]
+name   = "c-v0"
+module = "M03.1"
+lang   = "c"
+driver = "drivers/matmul.c"
+
+[[impl]]
+name   = "c-tiled"
+module = "L9.1"
+lang   = "c"
+driver = "drivers/matmul.c"

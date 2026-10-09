@@ -1,0 +1,14 @@
+id        = "ds.92"
+title     = "Python calls Rust through tinyllm_rs"
+kind      = "build"
+lang      = ["rust", "python"]
+pass      = 2
+chapter   = "chapters/ds-92-tlpy.md"
+contract  = []
+deps      = ["ds.90"]
+used_by   = []
+units     = ["rust/crates/tl-py/src/lib.rs"]
+
+[tests]
+smoke     = ["test_hand_example"]
+timeout_s = 120

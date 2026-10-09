@@ -446,8 +446,8 @@ model.fit(inputs, targets, batch_size=32, epochs=1)    # targets = inputs shifte
 | Multi-LoRA serving, batching, KV cache | [Serving & Load](../04-llm-systems/serving-and-load/), [LLM Systems](../04-llm-systems/) | Shipping the fine-tune; RL rollout engines |
 | SFT vs DPO vs RFT ladder, cascades | [Model Routing & Cascades §9](../../ai-platform-engineering/11-model-routing-and-cascades/) | When a tuned small model replaces a large one |
 | Held-out sets, LLM judges, regression evals | [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/) | Eval-first scoping (§6) |
-| KL divergence, cross entropy, Bradley-Terry likelihood | [Information Theory](../../information-theory/), [Probability](../../math/07-probability-statistics/) | The objectives in §2 and §4 |
-| All-reduce, reduce-scatter, all-to-all | [Concurrency & Systems](../../algorithms/12-concurrency-systems/) | Why each parallelism axis costs what it does |
+| KL divergence, cross entropy, Bradley-Terry likelihood | [Information Theory](../../math/11-information-theory/), [Probability](../../math/07-probability-statistics/) | The objectives in §2 and §4 |
+| All-reduce, reduce-scatter, all-to-all | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | Why each parallelism axis costs what it does |
 
 ## Company Relevance
 

@@ -53,6 +53,7 @@ Start with the [end-to-end CS curriculum](CS-CURRICULUM.md) for an eight-term co
 
 | # | Topic | Textbook | Time |
 |---|-------|----------|------|
+| 00 | [Precalculus](math/00-precalculus/) | OpenStax *Precalculus 2e* (free) | 2-3 weeks |
 | 01 | [Calculus 1](math/01-calculus-1/) | OpenStax Calculus Vol 1 | 4 weeks |
 | 02 | [Calculus 2](math/02-calculus-2/) | OpenStax Calculus Vol 2 | 4 weeks |
 | 03 | [Linear Algebra](math/03-linear-algebra/) | Hefferon's *Linear Algebra* | 4 weeks |
@@ -60,7 +61,10 @@ Start with the [end-to-end CS curriculum](CS-CURRICULUM.md) for an eight-term co
 | 05 | [Discrete Math 1](math/05-discrete-math-1/) | Hammack's *Book of Proof* | 4 weeks |
 | 06 | [Discrete Math 2](math/06-discrete-math-2/) | Levin's *Discrete Mathematics* | 4 weeks |
 | 07 | [Probability & Statistics](math/07-probability-statistics/) | Grinstead & Snell + OpenStax Stats | 3-4 weeks |
-
+| 08 | [Matrix Calculus & Autodiff](math/08-matrix-calculus-and-autodiff/) | Parr & Howard + Baydin et al. (free) | 3 weeks |
+| 09 | [Numerical Methods & Floating Point](math/09-numerical-methods-and-floating-point/) | Goldberg (free) + Higham | 3-4 weeks |
+| 10 | [Optimization](math/10-optimization/) | Boyd & Vandenberghe (free) | 3 weeks |
+| 11 
 ### Algorithm Mastery
 
 | # | Topic | Lang | README |
@@ -76,12 +80,10 @@ Start with the [end-to-end CS curriculum](CS-CURRICULUM.md) for an eight-term co
 | 09 | [Backtracking](algorithms/09-backtracking/) | JS/Python | [Patterns](algorithms/09-backtracking/README.md) |
 | 10 | [Math & Bit Manipulation](algorithms/10-math-bit/) | JS | [Patterns](algorithms/10-math-bit/README.md) |
 | 11 | [Recursion & Divide-and-Conquer](algorithms/11-recursion-divide-conquer/) | Python | [Patterns](algorithms/11-recursion-divide-conquer/README.md) |
-| 12 | [Concurrency & Systems](algorithms/12-concurrency-systems/) | C/Python | [Patterns](algorithms/12-concurrency-systems/README.md) |
-| 13 | [Functional Programming](algorithms/13-functional-programming/) | Scheme | [Patterns](algorithms/13-functional-programming/README.md) |
-| 14 | [ML & Statistics](algorithms/14-ml-statistics/) | Python/R | [Patterns](algorithms/14-ml-statistics/README.md) |
 | 15 | [Probabilistic Structures](algorithms/15-probabilistic-structures/) | Python | [Patterns](algorithms/15-probabilistic-structures/README.md) |
+| 16 | [Systems Data Structures](algorithms/16-systems-data-structures/) | C/Rust/Go | [Patterns](algorithms/16-systems-data-structures/README.md) |
 
-Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cses.fi/book/book.pdf) (free). See [algorithms/README.md](algorithms/README.md) for full details.
+Topics 12 to 14 (historical coursework: concurrency, functional programming, ML labs) moved to [archive/](archive/). Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cses.fi/book/book.pdf) (free). See [algorithms/README.md](algorithms/README.md) for full details.
 
 ### Machine Learning & AI
 
@@ -104,6 +106,7 @@ Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cse
 | 02 | [Storage & Warehousing](data-engineering/02-storage-warehousing/) | DDIA Ch 3 + *The Data Warehouse Toolkit* (Kimball) | 3-4 weeks |
 | 03 | [Batch & Streaming](data-engineering/03-batch-streaming/) | *Streaming Systems* + [Spark](https://spark.apache.org/docs/latest/)/[Kafka](https://kafka.apache.org/documentation/) docs (free) | 3-4 weeks |
 | 04 | [Orchestration & Modeling](data-engineering/04-orchestration-modeling/) | [dbt](https://docs.getdbt.com/) + [Airflow](https://airflow.apache.org/docs/) docs (free) | 2-3 weeks |
+| 05 | [Corpus Pipeline](data-engineering/05-corpus-pipeline/) | [FineWeb](https://arxiv.org/abs/2406.17557) + [datatrove](https://github.com/huggingface/datatrove) (free) | course passes 3, 8 |
 
 ### Systems & Architecture
 
@@ -133,6 +136,7 @@ Taught as **patterns, not products** — like math, once you understand the fund
 | 10 | [Edge, Realtime & On-Device Inference](ai-platform-engineering/10-edge-realtime-inference/) | [llama.cpp](https://github.com/ggml-org/llama.cpp) + [Mistral 7B](https://arxiv.org/abs/2310.06825) + [Mamba](https://arxiv.org/abs/2312.00752) (free) | 2-3 weeks |
 | 11 | [Model Routing & Cascades](ai-platform-engineering/11-model-routing-and-cascades/) | [RouteLLM](https://arxiv.org/abs/2406.18665) + [FrugalGPT](https://arxiv.org/abs/2305.05176) + [LLMRouterBench](https://arxiv.org/abs/2601.07206) (free) | 1-2 weeks |
 | 12 | [Gateway](ai-platform-engineering/12-gateway/) | [OpenAI API reference](https://platform.openai.com/docs/api-reference) + [W3C Trace Context](https://www.w3.org/TR/trace-context/) (free) | course passes 1, 7, 10 |
+| 13 | [Agent SDK](ai-platform-engineering/13-agent-sdk/) | [*Building effective agents*](https://www.anthropic.com/engineering/building-effective-agents) + [ReAct](https://arxiv.org/abs/2210.03629) (free) | course pass 10 |
 
 Three distinct "distributed" problems kept apart on purpose: distributed **training** (parallelism — PyTorch/JAX, FSDP/ZeRO, Megatron, Ray Train; served with vLLM/TensorRT-LLM; plus embeddings and small language models), distributed **data** (sharding, replication, in-memory caching with Redis and cache-invalidation patterns, Cassandra, knowledge graphs via Apache AGE, OLAP vs OLTP), and distributed **orchestration** (durable execution and the worker pattern — Temporal/Cadence/DBOS — with distributed observability and profiling). Plus the connective tissue: gRPC and serialization, SSE token streaming, the coding/design patterns these systems are built from, production-grade **retrieval** (encoders, chunking, hybrid BM25 + vector + graph fusion, multimodal, metadata/permission filtering), **authorization** (RBAC/ABAC/NGAC and the pushdown-automata complexity ladder), **evaluation** (cross-entropy, perplexity, bits-per-byte, LLM-as-judge, RAG faithfulness), and **edge/realtime inference** (the end-to-end llama.cpp + GGUF local path, streaming speech encoders, and the efficiency architectures — sliding-window attention, GQA, MoE, Mamba/SSM — behind Mistral's models).
 
@@ -141,10 +145,9 @@ Three distinct "distributed" problems kept apart on purpose: distributed **train
 | Track | Reference | Time |
 |-------|-----------|------|
 | [Competitive Programming](competitive-programming/) | [CP Handbook](https://cses.fi/book/book.pdf) (free) + CSES Problem Set | 6-8 weeks |
-| [Information Theory](information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
-| [Programming Languages](programming-languages/) | [*Types and Programming Languages* (Pierce)](https://www.cis.upenn.edu/~bcpierce/tapl/) + [PLFA](https://plfa.github.io/) (free) | 2-3 weeks |
-| [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) + [project postmortems](software-craftsmanship/04-lessons-from-practice/) | 3-4 weeks |
-| [Diagramming & Documentation](diagramming-and-documentation/) | [C4 model](https://c4model.com/) + [D2](https://d2lang.com/)/[Mermaid](https://mermaid.js.org/) + [Diátaxis](https://diataxis.fr/) (free) | 2 weeks |
+| [Information Theory](math/11-information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
+| [Software Craftsmanship](software-craftsmanship/) | *The Pragmatic Programmer* + [*SWE at Google*](https://abseil.io/resources/swe-book) (free) + [project postmortems](software-craftsmanship/04-lessons-from-practice/); now also [diagramming](software-craftsmanship/05-diagramming-c4/), [documentation](software-craftsmanship/06-documentation-writing/), and [type systems](software-craftsmanship/07-type-systems/) | 3-4 weeks + 4-5 weeks |
+| [Responsible AI](responsible-ai/) | [Model Cards](https://arxiv.org/abs/1810.03993) + [Datasheets](https://arxiv.org/abs/1803.09010) + [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework) (free) | course passes 3, 9, 10, 11 |
 | [Infrastructure](infrastructure/) | [K8s](https://kubernetes.io/docs/) + [Kafka](https://kafka.apache.org/documentation/) + [Lucene](https://lucene.apache.org/core/)/[Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html) + Apache docs (free) | 5-7 weeks |
 | [Field Engineering](field-engineering/) | Discovery, sizing, performance testing engagements, POCs, migration, commercials, escalation for inference-cloud customers | 3-4 weeks |
 | [Case Studies](case-studies/) | Worked builds with runnable, dependency-free implementations | 5-10 days |
@@ -164,7 +167,7 @@ graph TD
     D2 --> ALG
     ALG --> CP[Competitive Programming]
 
-    D1 --> PL[Programming Languages]
+    D1 --> PL[Type Systems]
     ALG --> PL
 
     PS --> SL[Statistical Learning]
@@ -194,6 +197,8 @@ graph TD
     LLM --> AIP[AI Platform Engineering]
     LLM --> FE[Field Engineering]
     AIP --> FE
+    DE --> RAI[Responsible AI]
+    LLM --> RAI
     SYS --> AIP
     DE --> AIP
 ```
@@ -208,9 +213,9 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
 - **AI Platform Engineering** 25-35 weeks, patterns-first: training/frameworks, RPC, streaming, distributed data & caching, durable orchestration, coding/design patterns, retrieval & RAG, authorization, LLM evaluation, edge/realtime inference, and model routing
-- **Programming Languages** 2-3 weeks, type systems and polymorphism from the lambda-calculus ladder through Hindley-Milner inference, variance, and generics across five languages
-- **Diagramming & Documentation** 2 weeks, C4 diagramming-as-code and docs-as-code
-- **Infrastructure** 5-7 weeks, containers and Kubernetes through messaging, workers, search, and the Apache stack
+- **Type Systems** (Software Craftsmanship 07) 2-3 weeks, type systems and polymorphism from the lambda-calculus ladder through Hindley-Milner inference, variance, and generics across five languages
+- **Diagramming & Documentation** (Software Craftsmanship 05 and 06) 2 weeks, C4 diagramming-as-code and docs-as-code
+- **Infrastructure** 5-7 weeks, containers and Kubernetes through messaging, search, and the Apache stack (partitioned workers now live in AI Platform 05)
 - **Superstar FDE** 14 weeks, the composed role path: LLM foundations through inference performance, field engineering, and a one-customer capstone
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
@@ -306,8 +311,8 @@ Three kinds of exercise, distinguished only by what you produce:
 
 ### From-Scratch Implementations
 
-- [K-Means Clustering](algorithms/14-ml-statistics/k-means.py) unsupervised learning
-- [TF-IDF Vector Search](algorithms/14-ml-statistics/tf-idf-vector-search.py) text similarity search
+- [K-Means Clustering](archive/algorithms/14-ml-statistics/k-means.py) unsupervised learning
+- [TF-IDF Vector Search](archive/algorithms/14-ml-statistics/tf-idf-vector-search.py) text similarity search
 
 ## Case Studies
 

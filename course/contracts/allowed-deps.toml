@@ -1,0 +1,98 @@
+# contracts/allowed-deps.toml: the third-party packages each component may
+# use (DESIGN 3.2). Learner units and reference units alike; anything else
+# in a library unit fails the contract pre-check (craft.18 audits it).
+# Entry points (CLI mains, servers, deploy files, D16) may add their own.
+#
+# Values are version requirements in each ecosystem's syntax: Cargo caret
+# requirements, Go module major versions, PEP 440 specifiers. Exact versions
+# live in the learner's lock files (Cargo.lock, go.sum, uv.lock); a lock that
+# leaves a requirement here is a dependency upgrade (craft.15, drill ops.06).
+# The versions below were current on crates.io, proxy.golang.org, and PyPI
+# when contract 0.2.0 was written; the protobuf and gRPC rows are the ones
+# contracts/rust/tl-proto and contracts/go are built and tested with.
+
+[python.tinyllm]
+numpy = ">=2"
+# OTLP/HTTP export of dur.09's telemetry.py may use the SDK or hand-written
+# JSON over urllib; both are allowed.
+opentelemetry-sdk = ">=1.30"
+opentelemetry-exporter-otlp-proto-http = ">=1.30"
+
+[python.corpus]
+numpy = ">=2"
+pyarrow = ">=18"
+zstandard = ">=0.23"
+
+[python.tests]
+# Course tests use only the stdlib, numpy, and the frozen helpers (D35);
+# the learner's own tests may also use these.
+pytest = ">=8"
+hypothesis = ">=6"
+
+[rust.tl-ds]
+# std only; proptest for tests
+proptest = { version = "1", dev = true }
+
+[rust.tl-tok]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+proptest = { version = "1", dev = true }
+
+[rust.tl-py]
+pyo3 = { version = "0.29", features = ["abi3-py311", "extension-module"] }
+
+[rust.tl-sys]
+# std only: hand-written extern "C" bindings (L10.0, L10.1)
+
+[rust.tl-engine]
+anyhow = "1"
+thiserror = "2"
+memmap2 = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tonic = "0.14"
+prost = "0.14"
+async-trait = "0.1"
+crc32c = "0.6"
+bytes = "1"
+tracing = "0.1"
+
+[rust.tl-serve]
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+tonic = "0.14"
+prost = "0.14"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.34"
+opentelemetry = "0.33"
+opentelemetry_sdk = { version = "0.33", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.33", features = ["grpc-tonic"] }
+
+[rust.tl-proto]
+prost = "0.14"
+tonic = "0.14"
+tonic-prost = "0.14"
+
+[go.tinyllm]
+# module tinyllm (learner) and supersource.urmzd.com/tl/contracts
+"google.golang.org/grpc" = "v1"
+"google.golang.org/protobuf" = "v1"
+"github.com/BurntSushi/toml" = "v1"
+"go.opentelemetry.io/otel" = "v1"
+"go.opentelemetry.io/otel/sdk" = "v1"
+"go.opentelemetry.io/otel/sdk/metric" = "v1"
+"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc" = "v1"
+"go.opentelemetry.io/otel/exporters/prometheus" = "v0"
+"github.com/prometheus/client_golang" = "v1"
+"modernc.org/sqlite" = "v1"
+"golang.org/x/sync" = "v0"

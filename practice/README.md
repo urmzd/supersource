@@ -102,7 +102,7 @@ argument covers exactly these, and so does CI.
 | [Python](build/general/python/) | Data model, metaprogramming, asyncio | 0/10 |
 | [TypeScript](build/general/typescript/) | Type narrowing, generics, runtime safety | 0/10 |
 | [C](build/systems/c/) | Manual memory, pointers, undefined behaviour | 10/10 |
-| [C++](build/systems/cpp/) | RAII, templates, move semantics | 10/10 |
+| [C++](build/systems/cpp/) | RAII, templates, move semantics | 9/9 |
 
 ### Optional
 
@@ -171,7 +171,7 @@ same `ss`. A verb whose first argument is a course id (`M03.1`, `L8.3`,
 harness; the practice kinds never match that grammar, so every command above
 keeps its meaning, including `ss bench [lang]`. The heavy lifting is
 `python -m sscourse` in the uv project [`course/harness/`](../course/harness/),
-which needs only `uv` (stdlib plus PyYAML at run time; the root `uv.lock` is untouched).
+which needs only `uv` (stdlib plus PyYAML and SymPy at run time; the root `uv.lock` is untouched).
 
 Instead of a scratchpad copy per exercise, the course gives you one git repo
 that grows into a whole system. Each module owns whole source files ("units")
@@ -190,7 +190,7 @@ ss status                     # every module: todo, started, pass, stale, assist
 |---------|------|-----------|
 | `ss course init --name <system> [--at DIR]` | Create your repo: `system.toml`, `.gitignore`, vendored `contracts/` (with `VERSION`), `git init` | 0, 5 |
 | `ss start <ID>` | Write compiling stubs of the module's units, never overwriting a file. Library manifests come along only when absent. A Rust crate root's `mod`s and a Go package's sibling units get stubs too, so your crate and package always compile. For a unit the module takes over (`upgrades`), prints the contract diff instead | 0, 5 |
-| `ss check <ID>` | Contract pre-check, smoke tests of every dependency you built, then the course tests through the overlay | 0 pass, 1 fail, 2 not started, 3 blocked by deps, 4 contract drift, 5 harness or toolchain |
+| `ss check <ID>` | Contract pre-check, smoke tests of every dependency you built, then the course tests through the overlay, then (with `[learner_tests]`) the red-then-green journal and the mutation grade of your tests; for a solve set, the answer checker and the proof rubric | 0 pass, 1 fail, 2 not started, 3 blocked by deps, 4 contract drift, 5 harness or toolchain |
 | `ss check <ID> --ref-deps[=all\|ID,...]` | Use the hidden reference for unfinished (or named, or all) deps; the verdict is `assisted` | as above |
 | `ss check <ID> --no-cumulative --kind K --json --seed N` | Skip the dependency smoke tests; run only tests of one KIND; machine output; seed | as above |
 | `ss check --all [--ci]` | Every started module in pass order, each after its deps; `--ci` forbids `--ref-deps` and runs practice checks with `SS_SMOKE=1` (no cluster tier) | worst code |
@@ -201,16 +201,39 @@ ss status                     # every module: todo, started, pass, stale, assist
 | `ss status [--graph\|--counts\|--json]` / `ss next` | State of every module / the next path stage | 0 |
 | `ss contracts sync [--to REV]` | Re-vendor `contracts/` at the current supersource (or REV) | 0 |
 | `ss lint [ID..] [--links] [--fix-index]` | Registry invariants, chapter contract, links, no em dashes; `--fix-index` rewrites `course/modules.tsv` and the `## Chapters` tables | 0, 1 |
-| `ss milestone <MS-ID> [--smoke] [--ref-deps] [--step NAME]` / `ss milestone list` | Run a milestone through your `system.toml` entry points: `[build]`, then your services on allocated ports, then the steps | 0 pass, 1 fail or incomplete, 3 blocked, 5 |
-| `ss conform openapi[:v0][:engine\|gateway][:smoke] [--target T] [--base URL]` | OpenAPI conformance against your service (started for you) or a URL | 0, 1, 5 |
-| `ss drill list\|start <name> [--seed N]\|status\|end\|reset` | Inject faults into your kind cluster behind a safety gate; grade detection, resolution, postmortem; undo from the journal | 0, 1, 3, 5 |
+| `ss mutate <ID> [-j N] [--reveal-survivors]` | The mutation grade of your `[learner_tests]`: they run against the reference with one planted fault per mutant; cached by test, unit, and patch hash | 0, 1, 5 |
+| `ss tdd red\|green <ID>` | Rung R3 and up: your tests must fail against your current code, then pass with the same test files; `ss check` requires the red record | 0, 1 |
+| `ss milestone <MS-ID> [--smoke] [--ref-deps] [--step NAME] [--seed N]` / `ss milestone list` | Run a milestone through your `system.toml` entry points: `[build]`, then your services on allocated ports, then the steps. Maintainers: `--record-thresholds [--seeds 5]` writes `calibrated` bars | 0 pass, 1 fail or incomplete, 3 blocked, 5 |
+| `ss conform openapi[:v0\|v1\|v2][:engine\|gateway][:smoke] [--target T] [--base URL]` | OpenAPI conformance against your service (started for you) or a URL; the gateway tier also runs against a recording fake upstream | 0, 1, 5 |
+| `ss parity [<suite>..] [--fuzz] [--ref]` | Every implementation of an algorithm against one golden oracle (or each other on generated inputs) | 0, 1, 5 |
+| `ss fetch <asset>.. [--verify]` / `ss fetch --list` | Pinned large assets from `course/fixtures/ASSETS.tsv` into the cache, size and sha256 checked | 0, 5 |
+| `ss bench --calibrate [--in-cluster]` / `ss bench <ID>\|course [--assert]` | Time this machine (or a Job in your kind namespace); course perf budgets relative to it | 0, 1, 5 |
+| `ss drill list\|start <name> [--seed N]\|status\|end\|reset` / `ss drill run <name> --respond` | Inject faults behind a safety gate (cluster injectors) or onto a scratch-copy branch (`git-branch`, `contract-bump`); grade detection, resolution, postmortem; undo from the journal; `run --respond` is CI's scripted responder | 0, 1, 3, 5 |
 | `ss export <DIR> [--remote URL] [--allow-incomplete]` | Clone your repo with its history and vendor the course tests of every passed module, with test glue | 0, 1 |
 | `ss doctor [--pass N] [--json]` | The toolchain each pass needs, Docker's CPU and memory from Pass 7 | 0, 5 |
 | `ss course ci [--upstream URL]` | Print the learner CI recipe (below) | 0 |
 | `ss verify course [ID..] [--changed REF] [--global] [--nightly] [--e2e\|--kind [--keep DIR]] [--assemble DIR]` | Maintainer checks 1 to 14 of course/DESIGN.md 5.14; `--e2e` runs a learner assembled from `course/ref` end to end, `--kind` adds the kind steps against a deployed reference, `--assemble DIR` only builds that learner | 0, 1 |
 
-Verbs later batches build (`mutate`, `tdd`, `parity`, `fetch`, `bench <ID>`)
-are already routed here and exit 5 with the batch that brings them.
+**Grading your tests.** A module with `[learner_tests]` (rung R2 and up)
+grades the tests you write, not your code: they run against the reference
+with one planted fault at a time (`course/mutants/<ID>/`), and the score is
+the share of faults they catch. The tests may touch only the contract (Python
+imports names in `contracts/py`, Go tests are `package <pkg>_test`, Rust tests
+are integration tests, C tests include only `tinyllm/*.h` and `ss_*.h`).
+`ss check` uses the full grade `ss mutate` cached for your current test files,
+or runs the required mutants plus a seeded sample of 8 and calls it an
+estimate. A surviving semantic mutant shows only its Pitfall number until the
+module passes or `--reveal-survivors` (recorded as spoiled). Perf, model,
+agent, and resilience mutants (rungs R7 to R10) are graded by your benchmark
+gate, a 5-seed permutation test on your eval metric, non-overlapping 95% CIs,
+and your fault suite.
+
+**Solve sets.** `ss start S-M07a` writes `solve/S-M07a.toml` with one table
+per question (lettered parts are `[q3.a]`); answers are ASCII math (`x^2`,
+`[1, 3) U (5, oo)`, `{1, 2}`, `[[1, 2], [3, 4]]`). `ss check` compares them
+with SymPy in a subprocess (5 s per answer) and never shows the expected
+answer; proofs are self-graded against their rubric (`course/rubrics/`), y or
+n per line, and the verdict is tagged `self`.
 
 **Milestones run your entry points.** `ss milestone` reads `system.toml`
 (course/DESIGN.md 2.16): it runs `[build].steps`, starts the `[services.*]` the
@@ -279,6 +302,15 @@ uv run --project course/harness pytest course/harness/tests practice/bin/tests
 | `SS_PATHS_DIR` | `paths/` | the learning paths |
 | `SS_CACHE` | `~/.cache/supersource` | course-tree worktrees, the verify venv |
 | `SS_GO_RACE` | `1` | `0` drops `-race` from Go course tests |
+| `SS_TSAN` | `1` | `0` skips the ThreadSanitizer build of modules with `sanitize = ["thread"]` |
+
+**The testkit.** [`course/testkit/`](../course/testkit/) is the fault and
+determinism kit course tests (and your graded tests) import: in Go
+(`supersource.urmzd.com/tl/testkit`: `clock`, `failpoint`, `effects`,
+`proc.KillLoop`, `chaosproxy`, `otlpsink`, `promscrape`, `faketool`), Python
+(`sstestkit`: `flakyhttp`, `failpoint`, `clock`), Rust (`tl-testkit`:
+failpoints and a fake clock), and C (`tinyllm/failpoint.h`). Failpoints share
+one spec: `TL_FAILPOINTS="name=crash;other=error(msg);x=3*sleep(20ms)"`.
 
 ## Picking something
 

@@ -139,7 +139,7 @@ def test_matcher_helpers():
     for bad in ("wip stuff", "feat:x", "Feat: x", "feat(): x"):
         assert not matchers.CONVENTIONAL.match(bad)
     assert matchers._cmp(0.96, ">= 0.95") == (True, "0.96 >= 0.95")
-    with pytest.raises(HarnessError, match="B11"):
+    with pytest.raises(HarnessError, match="step context"):
         matchers._cmp(1.0, "<= calibrated")
 
 

@@ -43,7 +43,7 @@ practice/bin/ss diff  build python 01       # your attempt against the reference
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather
 than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../README.md) for how the
+this table and nothing more; see the [practice path](../../../README.md) for how the
 harness works.
 
 ## Exercises
@@ -51,12 +51,12 @@ harness works.
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|
 | 01 | Descriptor-based ORM | Descriptors, metaclasses, `__set_name__` | ⭐⭐⭐⭐ |
-| 02 | Async task scheduler | `asyncio`, event loop, `Future`, cancellation | ⭐⭐⭐ |
-| 03 | Generator-based pipeline | `yield`, `send`, `throw`, coroutine chaining | ⭐⭐⭐ |
-| 04 | Property-based test framework | Decorators, `inspect`, random generation, shrinking | ⭐⭐⭐⭐ |
-| 05 | LRU cache with TTL | `__hash__`, `__eq__`, doubly-linked list, `threading.Lock` | ⭐⭐⭐ |
+| 02 | Async task scheduler | `asyncio`, event loop, `Future`, cancellation; course version: `lang.08`, `data.01` | ⭐⭐⭐ |
+| 03 | Generator-based pipeline | `yield`, `send`, `throw`, coroutine chaining; course version: `data.02` | ⭐⭐⭐ |
+| 04 | Property-based test framework | Decorators, `inspect`, random generation, shrinking; course version: `craft.04` | ⭐⭐⭐⭐ |
+| 05 | LRU cache with TTL | `__hash__`, `__eq__`, doubly-linked list, `threading.Lock`; course version: `gw.06` | ⭐⭐⭐ |
 | 06 | Import hook (custom loader) | `importlib`, `sys.meta_path`, `ModuleSpec` | ⭐⭐⭐⭐⭐ |
 | 07 | Dataclass code generator | `ast` module, metaprogramming, `exec` | ⭐⭐⭐⭐ |
-| 08 | Actor model (multiprocessing) | `multiprocessing.Queue`, `Process`, message passing | ⭐⭐⭐ |
+| 08 | Actor model (multiprocessing) | `multiprocessing.Queue`, `Process`, message passing; course version: `data.04` | ⭐⭐⭐ |
 | 09 | Type checker (subset) | `typing`, AST walking, unification algorithm | ⭐⭐⭐⭐⭐ |
 | 10 | WSGI framework (mini-Flask) | WSGI spec, decorators, routing, middleware | ⭐⭐⭐ |
