@@ -32,15 +32,55 @@ ss check L0.0 --ref-deps   # only if your M03.1 or rt.01 is not passing yet
 ss diff  L0.0              # after passing: your code against the reference
 ```
 
-You also write the first verbs of your own CLI, `python -m tinyllm` (it is yours: the course ships no CLI). [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) fixes what `MS-P1` will run:
+You also write the first verbs of your own CLI, `python/tinyllm/__main__.py` (it is yours: the course ships no CLI). [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) fixes what `MS-P1` will run:
 
 | Verb | What it does with this module |
 |---|---|
 | `train bigram --data F --out DIR [--alpha A]` | reads the bytes of `F` as ids, calls `fit_counts`, writes `DIR/model.safetensors` (`bigram.weight`, metadata `{"format": "tinyllm"}`) and `DIR/config.json`, prints `{"out", "tokens", "nll"}` as the last line |
 | `generate --model DIR --prompt P [--max-tokens N] [--greedy \| --temperature T] [--seed S]` | `load_safetensors`, `BigramLM(weight)`, `sample(list(P.encode()), N, T, S)`, prints `{"ids", "text"}` |
 | `logits --model DIR --prompt P [--prefix-ids ...]` | `logits(ids)[-1]` as a JSON list |
+| `info --native` | `load()` from `rt.01`, prints `{"abi_version", "lib"}`; non-zero exit when the library is missing or its ABI differs |
 
 `config.json` for the tracer is exactly `{"tl_arch": "bigram", "tl_tokenizer": "bytes", "vocab_size": 256, "tl_format": 1}`.
+
+**The Python project.** `python/` is a uv project that is not an installed package, and the CLI runs as a script from the repo root. Three files set it up (`ss start` writes none of them; they are yours):
+
+```toml
+# python/pyproject.toml
+[project]
+name = "tinyllm"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["numpy>=2.0"]
+
+[tool.uv]
+package = false
+```
+
+```python
+# python/tinyllm/__init__.py is empty. python/tinyllm/__main__.py starts with:
+import sys
+from pathlib import Path
+
+if __package__ in (None, ""):  # run as a script: put python/ on the path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tinyllm.lm.bigram import BigramLM  # noqa: E402
+```
+
+Then declare the role in `system.toml` and try it:
+
+```toml
+[entry]
+tinyllm = ["uv", "run", "--project", "python", "python", "python/tinyllm/__main__.py"]
+```
+
+```bash
+uv run --project python python python/tinyllm/__main__.py train bigram --data some.txt --out artifacts/bigram
+uv run --project python python python/tinyllm/__main__.py generate --model artifacts/bigram --prompt Once --greedy
+```
+
+`ss check L0.0` grades the two library units only; the CLI is an entry point (D16), which `MS-P1` runs.
 
 ---
 
@@ -177,6 +217,8 @@ The contracts carry the exact rules: which errors are `ValueError`, that `sample
 | `test_nll_normalizes_logits` | unit | rows `[0, 0]` and `[5, 5]` give $\ln 2$ | `L0.5`'s trained logits are not normalized |
 | `test_alpha_must_be_positive` | boundary | $\alpha \le 0$ is a `ValueError` | no `-inf` or `nan` in a checkpoint |
 | `test_rejects_out_of_range_ids` | boundary | ids `-1` and `V` are a `ValueError` | numpy would wrap `-1` silently |
+| `test_rejects_non_integer_or_2d_ids` | boundary | float ids and a 2-D batch are a `ValueError` | `2.7` is not a byte |
+| `test_weight_is_checked_not_converted` | boundary | a float64, non-square, 1-D, `inf`, or `nan` weight is a `ValueError`; `vocab_size` before a table is a `RuntimeError` | a bad checkpoint fails at load, not inside the matmul |
 | `test_logits_are_weight_rows` | differential | `logits(ids) == weight[ids]` bit for bit, float32 `[T, V]` | the forward pass `L10.0` reproduces |
 | `test_logits_go_through_libtinyllm` | boundary | with `TINYLLM_LIB` pointing nowhere, `logits` fails | proves your C kernel is on the path |
 | `test_greedy_ties_go_to_lowest_id` | unit | greedy from `a` is `[1, 0, 1, 0]` | the tie rule every engine shares (D11) |
@@ -192,7 +234,8 @@ The contracts carry the exact rules: which errors are `ValueError`, that `sample
 | `test_save_rejects_non_f32` | boundary | float64, int32, float16, a `__metadata__` tensor, a non-string value | v0 writes F32 only |
 | `test_load_reads_library_files` | golden | every library file loads to the exact inputs | `generate` loads the checkpoint |
 | `test_roundtrip` | property | `load(save(x)) == x`, writable float32 | checkpoints survive a round trip |
-| `test_load_rejects_bad_files` | boundary | gap, trailing bytes, wrong size, short file, duplicate key, F16 | a reader never trusts the header |
+| `test_load_rejects_bad_files` | boundary | gap, trailing bytes, wrong size, short file, duplicate key, F16, a JSON array header, a non-string `__metadata__` value | a reader never trusts the header |
+| `test_load_caps_the_header_length` | boundary | an otherwise valid file with $N = 100{,}000{,}001$ | a corrupt length cannot make the reader parse gigabytes |
 
 ## 5. Pitfalls
 
@@ -211,6 +254,7 @@ The contracts carry the exact rules: which errors are `ValueError`, that `sample
 | 11. `np.argmax` on a reversed row, or `>=` in a manual loop | greedy ties go to the highest id, and engines disagree | `test_greedy_ties_go_to_lowest_id` (mutant `s07`) |
 | 12. scoring the context token in `nll` | an NLL that does not depend on what follows | `test_hand_example_nll` (mutant `s06`) |
 | 13. insertion order, zero padding, padding when already aligned, `{}` for empty metadata, `\u` escapes | bytes differ from the library's, so a strict reader or a hash check rejects the file | `test_matches_library_bytes` (mutants `s12`, `s13`, `s17`, `s18`), `test_worked_example_bytes` (mutant `s14`) |
+| 14. converting a loaded tensor with `np.ascontiguousarray` | a scalar tensor (shape `[]`) comes back with shape `(1,)`: `ascontiguousarray` returns at least 1-D; use `np.asarray(x, dtype=np.float32, order="C")` (`lang.01` pitfall 6) | `test_roundtrip`, `test_load_reads_library_files` |
 
 ## 6. Where it's used next
 

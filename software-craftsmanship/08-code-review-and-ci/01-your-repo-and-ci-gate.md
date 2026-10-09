@@ -86,7 +86,7 @@ git runs **hooks**, executable files with fixed names, at fixed moments. The `co
 
 ### 2.5 The course gate
 
-Your repository does not contain supersource; it contains `contracts/`, vendored at one supersource commit, and `contracts/VERSION` names that commit's sha. The course tests that grade you must be the ones your contracts came with, so the `course-check` job clones supersource, checks out **that** sha, and runs `ss check --all --ci` against your checkout (`SS_COURSE_HOME` points `ss` at it). `--ci` refuses `--ref-deps` and skips interactive rubrics: CI grades only your own code. A module counts as started in CI when one of its units differs from its stub (the ledger in `.ss/` is not committed), so in Pass 0 the gate checks `lang.01`; from Pass 1 it checks every module whose files you have written.
+Your repository does not contain supersource; it contains `contracts/`, vendored at one supersource commit, and `contracts/VERSION` names that commit's sha. The course tests that grade you must be the ones your contracts came with, so the `course-check` job clones supersource, checks out **that** sha, and runs `ss check --all --ci` against your checkout (`SS_COURSE_HOME` points `ss` at it). `--ci` refuses `--ref-deps` and skips interactive rubrics: CI grades only your own code. A module counts as started in CI when one of its units differs from its stub, or when a file it grades exists (`primers/<ID>/`, `.githooks/commit-msg`, `.github/workflows/ci.yml`; the registry calls these its `artifacts`), because the ledger in `.ss/` is not committed. So in Pass 0 the gate checks `lang.01`, `lang.02`, and `craft.01`; from Pass 1 it checks every module whose files you have written.
 
 ### 2.6 CI without GitHub
 

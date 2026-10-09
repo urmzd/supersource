@@ -67,5 +67,7 @@ def as_c_float32(x) -> np.ndarray:
     `const float *` with explicit dims reads. Share memory with x when it
     already is one; copy (and convert) only when it is not."""
     # SOLUTION-BEGIN lang.01
-    return np.ascontiguousarray(x, dtype=np.float32)
+    # Not np.ascontiguousarray: it returns at least 1-D, so a 0-d scalar
+    # would come back with shape (1,).
+    return np.asarray(x, dtype=np.float32, order="C")
     # SOLUTION-END

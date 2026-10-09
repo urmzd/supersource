@@ -103,6 +103,11 @@ def lint(
     first = text.splitlines()[0] if text else ""
     if first.strip() != f"<!-- ss:module {m.id} -->":
         errs.append(f"{where}:1: first line must be `<!-- ss:module {m.id} -->`")
+    h1 = next((x[2:].strip() for x in text.splitlines() if x.startswith("# ")), "")
+    if h1 != m.title:
+        errs.append(
+            f"{where}: the `# ` title {h1!r} must equal the registry title {m.title!r}"
+        )
     errs += no_em_dash(text, where)
     sec = sections(text)
 
@@ -156,6 +161,10 @@ def lint(
             if want and not h.split(".", 1)[1].strip().startswith(want):
                 errs.append(f"{where}: `## {h}` should be `{want}`")
     beat = {int(h.split(".")[0]): sec[h] for h in numbered}
+    for n, body in sorted(beat.items()):
+        prose = re.sub(r"\s+", " ", body).strip()
+        if len(prose) < 15 or re.match(r"^(TODO|TBD|FIXME)\b", prose, re.IGNORECASE):
+            errs.append(f"{where}: beat {n} has no content (found {prose[:30]!r})")
     if "$" in beat.get(2, "") and not any(
         r and r[0].lower() == "symbol" for r in table_rows(beat.get(2, ""))
     ):
@@ -168,6 +177,27 @@ def lint(
     for r in table_rows(b4):
         if r and r[0].lower() != "test":
             named |= {x.split("(")[0] for x in ticks(r[0])}
+    # DESIGN 6.1: the worked example reappears as the first test. The first
+    # row of the beat 4 test table names a test that beat 3 names, or whose
+    # name says it is the hand example.
+    first = next(
+        (
+            ticks(r[0])[0].split("(")[0]
+            for r in table_rows(b4)
+            if r and r[0].lower() != "test" and ticks(r[0])
+        ),
+        None,
+    )
+    if (
+        m.kind in ("build", "side")
+        and first
+        and first not in beat.get(3, "")
+        and not re.search(r"hand|worked", first, re.IGNORECASE)
+    ):
+        errs.append(
+            f"{where}: the first test in beat 4 is `{first}`; it must be the beat 3 "
+            "worked example (named in beat 3, or a *hand* / *worked* test)"
+        )
     if m.kind in ("build", "side"):
         for t in sorted(named - tests):
             errs.append(

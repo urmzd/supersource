@@ -45,8 +45,17 @@ def expand(name: str, base: Path, stack: tuple[str, ...] = ()) -> list[Row]:
     return rows
 
 
+def learn_dir(owner: str) -> Path:
+    """Where `ss learn` keeps a path's done stages (practice/bin/ss learn_dir):
+    course-* paths live in the active learner repo's .ss/learn/."""
+    home = ctx.learner_home()
+    if owner.startswith("course") and (home / "system.toml").is_file():
+        return home / ".ss" / "learn"
+    return ctx.scratch() / "learn"
+
+
 def done_stages(owner: str) -> set[str]:
-    p = ctx.scratch() / "learn" / f"{owner}.done"
+    p = learn_dir(owner) / f"{owner}.done"
     return set(p.read_text().split()) if p.is_file() else set()
 
 

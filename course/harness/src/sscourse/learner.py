@@ -17,6 +17,7 @@ artifacts/
 __pycache__/
 target/
 c/build/
+go/bin/
 """
 
 SYSTEM_TOML = """\
@@ -75,10 +76,14 @@ def init(name: str, at: Path | None) -> Path:
 
 
 def started(learner: Path, course: Path, reg: Registry, mid: str) -> bool:
-    """Started: `ss start` ran for it, or one of its own units differs from the stub."""
+    """Started: `ss start` ran for it, one of its own units differs from the
+    stub, or one of its artifact files exists (a practice module has no
+    units; in a fresh CI clone there is no ledger either)."""
     if ledger.has_event(learner, mid, "start"):
         return True
     m = reg.get(mid)
+    if ledger.artifact_files(learner, m.artifacts):
+        return True
     for u in m.units:
         if (learner / u).is_file() and not units.is_stub(
             course, reg, learner, u, reg.unit_chain(u)[0]
@@ -98,13 +103,16 @@ def superseded(learner: Path, course: Path, reg: Registry, mid: str) -> str | No
 @dataclass
 class State:
     id: str
-    status: str  # todo started pass stale assisted spoiled self
+    status: str  # todo started pass smoke stale assisted spoiled self
     verdict: dict | None
     note: str = ""
 
 
 def state(learner: Path, course: Path, reg: Registry, mid: str) -> State:
     v = ledger.latest(learner, mid)
+    cur = ledger.matching(learner, reg, mid)
+    if cur and cur.get("result") == "pass":
+        v = cur  # the current files passed, whatever an edit since reverted did
     if not started(learner, course, reg, mid) and v is None:
         return State(mid, "todo", None)
     later = superseded(learner, course, reg, mid)
@@ -113,7 +121,7 @@ def state(learner: Path, course: Path, reg: Registry, mid: str) -> State:
     if not v or v.get("result") != "pass":
         return State(mid, "started", v, f"last check: {v['result']}" if v else "")
     if v.get("tree") != ledger.tree_hash(learner, reg, mid):
-        return State(mid, "stale", v, "units changed since the last pass")
+        return State(mid, "stale", v, "files changed since the last pass")
     if ledger.has_event(learner, mid, "spoiled"):
         return State(mid, "spoiled", v)
     if v.get("assisted"):
@@ -121,4 +129,6 @@ def state(learner: Path, course: Path, reg: Registry, mid: str) -> State:
         return State(mid, "assisted", v, "ref deps: " + ",".join(refs))
     if v.get("self"):
         return State(mid, "self", v)
+    if ledger.is_smoke(v):
+        return State(mid, "smoke", v, "passed without its cluster tier (SS_SMOKE)")
     return State(mid, "pass", v)

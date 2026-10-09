@@ -40,6 +40,7 @@ REJECT = [
     "fix(): empty scope",  # a scope, when present, is not empty
     "fix(make files): spaces in scope",  # a scope is one word
     "feat: ",  # the description is not empty
+    "feat:  two spaces",  # exactly one space, then a non-space character
     "wip",  # what most bad history looks like
 ]
 

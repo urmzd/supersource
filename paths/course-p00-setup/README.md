@@ -10,13 +10,20 @@ Before any model, a repo that grades itself. You install the toolchain, learn th
 
 ```bash
 practice/bin/ss doctor              # what pass 0 needs: python, uv, cc, git, make
-practice/bin/ss doctor --pass 1     # what pass 1 adds: cargo, go, docker, kubectl, kind, helm, tilt
+practice/bin/ss doctor --pass 1     # what pass 1 adds: cargo, go, docker, kubectl, kind, helm
 ```
 
-On macOS: `xcode-select --install`, then `brew install uv rustup go kubectl kind helm tilt` and Docker Desktop. On Linux use your package manager and the upstream installers. Then create your repo:
+On macOS: `xcode-select --install`, then `brew install uv rustup go kubectl kind helm` and Docker Desktop (`tilt` joins in Pass 7). On Linux use your package manager and the upstream installers. Then create your repo:
 
 ```bash
 practice/bin/ss course init --name <system>   # a git repo with contracts/ vendored and system.toml
+```
+
+The chapters write plain `ss`. Put supersource's `practice/bin` on your `PATH` once, so `ss` works from any directory:
+
+```bash
+export PATH="$PWD/practice/bin:$PATH"   # run in your supersource clone; add the line to ~/.zshrc or ~/.bashrc with the full path
+which ss                                # prints .../practice/bin/ss
 ```
 
 The stages, their chapters, and what "done" means for each are in [`path.tsv`](path.tsv).

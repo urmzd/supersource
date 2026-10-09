@@ -28,7 +28,7 @@
 ss drill list                      # engine-crashloop is ops.00
 ss drill start engine-crashloop    # injects the fault, prints only the page
 # ... triage with kubectl, restore service, write the runbook and the postmortem ...
-ss drill end                       # grades: resolved, postmortem, time limit
+ss drill end                       # grades: resolved, runbook, postmortem, time limit
 ss drill reset                     # replays the undo journal; always run it after `end`
 ```
 
@@ -126,11 +126,19 @@ traces       = "http://127.0.0.1:30686"  # Jaeger query
 services     = { engine = "deploy/<system>-engine", gateway = "deploy/<system>-gateway" }
 ```
 
-Export your gateway key in the variable `[endpoints].api_key_env` names (default `TL_API_KEY`); the resolve check calls the gateway with it.
+Export your gateway key in the variable `[endpoints].api_key_env` names (default `TL_API_KEY`); the second resolve check calls the gateway with it.
 
 **Inject.** `ss drill start engine-crashloop` checks the safety gate (current context equals `kube_context`, which starts with `kind-` or `k3d-`; the namespace exists), then patches the first container of `services.engine`: its args become the tracer engine's flags (`spec/cli-roles.md`) with `--model-dir /missing`, at the Kubernetes ports `8000` and `9464`. The undo (your original args) goes to `.ss/drills/<run>/journal.jsonl`. You see only the page.
 
-**Detect.** There is no alert in Pass 1. Work outside in: which workload is unhealthy, why its last container exited, what its previous log says, and what changed. The commands are the Diagnosis section of the reference runbook below; write yours in your own words as you go.
+**Detect.** There is no alert in Pass 1. Work outside in: which workload is unhealthy, why its last container exited, what its previous log says, and what changed. These commands answer the four questions in that order; your runbook's Diagnosis section says what each output means, in your own words:
+
+```bash
+kubectl get deploy,pods -n <system> -o wide                       # which workload: the engine pod is not 1/1 Running
+kubectl describe pod -n <system> <engine-pod>                     # why it exited: Last State, Exit Code, Restart Count, Events
+kubectl logs -n <system> deploy/<system>-engine --previous        # what the crashed container said before it died
+kubectl rollout history deploy/<system>-engine -n <system>        # what changed: a new revision
+kubectl get deploy <system>-engine -n <system> -o jsonpath='{.spec.template.spec.containers[0].args}'
+```
 
 **Mitigate.** Restore the last revision that worked, wait for it, then make the chart the truth again:
 
@@ -164,20 +172,21 @@ Numbered steps that restore service, how to confirm it, and the durable fix.
 | Check | Passes when | Why it matters |
 |---|---|---|
 | detected | always, with "graded manually": this drill has no `[detect]` block | Pass 1 has no Prometheus; you are the detector |
-| resolve 1 | `ss conform openapi:v0:gateway:smoke` against `[deploy].gateway_url` passes: the v0 smoke cases (health, completion schema, SSE framing, and 401 without a key) through your gateway NodePort | completions flow again, so a Ready engine is behind the gateway |
+| resolve 1 | the engine rollout (`services.engine`) has converged within 60 s: every replica updated and available | Kubernetes, not you, now keeps a Ready engine running |
+| resolve 2 | `ss conform openapi:v0:gateway:smoke` against `[deploy].gateway_url` passes: the v0 smoke cases (completion schema, SSE framing, and 401 without a key; the health case is pending unless `[deploy].gateway_health_url` is set) through your gateway NodePort | completions flow again, so a Ready engine is behind the gateway |
 | postmortem | the newest `docs/postmortems/*-engine-crashloop.md` has all seven headings | the incident is recorded in the fixed shape |
-| runbook | `docs/runbooks/engine-crashloop.md` has Symptoms, Diagnosis, Mitigation headings | the next person needs minutes, not your 45 |
+| runbook | `docs/runbooks/engine-crashloop.md` has Symptoms, Diagnosis, Mitigation headings (the drill's `[[doc]]` table) | the next person needs minutes, not your 45 |
 | time limit | `end` within 45 minutes of `start` | keeps the drill honest |
 
-The runbook row is in the spec as a `[[doc]]` table; until the harness grades `[[doc]]` tables, `ss milestone MS-P1` checks that the runbook exists. `ss drill end` records the verdict under `ops.00`, which MS-P1 requires. Then run `ss drill reset`: it replays the journal in reverse (after your rollback the replayed undo changes nothing).
+`ss drill end` grades the runbook and the postmortem the same way: a missing file or heading fails the drill. It records the verdict under `ops.00`, which MS-P1 requires. Then run `ss drill reset`: it replays the journal in reverse (after your rollback the replayed undo changes nothing).
 
 ## 5. Pitfalls
 
 | # | Pitfall | Symptom | Caught by |
 |---|---|---|---|
 | 1 | Reading `kubectl logs` without `--previous` | an empty log, or "container is waiting to start" | no check; the runbook's Diagnosis step 3 |
-| 2 | Deleting the crashing pod to "restart it" | the ReplicaSet makes an identical pod that crashes the same way | resolve 1 stays red |
-| 3 | Scaling the engine to zero to stop the restarts | the restarts stop and so does the service | resolve 1 stays red |
+| 2 | Deleting the crashing pod to "restart it" | the ReplicaSet makes an identical pod that crashes the same way | resolve 1 and resolve 2 stay red |
+| 3 | Scaling the engine to zero to stop the restarts | the restarts stop and so does the service | resolve 2 stays red |
 | 4 | Fixing the args with `kubectl edit` and never touching the chart | it works until the next `helm upgrade` reapplies whatever the chart says | the postmortem's action items; review |
 | 5 | Running `ss drill reset` before `ss drill end` | the run is marked reset and never graded | ss drill end refuses: no active drill |
 | 6 | A postmortem that names who broke it, or skips a heading | the team stops reporting honestly; `end` fails on the missing heading | the postmortem check |

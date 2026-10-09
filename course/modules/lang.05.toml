@@ -9,6 +9,7 @@ deps      = []
 reading   = ["lang.04"]              # the Rust and std::net of the echo server
 used_by   = []                       # a primer has no code call site; L10.0 lists it in `reading`
 units     = []                       # primer exercise: primers/lang.05/ (reference in course/ref/primers/lang.05/; DEVIATIONS lang.04-1)
+artifacts = ["primers/lang.05"]   # learner files the check grades: hashed into the verdict, present = started (I16)
 upgrades  = []
 milestone = "MS-P1"
 ci        = "pr"

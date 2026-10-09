@@ -69,10 +69,45 @@ def latest(learner: Path, mid: str, full_only: bool = False) -> dict | None:
     return None
 
 
+# Directories under an artifact path that hold build output or caches, never
+# the learner's work: skipped when hashing (a check's own build would
+# otherwise make its pass stale).
+_SKIP_DIRS = {
+    ".git",
+    ".ss",
+    ".venv",
+    "target",
+    "build",
+    "bin",
+    "node_modules",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+}
+
+
+def artifact_files(learner: Path, artifacts: list[str]) -> list[Path]:
+    """The files under a module's `artifacts` paths, sorted, caches skipped."""
+    out: list[Path] = []
+    for a in artifacts:
+        base = learner / a
+        if base.is_file():
+            out.append(base)
+        elif base.is_dir():
+            for p in base.rglob("*"):
+                rel = p.relative_to(base).parts
+                skipped = any(x in _SKIP_DIRS for x in rel[:-1])
+                if p.is_file() and not skipped and p.name != ".DS_Store":
+                    out.append(p)
+    return sorted(set(out))
+
+
 def tree_hash(learner: Path, reg: Registry, mid: str) -> str:
-    """Hash of the module's owned units plus its graded learner tests. A unit
-    a later module took over (and the learner started) no longer counts: from
-    then on edits to it make only the later module stale (DESIGN 5.2 point 4)."""
+    """Hash of the module's owned units, its artifact files, and its graded
+    learner tests. A unit a later module took over (and the learner started)
+    no longer counts: from then on edits to it make only the later module
+    stale (DESIGN 5.2 point 4)."""
     m = reg.get(mid)
     gone = {
         u
@@ -88,6 +123,18 @@ def tree_hash(learner: Path, reg: Registry, mid: str) -> str:
             u.encode()
             + b"\0"
             + (p.read_bytes() if p.is_file() else b"<missing>")
+            + b"\0"
+        )
+    if m.artifacts:
+        # Tag the scheme, so a verdict hashed before artifacts counted (the
+        # hash of nothing) never matches a tree whose artifacts are missing.
+        h.update(b"artifacts:v1\0" + "\0".join(m.artifacts).encode() + b"\0")
+    for p in artifact_files(learner, m.artifacts):
+        h.update(
+            b"artifact\0"
+            + p.relative_to(learner).as_posix().encode()
+            + b"\0"
+            + p.read_bytes()
             + b"\0"
         )
     lt = (m.learner_tests or {}).get("path")
@@ -110,12 +157,33 @@ def tree_hash(learner: Path, reg: Registry, mid: str) -> str:
     return "sha256:" + h.hexdigest()
 
 
-def fresh_pass(learner: Path, reg: Registry, mid: str) -> dict | None:
-    v = latest(learner, mid)
-    if (
-        v
-        and v.get("result") == "pass"
-        and v.get("tree") == tree_hash(learner, reg, mid)
-    ):
+def matching(learner: Path, reg: Registry, mid: str) -> dict | None:
+    """The newest verdict recorded for the files as they are now (same tree
+    hash). A failed check of an edit you since reverted does not hide the
+    pass the current files earned; a `blocked` verdict ran no test of the
+    module and is skipped."""
+    now = tree_hash(learner, reg, mid)
+    for e in reversed(entries(learner)):
+        if (
+            e.get("id") == mid
+            and e.get("result") not in (None, "blocked")
+            and e.get("tree") == now
+        ):
+            return e
+    return None
+
+
+def is_smoke(v: dict | None) -> bool:
+    """A practice verdict from SS_SMOKE=1: its cluster tier never ran."""
+    return bool(v) and v.get("mode") == "smoke"
+
+
+def fresh_pass(
+    learner: Path, reg: Registry, mid: str, full_only: bool = False
+) -> dict | None:
+    """The pass the current files earned, if any. `full_only` refuses a
+    smoke-mode pass (path stages and full milestones need the cluster tier)."""
+    v = matching(learner, reg, mid)
+    if v and v.get("result") == "pass" and not (full_only and is_smoke(v)):
         return v
     return None

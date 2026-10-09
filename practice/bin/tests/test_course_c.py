@@ -64,4 +64,4 @@ def test_leaks_symbols_and_staleness(ss):
     demo.write_text(good)
     abi = ss.learner / "c/src/runtime/abi.c"
     abi.write_text(abi.read_text() + "\n/* touched */\n")
-    assert "rt.91 needs rt.90 (stale)" in ss("check", "rt.91", rc=3).out
+    assert "rt.91 needs rt.90 (stale" in ss("check", "rt.91", rc=3).out

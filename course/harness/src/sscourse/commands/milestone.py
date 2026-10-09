@@ -36,6 +36,7 @@ from .. import (
     ledger,
     matchers,
 )
+from .. import learner as learner_mod
 from .. import milestones as ms_mod
 from .. import placeholders, services, system, web
 from ..runner import Run, open_run
@@ -59,6 +60,26 @@ def list_milestones(r: Run) -> int:
             state += f" (smoke {sv.get('result')})"
         ctx.say(f"  {i:<16} pass {m.pass_:<3} {state:<22} {m.title}")
     return 0
+
+
+def _next_step(r: Run, mid: str, smoke: bool) -> str:
+    """The command that earns mid's pass, with what the ledger says now."""
+    if mid not in r.reg.modules:
+        return f"ss milestone {mid}" if mid.startswith("MS-") else ""
+    m = r.reg.get(mid)
+    st = (
+        learner_mod.state(r.learner, r.course, r.reg, mid).status
+        if r.learner
+        else "todo"
+    )
+    if m.kind == "drill":
+        from .. import drills
+
+        name = next((d.name for d in drills.all_drills(r.course) if d.id == mid), mid)
+        return f"({st}) ss drill start {name}, then ss drill end"
+    if st == "smoke" and not smoke:
+        return f"(passed under SS_SMOKE only) ss check {mid}, with the cluster in [deploy] up"
+    return f"({st}) ss check {mid}"
 
 
 class Runner:
@@ -260,12 +281,30 @@ def run_milestone(
             print(json.dumps({"id": msid, "exit": code, "verdict": v}))
         return code
 
-    waiting = [m for m in plan.requires if not r.module_passed(m)]
+    requires = list(plan.requires)
+    if smoke:
+        # A drill or a nightly-tier module is graded on a cluster, which a
+        # --smoke run (PR CI) never has: the full milestone gates on it.
+        cluster_only = [
+            m
+            for m in requires
+            if m in r.reg.modules
+            and (r.reg.get(m).kind == "drill" or r.reg.get(m).ci == "nightly")
+        ]
+        if cluster_only:
+            say(
+                f"  {ctx.DIM}not required under --smoke (graded on a cluster by the full run): "
+                f"{', '.join(cluster_only)}{ctx.RST}"
+            )
+        requires = [m for m in requires if m not in cluster_only]
+    waiting = [m for m in requires if not r.module_passed(m, smoke_ok=smoke)]
     if waiting and not ref_deps:
         say(
-            f"{ctx.YEL}BLOCKED{ctx.RST} {msid} needs {', '.join(waiting)} to pass first "
-            "(ss check <ID>), or rerun with --ref-deps (recorded as assisted)"
+            f"{ctx.YEL}BLOCKED{ctx.RST} {msid} needs these to pass first, or rerun with "
+            "--ref-deps (recorded as assisted):"
         )
+        for m in waiting:
+            say(f"  {m:<10} {_next_step(r, m, smoke)}")
         return record("blocked", blocked=waiting)
     assisted = bool(waiting)
     if assisted:

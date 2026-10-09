@@ -224,6 +224,14 @@ def test_load_rejects_bad_files(tmp_path):
         "f16": raw_file(
             {"a": {"dtype": "F16", "shape": [2], "data_offsets": [0, 4]}}, four
         ),
+        "array_header": raw_file(b"[]", b""),
+        "metadata_not_str": raw_file(
+            {
+                "__metadata__": {"a": 1},
+                "a": {"dtype": "F32", "shape": [1], "data_offsets": [0, 4]},
+            },
+            four,
+        ),
     }
     for name, blob in bad.items():
         p = tmp_path / f"{name}.safetensors"
@@ -231,3 +239,19 @@ def test_load_rejects_bad_files(tmp_path):
         with pytest.raises(ValueError):
             load_safetensors(str(p))
             pytest.fail(f"{name}: loaded a file that breaks the format")
+
+
+def test_load_caps_the_header_length(tmp_path):
+    # WHY: rule 1 caps N at 100,000,000 so a corrupt length cannot make the
+    #      reader allocate and parse gigabytes. This file is otherwise valid
+    #      (`{}` padded with spaces, exactly 8 + N bytes), so only the cap
+    #      rejects it.
+    # KIND: boundary
+    # CHAPTER: L0.0 section 5, Pitfalls, item 8
+    n = 100_000_001
+    p = tmp_path / "huge.safetensors"
+    with open(p, "wb") as f:
+        f.write(n.to_bytes(8, "little") + b"{}")
+        f.write(b" " * (n - 2))
+    with pytest.raises(ValueError):
+        load_safetensors(str(p))

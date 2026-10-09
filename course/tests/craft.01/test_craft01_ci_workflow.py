@@ -7,6 +7,7 @@ workflow is green on your default branch is MS-P0's `ci-status` step.
 """
 
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -80,8 +81,14 @@ def test_commit_lint_job_fetches_history_and_runs_your_hook(wf):
     assert any(
         str((s.get("with") or {}).get("fetch-depth")) == "0" for s in checkouts
     ), "commit-lint checkout needs `with: {fetch-depth: 0}`"
-    assert ".githooks/commit-msg" in runs(wf, "commit-lint"), (
-        "commit-lint must run .githooks/commit-msg"
+    text = runs(wf, "commit-lint")
+    assert ".githooks/commit-msg" in text, "commit-lint must run .githooks/commit-msg"
+    # Every commit the push or pull request adds, not only HEAD: `git
+    # rev-list` over a range (`BASE..HEAD`, written inline or built in a
+    # variable; `^BASE HEAD` and `--not` are the same range), looped over the hook.
+    assert "git rev-list" in text and re.search(r"\.\.|\^\"?\$|--not\b", text), (
+        "commit-lint must walk a range of commits with `git rev-list \"$BASE..$HEAD\"`, "
+        "not lint HEAD alone"
     )
 
 
@@ -106,6 +113,10 @@ def test_course_check_job_pins_supersource_to_contracts_version(wf):
         assert needle in text, (
             f"course-check must mention `{needle}` (ss course ci prints the recipe)"
         )
+    assert re.search(r"\bcheckout\b[^\n]*\$\{?SHA\b", text), (
+        "course-check must `git checkout` the sha read from contracts/VERSION "
+        "(for example `git -C .ss/supersource checkout --detach \"$SHA\"`)"
+    )
     assert "--ref-deps" not in text, (
         "CI never grades with reference code (--ci forbids --ref-deps)"
     )

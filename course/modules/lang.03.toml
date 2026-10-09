@@ -12,6 +12,7 @@ used_by   = []                       # a primer has no code call site; rt.01 and
 # into libtinyllm and every C test binary. The check writes the starter files
 # into primers/lang.03/ on its first run (DEVIATIONS lang03-01).
 units     = []
+artifacts = ["primers/lang.03"]   # learner files the check grades: hashed into the verdict, present = started (I16)
 upgrades  = []
 milestone = "MS-P1"
 ci        = "pr"

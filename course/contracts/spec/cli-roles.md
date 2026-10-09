@@ -7,9 +7,9 @@ The course never builds or runs your binaries by guessing. You declare each entr
 
 ```toml
 [entry]
-tinyllm = ["uv", "run", "--project", "python", "python", "-m", "tinyllm"]
+tinyllm = ["uv", "run", "--project", "python", "python", "python/tinyllm/__main__.py"]
 engine  = ["rust/target/release/tl-serve", "--model-dir", "{model_dir}", "--port", "{port}", "--health-port", "{health_port}"]
-gateway = ["go", "run", "./go/cmd/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
+gateway = ["go", "run", "-C", "go", "./cmd/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
 ```
 
 A missing role fails the milestone with `milestone <MS-ID> needs [entry].<role> in system.toml`. Placeholders such as `{port}` are filled by the milestone runner (ports are allocated per run, never fixed on your machine).
@@ -41,7 +41,7 @@ This page fixes the verbs, flags, and outputs that milestones depend on. Your CL
 
 ## `tinyllm`
 
-The Python CLI, `python -m tinyllm` in your uv project. In Pass 1 it has four verbs.
+The Python CLI: `python/tinyllm/__main__.py`, run as a script from the repo root inside your uv project (`uv run --project python python python/tinyllm/__main__.py`). The project is not an installed package (`[tool.uv] package = false`), so the script puts `python/` on `sys.path` itself before importing `tinyllm`. In Pass 1 it has four verbs.
 
 ### `train bigram`
 

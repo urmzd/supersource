@@ -26,7 +26,7 @@ def test_pass_zero_needs_only_the_compilers(ss, tmp_path):
     assert "ready for pass 0" in out
     assert "docker" in out and "not installed" in out
     out = ss("doctor", "--pass", "1", rc=5, env={"PATH": path}).out
-    assert "missing for pass 1: docker, kubectl, kind, helm, tilt" in out
+    assert "missing for pass 1: docker, kubectl, kind, helm" in out
 
 
 def test_docker_allocation_from_pass_seven(ss, tmp_path):

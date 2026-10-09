@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import difflib
 import hashlib
 import json
 import re
@@ -516,11 +517,13 @@ def verify_practice(reg, course: Path, m, work: Path, rep: Report) -> None:
         rep.skip(3, "practice: no course tests to repeat")
         return
     lr, why = reference_learner(reg, course, work)
+    first: tuple[int, str] | None = None
     if lr is None:
         rep.fail(1, "assemble the reference learner", why)
     else:
         env = _practice_env(course, lr, lr.parent / "scratch")
         rc, out = ctx.run([str(check)], cwd=lr, env=env, timeout=m.timeout_s)
+        first = (rc, out)
         rep.ok(
             1, "reference artifacts pass the check (SS_SMOKE=1)"
         ) if rc == 0 else rep.fail(
@@ -548,7 +551,36 @@ def verify_practice(reg, course: Path, m, work: Path, rep: Report) -> None:
             out,
         )
     shutil.rmtree(tmp, ignore_errors=True)
-    rep.skip(3, "practice: determinism is covered by the check's own repeat runs")
+    if first is None:
+        rep.skip(3, "practice: no reference run to repeat")
+        return
+    env = _practice_env(course, lr, lr.parent / "scratch")
+    rc, out = ctx.run([str(check)], cwd=lr, env=env, timeout=m.timeout_s)
+    a, b = _result_lines(first[1]), _result_lines(out)
+    if (rc, b) == (first[0], a):
+        rep.ok(
+            3, f"deterministic over 2 runs of the check ({len(a)} result line(s) equal)"
+        )
+    else:
+        diff = "\n".join(difflib.unified_diff(a, b, "run 1", "run 2", lineterm=""))
+        rep.fail(
+            3, f"the check is not deterministic (exit {first[0]}, then {rc})", diff
+        )
+
+
+_RESULT = re.compile(
+    r"^\s*(ok|pass|fail|skip|PASS|FAIL|SKIP|FAILED|ERROR)\b|\b\d+ (passed|failed|skipped)\b"
+)
+_TIMING = re.compile(r"\(?\b\d+(\.\d+)?\s?(s|ms)\b\)?|\bin \d+(\.\d+)?s\b")
+
+
+def _result_lines(out: str) -> list[str]:
+    """The per-test result lines of a check's output, timings removed."""
+    return [
+        " ".join(_TIMING.sub("", line).split())
+        for line in out.splitlines()
+        if _RESULT.search(line)
+    ]
 
 
 def verify_module(reg, course, mid: str, work: Path, runs: int, rep: Report) -> None:

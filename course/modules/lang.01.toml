@@ -9,6 +9,7 @@ deps      = []
 reading   = []
 used_by   = []                     # a primer has no code call site; L0.0, rt.01, and L0.1 list it in `reading`
 units     = ["primers/lang.01/worksheet.py", "primers/lang.01/bigram.py"]
+artifacts = ["primers/lang.01"]   # learner files the check grades: hashed into the verdict, present = started (I16)
 milestone = "MS-P0"
 ci        = "pr"
 

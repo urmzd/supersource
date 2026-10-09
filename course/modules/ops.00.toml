@@ -11,5 +11,6 @@ deps      = ["dep.00"]
 reading   = ["lang.07", "L10.0", "gw.00"]
 used_by   = []
 units     = []
+artifacts = ["docs/runbooks/engine-crashloop.md"] # learner files the check grades: hashed into the verdict, present = started (I16)
 milestone = "MS-P1"
 ci        = "nightly"

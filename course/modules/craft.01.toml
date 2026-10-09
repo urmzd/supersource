@@ -9,6 +9,7 @@ deps      = []
 reading   = ["lang.02"]
 used_by   = []                     # practice: CI and hooks are learner territory (D16), never overlaid
 units     = []
+artifacts = [".githooks/commit-msg", ".github/workflows/ci.yml"] # learner files the check grades: hashed into the verdict, present = started (I16)
 milestone = "MS-P0"
 ci        = "pr"
 

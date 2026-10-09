@@ -892,7 +892,18 @@ path_tsv() {
   echo "$f"
 }
 path_title() { sed -n 's/^# //p' "$PATHS_DIR/$1/README.md" 2>/dev/null | head -1; }
-learn_done_file() { echo "$SCRATCH/learn/$1.done"; }
+# Progress on a course path belongs to the learner repo it was earned in
+# (DESIGN 5.15): with one active (system.toml at SS_COURSE_HOME, default
+# .scratchpad/course) course-* paths keep their done files in its .ss/learn/.
+learn_dir() {
+  local home="${SS_COURSE_HOME:-$ROOT/.scratchpad/course}"
+  if [[ "$1" == course* && -f "$home/system.toml" ]]; then
+    echo "$home/.ss/learn"
+  else
+    echo "$SCRATCH/learn"
+  fi
+}
+learn_done_file() { echo "$(learn_dir "$1")/$1.done"; }
 is_done() { grep -qx "$2" "$(learn_done_file "$1")" 2>/dev/null; }
 
 # Every stage of a path with includes resolved, one row per stage:
@@ -932,7 +943,7 @@ learn_list() {
 }
 
 # Forced marks (ss learn <path> --done <stage> --force) are logged here.
-learn_force_log() { echo "$SCRATCH/learn/$1.done.log"; }
+learn_force_log() { echo "$(learn_dir "$1")/$1.done.log"; }
 is_forced() { awk -F'\t' -v s="$2" '$1 == s' "$(learn_force_log "$1")" 2>/dev/null | grep -q .; }
 
 learn_stages() {

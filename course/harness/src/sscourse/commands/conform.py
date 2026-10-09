@@ -4,7 +4,9 @@
 Runs the OpenAPI conformance cases (DESIGN 5.8) against one tier. Without
 --base it runs [build].steps, starts that tier's [services.*] entry (and the
 services it comes `after`) on allocated ports, and tears them down after.
-With --base it tests a running server (a kind NodePort, your own process).
+With --base it tests a running server (a kind NodePort, your own process);
+/healthz is served on the health port, so pass --health-base for that case
+(without it the case is pending).
 
 Every response is validated against the vendored contract
 contracts/openapi/openai-subset.<version>.yaml. A case whose `requires`
@@ -81,7 +83,9 @@ def main(argv: list[str]) -> int:
     say(f"{ctx.BLD}conform {suite.id}{ctx.RST}")
     t0 = time.time()
     if a.base:
-        results = run_suite(r, suite, a.base, a.health_base or a.base, a.model)
+        # /healthz lives on the health port (spec/cli-roles.md), never on the
+        # API port: without --health-base the healthz case is pending.
+        results = run_suite(r, suite, a.base, a.health_base, a.model)
     else:
         if r.system is None:
             raise HarnessError(

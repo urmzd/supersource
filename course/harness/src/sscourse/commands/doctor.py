@@ -1,9 +1,9 @@
 """ss doctor [--pass N] [--json]   check the toolchain the course needs (DESIGN 5.3)
 
-Required from Pass 0: git, uv, python >= 3.11, cc, cargo, go.
-Required from Pass 1 (the tracer runs on kind): docker with a running daemon,
-kubectl, kind, helm, tilt. From Pass 7: Docker gets at least 6 CPUs and
-12 GiB (2.13). Optional: protoc (lang.10 only; contracts ship generated code),
+Required from Pass 0: git, uv, python >= 3.11, cc, make.
+Required from Pass 1 (the tracer: Rust, Go, and kind): cargo, go, docker with
+a running daemon, kubectl, kind, helm. From Pass 7: tilt (dep.04), and Docker
+gets at least 6 CPUs and 12 GiB (2.13). Optional: protoc (lang.10 only; contracts ship generated code),
 a Rust nightly (Miri, TSan), gh (ci-status on a GitHub remote).
 
 The pass defaults to the highest pass among the modules you have started
@@ -55,14 +55,15 @@ def checks(pass_: int) -> list[dict]:
         py_ok,
         f"{sys.version.split()[0]}" + ("" if py_ok else " (need >= 3.11)"),
     )
-    for name, cmd in (
-        ("uv", ["uv", "--version"]),
-        ("git", ["git", "--version"]),
-        ("cc", ["cc", "--version"]),
-        ("cargo", ["cargo", "--version"]),
-        ("go", ["go", "version"]),
+    for name, from_pass, cmd in (
+        ("uv", 0, ["uv", "--version"]),
+        ("git", 0, ["git", "--version"]),
+        ("cc", 0, ["cc", "--version"]),
+        ("make", 0, ["make", "--version"]),
+        ("cargo", 1, ["cargo", "--version"]),
+        ("go", 1, ["go", "version"]),
     ):
-        add(name, 0, *_version(cmd))
+        add(name, from_pass, *_version(cmd))
 
     dok, dver = _version(["docker", "version", "--format", "{{.Server.Version}}"])
     if not dok and shutil.which("docker"):
@@ -93,9 +94,9 @@ def checks(pass_: int) -> list[dict]:
         ("kubectl", ["kubectl", "version", "--client"]),
         ("kind", ["kind", "version"]),
         ("helm", ["helm", "version", "--short"]),
-        ("tilt", ["tilt", "version"]),
     ):
         add(name, 1, *_version(cmd))
+    add("tilt", 7, *_version(["tilt", "version"]))
     add("protoc", None, *_version(["protoc", "--version"]))
     add("gh", None, *_version(["gh", "--version"]))
     if shutil.which("rustup"):

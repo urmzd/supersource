@@ -197,6 +197,7 @@ def row_normalize(counts: np.ndarray) -> np.ndarray: ...
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `test_broadcast_shape_hand_examples` | unit | the section 3 table | you and the test agree on the rule |
+| `test_broadcast_shape_is_your_own_rule` | unit | passes with numpy's broadcasting helpers switched off | the exercise is the rule |
 | `test_broadcast_shape_aligns_on_the_right` | boundary | (3,) with (3, 1) gives (3, 3) | the bias-add shape in every layer |
 | `test_broadcast_shape_rejects_incompatible_shapes` | boundary | (3,) with (4,) raises | a shape bug must fail loudly |
 | `test_broadcast_shape_matches_numpy_on_every_small_pair` | differential | all 1600 pairs of shapes with up to 3 axes of sizes 1 to 3 | you can predict any broadcast |
@@ -209,6 +210,7 @@ def row_normalize(counts: np.ndarray) -> np.ndarray: ...
 | `test_as_c_float32_does_not_copy_when_it_need_not` | unit | an already-right array is shared | no copy per C call |
 | `test_as_c_float32_copies_a_transposed_view` | boundary | `x.T` becomes a fresh row-major copy | C reads the right elements |
 | `test_as_c_float32_copies_a_strided_slice` | boundary | `x[:, ::2]` becomes dense | C has no stride argument for this |
+| `test_as_c_float32_keeps_a_scalar_0d` | boundary | a 0-d input stays shape `()` | scalar tensors in L0.0's safetensors files |
 | `test_bigram_hand_example` | unit | "banana" from section 3 | the L0.0 training count |
 | `test_bigram_counts_every_repeated_pair` | boundary | "aaaa" counts aa three times | real text repeats pairs constantly |
 | `test_bigram_counts_do_not_wrap_at_256` | boundary | 999 repeats read as 999, dtype int64 | counts over megabytes |
@@ -216,7 +218,7 @@ def row_normalize(counts: np.ndarray) -> np.ndarray: ...
 | `test_bigram_counts_use_all_256_byte_values` | boundary | bytes 128 and 255 get their own rows | UTF-8 text uses high bytes (D32) |
 | `test_bigram_row_sums_count_each_leading_byte` | property | row $a$ sums to the count of $a$ in `data[:-1]` | a law, not one example |
 | `test_bigram_counts_match_a_python_loop` | differential | equal to the obvious loop on random bytes | the loop is the definition |
-| `test_bigram_counts_has_no_python_loop` | unit | no for, while, or comprehension in `bigram_counts` | the exercise is vectorizing |
+| `test_bigram_counts_has_no_python_loop` | unit | no for, while, or comprehension in `bigram_counts` or any helper in `bigram.py` it calls | the exercise is vectorizing |
 | `test_row_normalize_hand_example` | unit | [[1, 3], [1, 1]] from section 3 | the bigram's probabilities |
 | `test_row_normalize_divides_rows_not_columns` | boundary | rows sum to 1 on an uneven table | the silent square-table bug |
 | `test_row_normalize_leaves_empty_rows_zero` | boundary | no NaN for unseen bytes | one NaN poisons every sum |
@@ -231,11 +233,12 @@ def row_normalize(counts: np.ndarray) -> np.ndarray: ...
 | 3. Summing without `keepdims=True` in `unbroadcast` | a (2, 1) bias gets a (2,) gradient; the update `b -= lr * g` then broadcasts `b` up to (2, 2) | `test_unbroadcast_keeps_size_one_axes` |
 | 4. `np.array(x, dtype=np.float32)` or `x.astype(np.float32)` | correct values, but a full copy on every call even when `x` is already right | `test_as_c_float32_does_not_copy_when_it_need_not` |
 | 5. `np.asarray(x, dtype=np.float32)` | a transposed view passes through unchanged; C reads `x`'s rows instead | `test_as_c_float32_copies_a_transposed_view` |
-| 6. `C[a, b] += 1` with index arrays | each distinct pair counts once ("aaaa" gives 1, not 3) | `test_bigram_counts_every_repeated_pair` |
-| 7. A `uint8` count table, or `uint8` pair codes | 999 repeats read as 231; codes `a * 255 + b` wrap | `test_bigram_counts_do_not_wrap_at_256` |
-| 8. `C / C.sum(axis=1)` without `keepdims` | no error on a square table, rows do not sum to 1 | `test_row_normalize_divides_rows_not_columns` |
-| 9. Dividing an empty row by its zero total | NaN rows that spread into every later sum | `test_row_normalize_leaves_empty_rows_zero` |
-| 10. `pip install numpy` into a global Python instead of the project | works on your laptop, fails in CI and for `uv run` | `test_project_declares_numpy` |
+| 6. `np.ascontiguousarray(x, dtype=np.float32)` | right for every array of 1 or more dimensions, but it returns at least 1-D: a 0-d scalar comes back with shape `(1,)` | `test_as_c_float32_keeps_a_scalar_0d` |
+| 7. `C[a, b] += 1` with index arrays | each distinct pair counts once ("aaaa" gives 1, not 3) | `test_bigram_counts_every_repeated_pair` |
+| 8. A `uint8` count table, or `uint8` pair codes | 999 repeats read as 231; codes `a * 255 + b` wrap | `test_bigram_counts_do_not_wrap_at_256` |
+| 9. `C / C.sum(axis=1)` without `keepdims` | no error on a square table, rows do not sum to 1 | `test_row_normalize_divides_rows_not_columns` |
+| 10. Dividing an empty row by its zero total | NaN rows that spread into every later sum | `test_row_normalize_leaves_empty_rows_zero` |
+| 11. `pip install numpy` into a global Python instead of the project | works on your laptop, fails in CI and for `uv run` | `test_project_declares_numpy` |
 
 ## 6. Where it's used next
 

@@ -462,8 +462,8 @@ def run(
                 Result(
                     c.id,
                     "pending",
-                    "no health endpoint to call (the health port is not exposed; "
-                    "set [deploy].gateway_health_url for kind runs)",
+                    "no health endpoint to call: pass --health-base URL of the health "
+                    "port (kind runs: set [deploy].gateway_health_url)",
                 )
             )
             continue

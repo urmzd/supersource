@@ -714,7 +714,7 @@ class Overlay:
         check = self.test_dir(mid) / "check"
         if not os.access(check, os.X_OK):
             return TestRun(
-                "none", False, True, f"no executable artifact check at {check}"
+                "check", False, True, f"no executable artifact check at {check}"
             )
         # A practice check that runs your entry points (dep.00 trains through
         # your ctypes loader) gets the same libtinyllm as the course tests:
@@ -723,14 +723,14 @@ class Overlay:
             lib, err = self.build_c_lib()
             if lib is None:
                 return TestRun(
-                    "none", False, False, "building libtinyllm failed:\n" + err
+                    "check", False, False, "building libtinyllm failed:\n" + err
                 )
         env = self.env()
         env["SS_COURSE_TREE"] = str(self.course)
         rc, out = ctx.run(
             [str(check)], cwd=self.learner or self.work, env=env, timeout=timeout
         )
-        return TestRun("none", rc == 0, True, out)
+        return TestRun("check", rc == 0, True, out)
 
     # -- one module's tests -----------------------------------------------------
 

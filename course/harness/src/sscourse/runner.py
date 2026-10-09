@@ -108,8 +108,10 @@ class Run:
 
     # -- verdict state -----------------------------------------------------------
 
-    def module_passed(self, mid: str) -> bool:
-        """A learner-sourced fresh pass (or a frozen superseded pass)."""
+    def module_passed(self, mid: str, smoke_ok: bool = False) -> bool:
+        """A learner-sourced fresh pass (or a frozen superseded pass). A
+        practice pass recorded under SS_SMOKE counts only when `smoke_ok`
+        (a `--smoke` milestone): its cluster tier never ran."""
         if self.learner is None:
             return False
         if mid.startswith("MS-") or mid.startswith("conform:"):
@@ -118,7 +120,7 @@ class Run:
         if mid not in self.reg.modules:
             return False
         st = learner.state(self.learner, self.course, self.reg, mid)
-        return st.status == "pass"
+        return st.status == "pass" or (smoke_ok and st.status == "smoke")
 
     def spec_path(self, version: str) -> Path:
         base = self.learner / "contracts" if self.learner else self.course / "contracts"

@@ -1,6 +1,7 @@
 """ss status [--graph] [--counts] [--json]   every module's state (DESIGN 5.3)
 
-States: todo, started, pass, stale, assisted, spoiled, self."""
+States: todo, started, pass, smoke (a practice pass under SS_SMOKE, shown as
+`pass (smoke)`: its cluster tier never ran), stale, assisted, spoiled, self."""
 
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from ..session import open_session
 
 COLOR = {
     "pass": ctx.GRN,
+    "smoke": ctx.YEL,
     "assisted": ctx.YEL,
     "spoiled": ctx.YEL,
     "self": ctx.YEL,
@@ -62,8 +64,9 @@ def main(argv: list[str]) -> int:
         if m.pass_ != cur:
             cur = m.pass_
             ctx.say(f"{ctx.BLD}pass {cur}{ctx.RST}")
+        shown = "pass (smoke)" if st.status == "smoke" else st.status
         ctx.say(
-            f"  {COLOR.get(st.status, '')}{st.status:<9}{ctx.RST} {m.id:<10} {m.title}"
+            f"  {COLOR.get(st.status, '')}{shown:<9}{ctx.RST} {m.id:<10} {m.title}"
             + (f"  {ctx.DIM}{st.note}{ctx.RST}" if st.note else "")
         )
     if not states:

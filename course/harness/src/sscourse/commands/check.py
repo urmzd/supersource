@@ -4,12 +4,16 @@ ss check --all [--ci]
 --all checks every started module in pass order. --ci is what the learner's
 own CI runs (`ss course ci` prints that recipe): it forbids --ref-deps, skips
 interactive proof rubrics (reported `self`), and runs practice checks with
-SS_SMOKE=1 (no cluster tier; a practice verdict under SS_SMOKE is recorded with
-mode "smoke"). With nothing started it is trivially green.
+SS_SMOKE=1 (no cluster tier; a practice verdict whose check skipped its
+cluster tier is recorded with mode "smoke"). With nothing started it is trivially green.
 
 Order (DESIGN 5.3, 5.4): not started (2), contracts content hash (4), dependency
 resolution (3), unit contract pre-check (4), cumulative smoke of every
 learner-sourced dep, then the module's course tests through the overlay.
+A practice check builds and runs the learner's own tree, so --ref-deps cannot
+substitute into it: a practice module whose deps would come from the
+reference is blocked (3) instead.
+
 The exit code is the verdict: 0 pass, 1 fail, 2 not started, 3 blocked by deps,
 4 contract drift, 5 harness or toolchain."""
 
@@ -73,10 +77,9 @@ def resolve_sources(
             continue
         if mode == "all" or d in chosen:
             sources[d] = "ref"
-        elif (
-            ledger.fresh_pass(s.learner, s.reg, d)
-            or learner.state(s.learner, s.course, s.reg, d).status == "pass"
-        ):
+        elif ledger.fresh_pass(s.learner, s.reg, d) or learner.state(
+            s.learner, s.course, s.reg, d
+        ).status in ("pass", "smoke"):
             sources[d] = "learner"
         elif mode == "failing":
             sources[d] = "ref"
@@ -117,8 +120,18 @@ def check_one(
         )
         return EXIT_HARNESS
     if m.kind == "drill":
-        say(f"{m.id} is a drill: use `ss drill start {m.id}`")
-        return EXIT_HARNESS
+        from .. import drills
+
+        name = next((d.name for d in drills.all_drills(s.course) if d.id == m.id), m.id)
+        v = ledger.latest(s.learner, mid)
+        say(
+            f"{m.id} is a drill, graded by `ss drill end`: run `ss drill start {name}`, "
+            "fix the system, then `ss drill end`"
+            + (f" (last graded: {v['result']})" if v else "")
+        )
+        if v:
+            return EXIT_PASS if v.get("result") == "pass" else EXIT_FAIL
+        return EXIT_NOT_STARTED
     later = learner.superseded(s.learner, s.course, s.reg, mid)
     prev = ledger.latest(s.learner, mid)
     if later and prev and prev.get("result") == "pass":
@@ -132,6 +145,7 @@ def check_one(
 
     def record(result: str, sources: dict | None = None, **extra) -> dict:
         srcs = {k: v for k, v in (sources or {}).items() if k != mid}
+        smoke = extra.pop("smoke", False)
         return ledger.append(
             s.learner,
             {
@@ -142,12 +156,7 @@ def check_one(
                 "result": result,
                 "assisted": any(v == "ref" for v in srcs.values()),
                 "mutation": None,
-                **(
-                    {"mode": "smoke"}
-                    if m.kind == "practice"
-                    and os.environ.get("SS_SMOKE", "") not in ("", "0")
-                    else {}
-                ),
+                **({"mode": "smoke"} if smoke else {}),
                 "tainted": s.tree.tainted,
                 "course_sha": s.tree.sha[:12],
                 **extra,
@@ -169,14 +178,27 @@ def check_one(
 
     sources, blocked, notes = resolve_sources(s, mid, ref_mode, set(chosen))
     if blocked:
-        why = ", ".join(
-            f"{d} ({learner.state(s.learner, s.course, s.reg, d).status})"
-            for d in blocked
-        )
+
+        def _why(d: str) -> str:
+            st = learner.state(s.learner, s.course, s.reg, d)
+            return f"{d} ({st.status}{': ' + st.note if st.note else ''})"
+
+        why = ", ".join(_why(d) for d in blocked)
         say(
-            f"{ctx.YEL}BLOCKED{ctx.RST} {mid} needs {why}. Fix it, or rerun with --ref-deps"
+            f"{ctx.YEL}BLOCKED{ctx.RST} {mid} needs {why}. Fix it"
+            + ("" if m.kind == "practice" else ", or rerun with --ref-deps")
         )
         return finish(EXIT_BLOCKED, record("blocked", sources, blocked=blocked))
+    refs = sorted(d for d, src in sources.items() if src == "ref")
+    if m.kind == "practice" and refs:
+        # A practice check builds and runs YOUR tree (images, services, entry
+        # points; D16): the reference units would never reach what it runs.
+        say(
+            f"{ctx.YEL}BLOCKED{ctx.RST} {mid}'s check builds and runs your own tree, so "
+            f"--ref-deps cannot stand in for {', '.join(refs)}: pass "
+            f"{'it' if len(refs) == 1 else 'them'} first (ss check <ID>)"
+        )
+        return finish(EXIT_BLOCKED, record("blocked", sources, blocked=refs))
     for n in notes:
         say(f"  {ctx.DIM}{n}{ctx.RST}")
 
@@ -262,9 +284,17 @@ def check_one(
             f"  {ctx.DIM}mutation grade of your tests: `ss mutate {mid}` arrives with B3; not part of this verdict yet{ctx.RST}"
         )
     result = "pass" if ok else "fail"
+    # Smoke only when the check really skipped its cluster tier under
+    # SS_SMOKE (_lib/practice.py says so); a check without one is a full pass.
+    smoke = (
+        m.kind == "practice"
+        and os.environ.get("SS_SMOKE", "") not in ("", "0")
+        and any("cluster tier skipped" in r.output for r in runs)
+    )
     v = record(
         result,
         sources,
+        smoke=smoke,
         regressions=regressions,
         **({"kind_filter": kind} if kind else {}),
     )

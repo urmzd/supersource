@@ -38,6 +38,23 @@ def test_broadcast_shape_hand_examples():
     assert broadcast_shape((4, 1), (0,)) == (4, 0)
 
 
+def test_broadcast_shape_is_your_own_rule(monkeypatch):
+    # WHY: the exercise is the rule itself. numpy's own broadcasting helpers
+    #      are switched off here, so a broadcast_shape that delegates to them
+    #      fails while one that applies section 2.3 passes.
+    # KIND: unit
+    # CHAPTER: lang.01 section 4
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("broadcast_shape called numpy's broadcasting; apply the rule yourself")
+
+    for name in ("broadcast_shapes", "broadcast", "broadcast_arrays", "broadcast_to"):
+        monkeypatch.setattr(np, name, refuse)
+    assert broadcast_shape((8, 1, 6, 1), (7, 1, 5)) == (8, 7, 6, 5)
+    with pytest.raises(ValueError):
+        broadcast_shape((3,), (4,))
+
+
 def test_broadcast_shape_aligns_on_the_right():
     # WHY: shapes line up from their LAST axis. Padding on the right instead
     #      turns (3,) + (3, 1) into (3, 1) when numpy says (3, 3), which is
@@ -192,3 +209,15 @@ def test_as_c_float32_copies_a_strided_slice():
     y = as_c_float32(x[:, ::2])
     assert y.flags.c_contiguous and y.shape == (3, 2)
     assert_close(y, np.array([[0, 2], [4, 6], [8, 10]], dtype=np.float32))
+
+
+def test_as_c_float32_keeps_a_scalar_0d():
+    # WHY: a scalar tensor (shape [], one element) is a legal checkpoint
+    #      entry; L0.0's safetensors reader must hand it back with shape ().
+    #      np.ascontiguousarray returns at least 1-D and turns it into (1,).
+    # KIND: boundary
+    # CHAPTER: lang.01 section 5, pitfall 6
+    y = as_c_float32(np.float64(2.5))
+    assert y.shape == () and y.dtype == np.float32 and float(y) == 2.5
+    x = np.zeros((), dtype=np.float32)
+    assert as_c_float32(x).shape == ()

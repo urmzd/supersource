@@ -11,6 +11,7 @@ deps      = []
 reading   = ["craft.01", "rt.01", "M03.1", "L10.0", "gw.00"]
 used_by   = []
 units     = []
+artifacts = ["docs/adr"]          # learner files the check grades: hashed into the verdict, present = started (I16)
 milestone = "MS-P1"
 ci        = "pr"
 

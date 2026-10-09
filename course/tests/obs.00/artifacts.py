@@ -299,7 +299,15 @@ def test_export_never_blocks_requests(c: Ctx) -> None:
         try:
             times = []
             for _ in range(3):
-                status, took = loc.request(timeout=30)
+                # 3 s is twice the limit below: a request still waiting then is
+                # blocked on the collector, and waiting longer proves nothing.
+                try:
+                    status, took = loc.request(timeout=3)
+                except Fail as e:
+                    raise Fail(
+                        f"with a hanging collector a request did not finish in 3 s ({e}): "
+                        "export must not wait on the collector (queue it, with a timeout)"
+                    ) from None
                 if status != 200:
                     raise Fail(f"with a hanging collector a request answered {status}")
                 times.append(took)

@@ -151,6 +151,25 @@ SS_TEST(alloc_alignment_by_hand) {
     SS_TRUE(ok);
 }
 
+SS_TEST(set_allocator_null_restores_the_default) {
+    /* WHY: tl_set_allocator(NULL) puts the default hook back. A library that
+     *      keeps the last hook after NULL keeps calling a hook whose owner may
+     *      be gone (a test's counters on its stack, a freed arena).
+     * KIND: unit
+     * CHAPTER: rt.01 section 2 */
+    hook_calls calls = {0, 0};
+    tl_allocator mine = {counting_alloc, counting_free, &calls};
+    SS_EQ(tl_set_allocator(&mine), TL_OK);
+    SS_EQ(tl_set_allocator(NULL), TL_OK);
+    void *p = tl_alloc(32, 16);
+    tl_free(p);
+    long allocs = calls.allocs, frees = calls.frees;
+    restore_harness_hook();
+    SS_TRUE(p != NULL);
+    SS_EQ(allocs, 0);
+    SS_EQ(frees, 0);
+}
+
 SS_TEST(alloc_rejects_zero_and_bad_alignment) {
     /* WHY: tl_alloc(0, ...) and a non power of two alignment are caller bugs
      *      the contract defines: NULL with the error slot set, and the hook

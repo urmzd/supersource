@@ -13,6 +13,7 @@ reaches every child (`go run` and `uv run` fork the real server).
 from __future__ import annotations
 
 import os
+import random
 import shlex
 import signal
 import socket
@@ -42,12 +43,35 @@ SECTION_PORTS = {
 
 
 class PortPool:
-    """Free TCP ports from the OS, never handing the same one out twice."""
+    """Free TCP ports, never handing the same one out twice.
+
+    Ports come from 20000 to 31999, below the ephemeral ranges of Linux
+    (32768+) and macOS (49152+): a port the OS picks for `bind(0)` can be handed
+    to some process's outgoing connection (an engine posting spans) before the
+    service that was promised it binds, which fails with EADDRINUSE. Each
+    candidate is test-bound on all interfaces, as services listen there."""
+
+    LOW, HIGH = 20000, 32000
 
     def __init__(self) -> None:
         self.used: set[int] = set()
+        self.rng = random.Random()
+
+    @staticmethod
+    def _free(port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("0.0.0.0", port))
+            except OSError:
+                return False
+        return True
 
     def take(self) -> int:
+        for _ in range(256):
+            p = self.rng.randrange(self.LOW, self.HIGH)
+            if p not in self.used and self._free(p):
+                self.used.add(p)
+                return p
         for _ in range(64):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.bind(("127.0.0.1", 0))

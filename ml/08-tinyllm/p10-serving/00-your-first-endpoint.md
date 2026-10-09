@@ -37,7 +37,7 @@ ss diff  L10.0               # after passing: your code against the reference
 ```bash
 make -C c                                         # your c/Makefile builds c/build/libtinyllm.a
 cargo build --release --manifest-path rust/Cargo.toml
-uv run --project python python -m tinyllm train bigram --data some.txt --out artifacts/bigram
+uv run --project python python python/tinyllm/__main__.py train bigram --data some.txt --out artifacts/bigram
 rust/target/release/tl-serve --model-dir artifacts/bigram --port 8000 --health-port 9464
 curl -N localhost:8000/v1/completions -d '{"model":"tracer","prompt":"Once","max_tokens":32,"temperature":0,"stream":true}'
 ```
@@ -242,6 +242,7 @@ Your `main.rs` parses `--model-dir`, `--port`, `--health-port` (exit 2 on a usag
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
+| `hand_example_completion` | unit | `a` greedy 3 is `bcd` with every Completion field | the worked example over the wire |
 | `abi_version_is_1` | conformance | `tl_abi_version()` is 1 and `check_abi` accepts it | `L10.1` refuses a mismatched library the same way |
 | `matmul_hand_example` | unit | the section 3 product, with and without `trans_b` | every logit goes through this call |
 | `matmul_rejects_short_slices` | boundary | a short slice is an `Err` before C runs; C is untouched | memory safety at the FFI boundary |
@@ -259,7 +260,6 @@ Your `main.rs` parses `--model-dir`, `--port`, `--health-port` (exit 2 on a usag
 | `sampling_skips_nan_logits` | boundary | 200 draws never return a NaN id | a broken weight never becomes a token |
 | `temperature_sampling_matches_softmax` | statistical | 2000 draws fit 0.9 : 0.1 at T = 0.5 (chi-square < 10.83) | the sampler implements the formula, not an approximation |
 | `utf8_stream_holds_back_incomplete_sequences` | boundary | `C3 A9 FF` gives `""`, `"é"`, U+FFFD; `E2 82` then finish gives one U+FFFD | the incremental rule of `formats/tokenizer.md` |
-| `hand_example_completion` | unit | `a` greedy 3 is `bcd` with every Completion field | the worked example over the wire |
 | `stream_framing_is_exact` | conformance | event framing, one `id`, `null` then `"length"`, `[DONE]`, no `Content-Length` | `gw.00` and every SSE client parse these bytes |
 | `max_tokens_counts_generated_tokens_only` | conformance | usage 6, 4, 10 for `héllo`; four chunks | usage is what the gateway's ledger bills later |
 | `stream_equals_nonstream_at_temperature_0` | differential | chunk texts concatenate to the plain text, NULs escaped | conformance case `v0.stream.equals_nonstream` |

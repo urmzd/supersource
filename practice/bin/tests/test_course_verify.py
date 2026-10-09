@@ -118,7 +118,9 @@ def test_lint_flags_stale_modules_tsv_and_fixes_it(ss):
             'title     = "Document the demo system"', 'title     = "Document it"'
         )
     )
-    ss("lint", rc=0)  # titles are not in modules.tsv
+    ch = ss.site / "chapters/craft-90-docs.md"
+    ch.write_text(ch.read_text().replace("# Document the demo system", "# Document it"))
+    ss("lint", rc=0)  # titles are not in modules.tsv (the H1 must follow the registry)
     toml.write_text(
         toml.read_text().replace('lang      = ["docs"]', 'lang      = ["none"]')
     )

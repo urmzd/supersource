@@ -284,8 +284,27 @@ def stub(text: str, path: str, want: str | None = None) -> str:
         if need_stddef and not re.search(r"#\s*include\s*<std(def|lib|io)\.h>", result):
             pre.append("#include <stddef.h> /* ss stub: NULL */")
         if pre:
-            result = "\n".join(pre) + "\n" + result
+            # After the file's own header comment, so it still opens the file.
+            at = _after_header_comment(result)
+            result = result[:at] + "\n".join(pre) + "\n" + result[at:]
     return result
+
+
+def _after_header_comment(text: str) -> int:
+    """Offset just past a leading `/* ... */` or run of `//` lines, else 0."""
+    if text.startswith("/*"):
+        end = text.find("*/")
+        if end < 0:
+            return 0
+        nl = text.find("\n", end)
+        return len(text) if nl < 0 else nl + 1
+    at = 0
+    while text.startswith("//", at):
+        nl = text.find("\n", at)
+        if nl < 0:
+            return len(text)
+        at = nl + 1
+    return at
 
 
 # ---------------------------------------------------------------------------

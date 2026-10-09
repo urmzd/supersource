@@ -12,6 +12,7 @@ used_by   = []                       # a primer has no code call site; L10.0 lis
 # in course/ref/primers/lang.04/). A Rust unit would be copied into the
 # course's Rust farm next to the real crates (DEVIATIONS lang.04-1).
 units     = []
+artifacts = ["primers/lang.04"]   # learner files the check grades: hashed into the verdict, present = started (I16)
 upgrades  = []
 milestone = "MS-P1"
 ci        = "pr"

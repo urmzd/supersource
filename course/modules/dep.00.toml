@@ -13,6 +13,7 @@ deps      = ["L10.0", "gw.00"]
 reading   = ["lang.07", "L0.0", "infrastructure/01-containers-kubernetes"]
 used_by   = ["obs.00", "ops.00"]        # obs.00 reads traces from this deployment; ops.00 drills it
 units     = []                          # entry-point territory (D16): deploy/ is yours; reference in course/ref/entry/deploy/
+artifacts = ["deploy", ".dockerignore"] # learner files the check grades: hashed into the verdict, present = started (I16)
 milestone = "MS-P1"
 ci        = "pr"
 

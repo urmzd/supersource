@@ -165,16 +165,17 @@ Your own `c/Makefile` (entry-point territory: the course ships none) builds `c/b
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
+| `alloc_alignment_by_hand` | unit | section 3: aligned for 1 to 4096 with the default hook | vector loads in `L9.*` kernels |
 | `abi_version_matches_header` | unit, smoke | `tl_abi_version() == TL_ABI_VERSION == 1` | every binding's first call |
 | `status_str_names_every_code` | unit | each code 0 to 10 gives its constant's name | messages name the error |
 | `status_str_unknown_codes` | boundary | 11, -1, `INT32_MAX`, `INT32_MIN` give `"TL_UNKNOWN"` without reading out of bounds | codes from a newer ABI |
 | `error_slot_copies_and_truncates` | boundary, regression | the given slot copies, maps NULL to "", truncates | every unit's error path |
 | `alloc_goes_through_the_hook` | fault | `tl_alloc` and `tl_free` reach the installed hook (counted) | the leak check of every later C module |
-| `alloc_alignment_by_hand` | unit | section 3: aligned for 1 to 4096 with the default hook | vector loads in `L9.*` kernels |
 | `alloc_rejects_zero_and_bad_alignment` | boundary | NULL, message set, hook never called | defined behavior at the boundary |
 | `alloc_failure_sets_the_error` | fault | a failing hook gives NULL and a message | `TL_ENOMEM` paths in constructors |
 | `set_allocator_rejects_half_a_hook` | boundary | `TL_EINVAL`; the old hook stays | no hook that can allocate but not free |
 | `set_allocator_copies_the_struct` | fault | the hook keeps working after the caller's struct changes | stack-built hooks |
+| `set_allocator_null_restores_the_default` | unit | after `tl_set_allocator(NULL)` the old hook is never called again | a test's or an arena's hook outliving its owner |
 | `free_null_is_a_no_op` | boundary | `tl_free(NULL)` never reaches the hook | cleanup paths |
 | `test_load_checks_abi_version` | unit, smoke | `load()` opens `TINYLLM_LIB` and reports version 1 | `L0.0`'s first call into C |
 | `test_status_names_match_the_library` | unit | Python's `STATUS_NAMES` equals C's `tl_status_str` | one name per error everywhere |
@@ -186,7 +187,8 @@ Your own `c/Makefile` (entry-point territory: the course ships none) builds `c/b
 | `test_signatures_cover_the_v0_header` | unit | `tl_matmul_f32` has 13 argtypes with the header's widths | `M03.1` and `L0.0` |
 | `test_load_caches_one_lib_per_path` | unit | `load()` returns the same `Lib` | no reload per call |
 | `test_library_path_prefers_the_argument` | unit | explicit path, then `TINYLLM_LIB` | tools that load a specific file |
-| `test_f32_ptr_checks_dtype_and_stride` | boundary | float64 and column views are refused | `M03.1`'s Python tests and `L0.0` |
+| `test_library_path_falls_back_then_raises` | boundary | with neither, `<repo>/c/build/libtinyllm.*`, else `FileNotFoundError` | a clear error when nothing is built |
+| `test_f32_ptr_checks_dtype_and_stride` | boundary | float64 and column views are refused; the pointer is the array's own memory | `M03.1`'s Python tests and `L0.0` |
 | `test_exports_only_tl_symbols` | conformance | `nm` on the built library shows only `tl_` names | rule 7 of c/ABI.md |
 
 ## 5. Pitfalls
@@ -203,6 +205,8 @@ Your own `c/Makefile` (entry-point territory: the course ships none) builds `c/b
 | 8. binding the whole table when the library loads | any library missing one symbol fails to load at all | `test_binds_symbols_lazily` (mutant `s13`) |
 | 9. reading `tl_last_error` after another `tl_` call | the message belongs to the wrong call, or is empty | `test_stubbed_call_raises_with_the_message` (mutant `s12`) |
 | 10. declaring `int64_t` dimensions as `c_int` | works for small matrices on some machines, garbage on others | `test_signatures_cover_the_v0_header` (mutant `s16`) |
+| 11. `f32_ptr` taking the pointer of `np.array(a)` (a copy) | the pointer is to a temporary copy: C's writes to an output matrix vanish, and the copy may be freed before C reads it | `test_f32_ptr_checks_dtype_and_stride` |
+| 12. `tl_set_allocator(NULL)` that keeps the old hook | memory keeps coming from a hook whose owner is gone | `set_allocator_null_restores_the_default` |
 
 ## 6. Where it's used next
 

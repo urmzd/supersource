@@ -145,5 +145,11 @@ def main(argv: list[str]) -> int:
             f"  your tests {lt.get('path')}  rung R{lt.get('rung')}, mutation threshold {lt.get('threshold')}"
         )
     ctx.say(f"  tests     ss tests {m.id}")
-    ctx.say(f"  check     ss check {m.id}")
+    if m.kind == "drill":
+        from .. import drills
+
+        name = next((d.name for d in drills.all_drills(s.course) if d.id == m.id), m.id)
+        ctx.say(f"  run       ss drill start {name}, then ss drill end (graded there)")
+    else:
+        ctx.say(f"  check     ss check {m.id}")
     return 0

@@ -9,7 +9,7 @@ and course/ref/system.toml on top, committed as a conventional commit. Then,
 through practice/bin/ss exactly as a learner runs it:
 
   1. ss check --all --ci                      every started module passes (practice checks without their cluster tier)
-  2. ss milestone <MS> --smoke                 every `ci = "pr"` milestone; --ref-deps when it requires a drill
+  2. ss milestone <MS> --smoke                 every `ci = "pr"` milestone (drills are not required under --smoke)
   3. ss conform openapi:<v> --target <tier>    each tier system.toml declares, each version with cases
   4. ss export <tmp> --allow-incomplete        then the vendored tests run natively through the glue
 
@@ -130,6 +130,36 @@ def commit_all(lr: Path, msg: str) -> tuple[int, str]:
     )
 
 
+def _lock(lr: Path, env: dict) -> None:
+    """Write the lockfiles the first checks would otherwise create (Cargo.lock,
+    uv.lock), so they are committed with the reference system and `ss export`
+    finds a clean tree. A learner commits theirs the same way. Best effort:
+    a project that cannot lock offline is left for its first check."""
+    for toml in [lr / "rust" / "Cargo.toml", *sorted(lr.glob("primers/*/Cargo.toml"))]:
+        if toml.is_file() and not (toml.parent / "Cargo.lock").exists():
+            ctx.run(
+                [
+                    "cargo",
+                    "generate-lockfile",
+                    "--offline",
+                    "--manifest-path",
+                    str(toml),
+                ],
+                env=env,
+                timeout=120,
+            )
+    for toml in [
+        lr / "python" / "pyproject.toml",
+        *sorted(lr.glob("primers/*/pyproject.toml")),
+    ]:
+        if toml.is_file() and not (toml.parent / "uv.lock").exists():
+            ctx.run(
+                ["uv", "lock", "--quiet", "--project", str(toml.parent)],
+                env=env,
+                timeout=300,
+            )
+
+
 def assemble(
     reg, course: Path, lr: Path, env: dict, only: list[str] | None = None
 ) -> tuple[bool, str]:
@@ -159,6 +189,7 @@ def assemble(
         _copy_dropping_markers(ref / "entry", lr)
     if (ref / "system.toml").is_file():
         shutil.copy2(ref / "system.toml", lr / "system.toml")
+    _lock(lr, env)
     rc, out = commit_all(lr, "feat: the reference system")
     if rc != 0:
         return False, "commit the reference learner\n" + out
@@ -221,13 +252,17 @@ def run(
         if not kind and ms.ci != "pr":
             continue
         # Drills are graded by `ss drill end` with a responder (the nightly
-        # kind-e2e job, B9), not here: a milestone that requires one runs
-        # assisted for that drill.
-        drills_ = [
-            r_
-            for r_ in milestones.plan(course, msid, smoke=not kind).requires
-            if r_ in reg.modules and reg.get(r_).kind == "drill"
-        ]
+        # kind-e2e job, B9), not here. `--smoke` does not require them (I30);
+        # a full (kind) run that requires one runs assisted for that drill.
+        drills_ = (
+            [
+                r_
+                for r_ in milestones.plan(course, msid, smoke=False).requires
+                if r_ in reg.modules and reg.get(r_).kind == "drill"
+            ]
+            if kind
+            else []
+        )
         args = ["milestone", msid] + ([] if kind else ["--smoke"])
         args += ["--ref-deps"] if drills_ else []
         rc, out = _ss(env, *args)

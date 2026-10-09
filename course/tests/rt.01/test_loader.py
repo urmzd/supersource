@@ -10,6 +10,7 @@ missing symbol, a status code from the future.
 from __future__ import annotations
 
 import ctypes
+import importlib.util
 import os
 import platform
 import shutil
@@ -223,6 +224,38 @@ def test_library_path_prefers_the_argument(monkeypatch):
     assert library_path("/explicit/libtinyllm.so") == "/explicit/libtinyllm.so"
 
 
+def _loader_copy(root: Path):
+    """Import a copy of YOUR libtinyllm.py placed at root/python/tinyllm/ffi/,
+    so its default path (<repo>/c/build/...) points under root."""
+    import tinyllm.ffi.libtinyllm as mine
+
+    dest = root / "python" / "tinyllm" / "ffi" / "libtinyllm.py"
+    dest.parent.mkdir(parents=True)
+    dest.write_text(Path(mine.__file__).read_text())
+    spec = importlib.util.spec_from_file_location("ss_loader_copy", dest)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_library_path_falls_back_then_raises(tmp_path, monkeypatch):
+    # WHY: with no argument and no TINYLLM_LIB the loader looks for the
+    #      library your c/Makefile builds, and when that is missing too it
+    #      must raise FileNotFoundError, not hand ctypes a path that fails
+    #      later with an unhelpful OSError.
+    # KIND: boundary
+    # CHAPTER: rt.01 section 4
+    monkeypatch.delenv("TINYLLM_LIB", raising=False)
+    mod = _loader_copy(tmp_path)
+    with pytest.raises(FileNotFoundError):
+        mod.library_path()
+    ext = "dylib" if platform.system() == "Darwin" else "so"
+    built = tmp_path / "c" / "build" / f"libtinyllm.{ext}"
+    built.parent.mkdir(parents=True)
+    built.write_bytes(b"")
+    assert Path(mod.library_path()).resolve() == built.resolve()
+
+
 def test_f32_ptr_checks_dtype_and_stride():
     # WHY: ctypes passes whatever address it is given. A float64 array or a
     #      column view handed to a float* kernel reads the wrong bytes with no
@@ -238,6 +271,11 @@ def test_f32_ptr_checks_dtype_and_stride():
     x = np.arange(6, dtype=np.float32).reshape(2, 3)
     p = f32_ptr(x[1:])  # a row slice keeps unit stride in the last axis
     assert [p[i] for i in range(3)] == [3.0, 4.0, 5.0]
+    # The pointer is the array's own memory, not a temporary copy: C writes
+    # through it (an output matrix) and the caller must see them.
+    p[0] = -1.0
+    assert x[1, 0] == -1.0
+    assert ctypes.cast(f32_ptr(x), ctypes.c_void_p).value == x.ctypes.data
 
 
 def test_exports_only_tl_symbols():

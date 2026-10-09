@@ -1,5 +1,5 @@
 <!-- ss:module gw.00 -->
-# The tracer gateway: one key, a stream passed through, one trace
+# Tracer gateway: static API-key check, SSE pass-through without buffering, traceparent and X-Request-Id propagation
 
 ## Overview
 
@@ -71,7 +71,7 @@ With an early exit, the attacker guesses the first byte: the one of 256 values t
 
 ### 2.3 Streaming: flush every chunk, never re-frame
 
-The engine answers a streamed completion with **server-sent events** (`lang.05`): `Content-Type: text/event-stream`, then one `data: <json>\n\n` event per token, then `data: [DONE]\n\n`, sent with chunked transfer encoding. Each event is about 160 bytes. Go's `http.ResponseWriter` buffers the body before sending it (`lang.06`, 2.6). How long does the first token wait in that buffer?
+The engine answers a streamed completion with **server-sent events** (`lang.05`): `Content-Type: text/event-stream`, then one `data: <json>\n\n` event per token, then `data: [DONE]\n\n`, with no `Content-Length` and `Connection: close`: the stream ends when the engine closes the connection. Each event is about 160 bytes. Go's `http.ResponseWriter` buffers the body before sending it (`lang.06`, 2.6). How long does the first token wait in that buffer?
 
 | Symbol | Meaning | Value here |
 |---|---|---|
@@ -223,11 +223,11 @@ func ParseTraceparent(h string) (traceID, parentID, flags string, ok bool)
 
 `ss start gw.00` writes this file with every body stubbed (`panic("todo: gw.00")`); the unexported helpers in it (`authorized`, `copyFlush`, `copyHeaders`, `requestID`, `writeError`, ...) are a suggested decomposition, and only the exported names above are the interface. Use only the standard library.
 
-**Your entry point** (`go/cmd/gateway/main.go`, not checked by `ss check`, run by MS-P1) takes the tracer flags of `spec/cli-roles.md`: `--port` for the API, `--health-port` for `GET /healthz` (200 while up) and `GET /readyz` (200 once `<upstream>/healthz` answers, else 503), and `--upstream`. It reads the key from `TL_API_KEY`, serves `NewProxy` on the API port, and exits 0 on SIGTERM. Declare it:
+**Your entry point** (`go/cmd/gateway/main.go`, not checked by `ss check`, run by MS-P1) takes the tracer flags of `spec/cli-roles.md`: `--port` for the API, `--health-port` for `GET /healthz` (200 while up) and `GET /readyz` (200 once `<upstream>/healthz` answers, else 503), and `--upstream`. It reads the key from `TL_API_KEY`, serves `NewProxy` on the API port, and exits 0 on SIGTERM. Declare it (`-C go` runs `go` inside `go/`, where `go.mod` is; from the repo root `go run ./go/cmd/gateway` finds no module):
 
 ```toml
 [entry]
-gateway = ["go", "run", "./go/cmd/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
+gateway = ["go", "run", "-C", "go", "./cmd/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
 ```
 
 ### What the tests check

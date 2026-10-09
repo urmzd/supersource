@@ -76,8 +76,8 @@ Accepted (2026-10-08)
 ## Context
 
 The tracer must run end to end in Pass 1, before any tokenizer module exists.
-The engine is std-only Rust with no JSON parser, so it cannot load a
-tokenizer.json. Python, Rust, and the conformance suite must agree on token
+The engine is std-only Rust with no tokenizer library: it parses JSON, but
+it has no BPE code to apply a tokenizer.json. Python, Rust, and the conformance suite must agree on token
 ids exactly, and usage.prompt_tokens must be computable by anyone.
 
 ## Decision
@@ -108,7 +108,7 @@ How it was written, step by step:
 
 1. **Name the decision in the title.** Not "Tokenizer" (a topic) but "The tracer tokenizer is raw UTF-8 bytes" (a claim someone could disagree with).
 2. **Status.** It is merged and the system uses it, so `Accepted`, with the date it was merged.
-3. **Context: list the forces, not the answer.** Four facts drove it: it must exist in Pass 1, the engine has no JSON parser, three implementations must agree exactly, and usage must be countable. Each fact is checkable. None of them mentions bytes yet: the context should make a reader expect a decision, not announce it.
+3. **Context: list the forces, not the answer.** Four facts drove it: it must exist in Pass 1, the engine has no tokenizer library, three implementations must agree exactly, and usage must be countable. Each fact is checkable. None of them mentions bytes yet: the context should make a reader expect a decision, not announce it.
 4. **Decision: one sentence starting "We will".** Then the precise details a reader needs to recognize the decision in code: 256 ids, no merges, no special tokens, and the config key.
 5. **Consequences: count both columns.** Two goods and two bads. The second bad (incomplete UTF-8 while streaming) is the one most likely to bite later; it is why `formats/tokenizer.md` has an incremental decoding rule.
 6. **Alternatives: each with one reason.** Two rejected options, each in one row.

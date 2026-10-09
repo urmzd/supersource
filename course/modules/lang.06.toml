@@ -9,6 +9,7 @@ deps      = []
 reading   = ["lang.03", "lang.05"]   # pointers and the dynamic array that slices echo; the HTTP and SSE the proxy forwards
 used_by   = []                     # a primer has no code call site; gw.00 (and later dur.01, load.01) list it in `reading`
 units     = ["primers/lang.06/proxy.go"]
+artifacts = ["primers/lang.06"]   # learner files the check grades: hashed into the verdict, present = started (I16)
 milestone = "MS-P1"
 ci        = "pr"
 

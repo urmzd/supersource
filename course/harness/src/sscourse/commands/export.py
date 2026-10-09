@@ -40,7 +40,7 @@ from .. import (
 from ..overlay import Overlay
 from ..session import Session, open_session
 
-DONE = ("pass", "assisted", "spoiled", "self")
+DONE = ("pass", "smoke", "assisted", "spoiled", "self")
 VENDOR = "third_party/supersource"
 
 CONFTEST = '''"""Test glue written by `ss export` (not a runner): lets the vendored
@@ -95,7 +95,10 @@ def _copy_tree(src: Path, dest: Path) -> int:
     n = 0
     for p in sorted(src.rglob("*")):
         rel = p.relative_to(src)
-        if p.is_dir() or any(x in ("__pycache__", ".pytest_cache") for x in rel.parts):
+        # Caches (__pycache__, .pytest_cache, .ruff_cache, ...) are never vendored.
+        if p.is_dir() or any(
+            x == "__pycache__" or x.startswith(".") for x in rel.parts[:-1]
+        ):
             continue
         q = dest / rel
         q.parent.mkdir(parents=True, exist_ok=True)
@@ -124,11 +127,11 @@ def milestones_earned(lr: Path) -> list[tuple[str, str]]:
     seen: dict[str, str] = {}
     for e in ledger.entries(lr):
         if e.get("kind") == "milestone" and e.get("result") == "pass":
-            tag = (
-                "smoke"
-                if e.get("mode") == "smoke"
-                else ("assisted" if e.get("assisted") else "pass")
+            flags = (
+                ("smoke", e.get("mode") == "smoke"),
+                ("assisted", bool(e.get("assisted"))),
             )
+            tag = ", ".join(t for t, on in flags if on) or "pass"
             if seen.get(e["id"]) != "pass":
                 seen[e["id"]] = tag
     return sorted(seen.items())

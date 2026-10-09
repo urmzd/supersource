@@ -9,6 +9,7 @@ deps      = []
 reading   = []
 used_by   = []                     # a primer has no code call site; craft.01 lists it in `reading`
 units     = []                     # the artifacts are a Makefile and a shell script, which the stubber has no rule for
+artifacts = ["primers/lang.02"]   # learner files the check grades: hashed into the verdict, present = started (I16)
 milestone = "MS-P0"
 ci        = "pr"
 

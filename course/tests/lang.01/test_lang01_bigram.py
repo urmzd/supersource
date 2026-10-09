@@ -7,7 +7,6 @@ model rather than a crash.
 
 import ast
 import inspect
-import textwrap
 
 import numpy as np
 from _lib.close import assert_close
@@ -48,7 +47,7 @@ def test_bigram_counts_every_repeated_pair():
     #      not once per occurrence: "aaaa" would count aa as 1, not 3. Use
     #      np.add.at or np.bincount.
     # KIND: boundary
-    # CHAPTER: lang.01 section 5, pitfall 6
+    # CHAPTER: lang.01 section 5, pitfall 7
     c = bigram_counts(b"aaaa")
     assert c[ord("a"), ord("a")] == 3
     assert int(c.sum()) == 3
@@ -58,7 +57,7 @@ def test_bigram_counts_do_not_wrap_at_256():
     # WHY: the counts must be int64. A uint8 count array wraps at 256, so
     #      999 repeats read as 231; the bigram would then think "aa" is rare.
     # KIND: boundary
-    # CHAPTER: lang.01 section 5, pitfall 7
+    # CHAPTER: lang.01 section 5, pitfall 8
     c = bigram_counts(b"a" * 1000)
     assert c.dtype == np.int64
     assert c[ord("a"), ord("a")] == 999
@@ -114,7 +113,8 @@ def test_bigram_counts_has_no_python_loop():
     #      or comprehension may appear in bigram_counts.
     # KIND: unit
     # CHAPTER: lang.01 section 4
-    src = textwrap.dedent(inspect.getsource(bigram.bigram_counts))
+    #      A helper of your own that bigram_counts calls counts as part of
+    #      it, so the scan follows calls to functions defined in bigram.py.
     loops = (
         ast.For,
         ast.While,
@@ -123,8 +123,25 @@ def test_bigram_counts_has_no_python_loop():
         ast.DictComp,
         ast.GeneratorExp,
     )
-    found = [type(n).__name__ for n in ast.walk(ast.parse(src)) if isinstance(n, loops)]
-    assert not found, f"bigram_counts contains a Python loop: {found}"
+    module_tree = ast.parse(inspect.getsource(bigram))
+    defs = {
+        n.name: n
+        for n in ast.walk(module_tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    found, seen, todo = [], set(), ["bigram_counts"]
+    while todo:
+        name = todo.pop()
+        if name in seen or name not in defs:
+            continue
+        seen.add(name)
+        for node in ast.walk(defs[name]):
+            if isinstance(node, loops):
+                found.append(f"{type(node).__name__} in {name}")
+            elif isinstance(node, ast.Name) and node.id in defs:
+                todo.append(node.id)
+    assert "bigram_counts" in seen, "bigram.py defines no bigram_counts"
+    assert not found, f"bigram_counts runs a Python loop: {found}"
 
 
 def test_row_normalize_hand_example():
@@ -143,7 +160,7 @@ def test_row_normalize_divides_rows_not_columns():
     #      table gives no shape error, only wrong numbers. The rows of a
     #      correct result sum to 1.
     # KIND: boundary
-    # CHAPTER: lang.01 section 5, pitfall 8
+    # CHAPTER: lang.01 section 5, pitfall 9
     c = np.array([[1, 3, 0], [1, 1, 2], [5, 0, 5]])
     p = row_normalize(c)
     assert_close(p.sum(axis=1), np.ones(3))
@@ -154,7 +171,7 @@ def test_row_normalize_leaves_empty_rows_zero():
     # WHY: most of the 256 rows are empty for real text. 0/0 is NaN, and one
     #      NaN in a probability table poisons every sum that touches it.
     # KIND: boundary
-    # CHAPTER: lang.01 section 5, pitfall 9
+    # CHAPTER: lang.01 section 5, pitfall 10
     p = row_normalize(bigram_counts(b"banana"))
     assert not np.isnan(p).any()
     sums = p.sum(axis=1)

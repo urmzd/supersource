@@ -45,6 +45,11 @@ class Module:
     tests: dict = field(default_factory=dict)
     fixtures: dict = field(default_factory=dict)
     learner_tests: dict | None = None
+    # Learner-repo files or directories a practice module or drill grades
+    # (primers/<id>/, deploy/, docs/adr/): hashed into its verdict's tree so
+    # a pass goes stale when they change, and their presence counts as
+    # started (DEVIATIONS I16).
+    artifacts: list[str] = field(default_factory=list)
     source: Path | None = None
 
     @property
@@ -164,7 +169,16 @@ def _natural(mid: str) -> tuple:
     return tuple(int(t) if t.isdigit() else t for t in re.split(r"(\d+)", mid))
 
 
-_LIST_FIELDS = ("lang", "contract", "deps", "reading", "used_by", "units", "upgrades")
+_LIST_FIELDS = (
+    "lang",
+    "contract",
+    "deps",
+    "reading",
+    "used_by",
+    "units",
+    "upgrades",
+    "artifacts",
+)
 
 
 def parse(path: Path) -> Module:
@@ -207,6 +221,7 @@ def parse(path: Path) -> Module:
         tests=raw.get("tests", {}),
         fixtures=raw.get("fixtures", {}),
         learner_tests=raw.get("learner_tests"),
+        artifacts=lists["artifacts"],
         source=path,
     )
     if path.stem != mid:
@@ -222,6 +237,13 @@ def parse(path: Path) -> Module:
         errs.append("`pass` must be a non-negative integer")
     if m.ci not in ids.CI_TIERS:
         errs.append(f"ci {m.ci!r} not in {ids.CI_TIERS}")
+    bad = [a for a in m.artifacts if a.startswith("/") or ".." in a.split("/")]
+    if bad:
+        errs.append(f"artifacts {bad} must be relative paths inside the learner repo")
+    if m.artifacts and m.kind not in ("practice", "drill"):
+        errs.append(
+            "`artifacts` is for practice modules and drills; build units go in `units`"
+        )
     if m.milestone and not m.milestone.startswith("MS-"):
         errs.append(f"milestone {m.milestone!r} is not an MS- id")
     if errs:

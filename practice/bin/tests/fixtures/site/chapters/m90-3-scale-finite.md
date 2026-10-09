@@ -37,7 +37,7 @@ A finite float is neither inf nor nan; `math.isfinite` tests both. The contract 
 
 ## 3. Worked example by hand
 
-scale([1, 2], inf) raises ValueError instead of returning [inf, inf].
+scale([1, 2], inf) raises ValueError instead of returning [inf, inf]; `test_rejects_nonfinite_k` checks exactly this case.
 
 ## 4. The interface
 

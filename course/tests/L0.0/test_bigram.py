@@ -193,6 +193,40 @@ def test_rejects_out_of_range_ids():
         hand_model().logits([0, -1])
 
 
+def test_rejects_non_integer_or_2d_ids():
+    # WHY: ids index rows. Float ids would be cast (2.7 becomes 2) and a 2-D
+    #      batch would pair tokens across row boundaries; both are caller
+    #      bugs, so fit_counts refuses them instead of guessing.
+    # KIND: boundary
+    # CHAPTER: L0.0 section 4, The interface
+    for bad in (np.array([0.0, 1.0, 2.0]), np.array([[0, 1], [1, 0]])):
+        with pytest.raises(ValueError):
+            BigramLM().fit_counts(bad, vocab_size=3)
+
+
+def test_weight_is_checked_not_converted():
+    # WHY: a loaded checkpoint becomes the model as is. A float64 table cast
+    #      quietly to float32 hides a writer bug, and a non-finite logit turns
+    #      into nan inside the one-hot matmul (0 * inf). The constructor
+    #      refuses them; a model with no table has no vocabulary yet.
+    # KIND: boundary
+    # CHAPTER: L0.0 section 4, The interface
+    ok = np.zeros((3, 3), dtype=np.float32)
+    assert BigramLM(ok).vocab_size == 3
+    bad = [
+        ok.astype(np.float64),
+        np.zeros((3, 2), dtype=np.float32),
+        np.zeros(3, dtype=np.float32),
+        np.array([[0.0, np.inf], [0.0, 0.0]], dtype=np.float32),
+        np.array([[0.0, np.nan], [0.0, 0.0]], dtype=np.float32),
+    ]
+    for w in bad:
+        with pytest.raises(ValueError):
+            BigramLM(w)
+    with pytest.raises(RuntimeError):
+        _ = BigramLM().vocab_size
+
+
 # --- logits through the C matmul ----------------------------------------------
 
 
