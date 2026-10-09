@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0 (2026-10-09)
+
+### Features
+
+- **site**: generate llms.txt via starlight-llms-txt ([8aa2f4a](https://github.com/urmzd/supersource/commit/8aa2f4a7f9ada4baa9ae285076e88fa5c436466e))
+
+[Full Changelog](https://github.com/urmzd/supersource/compare/v0.10.0...v0.11.0)
+
+
 ## 0.10.0 (2026-10-09)
 
 ### Features
