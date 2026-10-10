@@ -66,7 +66,15 @@ def _last_json(text: str) -> dict | None:
 def calibrate(runs: int = 3) -> dict:
     exe = ctx.cache_dir() / "calib" / "calib"
     exe.parent.mkdir(parents=True, exist_ok=True)
-    cmd = ["cc", "-std=c11", "-O2", str(CALIB_SRC), "-o", str(exe)]
+    cmd = [
+        "cc",
+        "-std=c11",
+        "-D_POSIX_C_SOURCE=200809L",
+        "-O2",
+        str(CALIB_SRC),
+        "-o",
+        str(exe),
+    ]
     if platform.system() != "Darwin":
         cmd.append("-lm")
     rc, out = ctx.run(cmd)
@@ -132,7 +140,7 @@ def in_cluster_manifest(namespace: str, image: str) -> dict:
                                     "command": [
                                         "sh",
                                         "-c",
-                                        "cc -std=c11 -O2 -o /tmp/calib /src/calib.c -lm && for i in 1 2 3; do /tmp/calib; done",
+                                        "cc -std=c11 -D_POSIX_C_SOURCE=200809L -O2 -o /tmp/calib /src/calib.c -lm && for i in 1 2 3; do /tmp/calib; done",
                                     ],
                                     "volumeMounts": [
                                         {"name": "src", "mountPath": "/src"}
@@ -257,6 +265,7 @@ def run_bench(
         cmd = [
             "cc",
             "-std=c11",
+            "-D_POSIX_C_SOURCE=200809L",
             "-O2",
             f"-I{ov.contracts / 'c' / 'include'}",
             str(src),

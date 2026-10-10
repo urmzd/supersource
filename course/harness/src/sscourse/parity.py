@@ -207,6 +207,7 @@ def run_driver(
         cc = [
             "cc",
             "-std=c11",
+            "-D_POSIX_C_SOURCE=200809L",
             "-O2",
             f"-I{ov.contracts / 'c' / 'include'}",
             f"-I{suite_dir(course) / 'drivers' / '_lib'}",

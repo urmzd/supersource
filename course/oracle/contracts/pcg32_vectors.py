@@ -130,9 +130,25 @@ def render(d: dict) -> str:
     return json.dumps(d, indent=1) + "\n"
 
 
+def same(a, b) -> bool:
+    """Integers and strings exactly; floats to 1e-12 relative.
+
+    The normal() vectors go through libm log/sin/cos, which differ in the last
+    bit between macOS and glibc, so a byte-for-byte text compare only passes on
+    the machine that generated the file.
+    """
+    if isinstance(a, float) or isinstance(b, float):
+        return math.isclose(a, b, rel_tol=1e-12, abs_tol=1e-15)
+    if isinstance(a, dict):
+        return isinstance(b, dict) and a.keys() == b.keys() and all(same(a[k], b[k]) for k in a)
+    if isinstance(a, list):
+        return isinstance(b, list) and len(a) == len(b) and all(map(same, a, b))
+    return a == b
+
+
 if __name__ == "__main__":
     text = render(build())
     if "--check" in sys.argv:
-        sys.exit(0 if OUT.read_text() == text else 1)
+        sys.exit(0 if same(json.loads(OUT.read_text()), json.loads(text)) else 1)
     OUT.write_text(text)
     print(f"wrote {OUT} ({len(text)} bytes)")

@@ -39,6 +39,7 @@ from .registry import Registry
 
 SAN_FLAGS = [
     "-std=c11",
+    "-D_POSIX_C_SOURCE=200809L",
     "-O1",
     "-g",
     "-fsanitize=address,undefined",
@@ -48,11 +49,20 @@ SAN_FLAGS = [
     "-Wextra",
     "-Wno-unused-parameter",
 ]
-LIB_FLAGS = ["-std=c11", "-O2", "-fPIC", "-Wall", "-Wextra", "-Wno-unused-parameter"]
+LIB_FLAGS = [
+    "-std=c11",
+    "-D_POSIX_C_SOURCE=200809L",
+    "-O2",
+    "-fPIC",
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+]
 # A third C build for modules whose [tests].sanitize lists "thread" (rt.03's
 # pool, DESIGN 4.4): ThreadSanitizer cannot share a binary with ASan.
 TSAN_FLAGS = [
     "-std=c11",
+    "-D_POSIX_C_SOURCE=200809L",
     "-O1",
     "-g",
     "-fsanitize=thread",

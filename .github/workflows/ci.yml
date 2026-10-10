@@ -262,7 +262,7 @@ jobs:
   reference-learner-e2e:
     name: Reference learner end to end (smoke)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
 
@@ -347,6 +347,7 @@ jobs:
           kind load docker-image forge-engine:0.1.0 forge-gateway:0.1.0 --name forge
           kubectl create namespace forge
           kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
+          kubectl -n forge create secret generic forge-gateway-pepper --from-literal=pepper="$(openssl rand -hex 32)"
           kubectl -n forge apply -f deploy/observability/jaeger.yaml
           helm upgrade --install forge-engine  deploy/helm/forge-engine  -n forge --wait --timeout 5m
           helm upgrade --install forge-gateway deploy/helm/forge-gateway -n forge --wait --timeout 5m

@@ -121,6 +121,7 @@ jobs:
           key="tl_ci_$(openssl rand -hex 12)"
           echo "::add-mask::$key"
           kubectl -n "$SYSTEM" create secret generic "$SYSTEM-api-key" --from-literal=api-key="$key"
+          kubectl -n "$SYSTEM" create secret generic "$SYSTEM-gateway-pepper" --from-literal=pepper="$(openssl rand -hex 32)"
           echo "TL_API_KEY=$key" >> "$GITHUB_ENV"
       - name: tilt ci
         run: tilt ci -f deploy/Tiltfile --context "kind-$SYSTEM" --timeout 15m -- --topology=disaggregated

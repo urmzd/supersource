@@ -71,6 +71,7 @@ def test_c_failpoint_header(tmp_path):
         [
             "cc",
             "-std=c11",
+            "-D_POSIX_C_SOURCE=200809L",
             "-pedantic",
             "-Wall",
             "-Werror",

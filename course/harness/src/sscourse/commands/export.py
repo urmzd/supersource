@@ -274,7 +274,7 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         elif c_units:
             ext = "dylib" if platform.system() == "Darwin" else "so"
             build = (
-                f"mkdir -p c/build && cc -std=c11 -O2 -fPIC -shared -Icontracts/c/include {' '.join(c_units)} "
+                f"mkdir -p c/build && cc -std=c11 -D_POSIX_C_SOURCE=200809L -O2 -fPIC -shared -Icontracts/c/include {' '.join(c_units)} "
                 f"-o c/build/libtinyllm.{ext} -lm && "
             )
         else:
@@ -335,7 +335,7 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         langs["rust"] = [f"cargo test --manifest-path {VENDOR}/rust/Cargo.toml"]
     if c_ids:
         langs["c"] = [
-            f"mkdir -p c/build && cc -std=c11 -g -fsanitize=address,undefined -DSS_COUNTING_ALLOC=1 -Icontracts/c/include "
+            f"mkdir -p c/build && cc -std=c11 -D_POSIX_C_SOURCE=200809L -g -fsanitize=address,undefined -DSS_COUNTING_ALLOC=1 -Icontracts/c/include "
             f"{VENDOR}/tests/{mid}/*.c {' '.join(c_units)} -o c/build/test-{mid} -lm && c/build/test-{mid}"
             for mid in c_ids
         ]

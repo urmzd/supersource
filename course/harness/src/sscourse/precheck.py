@@ -114,6 +114,7 @@ def c_unit(learner: Path, unit: str, scratch: Path) -> list[str]:
         [
             "cc",
             "-std=c11",
+            "-D_POSIX_C_SOURCE=200809L",
             "-Wall",
             "-Wno-unused-parameter",
             f"-I{inc}",

@@ -33,6 +33,11 @@ def _ci(ss: SS, recipe: str) -> subprocess.CompletedProcess:
         "SS_CACHE": str(ss.tmp / "ci-cache"),
         "GOFLAGS": "-count=1",
     }
+    # Offline uv must see the same cache and interpreters the job warmed;
+    # CI (setup-uv) moves both off their defaults.
+    for k in ("UV_CACHE_DIR", "UV_PYTHON_INSTALL_DIR", "UV_PYTHON"):
+        if k in os.environ:
+            env[k] = os.environ[k]
     return subprocess.run(
         ["bash", "-c", recipe],
         cwd=ss.learner,
