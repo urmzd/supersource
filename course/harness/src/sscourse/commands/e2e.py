@@ -298,7 +298,11 @@ def run(
         return
     rep.ok("e2e", f"assembled the reference learner at {lr}: {what}")
 
-    rc, out = _ss(env, "check", "--all", "--ci")
+    # Every module's full mutation grade is verify check 6; here the
+    # reference learner's tests run against the required mutants plus a
+    # seeded sample, so the whole repo checks in CI time.
+    env = {**env, "SS_MUTATION_SAMPLE": "1"}
+    rc, out = _ss(env, "check", "--all", "--ci", timeout=3600)
     rep.fail("e2e", "ss check --all --ci", out) if rc != 0 else rep.ok(
         "e2e", "ss check --all --ci"
     )

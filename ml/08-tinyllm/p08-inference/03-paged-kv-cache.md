@@ -121,13 +121,13 @@ Shapes have no batch axis: one sequence per call. The Python allocator owns its 
 | Viewing a block as `[B][H][D]` | dimensions land in the wrong slots | `test_gather_preserves_head_token_dimension_order` (mutant `s03`) |
 | Writing K into the V slab | attention mixes the wrong values | `test_gather_matches_contiguous_float16` (mutant `s04`) |
 | A chunk ignoring its starting slot | the write runs past the block's slab | `test_gather_matches_contiguous_float16` (mutant `s05`) |
-| Forking without `` | the parent's free returns blocks the child still reads | `test_fork_shares_until_a_write`, `test_random_ops_conserve_blocks` (mutant `s06`) |
+| Forking without taking a reference on each shared block | the parent's free returns blocks the child still reads | `test_fork_shares_until_a_write`, `test_random_ops_conserve_blocks` (mutant `s06`) |
 | Writing into a shared block in place | the parent sees the child's tokens | `test_fork_shares_until_a_write`, `test_paged_matches_contiguous_decoding` (mutant `s07`) |
 | Freeing the table without releasing blocks | blocks leak on every request | `test_free_restores_the_pool` (mutant `s08`) |
 | Releasing only the first block | leaks all but one block per request | `test_free_restores_the_pool` (mutant `s09`) |
 | Moving the length before allocating | a failed append still grows the sequence | `test_out_of_blocks_changes_nothing` (mutant `s10`) |
 | Allocating new blocks one at a time | a failed multi-block append keeps what it took | `test_out_of_blocks_changes_nothing` (mutant `s11`) |
-
+| Gathering every layer to the longest layer's length | a layer that has not been written yet returns positions it never stored | `test_layers_keep_independent_lengths` (mutant `s12`) |
 | Accepting an empty chunk | silent no-ops hide engine bugs | `test_bad_arguments` (mutant `s13`) |
 
 ## 6. Where it's used next

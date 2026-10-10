@@ -1,11 +1,11 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -215,7 +215,7 @@
-             n = min(B - slot, end - p)
-             src = slice(p - start, p - start + n)
-             self._slab(table[b], layer, 0)[:, slot : slot + n, :] = k16[:, src, :]
--            self._slab(table[b], layer, 1)[:, slot : slot + n, :] = v16[:, src, :]
-+            self._slab(table[b], layer, 1)[:, slot : slot + n, :] = k16[:, src, :]
-             p += n
+@@ -156,7 +156,7 @@
+             src = slice(pos - start, pos - start + count)
+             block = self._block(table[block_index])
+             block.k[layer, :, slot : slot + count, :] = k16[:, src, :]
+-            block.v[layer, :, slot : slot + count, :] = v16[:, src, :]
++            block.v[layer, :, slot : slot + count, :] = k16[:, src, :]
+             pos += count
          self._lens[seq_id][layer] = end
-         # 4. A block's fill is the positions every layer holds.
+ 

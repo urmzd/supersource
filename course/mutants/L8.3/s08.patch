@@ -1,11 +1,11 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -145,8 +145,6 @@
+@@ -69,8 +69,6 @@
  
      def free(self, seq_id: int) -> None:
          table = self._table(seq_id)
--        for b in table:
--            _check(self.lib, "tl_kv_unref", self.lib.tl_kv_unref(self._pool, b))
-         del self._tables[seq_id], self._lens[seq_id]
+-        for block_id in table:
+-            self._unref(block_id)
+         del self._tables[seq_id]
+         del self._lens[seq_id]
  
-     def _table(self, seq_id: int) -> list[int]:

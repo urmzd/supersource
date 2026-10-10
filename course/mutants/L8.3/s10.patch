@@ -1,10 +1,10 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -207,6 +207,7 @@
-         for i in range(first, min(last + 1, len(table))):
-             self._private(table, i)
-         # 2. Allocate the new blocks, all or nothing.
+@@ -130,6 +130,7 @@
+             if self._block(table[i]).refs > 1
+         ]
+         new_count = max(0, last + 1 - len(table))
 +        self._lens[seq_id][layer] = end
-         table.extend(self._alloc(max(0, last + 1 - len(table))))
-         # 3. Write, one block at a time.
-         p = start
+         if len(self._free) < len(shared) + new_count:
+             raise OutOfBlocks("the KV cache has no free block left")
+ 

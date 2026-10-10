@@ -331,7 +331,10 @@ def _mutation_grade(
     g = grader.cached_grade()
     label = "mutation grade (full, cached)"
     if g is None:
-        g = grader.grade(sample=not ci, sample_seed=seed)
+        # SS_MUTATION_SAMPLE=1 (set by `ss verify course --e2e`) samples even
+        # under --ci: the reference learner's full grade is verify check 6.
+        sample = not ci or os.environ.get("SS_MUTATION_SAMPLE") == "1"
+        g = grader.grade(sample=sample, sample_seed=seed)
         label = "mutation grade" + (" (estimate)" if g.sampled else "")
     mut_cmd.report(g, False, say, label)
     revealed = bool(ledger.fresh_pass(s.learner, s.reg, m.id)) or ledger.has_event(

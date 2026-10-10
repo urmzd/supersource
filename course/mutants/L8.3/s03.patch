@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -110,7 +110,7 @@
+@@ -98,7 +98,7 @@
  
      def _alloc_id(self) -> int:
          block_id = self._free.pop()
