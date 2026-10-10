@@ -7,7 +7,9 @@ FROM golang:1.25-alpine@sha256:1ae0735f00daffa3aaf1363a5184c0d2dc55c78e3db4ec702
 WORKDIR /src
 COPY contracts/ contracts/
 COPY go/go.mod go/go.sum* go/
-RUN cd go && go mod download
+# go/go.mod replaces the contracts module but does not require it (the
+# overlay provides it): a workspace over both is how it builds.
+RUN go work init ./go ./contracts/go && cd go && go mod download
 COPY go/ go/
 RUN cd go && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/worker ./cmd/worker
 
