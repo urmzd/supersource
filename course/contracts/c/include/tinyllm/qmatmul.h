@@ -4,8 +4,9 @@
  *
  * Both compute y = x @ W^T for a weight W of shape [N, K] (a Linear weight
  * [out, in] as stored), x [M, K] and y [M, N], row-major and contiguous.
- * W is never materialized in f32. Each y element sums over k in increasing
- * order within each group (batch invariance, c/ABI.md rule 10).
+ * W is never materialized in f32. Each y element sums in one fixed order:
+ * 8 interleaved lanes per group (lane l takes k = l, l + 8, ...) combined in
+ * a fixed tree, groups in increasing order (batch invariance, c/ABI.md rule 10).
  *
  * module: L9.5 (c/src/kernels/qmatmul.c)
  * chapter: ml/08-tinyllm/p09-kernels/08-fused-quantized-matmul.md

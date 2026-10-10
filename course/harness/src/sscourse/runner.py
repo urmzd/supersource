@@ -120,7 +120,8 @@ class Run:
         if mid not in self.reg.modules:
             return False
         st = learner.state(self.learner, self.course, self.reg, mid)
-        return st.status == "pass" or (smoke_ok and st.status == "smoke")
+        # "self": a self-graded proof (solve sets, reviews) the learner signed off.
+        return st.status in ("pass", "self") or (smoke_ok and st.status == "smoke")
 
     def spec_path(self, version: str) -> Path:
         base = self.learner / "contracts" if self.learner else self.course / "contracts"

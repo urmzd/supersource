@@ -6,7 +6,7 @@ pass      = 6
 chapter   = "ml/08-tinyllm/p09-kernels/03-thread-pool-and-parallel-for.md"
 # tinyllm/pool.h is linked from the chapter card; like arena.h it names its
 # module but has no `chapter:` back-pointer yet (DEVIATIONS B83-01).
-contract  = []
+contract  = ["contracts/c/include/tinyllm/pool.h"]
 deps      = ["rt.02"]
 reading   = ["lang.03"] # pthreads and atomics in C; no code called
 # Call sites: L9.1 (row blocks), L9.3 (heads), L9.4 (paged decode), L9.5

@@ -7,7 +7,7 @@ chapter   = "algorithms/16-systems-data-structures/01-growable-array.md"
 # tinyllm/ds.h covers ds.01 to ds.03 and has no `chapter:` back-pointer for
 # this module yet, so the registry lists no contract file; the chapter card
 # links the header (as M06.3 with numerics.h; DEVIATIONS B81-02).
-contract  = []
+contract  = ["contracts/c/include/tinyllm/ds.h"]
 # vec.c allocates through the shared C support helpers and reports through
 # error slot; the course tests install the counting allocator through
 # tl_set_allocator.

@@ -62,6 +62,7 @@
           "description": "Family, from the checkpoint's config.json (formats/config.schema.json).",
           "enum": [
             "bigram",
+            "ngram",
             "nplm",
             "word2vec",
             "rnnlm",

@@ -2,16 +2,17 @@
 test build, ThreadSanitizer as a third build for modules that declare
 `sanitize = ["thread"]`, and the counting allocator in all of them."""
 
-import sys
-
-import pytest
-
-
+# The planted race keeps the total right (the atomic add stays), so the ASan
+# build's hand_example still passes and only ThreadSanitizer can fail the
+# check: every worker also writes one plain shared variable.
 RACY = """
+int64_t race_last; /* external linkage: the stores cannot be dropped */
 static void *race_work(void *p) {
     race_arg *a = p;
-    int64_t *plain = (int64_t *)a->total;
-    for (int64_t i = 0; i < a->per; i++) *plain += 1;
+    for (int64_t i = 0; i < a->per; i++) {
+        atomic_fetch_add_explicit(a->total, 1, memory_order_relaxed);
+        race_last = i;
+    }
     return NULL;
 }
 """
@@ -23,13 +24,6 @@ def _start_abi(ss):
     ss("check", "rt.90", rc=0)
 
 
-@pytest.mark.xfail(
-    sys.platform.startswith("linux"),
-    reason="Known gap: on the Linux CI runner the harness's ASan build does not "
-    "fail rt.91 on a planted off-by-one read, though gcc's ASan catches the same "
-    "code in a plain build. Tracked in course/handoff/open-items.txt.",
-    strict=False,
-)
 def test_asan_and_ubsan_fail_the_check(ss):
     ss.init()
     _start_abi(ss)
@@ -48,7 +42,11 @@ def test_asan_and_ubsan_fail_the_check(ss):
     demo.write_text(
         good.replace(
             "    *out = (float)acc;",
-            "    int big = 2147483647 - (int)n;\n    big += (int)(acc > 0) * 8;\n    *out = (float)acc + (float)(big - big);",
+            # volatile: gcc folds `big - big` to 0 and drops a dead overflow
+            # before UBSan sees it, so the overflowing sum must be used.
+            "    volatile int big = 2147483647 - (int)n;\n"
+            "    int over = big + (int)(acc > 0) * 8;\n"
+            "    *out = (float)acc + 0.0f * (float)over;",
         )
     )
     out = ss("check", "rt.91", rc=1).out

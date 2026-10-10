@@ -38,6 +38,7 @@ import hashlib
 import itertools
 import json
 import math
+import os
 import random
 import re
 import shutil
@@ -71,6 +72,18 @@ def rung_threshold(rung: int) -> float:
     if rung == 3:
         return 0.70
     return 0.60
+
+
+def _jobs(asked: int) -> int:
+    """Worker threads for learner-test grading. SS_MUTATION_JOBS (for
+    example 1 on a loaded machine) overrides the default of 4; an explicit
+    `--jobs` wins over both."""
+    if asked > 0:
+        return asked
+    try:
+        return max(1, int(os.environ.get("SS_MUTATION_JOBS", "4")))
+    except ValueError:
+        return 4
 
 
 @dataclass
@@ -382,7 +395,7 @@ class Grader:
     cache: Cache
     impl_sources: dict | None = None  # baseline B sources; None skips it
     seed: int = 0
-    jobs: int = 4
+    jobs: int = 0  # 0: SS_MUTATION_JOBS, else 4
     say: object = None
 
     def __post_init__(self):
@@ -704,7 +717,7 @@ class Grader:
             results[mu.mid] = self.one(mu, base)
             self._say(_line(results[mu.mid]))
         if parallel:
-            with ThreadPoolExecutor(max_workers=max(1, self.jobs)) as ex:
+            with ThreadPoolExecutor(max_workers=_jobs(self.jobs)) as ex:
                 for mu, r in zip(
                     parallel, ex.map(lambda x: self.one(x, base), parallel)
                 ):

@@ -7,7 +7,7 @@
   "properties": {
     "tl_arch": {
       "description": "Model family. Every value loads through the L6.7 zoo dispatch; the Rust engine serves bigram and llama.",
-      "enum": ["bigram", "nplm", "word2vec", "rnnlm", "seq2seq", "transformer", "gpt", "bert", "electra", "llama", "elmo", "t5"]
+      "enum": ["bigram", "ngram", "nplm", "word2vec", "rnnlm", "seq2seq", "transformer", "gpt", "bert", "electra", "llama", "elmo", "t5"]
     },
     "tl_tokenizer": {
       "description": "bytes: the identity byte tokenizer, no tokenizer file (D32). file: tokenizer.json (or tinyllm_char.json) in the model directory. Default file.",
@@ -67,6 +67,13 @@
       "anyOf": [
         {"not": {"required": ["tl_tokenizer"], "properties": {"tl_tokenizer": {"const": "bytes"}}}},
         {"properties": {"vocab_size": {"const": 256}}}
+      ]
+    },
+    {
+      "description": "An nplm config names its context, embedding width, hidden width, and direct-connection flag (L2.2).",
+      "anyOf": [
+        {"not": {"required": ["tl_arch"], "properties": {"tl_arch": {"const": "nplm"}}}},
+        {"required": ["tl_context", "tl_d_emb", "hidden_size", "tl_direct"]}
       ]
     },
     {

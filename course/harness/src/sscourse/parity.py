@@ -4,7 +4,9 @@
 
     id       = "matmul"
     title    = "C matmul vs numpy f64"
-    equality = "matmul-bound"         # exact | close | matmul-bound | bytes
+    equality = "matmul-bound"         # exact | close | matmul-bound | bytes | ulp
+    ulp      = 4                        # ulp only: floats of `ulp_keys` within this many ulps,
+    ulp_keys = ["normal"]               # every other value exact (all floats when empty)
     rtol     = 1e-5                     # close only
     atol     = 1e-6
     golden   = "course/fixtures/parity/matmul.json"   # {"cases": [{"name", "input", "output"}]}
@@ -49,7 +51,7 @@ from pathlib import Path
 from . import HarnessError, ctx
 from .overlay import LIB_FLAGS, Overlay
 
-EQUALITIES = ("exact", "close", "matmul-bound", "bytes")
+EQUALITIES = ("exact", "close", "matmul-bound", "bytes", "ulp")
 LANGS = ("python", "c", "rust", "go")
 EPS32 = 2.0**-23
 
@@ -71,6 +73,8 @@ class Suite:
     golden: str = ""
     rtol: float = 1e-5
     atol: float = 1e-6
+    ulp: int = 4
+    ulp_keys: list = field(default_factory=list)
     fuzz: dict = field(default_factory=dict)
     impls: list[Impl] = field(default_factory=list)
 
@@ -92,6 +96,8 @@ def load(p: Path) -> Suite:
         golden=str(raw.get("golden", "")),
         rtol=float(raw.get("rtol", 1e-5)),
         atol=float(raw.get("atol", 1e-6)),
+        ulp=int(raw.get("ulp", 4)),
+        ulp_keys=list(raw.get("ulp_keys", [])),
         fuzz=dict(raw.get("fuzz", {})),
     )
     if s.id != p.stem:
@@ -332,8 +338,40 @@ def _matmul_bound(inp: dict) -> float:
     return 4 * EPS32 * math.sqrt(max(k, 1)) * worst
 
 
+def _ulp_close(a, b, n: int) -> bool:
+    if (
+        isinstance(a, bool)
+        or isinstance(b, bool)
+        or not (isinstance(a, float) or isinstance(b, float))
+    ):
+        return a == b
+    if math.isnan(a) and math.isnan(b):
+        return True
+    return abs(a - b) <= n * math.ulp(max(abs(a), abs(b)))
+
+
+def _compare_ulp(s: Suite, got, want) -> str:
+    keys = sorted(want) if isinstance(want, dict) and isinstance(got, dict) else [None]
+    if keys != [None] and sorted(got) != keys:
+        return f"keys {sorted(got)}, want {keys}"
+    for k in keys:
+        g, w = (got, want) if k is None else (got[k], want[k])
+        loose = not s.ulp_keys or k in s.ulp_keys
+        ga, wa = _flat(g), _flat(w)
+        if len(ga) != len(wa):
+            return f"{k or 'output'}: {len(ga)} values, want {len(wa)}"
+        for i, (x, y) in enumerate(zip(ga, wa)):
+            ok = _ulp_close(x, y, s.ulp) if loose else x == y
+            if not ok:
+                rule = f"within {s.ulp} ulp" if loose else "exact"
+                return f"{k or 'output'}[{i}]: {x!r} vs {y!r} ({rule})"
+    return ""
+
+
 def compare(s: Suite, got, want, inp: dict) -> str:
     """'' when equal under the suite's rule, else a short mismatch."""
+    if s.equality == "ulp":
+        return _compare_ulp(s, got, want)
     if s.equality in ("exact", "bytes"):
         return (
             ""

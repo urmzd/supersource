@@ -392,7 +392,7 @@ def check_seams_static(course, reg, m) -> list[str]:
                         f"{u}: imports {mod}, which has no contract ({pyi.relative_to(course)})"
                     )
                     continue
-                declared = set(precheck._api(ast.parse(pyi.read_text())))
+                declared = precheck.declared_names(ast.parse(pyi.read_text()))
                 for n in sorted(names - declared):
                     errs.append(
                         f"{u}: uses {mod}.{n}, which {pyi.relative_to(course)} does not declare"

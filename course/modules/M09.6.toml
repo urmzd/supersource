@@ -7,7 +7,7 @@ chapter   = "math/09-numerical-methods-and-floating-point/06-polynomial-approxim
 # The C half of the shared tinyllm/numerics.h (M09.6 section), linked from the
 # chapter card; the header carries no `chapter:` back-pointer (DEVIATIONS
 # M063-02, B83-01).
-contract  = []
+contract  = ["contracts/c/include/tinyllm/numerics.h"]
 # The standalone C suite consumes expected vectors generated from M02.1's
 # Python range-reduced reference.
 deps      = []

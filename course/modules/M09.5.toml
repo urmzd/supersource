@@ -4,7 +4,7 @@ kind      = "side"
 lang      = ["c"]
 pass      = 6
 chapter   = "math/09-numerical-methods-and-floating-point/05-fixed-point-iteration-and-rsqrt.md"
-contract  = []
+contract  = ["contracts/c/include/tinyllm/numerics.h"]
 # The standalone C suite checks inverse-square-root vectors from M01.2.
 deps      = []
 reading   = ["M09.1", "M09.4"]   # bit patterns, ulps, and low precision formats

@@ -7,7 +7,7 @@ chapter   = "ml/08-tinyllm/p08-inference/08-paged-kv-block-pool.md"
 # The interface is tinyllm/kv_pool.h and the bytes formats/kv-block.md,
 # both linked from the card; neither carries a `chapter:` back-pointer
 # (DEVIATIONS B82-02).
-contract  = []
+contract  = ["contracts/c/include/tinyllm/kv_pool.h"]
 # local FNV-1a for the chained block hash, the free list as a tl_vec stack reserved once at
 # create (ds.01), the Swiss table (ds.02) for the prefix index, and the
 # intrusive LRU (ds.03) for cached blocks.

@@ -7,7 +7,7 @@ chapter   = "ml/08-tinyllm/p10-serving/07-serving-metrics-and-tracing.md"
 # The interfaces are otel/metrics.yaml and otel/semconv.md, linked from the
 # card; neither carries a `chapter:` back-pointer for this chapter
 # (DEVIATIONS B92-03).
-contract  = []
+contract  = ["contracts/otel/metrics.yaml", "contracts/otel/semconv.md"]
 # EngineGauges::from_stats reads the engine loop's EngineStats (L10.5).
 deps      = ["L10.5"]
 # Confidence intervals and quantiles (M07.4); the Pass 1 hand-written trace

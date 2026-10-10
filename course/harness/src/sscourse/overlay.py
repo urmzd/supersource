@@ -636,8 +636,19 @@ class Overlay:
     def _go_mod(self, text: str, orig_dir: Path) -> str:
         out = []
         in_block = False
+        in_require = False
         for line in text.splitlines():
             s = line.strip()
+            # go.work provides the contracts module: a `require` of it would
+            # make Go fetch it over HTTPS and fail every course test.
+            if s.startswith("require ("):
+                in_require = True
+            elif in_require and s == ")":
+                in_require = False
+            elif (
+                in_require or s.startswith("require ")
+            ) and CONTRACTS_GO_MODULE in s.split():
+                continue
             if s.startswith("replace ("):
                 in_block = True
                 out.append(line)

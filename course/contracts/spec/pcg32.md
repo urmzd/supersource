@@ -32,7 +32,7 @@ next_u32():
 | `normal()` | Box-Muller. Without a spare: `u1 = uniform_f64(), u2 = uniform_f64()`, `r = sqrt(-2 ln(1 - u1))` (`1 - u1` is never 0), return `r cos(2 pi u2)` and keep `r sin(2 pi u2)` as the spare. With a spare: return it and clear it. | 4 per pair |
 | `below(n)`, `1 <= n <= 2^32` | `t = (2^32 - n) mod n`; draw `r = next_u32()` until `r >= t`; return `r mod n` (unbiased) | 1 or more |
 | `shuffle(xs)` | Fisher-Yates from the end: for `i = len - 1` down to `1`: `j = below(i + 1)`, swap `xs[i]` and `xs[j]` | `len - 1` or more |
-| arrays | `uniform_array`, `normal_array`, `below_array` fill in C (row-major) order, one scalar draw per element; the normal spare carries across calls | |
+| arrays | `uniform_array`, `normal_array`, `below_array` fill in C (row-major) order, one scalar draw per element; the normal spare carries across calls. M07.0's `tinyllm.prob.rv.normal(rng, n)` is not `normal_array`: it draws `ceil(n / 2)` fresh pairs, keeps no spare, and drops the last sine when `n` is odd. A port of that function (L10.1, load.01) follows the same rule. Both agree for even `n` from a fresh generator | |
 
 ## Sub-streams
 

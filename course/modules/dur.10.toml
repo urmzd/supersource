@@ -12,7 +12,7 @@ chapter   = "ai-platform-engineering/05-durable-orchestration-and-workers/10-raf
 # composition root adapts Message to; it is linked from the chapter card. No
 # contracts/go interface exists yet (K01), so the package API is fixed by the
 # chapter (section 4) and the course tests (DEVIATIONS B103-02).
-contract  = []
+contract  = ["contracts/proto/tl/raft/v1/raft.proto"]
 # The raft unit imports nothing from another unit: entries are opaque bytes
 # (one framed WAL record each), so dur.01's log is reading, not a dep.
 deps      = []

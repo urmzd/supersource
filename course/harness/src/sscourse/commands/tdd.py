@@ -1,4 +1,4 @@
-"""ss tdd red <ID>     your graded tests must FAIL against your current units
+"""ss tdd red <ID> [--ref-deps[=all|ID,...]]     your graded tests must FAIL against your current units
 ss tdd green <ID>   ...and then PASS, with the same test files
 
 Red then green (DESIGN 5.12, rung R3 and up). `red` runs [learner_tests].path
@@ -82,6 +82,9 @@ def main(argv: list[str]) -> int:
     )
     ap.add_argument("phase", choices=["red", "green"])
     ap.add_argument("id")
+    # Accepted for symmetry with `ss check`: by default every dependency that
+    # is not passing already comes from the reference.
+    ap.add_argument("--ref-deps", nargs="?", const="", default=None)
     a = ap.parse_args(argv)
     s = open_session()
     m = s.module(a.id)
@@ -96,9 +99,14 @@ def main(argv: list[str]) -> int:
             f"{ctx.RED}FAIL{ctx.RST} no graded test files at {spec.path}: write a test first"
         )
         return EXIT_FAIL
-    from .check import resolve_sources
+    from .check import parse_ref_deps, resolve_sources
 
-    sources, _, _ = resolve_sources(s, m.id, "failing", set())
+    mode, chosen = (
+        ("failing", set()) if a.ref_deps is None else parse_ref_deps(a.ref_deps)
+    )
+    if mode == "none":
+        mode = "failing"
+    sources, _, _ = resolve_sources(s, m.id, mode, chosen)
     with ctx.lock(s.learner / ".ss"):
         ov = Overlay(
             s.reg,

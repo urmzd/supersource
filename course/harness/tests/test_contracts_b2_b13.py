@@ -1184,4 +1184,4 @@ def test_markdown_links_in_contracts_resolve():
 
 def test_version_is_a_minor_bump():
     v = tomllib.loads((C / "VERSION").read_text())
-    assert v["semver"] == "0.2.0"
+    assert v["semver"] == "0.3.0"

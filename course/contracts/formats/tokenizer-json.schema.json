@@ -489,7 +489,6 @@
         {
           "type": "object",
           "required": [
-            "type",
             "vocab",
             "merges"
           ],
@@ -564,7 +563,6 @@
         {
           "type": "object",
           "required": [
-            "type",
             "vocab",
             "unk_token"
           ],
@@ -623,7 +621,8 @@
             }
           }
         }
-      ]
+      ],
+      "description": "model.type is optional for BPE and WordPiece: GPT-2 and BERT tokenizer.json files omit it. A loader infers BPE when `merges` is present and WordPiece when `max_input_chars_per_word` or `unk_token` with a `continuing_subword_prefix` is present (formats/tokenizer.md)."
     }
   },
   "examples": [

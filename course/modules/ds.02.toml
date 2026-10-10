@@ -7,7 +7,7 @@ chapter   = "algorithms/16-systems-data-structures/02-swiss-table.md"
 # The interface is the ds.02 section of tinyllm/ds.h, linked from the card;
 # that shared header carries no `chapter:` back-pointer, which `ss lint`
 # requires of a listed contract (DEVIATIONS B82-02).
-contract  = []
+contract  = ["contracts/c/include/tinyllm/ds.h"]
 deps      = ["rt.02"]
 # ds.05 is the first hash-table chapter (hashing, probing, load factor);
 # S-M06a gives the expected probe lengths. Neither has code ds.02 calls.

@@ -585,6 +585,14 @@ def start_loadgen(argv: list[str], cwd: Path, env: dict, log: Path) -> int:
 # SLO profile (DESIGN 2.11)
 
 
+_DUR = {"ms": 0.001, "s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800, "y": 31536000}
+
+
+def _seconds(d: str) -> float:
+    """A Prometheus duration ("2m30s", "150s", "5m") in seconds."""
+    return sum(float(n) * _DUR[u] for n, u in re.findall(r"(\d+)(ms|[smhdwy])", d))
+
+
 def slo_errors(learner: Path, d: Drill) -> list[str]:
     """A drill under an SLO profile needs the learner's alert rules (files
     under deploy/observability/) to define the [detect] alert, written with
@@ -608,9 +616,17 @@ def slo_errors(learner: Path, d: Drill) -> list[str]:
     elif not re.search(rf"\balert:\s*{re.escape(alert)}\b", text):
         errs.append(f"no rule defines alert {alert} (required by the drill's [detect])")
     windows = SLO_PROFILES[d.slo_profile]
-    # PromQL range selectors: rate(x[5m]) and rate(x[25s]).
+    # PromQL range selectors: rate(x[5m]) and rate(x[25s]). Compared as
+    # durations, so [150s] and [2m30s] are the same window.
+    present = {
+        _seconds(m.group(1))
+        for m in re.finditer(r"\[((?:\d+(?:ms|[smhdwy]))+)(?::[^\]]*)?\]", text)
+    }
     missing = [
-        w for long_, short, _ in windows for w in (long_, short) if f"[{w}]" not in text
+        w
+        for long_, short, _ in windows
+        for w in (long_, short)
+        if _seconds(w) not in present
     ]
     if files and missing:
         errs.append(

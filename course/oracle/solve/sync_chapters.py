@@ -1,4 +1,4 @@
-"""Keep each solve chapter's problem list identical to course/solve/<S-ID>/problems.md.
+"""Keep each solve or proof chapter's problem list identical to course/solve/<S-ID>/problems.md.
 
 DESIGN 5.5: the problems live in `problems.md` and are also included in the
 chapter. A chapter holds them between
@@ -36,7 +36,14 @@ def body(sid: str) -> str:
 def main(argv: list[str]) -> int:
     check = "--check" in argv
     stale = 0
-    for mod in sorted((COURSE / "modules").glob("S-M*.toml")):
+    # Solve sets and the proof modules that keep a problems.md (review.*,
+    # ethics.06, iv.01): the src.is_file() check below skips the rest.
+    mods = sorted(
+        p
+        for p in (COURSE / "modules").glob("*.toml")
+        if (COURSE / "solve" / p.stem / "problems.md").is_file()
+    )
+    for mod in mods:
         reg = tomllib.loads(mod.read_text())
         sid, chap = reg["id"], reg.get("chapter", "")
         src = COURSE / "solve" / sid / "problems.md"

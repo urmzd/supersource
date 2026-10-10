@@ -7,7 +7,7 @@ chapter   = "systems/04-observability/01-tracing-for-the-serving-path.md"
 # The span names, kinds, attributes, and propagation rules are
 # contracts/otel/semconv.md; the Go API of go/otelx is fixed by the chapter's
 # section 4 and the course tests (B95-01: no contracts/go file).
-contract  = []
+contract  = ["contracts/otel/semconv.md"]
 deps      = []                          # otelx calls no other module's code
 # obs.00 is the hand-written tracer export this module replaces; the topic
 # README is the reading. L10.7 (the engine's tracing-opentelemetry setup) is

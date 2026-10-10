@@ -4,7 +4,7 @@ kind      = "side"
 lang      = ["c"]
 pass      = 6
 chapter   = "algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md"
-contract  = []                        # tinyllm/ds.h, ds.03 section (DEVIATIONS B82-02)
+contract  = ["contracts/c/include/tinyllm/ds.h"]
 deps      = []                        # pure pointer code: no allocation, no error slot
 # The catalog lists ds.02 as a prerequisite (the order of the chapters);
 # list.c and lru.c call nothing in it.

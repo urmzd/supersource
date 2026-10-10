@@ -23,7 +23,7 @@ from ..session import Session, open_session
 
 
 def grader_for(
-    s: Session, m, sources: dict | None, seed: int = 0, jobs: int = 4, say=None
+    s: Session, m, sources: dict | None, seed: int = 0, jobs: int = 0, say=None
 ) -> mutation.Grader:
     return mutation.Grader(
         s.reg,
@@ -80,7 +80,7 @@ def main(argv: list[str]) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("id")
-    ap.add_argument("-j", "--jobs", type=int, default=4)
+    ap.add_argument("-j", "--jobs", type=int, default=0)  # 0: SS_MUTATION_JOBS or 4
     ap.add_argument("--reveal-survivors", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--seed", type=int, default=0)

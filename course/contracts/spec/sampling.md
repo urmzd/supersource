@@ -39,7 +39,7 @@ All arithmetic from step 1 on is IEEE f64. Every sum runs over ids in **ascendin
 8. **Min-p.** Over the kept ids, compute `q` by step 9 and keep the ids with `q[i] >= m * max(q)`.
 9. **Softmax** over the kept set `K`: `M = max over K of l`, `e[i] = exp(l[i] - M)`, `Z = sum over K of e` (ascending id order), `q[i] = e[i] / Z`. `exp` and `log` are the platform's f64 functions (Python `math.exp`, Rust `f64::exp`), which is why parity is checked on one machine.
 10. **Draw** exactly one `u = rng.uniform_f64()` per sampled token.
-11. **Inverse CDF.** Walk `K` in ascending id order adding `q[i]` to `c`; return the first id with `u < c`. If rounding leaves `c` below `u` after the last id, return the largest id in `K`.
+11. **Inverse CDF.** Walk `K` in ascending id order adding `q[i]` to `c`; return the first id with `u < c`. If rounding leaves `c` below `u` after the last id, return the largest id in `K` with `q > 0`. Ids whose logit is `-inf` never enter `K`, so the fallback is always a token the processors kept.
 
 Steps 7 and 8 recompute `q` on the current kept set, so `top_p` sees the distribution after `top_k`, and `min_p` the one after `top_p`.
 

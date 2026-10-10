@@ -8,7 +8,7 @@ chapter   = "ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md"
 # contracts/rust/tl-proto) and the bytes formats/kv-block.md, all linked from
 # the chapter card; none carries a `chapter:` back-pointer yet (DEVIATIONS
 # B92-03).
-contract  = []
+contract  = ["contracts/proto/tl/engine/v1/engine.proto", "contracts/proto/tl/kv/v1/kv.proto", "contracts/proto/tl/control/v1/control.proto", "contracts/formats/kv-block.md"]
 # Code this module's units and tests call: the Rust KV cache and the sampler's
 # stream (L10.1). The scheduler, block manager, and engine loop (L10.2, L10.4,
 # L10.5) are the serve loop this plugs into; the Prefill RPC reaches them

@@ -126,22 +126,23 @@ Reads `[gateway]` from `runtime.toml` with `TL_GATEWAY__<KEY>` overrides; keys a
 
 ## Verbs of later passes
 
-Milestones from Pass 2 on call the verbs below. The CLI is yours (D16), so no module owns a verb; the milestone that first calls it (`course/milestones/<MS-ID>.toml`) fixes its exact flags and the keys of its final JSON line when that milestone is authored. This index fixes the names, so two milestones never use one verb for different jobs. Every verb follows the rules above (exit codes, final JSON line, `TINYLLM_LIB`).
+Milestones from Pass 2 on call the verbs below. The CLI is yours (D16), so no module owns a verb; the milestone that first calls it (`course/milestones/<MS-ID>.toml`) fixes its exact flags and the keys of its final JSON line when that milestone is authored. This index fixes the names, so two milestones never use one verb for different jobs. Every verb follows the rules above (exit codes, final JSON line).
 
 | Role, verb | First called by | Contract |
 |---|---|---|
 | `{tinyllm} gradcheck --suite <id>` | MS-L0 | exit 0 when every check passes |
-| `{tinyllm} train <arch>` (`mlp`, `gpt`, `bert`, `electra`, `rnnlm`, `seq2seq`, `llama`, ...) | MS-L0 to MS-L11 | flags per milestone |
+| `{tinyllm} train <arch>` (`mlp`, `gpt`, `bert`, `electra`, `rnnlm`, `seq2seq`, `transformer`, `llama`, ...) | MS-L0 to MS-L11 | flags per milestone (`train rnnlm` in MS-L3, `train seq2seq` in MS-L4, `train transformer` in MS-L5) |
 | `{tinyllm} train --spec <file> --progress <file>` | MS-durable (`TrainRun`), MS-C1 | spec/subprocess-activity.md |
-| `{tinyllm} generate` (`--cache`, `--spec`, `--backend`) | MS-P1, extended in MS-L8 and MS-L9 | final line `{ids, text, ...}`, generated ids only |
-| `{tinyllm} logits` (`--prompts`, `--out`) | MS-P1 (near-tie rule), extended in MS-L7 | final line `{logits}`, or the output path |
-| `{tinyllm} eval` (`ppl`, `--suite <id>`, `--spec <file>`) | MS-L2, MS-L6, MS-C1 | `formats/eval-result.schema.json` outputs |
+| `{tinyllm} generate` (`--cache`, `--spec`, `--out`, `--prompt-file`) | MS-P1, extended in MS-L3 (`--out` for rnnlm directories), MS-L7 (`--prompt-file`: the final `ids` are every prompt's generated ids concatenated, plus `per_prompt`), and MS-L8 | final line `{ids, text, ...}`, generated ids only |
+| `{tinyllm} logits` (`--prompts`, `--out`, `--model`) | MS-P1 (near-tie rule), extended in MS-L7 (`--model` takes a model directory or its `config.json`) | final line `{logits}`, or the output path |
+| `{tinyllm} eval` (`ppl`, `--suite <id>`, `--spec <file>`, `--tail-frac` for rnnlm directories) | MS-L2, MS-L3, MS-L6, MS-C1 | `formats/eval-results.schema.json` (zoo rows) and `formats/eval-result.schema.json` (MS-C1) outputs |
 | `{tinyllm} export --spec <file>` | MS-C1 (`ModelRelease`) | `formats/export-spec.schema.json` |
-| `{tinyllm} info` (`--native`, `--model`) | MS-P1, MS-L7 | final line `{abi_version, lib}` or `{params, ...}` |
+| `{tinyllm} info` (`--model`, a model directory or its `config.json`) | MS-P1, MS-L7 | final line `{params, ...}` |
+| `{tinyllm} translate` (`--model`, `--in`, `--beam`, `--max-len`) | MS-L4, MS-L5 (dispatches on `tl_arch`: `transformer` or `seq2seq`) | per milestone |
 | `{tinyllm} pull <hf repo>` | MS-L7 | final line `{dir}` |
 | `{tinyllm} tok <encode, train, bench>` | MS-L1 | per milestone |
 | `{tinyllm} lm train <ngram, nplm>` | MS-L2 | per milestone |
-| `{tinyllm} bench <matmul, decode>`, `--backend` | MS-L8, MS-L9 (`perf` steps) | per milestone |
+| `{tinyllm} bench decode` | MS-L8 (`perf` steps) | per milestone |
 | `{tinyllm} finetune classify` | MS-L6 | per milestone |
 | `{tinyllm} post <sft, dpo, grpo>` | MS-C2 | per milestone |
 | `{corpus} run` (`--config`, `--until <stage>`, `--stage <s>`, `--workers`) | MS-corpus, `CorpusBuild` | `formats/corpus-shard.md`, spec/subprocess-activity.md |
@@ -149,6 +150,6 @@ Milestones from Pass 2 on call the verbs below. The CLI is yours (D16), so no mo
 | `{tl-tok} encode`, `{tl-tok} bench` | MS-L1 | per milestone |
 | `{durable} --data <dir> --port <n>` (`--test-clock`, `--replicas 3`) | MS-durable, MS-durable-ha | proto/tl/durable/v1 |
 | `{worker} --queue <q> --durable <addr>` (`--test-activities`) | MS-durable | above |
-| `{ctl} <train, eval, release, data build, wf, keys, usage, agent, rag>` | MS-durable to MS-agent | each verb calls `tl.durable.v1` or `admin.v1` |
+| `{ctl} <train, eval, release, data build, wf, keys, usage, agent, rag>` | MS-durable to MS-agent | each verb calls `tl.durable.v1` or `admin.v1`. `usage` (MS-gateway) takes `--gateway`, `--tenant`, `--key-id`, `--since`, `--until`, `--group-by`, `--json`, with a final totals line `{requests, errors, prompt_tokens, completion_tokens, cached_tokens}` |
 | `{loadgen} --target <url> --rate <rps> --duration <d>`; `{loadgen} compare <base> <head> --metric <m> --max-regress <pct>` | MS-L10, MS-gateway, MS-prod, drills | `formats/loadgen-report.schema.json`; `compare` exits 1 on a regression |
 | `{agent}` | MS-agent | per milestone |

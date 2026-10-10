@@ -45,6 +45,21 @@ def _api(tree: ast.Module) -> dict[str, object]:
     return out
 
 
+def declared_names(tree: ast.Module) -> set[str]:
+    """Every top-level name a .pyi declares: functions, classes, and
+    module-level assignments (constants such as STATUS, type aliases such as
+    Stage). Another module may import any of them."""
+    out = set(_api(tree))
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            out |= {t.id for t in node.targets if isinstance(t, ast.Name)}
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            out.add(node.target.id)
+        elif type(node).__name__ == "TypeAlias" and isinstance(node.name, ast.Name):
+            out.add(node.name.id)
+    return out
+
+
 def python_unit(unit_text: str, pyi_text: str, unit: str) -> list[str]:
     try:
         have = _api(ast.parse(unit_text))

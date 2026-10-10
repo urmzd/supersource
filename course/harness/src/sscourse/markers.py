@@ -62,11 +62,25 @@ class MarkerError(ValueError):
     pass
 
 
+def _lines(text: str) -> list[str]:
+    """Split on newline only. str.splitlines also breaks on U+2028, U+2029,
+    U+0085 and other separators, which can sit inside a string literal: a
+    stub built from those pieces would not compile."""
+    out = text.split("\n")
+    if out and out[-1] == "":
+        out.pop()
+    return [x[:-1] if x.endswith("\r") else x for x in out]
+
+
+def _lines_keepends(text: str) -> list[str]:
+    return re.findall(r"[^\n]*\n|[^\n]+$", text)
+
+
 def regions(text: str) -> list[Region]:
     out: list[Region] = []
     open_at: int | None = None
     open_id = ""
-    for i, line in enumerate(text.splitlines()):
+    for i, line in enumerate(_lines(text)):
         m = MARKER_RE.match(line)
         if not m:
             continue
@@ -87,7 +101,7 @@ def regions(text: str) -> list[Region]:
 
 
 def has_markers(text: str) -> bool:
-    return any(MARKER_RE.match(line) for line in text.splitlines())
+    return any(MARKER_RE.match(line) for line in _lines(text))
 
 
 _FUNC_DEF = {
@@ -110,7 +124,7 @@ def drop_markers(text: str) -> str:
     """The reference as the learner would have written it."""
     keep = [
         line
-        for line in text.splitlines(keepends=True)
+        for line in _lines_keepends(text)
         if not MARKER_RE.match(line.rstrip("\r\n"))
     ]
     return "".join(keep)
@@ -243,7 +257,7 @@ def stub(text: str, path: str, want: str | None = None) -> str:
     lang = lang_of(path)
     if lang is None:
         raise MarkerError(f"{path}: no stub rule for this file type")
-    lines = text.splitlines()
+    lines = _lines(text)
     regs = regions(text)
     tinyllm = bool(re.search(r'^\s*#\s*include\s*[<"]tinyllm', text, re.M))
     out: list[str] = []
@@ -324,7 +338,7 @@ def lint(text: str, path: str) -> list[str]:
         regs = regions(text)
     except MarkerError as e:
         return [f"{path}: {e}"]
-    lines = text.splitlines()
+    lines = _lines(text)
     errs: list[str] = []
 
     def prev_nonblank(i: int) -> int:
@@ -378,7 +392,9 @@ def lint(text: str, path: str) -> list[str]:
                 p = prev_nonblank(q)
             header_ok = False
             k = p
-            while k >= 0 and k > p - 10:
+            while (
+                k >= 0 and k > p - 40
+            ):  # a ruff-formatted signature puts one parameter per line
                 s = lines[k].strip()
                 if re.match(r"(async\s+)?def\s", s) and len(_indent(lines[k])) < pad:
                     header_ok = lines[p].rstrip().endswith(":")

@@ -39,7 +39,10 @@ class _Plan:
 
 
 class FlakyHTTP:
-    def __init__(self, files: dict[str, bytes]):
+    def __init__(self, files: dict[str, bytes], poll_interval: float = 0.5):
+        self.poll_interval = (
+            poll_interval  # serve_forever's shutdown poll; tests may pass 0.01
+        )
         self.files = dict(files)
         self.plans: dict[str, _Plan] = {p: _Plan() for p in files}
         self._lock = threading.Lock()
@@ -132,7 +135,11 @@ class FlakyHTTP:
                 self.wfile.write(body)
 
         self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread = threading.Thread(
+            target=self.server.serve_forever,
+            kwargs={"poll_interval": self.poll_interval},
+            daemon=True,
+        )
 
     # -- lifecycle ------------------------------------------------------------
 

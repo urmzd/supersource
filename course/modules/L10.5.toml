@@ -7,7 +7,7 @@ chapter   = "ml/08-tinyllm/p10-serving/05-openai-server-on-tokio.md"
 # openapi/openai-subset.v1.yaml is the contract; it has no `chapter:`
 # back-pointer to this chapter yet (shared change, DEVIATIONS B91-08), so it
 # is linked from the chapter card instead of listed here.
-contract  = []
+contract  = ["contracts/openapi/openai-subset.v1.yaml"]
 # The engine loop composes L10.1 to L10.4; the server tokenizes with tl-tok
 # (L1.5: the byte tokenizer and tokenizer.json BPE).
 deps      = ["L10.1", "L10.2", "L10.3", "L10.4", "L10.8", "L1.5"]
