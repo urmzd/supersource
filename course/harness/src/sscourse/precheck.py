@@ -60,16 +60,34 @@ def declared_names(tree: ast.Module) -> set[str]:
     return out
 
 
-def python_unit(unit_text: str, pyi_text: str, unit: str) -> list[str]:
+def python_unit(
+    unit_text: str, pyi_text: str, unit: str, partial: bool = False
+) -> list[str]:
+    """The unit defines the contract's names with its parameters. `partial`:
+    an earlier owner's snapshot of a unit a later module took over, which
+    defines only the names of its time, each with a prefix of the
+    contract's parameters (later owners add names and trailing parameters)."""
     try:
         have = _api(ast.parse(unit_text))
     except SyntaxError as e:
         return [f"{unit}:{e.lineno}: {e.msg}"]
     want = _api(ast.parse(pyi_text))
+
+    def same(got, sig) -> bool:
+        if got == sig:
+            return True
+        return (
+            partial
+            and isinstance(got, list)
+            and isinstance(sig, list)
+            and got == sig[: len(got)]
+        )
+
     errs = []
     for name, sig in want.items():
         if name not in have:
-            errs.append(f"{unit}: missing `{name}` from the contract")
+            if not partial:
+                errs.append(f"{unit}: missing `{name}` from the contract")
         elif isinstance(sig, dict):
             got = have[name]
             if not isinstance(got, dict):
@@ -77,12 +95,13 @@ def python_unit(unit_text: str, pyi_text: str, unit: str) -> list[str]:
                 continue
             for meth, msig in sig.items():
                 if meth not in got:
-                    errs.append(f"{unit}: `{name}.{meth}` missing")
-                elif got[meth] != msig:
+                    if not partial:
+                        errs.append(f"{unit}: `{name}.{meth}` missing")
+                elif not same(got[meth], msig):
                     errs.append(
                         f"{unit}: `{name}.{meth}` parameters {got[meth]} differ from the contract {msig}"
                     )
-        elif have[name] != sig:
+        elif not same(have[name], sig):
             errs.append(
                 f"{unit}: `{name}` parameters {have[name]} differ from the contract {sig}"
             )

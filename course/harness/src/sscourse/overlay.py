@@ -177,6 +177,12 @@ class Overlay:
                 and (self.learner / unit).is_file()
             ):
                 r = Resolved(None, "learner-outside", False)
+            elif self.learner and (self.learner / unit).is_file():
+                # Outside the closure but already in the learner's tree: a
+                # later module's code that an upgraded unit of this closure
+                # may call (gw.04's proxy.go calls gw.08's ExchangeFrom). Use
+                # it as Python does, instead of a stub that panics "todo".
+                r = Resolved(units.learner_text(self.learner, unit), "learner", False)
             else:
                 r = Resolved(
                     units.stub_text(self.course, self.reg, unit, owner), "stub", False

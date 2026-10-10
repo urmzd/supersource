@@ -9,7 +9,7 @@ s08	python/tinyllm/lm/bigram.py	semantic	return-prefix	124	y	(hidden until pass)
 s09	python/tinyllm/lm/bigram.py	semantic	pitfall-6	120	y	(hidden until pass)	a fresh rng seeded per step: same u every step
 s10	python/tinyllm/lm/bigram.py	semantic	pitfall-4	98	y	(hidden until pass)	raw logits read as log probabilities
 m01	python/tinyllm/lm/bigram.py	auto	cmp_flip	73	n	comparison changed in the alpha check	alpha > 0 to alpha >= 0
-m02	python/tinyllm/lm/bigram.py	auto	swap_args	90	n	matmul operand changed	weight transposed
+m02	python/tinyllm/lm/bigram.py	auto	swap_args	72	n	matmul operand changed	weight transposed
 m03	python/tinyllm/lm/bigram.py	auto	cond_negate	114	n	greedy condition changed	temperature 0 sampled at temperature 1
 m04	python/tinyllm/lm/bigram.py	auto	const_replace	110	n	rng construction changed	rng not seeded
 m05	python/tinyllm/lm/bigram.py	auto	stmt_delete	103	n	an argument check deleted	empty prefix not rejected

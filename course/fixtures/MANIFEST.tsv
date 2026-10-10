@@ -165,7 +165,7 @@ course/fixtures/L10.8/spec_golden.json	a94accea0ce6be6d41a132f62f03a8dd85d8a770a
 course/fixtures/L10.9/constrain_golden.json	532a40140bd659a5e3e3aad70a64ca5e820dc59a1f55dd0a8df3ac8bec199fec	85107	course/oracle/L10.9/constrain_golden.py	-	-	Apache-2.0
 course/fixtures/lang.11/usage_rows.jsonl	4518fc740dc828839de733b9f764cb81a80b392b6dabc53cc6f3bf2c2400c4ba	95660	course/oracle/lang.11/make_usage_rows.py	-	-	Apache-2.0
 course/fixtures/dep.01/image-budget.json	ed1fff9531516cdf404f31efd9a39e8dc433b8b7d1cbb63f482a3763db877852	813	course/oracle/dep.01/measure_images.sh	docker 27.4.0	-	Apache-2.0
-course/fixtures/dur.09/fake_child.py	e79224a6e0dc179330da3770265edbb63b7a94d0b1f55863c3fe679f5830e429	5110	hand-written (dur.09 conformance: scripted fake Python activity)	-	-	Apache-2.0
+course/fixtures/dur.09/fake_child.py	b61c2f37de12f049bf1647f4c4d4b89dc1c2d357967994768776a10eec51b5d5	5202	hand-written (dur.09 conformance: scripted fake Python activity)	-	-	Apache-2.0
 course/fixtures/M08.4/torch_hvp.npz	9163301da844d287e3887509526ff4a367efb650d59daf70feffe3180ca8648d	4606	course/oracle/M08.4/torch_hvp_golden.py	torch==2.14.1 numpy==2.4.2	-	Apache-2.0
 course/fixtures/craft.22/tinylm.npz	305aaf9b665ef9fd811870fe780ddf83b5a074218d3dd7d18c0ddb728a83decd	121850	course/oracle/craft.22/train_tinylm.py	torch==2.14.1	-	Apache-2.0
 course/fixtures/craft.22/val.txt	df7ce7ee4a11bf5340f2651eb19b762911173838c2ec31df9ebbf6dca520f7b9	8234	course/oracle/craft.22/train_tinylm.py	torch==2.14.1	-	Apache-2.0
@@ -194,3 +194,13 @@ course/fixtures/ag.11/judge-labels.jsonl	010e922b237ec373b019f2466df251487a1b3d0
 course/fixtures/ag.12/experiments.json	2284a591f7439a74e33b9ce2000fcb8250eff93c66d81ae467d686f5f10de55b	231	-	-	-	Apache-2.0
 course/fixtures/craft.13/v1-worked.bin	dd5a2d9371695b7c8c04b6222179e2dff6dd080409485e844853268ddef1a2fe	60	hand	-	-	Apache-2.0
 course/fixtures/craft.13/v2-worked.bin	7d9cabe8284e48cbbcb78f03512c696ec1077e299b250b1f65c11ad061bf73c3	60	hand	-	-	Apache-2.0
+course/fixtures/ag.07/expected.json	cf2d660ec3c9dc3a2f57c00365efbaaad43c9d17d628dd3718be5c16dcbbc306	25051	course/oracle/ag.07/make_fixtures.py	-	-	Apache-2.0
+course/fixtures/ag.07/index/bm25.idx	bdab334459ed2a17d088f61f7436e138e2a96b6a9388b39d69ebdf81ed18967f	7691	course/oracle/ag.07/make_fixtures.py	-	-	Apache-2.0
+course/fixtures/ag.07/index/docs.jsonl	133ce5c80f961a9e7cfdcc6badf875a70734078dc47edab147d49dff54c59c43	12607	course/oracle/ag.07/make_fixtures.py	-	-	Apache-2.0
+course/fixtures/ag.07/index/meta.json	bfcdc2002d352fe22599aa5133e546d5c58d1429a1eae2f45bd2e21d0498d02c	240	course/oracle/ag.07/make_fixtures.py	-	-	Apache-2.0
+course/fixtures/ag.07/index/vectors.f32	1c0b6d3e330a7e2d7abed26c648f49e6d83157ffb6a4e35ed61f1ef148a32792	2496	course/oracle/ag.07/make_fixtures.py	-	-	Apache-2.0
+course/fixtures/ag.09/bootstrap.json	4589d243a6bd26a9314d99e086bc0da2f1c3230846b4d91049dc88a8f0c0ceeb	2248	course/oracle/ag.09/make_fixtures.py	-	-	Apache-2.0
+course/fixtures/ag.09/suite.jsonl	d9b5432f8e5abd96b330850e3818846dd57351f6916842e59159d94ba3d3c566	935	course/oracle/ag.09/make_fixtures.py	-	-	Apache-2.0
+course/fixtures/post-training/distill.jsonl	59e5e6b8eb0cb77ada999b72eef05bdfa221c8d08b3ca23f48984470345917b4	295	hand-written (MS-C2 post-training prompts)	-	-	Apache-2.0
+course/fixtures/post-training/heldout.jsonl	2b9f1af1c90ac3942fab6abad7a88f70ec284c370ca082a90657bf03aa03661d	701	hand-written (MS-C2 post-training prompts)	-	-	Apache-2.0
+course/fixtures/parity/quant_fp8.json	24d0a61ce5b23f1d060a4d3b41cfdc8b8ddc20f0d04ef99cb615a37909e97444	22943	course/oracle/parity/quant_fp8_golden.py	-	-	Apache-2.0

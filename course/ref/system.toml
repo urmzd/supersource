@@ -18,7 +18,9 @@ steps = [
 
 [entry]
 tinyllm = ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py"]
-engine  = ["rust/target/release/tl-serve", "--model-dir", "artifacts/models/bigram", "--port", "{port}", "--health-port", "{health_port}"]
+# The v1 server (L10.5) on the trained bigram; `--model-dir` (the tracer form)
+# is still accepted for the Pass 1 entry point.
+engine  = ["rust/target/release/tl-serve", "--config", "{config}"]
 gateway = ["go/bin/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
 # Pass 3 (MS-L1): built on first use, so the earlier passes' [build] stays as it was.
 tl-tok  = ["cargo", "run", "--release", "--quiet", "--manifest-path", "rust/Cargo.toml", "-p", "tl-tok", "--"]
@@ -26,6 +28,7 @@ tl-tok  = ["cargo", "run", "--release", "--quiet", "--manifest-path", "rust/Carg
 corpus  = ["uv", "run", "--quiet", "--project", "python", "python", "python/corpus/__main__.py"]
 
 [services.engine]
+config = "config/engine.runtime.toml"
 health = "http://127.0.0.1:{health_port}/healthz"
 ready_timeout_s = 30
 

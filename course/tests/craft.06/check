@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# ss-export: course-tree (grades against the course's reference katas, never exported)
 # Artifact check for craft.06 (DESIGN 4.6, rung R7; `ss check craft.06` runs
 # this in your repo and its exit code is the verdict).
 #

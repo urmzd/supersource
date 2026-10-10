@@ -89,6 +89,32 @@ def _start_in_process(env: dict, ids_: list[str]) -> tuple[bool, str]:
                 os.environ[k] = v
 
 
+def _tdd_in_process(env: dict, phase: str, ids_: list[str]) -> list[str]:
+    """`ss tdd <phase>` for each id; returns the ids whose phase did not hold."""
+    from .. import cli
+
+    keys = ("SS_COURSE_ROOT", "SS_COURSE_HOME", "SS_SCRATCH", "SS_PATHS_DIR")
+    saved = {k: os.environ.get(k) for k in keys}
+    os.environ.update({k: env[k] for k in keys})
+    bad = []
+    try:
+        for mid in ids_:
+            with contextlib.redirect_stdout(io.StringIO()):
+                try:
+                    rc = cli.main(["tdd", phase, mid])
+                except Exception:  # a harness error is a failed phase here
+                    rc = 5
+            if rc != 0:
+                bad.append(mid)
+        return bad
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def _copy_dropping_markers(src: Path, dest: Path) -> None:
     """Copy a tree; text files with SOLUTION markers lose the marker lines."""
     for f in sorted(src.rglob("*")):
@@ -178,6 +204,18 @@ def assemble(
     if not ok:
         return False, why
     ref = course / "ref"
+    # The reference learner's own graded tests (DESIGN 5.12), written test
+    # first: `ss tdd red` runs them against the stubs before the reference
+    # units land, `ss tdd green` after, as the R3+ journal requires.
+    tdd_ids = []
+    for mid in ids_:
+        src = ref / "learner-tests" / mid
+        if src.is_dir():
+            _copy_dropping_markers(src, lr)
+            lt = reg.get(mid).learner_tests or {}
+            if int(lt.get("rung", 0)) >= 3:
+                tdd_ids.append(mid)
+    not_red = _tdd_in_process(env, "red", tdd_ids)
     for u, chain in reg.all_units().items():
         dest = lr / u
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -209,9 +247,14 @@ def assemble(
     rc, out = commit_all(lr, "feat: the reference system")
     if rc != 0:
         return False, "commit the reference learner\n" + out
+    not_green = _tdd_in_process(env, "green", [m for m in tdd_ids if m not in not_red])
+    note = ""
+    if not_red or not_green:
+        note = f"; tdd not red: {not_red or 'none'}, not green: {not_green or 'none'}"
     return (
         True,
-        f"{len(ids_)} module(s) started, entry points, primers, docs, system.toml",
+        f"{len(ids_)} module(s) started, entry points, primers, docs, system.toml, "
+        f"{len(tdd_ids)} tdd journal(s){note}",
     )
 
 

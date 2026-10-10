@@ -176,7 +176,13 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
             if m.kind == "practice":
                 # A practice module's tests run only through its own check,
                 # which sets up what they need (SS_PRIMER_DIR and friends).
-                if (tdir / "check").is_file():
+                # A check marked `ss-export: course-tree` grades against the
+                # course's reference katas, which are never exported: it runs
+                # only through `ss check` in a supersource checkout.
+                chk = tdir / "check"
+                if chk.is_file() and "ss-export: course-tree" not in chk.read_text(
+                    errors="replace"
+                ):
                     practice.append(mid)
             else:
                 if any(tdir.glob("*.py")):
@@ -193,7 +199,8 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
             shutil.copy2(rs, v / "rust" / "ss-tests" / "tests" / rs.name)
             rust_ids.append(mid)
         # Course tests run with SS_COURSE_TREE pointed at the vendor root,
-        # so preserve each passed module's declared contracts at that path.
+        # so preserve each passed module's declared contracts at that path
+        # (the data contracts every test may read are copied once, below).
         for contract in m.contract:
             src = course / contract
             if src.is_file():
@@ -249,6 +256,11 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         ]
         (v / "fixtures").mkdir(parents=True, exist_ok=True)
         (v / "fixtures" / "MANIFEST.tsv").write_text("\n".join(keep) + "\n")
+    # Data contracts the course tests read by path (schemas, specs, the
+    # metric and API definitions), whichever module declares them.
+    for sub in ("formats", "spec", "otel", "openapi", "config", "helm"):
+        if (course / "contracts" / sub).is_dir():
+            _copy_tree(course / "contracts" / sub, v / "contracts" / sub)
     assets = course / "fixtures" / "ASSETS.tsv"
     if assets.is_file():
         shutil.copy2(assets, v / "ASSETS.tsv")
@@ -285,7 +297,12 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         if (s.learner / "contracts" / "go" / "go.mod").is_file():
             work += "replace supersource.urmzd.com/tl/contracts v0.0.0 => ../../contracts/go\n"
         (v / "go.work").write_text(work)
-        langs["go"] = [f"(cd {VENDOR}/tests/go && go test ./...)"]
+        # Course tests read fixtures and contracts through these, as `ss check`
+        # sets them; absolute so the `cd` below keeps them valid.
+        langs["go"] = [
+            f'(export SS_COURSE_TREE="$PWD/{VENDOR}" TINYLLM_FIXTURES="$PWD/{VENDOR}/fixtures"; '
+            f"cd {VENDOR}/tests/go && go test ./...)"
+        ]
     if rust_ids:
         deps = {
             name: {"path": f"../../../../rust/{d}"} for d, name in _crates(s.learner)
@@ -298,6 +315,13 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
             tomlw.dumps({"workspace": {"resolver": "2", "members": ["ss-tests"]}})
         )
         (v / "rust" / "ss-tests" / "src").mkdir(parents=True, exist_ok=True)
+        # Some course tests include a unit by path from the ss-tests crate
+        # (`$CARGO_MANIFEST_DIR/../crates/...`), as the overlay lays it out;
+        # a relative link gives the vendored crate the same view.
+        link = v / "rust" / "crates"
+        if not link.exists() and not link.is_symlink():
+            depth = len(Path(VENDOR).parts) + 1
+            link.symlink_to(Path(*([".."] * depth)) / "rust" / "crates")
         (v / "rust" / "ss-tests" / "src" / "lib.rs").write_text(
             "// test glue written by ss export: the course tests live in tests/\n"
         )
@@ -314,7 +338,10 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
                 }
             )
         )
-        langs["rust"] = [f"cargo test --manifest-path {VENDOR}/rust/Cargo.toml"]
+        langs["rust"] = [
+            f'SS_COURSE_TREE="$PWD/{VENDOR}" TINYLLM_FIXTURES="$PWD/{VENDOR}/fixtures" '
+            f"cargo test --manifest-path {VENDOR}/rust/Cargo.toml"
+        ]
     if c_ids:
         langs["c"] = [
             f"mkdir -p c/build && cc -std=c11 -D_POSIX_C_SOURCE=200809L -g -fsanitize=address,undefined -DSS_COUNTING_ALLOC=1 -Icontracts/c/include "

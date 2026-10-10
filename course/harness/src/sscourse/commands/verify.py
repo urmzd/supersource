@@ -184,6 +184,7 @@ def check_pyi(course, reg, m) -> list[str]:
                 markers.drop_markers(_owner_text(course, reg, u, m.id)),
                 pyi.read_text(),
                 u,
+                partial=reg.unit_chain(u)[-1] != m.id,
             )
     return errs
 

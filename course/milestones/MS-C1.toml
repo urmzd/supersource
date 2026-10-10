@@ -69,7 +69,11 @@ name       = "val-loss"
 smoke      = true
 ci         = "nightly"
 run        = "tinyllm"
-argv       = ["eval", "ppl", "--model", "{out:train}/runs/c1/ckpt", "--data", "{asset:course-corpora/ts-val.bin}"]
+# The held-out split your own training run tokenized (the spec's data.val,
+# under the run's TL_ARTIFACTS).
+argv       = ["eval", "ppl", "--model", "{out:train}/runs/c1/ckpt", "--data", "{out:train}/{val}"]
+vars       = { val = "tokens/ts-bpe-4k/ts-val.bin" }
+smoke_vars = { val = "tokens/c1-bpe-512/stories-val.bin" }
 expect     = { match = "json-last-line", metrics = { bpb = "<= calibrated" } }
 timeout_s  = 1800
 

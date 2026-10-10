@@ -1,0 +1,7 @@
+# runtime.toml template for the engine service (DESIGN 2.12, L10.5). The
+# harness fills the listen keys with allocated ports and passes the file as
+# {config}. The model is the byte bigram the [build] steps train, served as
+# "tracer" so the Pass 1 milestones and the v1 and v2 suites share one engine.
+[engine]
+model_dir = "artifacts/models/bigram"
+model_id  = "tracer"
