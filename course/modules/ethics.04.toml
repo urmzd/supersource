@@ -7,7 +7,7 @@ chapter   = "responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md
 contract  = ["contracts/py/tinyllm/eval/safety.pyi", "contracts/py/tinyllm/eval/bias.pyi"]
 # safety.py: M07.4's wilson_interval, M07.7's roc_curve and roc_auc.
 # bias.py: M07.4's bootstrap_ci and wilson_interval.
-deps      = ["M07.4", "M07.7"]
+deps      = ["M07.4", "M07.7", "M06.3"]
 # M01.4's trapezoid is inside M07.7's roc_auc (and the reason average
 # precision is a step sum instead); L6.7's log_probs is the score function the
 # CLI passes; M07.5's paired tests are the other way to read a paired gap.

@@ -11,19 +11,21 @@ def _logsoftmax(x, temperature):
     return y - m - np.log(np.exp(y - m).sum(axis=-1, keepdims=True))
 
 
-# SOLUTION-BEGIN L12.4
 def forward_kl(student_logits, teacher_logits, temperature=1.0):
+    # SOLUTION-BEGIN L12.4
     log_s, log_t = _logsoftmax(student_logits, temperature), _logsoftmax(teacher_logits, temperature)
     if log_s.shape != log_t.shape:
         raise ValueError("student and teacher shapes differ")
     p = np.exp(log_t)
     return float(np.mean(np.sum(p * (log_t - log_s), axis=-1)) * temperature**2)
+    # SOLUTION-END
 
 
 def reverse_kl(student_logits, teacher_logits, temperature=1.0):
+    # SOLUTION-BEGIN L12.4
     log_s, log_t = _logsoftmax(student_logits, temperature), _logsoftmax(teacher_logits, temperature)
     if log_s.shape != log_t.shape:
         raise ValueError("student and teacher shapes differ")
     q = np.exp(log_s)
     return float(np.mean(np.sum(q * (log_s - log_t), axis=-1)) * temperature**2)
-# SOLUTION-END
+    # SOLUTION-END

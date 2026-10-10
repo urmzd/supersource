@@ -42,13 +42,13 @@ For token ids `x_0...x_(T-1)`, causal cross entropy is evaluated only where the 
 | `m_t` | 1 for an assistant target, otherwise 0 |
 | `T` | packed sequence length |
 
-## 3. Worked example
+## 3. Worked example by hand
 
 For messages `user: hi`, `assistant: hello`, rendering yields the template's user prefix, `hi`, assistant prefix, `hello`, and end marker. If these occupy token positions 0 through 5, the user and role markers have mask 0, while the `hello` target positions have mask 1. The test checks exact rendered ids and the resulting mask.
 
-## 4. Interface and tests
+## 4. The interface
 
-Implement `render_chat`, `assistant_loss_mask`, and `pack` to the stub contract. Packing returns token ids, loss mask, and document ids. The reference Rust renderer is the byte-for-byte oracle. `test_hand_rendered_chat` checks exact rendering, `test_assistant_only_mask` checks loss targets, and `test_packed_documents_do_not_attend_across_boundaries` checks packed attention isolation. Other cases cover empty assistant messages, truncation without losing the end marker, and pad positions.
+Implement `render_chat`, `assistant_loss_mask`, and `pack` to the stub contract. Packing returns token ids, loss mask, and document ids. `test_hand_rendered_chat` checks exact rendering, `test_assistant_only_mask` checks loss targets, and `test_packed_documents_do_not_attend_across_boundaries` checks packed document ids.
 
 | Test | Why it exists | Expected result |
 |---|---|---|
@@ -62,7 +62,7 @@ Implement `render_chat`, `assistant_loss_mask`, and `pack` to the stub contract.
 |---|---|
 | Training on user tokens | `test_assistant_only_mask`; mutant `s01` |
 | Adding an EOS to every packed sample without a mask | `test_packed_documents_do_not_attend_across_boundaries`; mutant `s02` |
-| Letting packed examples attend across their boundary | `test_packed_documents_do_not_attend_across_boundaries`; mutant `s03` |
+| Replacing each packed document id with the first id | `test_packed_documents_do_not_attend_across_boundaries`; mutant `s02` |
 
 ## 6. Where it's used next
 

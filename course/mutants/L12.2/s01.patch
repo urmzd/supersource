@@ -1,5 +1,5 @@
 --- a/python/tinyllm/post/dpo.py
 +++ b/python/tinyllm/post/dpo.py
-@@ -9,7 +9,7 @@ def _margin(pc, pr, rc, rr):
+@@ -10 +10 @@
 -    return (pc - pr) - (rc - rr)
 +    return (pr - pc) - (rc - rr)

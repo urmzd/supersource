@@ -49,7 +49,7 @@ Three paired tool-success differences `[0, 1, 0]` have mean `1/3`. The sample is
 
 ## 4. The artifact and its check
 
-Build `go/tests/agent-evals/suite.json` using exact or schema checks, citation resolution, retrieval rank metrics, tool success, state-change grading, and latency. `test_eval_run_is_reproducible` runs fixed fixtures twice and compares stable report fields. `test_agent_mutants_have_separate_ci_coverage` confirms each semantic mutant has dedicated CI coverage. Then run the agent mutants one at a time: remove a tool description, disable retrieval, and truncate the system prompt. Each should lower a relevant scorer enough that the 95% intervals no longer overlap the reference.
+Build `go/tests/agent-evals/suite.json` with a fixed seed, disjoint train, validation, and held-out example IDs, plus distinct citation, tool outcome, state-diff, prompt-injection, and latency scorers. Each observation names its split, scenario, expected tool, and expected state. `test_eval_run_is_reproducible` checks that every ID belongs to exactly one declared split. `test_agent_mutants_have_separate_ci_coverage` checks for dedicated citation, tool-success, and state-change scorers. Then run semantic agent mutants one at a time and compare paired outcomes with a 95% interval; never tune against held-out cases.
 
 ## 5. Pitfalls
 

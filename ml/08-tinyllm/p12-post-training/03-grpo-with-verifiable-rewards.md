@@ -44,13 +44,13 @@ For rewards `r_i` in a group, use `A_i = (r_i - mean(r)) / (std(r) + ε)`. Let `
 | `q_i` | new-to-old policy probability ratio |
 | `εc` | clipping range |
 
-## 3. Worked example
+## 3. Worked example by hand
 
 Rewards `[0, 1, 1]` have mean `2/3`; their advantages have one negative and two positive values, summing to zero. If all three rewards equal 1, every advantage is zero and the policy gradient vanishes. The tests use this exact group.
 
-## 4. Interface and tests
+## 4. The interface
 
-Implement group normalization and clipped loss, then request rollouts from the learner's serving API using the optional L12 rollout client. `test_hand_grpo_objective` checks the arithmetic, `test_grouped_rewards_are_centered` checks within-prompt normalization, and `test_zero_advantage_has_zero_policy_gradient` checks the zero-variance boundary. `test_toy_reward_improves` trains a verifiable task for 50 updates with a fixed seed.
+Implement group normalization and clipped loss. `test_hand_grpo_objective` checks the clipped arithmetic, `test_grouped_rewards_are_centered` checks normalization, and `test_zero_advantage_has_zero_policy_gradient` checks the zero-variance boundary.
 
 | Test | Why it exists | Expected result |
 |---|---|---|
@@ -63,8 +63,7 @@ Implement group normalization and clipped loss, then request rollouts from the l
 | Pitfall | Caught by |
 |---|---|
 | Normalize rewards across unrelated prompts | `test_grouped_rewards_are_centered`; mutant `s01` |
-| Clip the advantage instead of the ratio | `test_hand_grpo_objective`; mutant `s02` |
-| Use stale log probabilities after an update | `test_toy_reward_improves`; mutant `s03` |
+| Omit clipping from the policy objective | `test_hand_grpo_objective`; mutant `s02` |
 
 ## 6. Where it's used next
 

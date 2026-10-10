@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/rng.pyi`](../../course/contracts/py/tinyllm/num/rng.pyi) · [`tinyllm/numerics.h`](../../course/contracts/c/include/tinyllm/numerics.h) (the M06.3 section) · the algorithm, to the bit: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/M06.3/`: `test_rng.py` (Python against the spec vectors), `test_rng.c` (C under ASan and UBSan), `test_rng_c_vs_python.py` (your C stream against your Python stream through ctypes); the cross-language suite is `ss parity rng` (what they check: section 4) |
 | **Needs** | nothing to build first. Reading: `S-M05` (counting), `S-M06a` (modular arithmetic and hashing by hand) |
-| **Used by** | `M07.0` normal draws by Box-Muller · `L0.2` dropout masks · `L0.4` the default init and dropout streams · `L0.5` the bigram's sampler · `L0.6` the token stream's window starts · later `L8.1` the sampler, `rt.04` KV block hashes, `data.04` MinHash; ported to Rust by `L10.1` and to Go by `load.01` · later: `L2.2`, `L2.3`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9` |
+| **Used by** | `M07.0` normal draws by Box-Muller · `L0.2` dropout masks · `L0.4` the default init and dropout streams · `L0.5` the bigram's sampler · `L0.6` the token stream's window starts · later `L8.1` the sampler, `rt.04` KV block hashes, `data.04` MinHash, and `ethics.04` reproducible bootstrap resampling; ported to Rust by `L10.1` and to Go by `load.01` · later: `L2.2`, `L2.3`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9` |
 | **Milestone** | `MS-P2` (the foundations gate) |
 | **Optional depth** | O'Neill, "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation" (2014); Knuth, *TAOCP* vol. 2, ch. 3 (linear congruential generators, the spectral test); Steele, Lea, and Flood, "Fast Splittable Pseudorandom Number Generators" (2014); Carter and Wegman, "Universal Classes of Hash Functions" (1979); Noll's FNV page (isthe.com/chongo/tech/comp/fnv) |
 
@@ -263,6 +263,7 @@ def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int: ...
 | Forward | `L0.4` | layers default to `PCG32(0).substream(purpose)`, so initialization and dropout use separate streams and adding dropout does not change the initial weights |
 | Forward | `L0.5` | the autograd bigram samples text with one `uniform()` per token |
 | Forward | `L0.6` | `TokenStream` draws its window starts from a PCG32 and saves the generator's state in its cursor, so a resumed run reads the same batches |
+| Forward | `ethics.04` | bias-evaluation bootstrap intervals resample paired prompts with PCG32 so the reports are reproducible |
 | Forward | `L8.1` | the sampler: one `uniform()` per token on `stream(seed, sample)` (`spec/sampling.md`) |
 | Forward | `rt.04` | `tl_kv_block_hash` chains `tl_fnv1a64` over each block's token ids |
 | Forward | `L10.1`, `load.01` | the Rust and Go ports, held to the same vectors by `ss parity rng` |

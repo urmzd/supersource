@@ -4,15 +4,17 @@ from __future__ import annotations
 import numpy as np
 
 
-# SOLUTION-BEGIN L12.1
 def render_chat(messages, tokenizer):
+    # SOLUTION-BEGIN L12.1
     """Render messages with the serving tokenizer's canonical template."""
     if hasattr(tokenizer, "apply_chat_template"):
         return list(tokenizer.apply_chat_template(list(messages), tokenize=True, add_generation_prompt=False))
     return list(tokenizer.render_chat(list(messages)))
+    # SOLUTION-END
 
 
 def assistant_loss_mask(messages, tokenizer):
+    # SOLUTION-BEGIN L12.1
     ids = render_chat(messages, tokenizer)
     if hasattr(tokenizer, "assistant_mask"):
         mask = list(tokenizer.assistant_mask(list(messages)))
@@ -26,9 +28,11 @@ def assistant_loss_mask(messages, tokenizer):
     if len(mask) != len(ids):
         raise ValueError("token and loss mask lengths differ")
     return ids, [bool(x) for x in mask]
+    # SOLUTION-END
 
 
 def pack(examples, seq_len):
+    # SOLUTION-BEGIN L12.1
     if seq_len <= 0:
         raise ValueError("seq_len must be positive")
     ids, loss, docs = [], [], []
@@ -43,4 +47,4 @@ def pack(examples, seq_len):
     pad = seq_len - len(ids)
     ids.extend([0] * pad); loss.extend([False] * pad); docs.extend([-1] * pad)
     return np.asarray(ids, dtype=np.int64), np.asarray(loss, dtype=bool), np.asarray(docs, dtype=np.int64)
-# SOLUTION-END
+    # SOLUTION-END

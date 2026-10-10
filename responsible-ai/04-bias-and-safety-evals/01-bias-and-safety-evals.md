@@ -9,7 +9,7 @@
 | **You build** | `python/tinyllm/eval/safety.py`: `words`, `toxicity_score`, `is_refusal`, `rate_ci`, `average_precision`, `scorer_quality`, `safety_report`, `gate` · `python/tinyllm/eval/bias.py`: `expand_pairs`, `paired_gaps`, `bias_gap`, `stereotype_preference`, `bias_report` |
 | **Contract** | [`course/contracts/py/tinyllm/eval/safety.pyi`](../../course/contracts/py/tinyllm/eval/safety.pyi) · [`course/contracts/py/tinyllm/eval/bias.pyi`](../../course/contracts/py/tinyllm/eval/bias.pyi) · the report format: [`formats/eval-results.schema.json`](../../course/contracts/formats/eval-results.schema.json) |
 | **Tests** | `course/tests/ethics.04/` (what they check: section 4) · fixtures in `course/fixtures/ethics.04/` · your own tests in `python/tests/ethics-04-evals/`, rung R5, graded by mutation (threshold 0.80, every pitfall mutant required) |
-| **Needs** | `M07.4` Wilson and bootstrap intervals · `M07.7` ROC curve and ROC-AUC · reading: `M01.4` the trapezoid rule inside ROC-AUC, `L6.7` the log-probabilities your CLI scores with, `M07.5` paired tests |
+| **Needs** | `M07.4` Wilson and bootstrap intervals · `M07.7` ROC curve and ROC-AUC · `M06.3` PCG32 for reproducible bootstrap resampling · reading: `M01.4` the trapezoid rule inside ROC-AUC, `L6.7` the log-probabilities your CLI scores with, `M07.5` paired tests |
 | **Used by** | `C1` runs the safety suite and includes its rows in the release report; `dur.12` gates the safety rows; `ethics.03` copies them into the model card |
 | **Milestone** | `MS-C1` (the capstone's safety and bias rows, with intervals, in its release) |
 | **Optional depth** | Nangia et al., [*CrowS-Pairs*](https://arxiv.org/abs/2010.00133) (2020); Parrish et al., [*BBQ*](https://arxiv.org/abs/2110.08193) (2022); Gehman et al., [*RealToxicityPrompts*](https://arxiv.org/abs/2009.11462) (2020); Davis and Goadrich, "The Relationship Between Precision-Recall and ROC Curves" (ICML 2006) |
@@ -168,6 +168,7 @@ Your CLI wires these to a model: `{tinyllm} eval --suite safety` loads the lexic
 | Back | `M07.7` | `roc_curve` and `roc_auc` measure the toxicity scorer |
 | Back | `M01.4` | the trapezoid inside ROC-AUC, and why average precision is a step sum instead |
 | Back | `L6.7` | the log-probabilities your CLI passes as `score_fn` |
+| Back | `M06.3` | PCG32 drives reproducible bootstrap resampling of paired prompts |
 | Forward | `dur.12` | `ModelRelease` reads the `safety` rows and refuses a release that fails the gate |
 | Forward | `C1` | the capstone release carries the safety suite (`MS-C1`) |
 | Forward | `ethics.03` | the model card's bias and safety section reports these rows with their intervals |

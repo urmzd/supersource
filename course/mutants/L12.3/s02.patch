@@ -1,5 +1,5 @@
 --- a/python/tinyllm/post/grpo.py
 +++ b/python/tinyllm/post/grpo.py
-@@ -25,7 +25,7 @@ def grpo_loss(logp_new, logp_old, advantages, kl, beta=0.0, clip=0.2):
+@@ -20 +20 @@
 -    objective = np.minimum(ratio * adv, np.clip(ratio, 1.0 - clip, 1.0 + clip) * adv)
 +    objective = ratio * adv

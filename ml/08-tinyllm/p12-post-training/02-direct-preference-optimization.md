@@ -43,13 +43,13 @@ For chosen and rejected completions, define `Δπ = log π(y+|x) - log π(y-|x)`
 | `β` | preference strength / KL scale |
 | `σ` | logistic sigmoid |
 
-## 3. Worked example
+## 3. Worked example by hand
 
 With `Δπ = 1.2`, `Δref = 0.2`, and `β = 0.1`, the scaled margin is 0.1, so the loss is `-log σ(0.1) ≈ 0.6444`. If both policies are equal, both deltas match and the loss is `log 2 ≈ 0.6931`.
 
-## 4. Interface and tests
+## 4. The interface
 
-Implement DPO and IPO over completion log probabilities. `test_hand_dpo_loss` checks the worked value, `test_equal_policy_reference_is_log_two` checks the equal-policy baseline, and `test_ipo_variant` checks IPO scaling. Tests also compare gradients against finite differences. Never update the reference weights.
+Implement DPO and IPO over completion log probabilities. `test_hand_dpo_loss` checks the worked value, `test_equal_policy_reference_is_log_two` checks the equal-policy baseline, and `test_ipo_variant` checks IPO scaling. Never update the reference weights.
 
 | Test | Why it exists | Expected result |
 |---|---|---|
@@ -62,8 +62,7 @@ Implement DPO and IPO over completion log probabilities. `test_hand_dpo_loss` ch
 | Pitfall | Caught by |
 |---|---|
 | Reversing chosen and rejected | `test_hand_dpo_loss`; mutant `s01` |
-| Omitting reference log probabilities | `test_equal_policy_reference_is_log_two`; mutant `s02` |
-| Applying beta twice | `test_hand_dpo_loss` and `test_ipo_variant`; mutant `s03` |
+| Omitting reference log probabilities | `test_hand_dpo_loss`; mutant `s02` |
 
 ## 6. Where it's used next
 

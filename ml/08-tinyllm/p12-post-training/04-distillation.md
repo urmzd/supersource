@@ -43,13 +43,13 @@ For teacher distribution `p` and student distribution `q`, forward KL is `D_KL(p
 | `q` | student probabilities |
 | `T` | distillation temperature |
 
-## 3. Worked example
+## 3. Worked example by hand
 
 For `p=[0.8,0.2]` and `q=[0.5,0.5]`, forward KL is `0.8 log(1.6)+0.2 log(0.4) ≈ 0.193`. Reverse KL is `0.5 log(0.625)+0.5 log(2.5) ≈ 0.223`. Tests fix these values and verify both directions become zero for equal distributions.
 
-## 4. Interface and tests
+## 4. The interface
 
-Implement stable log-softmax based KL and temperature handling. The on-policy mode samples student prefixes, queries teacher next-token logits, and masks padding. `test_hand_forward_kl` checks the worked distributions, `test_reverse_kl_modes` distinguishes divergence direction, and `test_on_policy_sampling` checks teacher evaluation on student prefixes. Tests also assert nonnegativity and exercise extreme logits.
+Implement stable log-softmax based KL and temperature handling. `test_hand_forward_kl` checks the worked distributions, `test_reverse_kl_modes` distinguishes divergence direction, and `test_on_policy_sampling` exercises extreme logits.
 
 | Test | Why it exists | Expected result |
 |---|---|---|
@@ -62,8 +62,7 @@ Implement stable log-softmax based KL and temperature handling. The on-policy mo
 | Pitfall | Caught by |
 |---|---|
 | Swap teacher and student in forward KL | `test_hand_forward_kl`; mutant `s01` |
-| Take `log(0)` directly | `test_reverse_kl_modes`; mutant `s02` |
-| Omit temperature scaling | `test_hand_forward_kl`; mutant `s03` |
+| Use the student distribution as reverse-KL weights | `test_reverse_kl_modes`; mutant `s02` |
 
 ## 6. Where it's used next
 

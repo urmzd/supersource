@@ -116,7 +116,10 @@ tl_status tl_pool_create(int n_threads, tl_pool **out) {
     }
     *out = NULL;
     if (n_threads == 0) {
-        long hw = sysconf(_SC_NPROCESSORS_ONLN);
+        long hw = 1;
+#if defined(_SC_NPROCESSORS_ONLN)
+        hw = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
         n_threads = hw > 0 ? (int)(hw < 1024 ? hw : 1024) : 1;
     }
     tl_pool *p = tl_alloc(sizeof *p, _Alignof(tl_pool));

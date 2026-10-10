@@ -50,7 +50,7 @@ The chart points `durableAddress` at `tinyllm-durable:7233`, mounts `/artifacts`
 
 ## 4. The artifact and its check
 
-Build the image, inspect its user and labels, then render Helm templates using the contract schema. `test_agent_image_policy` checks non-root execution and image hygiene; `test_agent_chart_schema` validates the chart values; `test_agent_queue_and_secret` checks the `agent` queue and Secret references. The checks also require limits, probes, PDB, and the artifacts mount. A chart must not carry provider credentials in values files or image layers.
+Build the image, inspect its pinned base and numeric runtime user, then render Helm templates using the contract schema. The reference chart at `deploy/helm/forge-agent/` uses `forge-durable:7233`, selects the `agent` queue, and reads `PROVIDER_API_KEY` with `secretKeyRef`; the values file contains only the Secret name and key. `test_agent_image_policy` rejects root execution, mutable base tags, and broad source copies. `test_agent_chart_schema` compares the chart's schema with the published contract. `test_agent_queue_and_secret` checks the queue, Secret reference, probes, resource bounds, and PodDisruptionBudget. A chart must not carry provider credentials in values files or image layers.
 
 ## 5. Pitfalls
 
