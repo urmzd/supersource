@@ -14,6 +14,9 @@ steps = [
   ["go", "build", "-C", "go", "-o", "bin/gateway", "./cmd/gateway"],
   ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py",
    "train", "bigram", "--data", "{fixture:MS-P1/corpus.txt}", "--out", "artifacts/models/bigram"],
+  # The model the v1 engine serves in PR CI: L7.9's committed tiny-llama-2l.
+  ["sh", "-c", "mkdir -p artifacts/models/tiny && cp \"$0/config.json\" \"$0/model.safetensors\" artifacts/models/tiny/",
+   "{fixture:L7.9/tiny-llama-2l}"],
 ]
 
 [entry]

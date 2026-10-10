@@ -204,3 +204,4 @@ course/fixtures/ag.09/suite.jsonl	d9b5432f8e5abd96b330850e3818846dd57351f6916842
 course/fixtures/post-training/distill.jsonl	59e5e6b8eb0cb77ada999b72eef05bdfa221c8d08b3ca23f48984470345917b4	295	hand-written (MS-C2 post-training prompts)	-	-	Apache-2.0
 course/fixtures/post-training/heldout.jsonl	2b9f1af1c90ac3942fab6abad7a88f70ec284c370ca082a90657bf03aa03661d	701	hand-written (MS-C2 post-training prompts)	-	-	Apache-2.0
 course/fixtures/parity/quant_fp8.json	24d0a61ce5b23f1d060a4d3b41cfdc8b8ddc20f0d04ef99cb615a37909e97444	22943	course/oracle/parity/quant_fp8_golden.py	-	-	Apache-2.0
+course/fixtures/agent/prompt-injection.jsonl	5d379bf017a80abe579990c1738288498bd784c9157293f9ac7c2beb3089c2d7	2941	hand-written (MS-agent prompt-injection red team; every case allows only search_docs)	-	-	Apache-2.0

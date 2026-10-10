@@ -1,4 +1,5 @@
 // contracts/proto/tl/engine/v1/engine.proto: internal engine control
+// chapter: ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md
 // (DESIGN 2.7). Served by every engine on :50051 in Kubernetes
 // ({grpc_port} locally). The data plane is HTTP (openapi/openai-subset.v1.yaml);
 // this service carries only control and the disaggregated prefill hand-off.
@@ -481,7 +482,7 @@ type InfoResponse struct {
 	KvFormat      uint32                 `protobuf:"varint,3,opt,name=kv_format,json=kvFormat,proto3" json:"kv_format,omitempty"` // the KV format this engine writes; it reads every format listed in kv_formats_read
 	MaxContext    int32                  `protobuf:"varint,4,opt,name=max_context,json=maxContext,proto3" json:"max_context,omitempty"`
 	BlockSize     int32                  `protobuf:"varint,5,opt,name=block_size,json=blockSize,proto3" json:"block_size,omitempty"`                      // tokens per KV block
-	Abi           uint32                 `protobuf:"varint,6,opt,name=abi,proto3" json:"abi,omitempty"`                                                   // engine protocol revision
+	Abi           uint32                 `protobuf:"varint,6,opt,name=abi,proto3" json:"abi,omitempty"`                                                   // engine protocol revision; no native library ABI
 	KvFormatsRead []uint32               `protobuf:"varint,7,rep,packed,name=kv_formats_read,json=kvFormatsRead,proto3" json:"kv_formats_read,omitempty"` // from craft.13: [1, 2] during a migration window
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

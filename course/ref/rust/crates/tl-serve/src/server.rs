@@ -793,6 +793,8 @@ async fn api(shared: Arc<Shared>, req: Request<Incoming>) -> Result<Response<Res
         .unwrap_or_else(|| new_id(&shared));
     let (parts, body) = req.into_parts();
     let path = parts.uri.path().to_string();
+    let start = crate::http::unix_nanos();
+    let parent = parts.headers.get("traceparent").and_then(|v| v.to_str().ok()).and_then(crate::http::parse_traceparent);
     let body = match body.collect().await {
         Ok(b) => b.to_bytes(),
         Err(_) => Bytes::new(),
@@ -838,7 +840,50 @@ async fn api(shared: Arc<Shared>, req: Request<Incoming>) -> Result<Response<Res
     if let Ok(v) = HeaderValue::from_str(&rid) {
         resp.headers_mut().insert("x-request-id", v);
     }
+    export_request_span(&parts.method, &path, resp.status().as_u16(), &shared.model_id, start, parent);
     Ok(resp)
+    // SOLUTION-END
+}
+
+/// One OTLP SERVER span per API request when OTEL_EXPORTER_OTLP_ENDPOINT is
+/// set (otel/semconv.md): `<METHOD> <route>`, a child of the caller's
+/// traceparent, exported off the request path. It ends when the response
+/// head is ready; a stream's tokens are timed by the L10.7 metrics.
+fn export_request_span(method: &Method, path: &str, status: u16, model: &str, start: u128, parent: Option<(String, String)>) {
+    // SOLUTION-BEGIN L10.5
+    let Some(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok().filter(|s| !s.is_empty()) else {
+        return;
+    };
+    if !path.starts_with("/v1/") {
+        return;
+    }
+    use crate::http::{AttrValue, Span};
+    let service = std::env::var("OTEL_SERVICE_NAME").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| "tl-engine".to_string());
+    let (trace_id, parent_span_id) = match parent {
+        Some((t, p)) => (t, Some(p)),
+        None => (crate::http::random_hex(16), None),
+    };
+    let span = Span {
+        trace_id,
+        span_id: crate::http::random_hex(8),
+        parent_span_id,
+        name: format!("{method} {path}"),
+        start_unix_nano: start,
+        end_unix_nano: crate::http::unix_nanos(),
+        attributes: vec![
+            ("http.request.method".to_string(), AttrValue::Str(method.to_string())),
+            ("http.route".to_string(), AttrValue::Str(path.to_string())),
+            ("http.response.status_code".to_string(), AttrValue::Int(i64::from(status))),
+            ("gen_ai.request.model".to_string(), AttrValue::Str(model.to_string())),
+        ],
+        error: status >= 500,
+    };
+    let body = crate::http::otlp_json(&service, &span);
+    std::thread::spawn(move || {
+        if let Err(e) = crate::http::export_span(&endpoint, &body) {
+            eprintln!("tl-serve: span export failed: {e}");
+        }
+    });
     // SOLUTION-END
 }
 

@@ -261,8 +261,12 @@ def test_caller_trace_is_continued(c: Ctx) -> None:
     status, _ = loc.request(traceparent=f"00-{CALLER_TRACE}-{CALLER_SPAN}-01")
     if status != 200:
         raise Fail(f"a request carrying traceparent answered {status}")
+    # Wait for both spans: each service exports on its own schedule.
     spans = sink.wait(
-        lambda s: any(x.name == ENGINE_SPAN and x.trace_id == CALLER_TRACE for x in s),
+        lambda s: all(
+            any(x.name == n and x.trace_id == CALLER_TRACE for x in s)
+            for n in (ENGINE_SPAN, GATEWAY_SPAN)
+        ),
         timeout=8,
     )
     gw = [s for s in spans if s.name == GATEWAY_SPAN and s.trace_id == CALLER_TRACE]

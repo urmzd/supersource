@@ -118,7 +118,7 @@ pub struct InfoResponse {
     /// tokens per KV block
     #[prost(int32, tag = "5")]
     pub block_size: i32,
-    /// Engine protocol revision.
+    /// engine protocol revision; no native library ABI
     #[prost(uint32, tag = "6")]
     pub abi: u32,
     /// from craft.13: \[1, 2\] during a migration window

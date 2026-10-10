@@ -137,7 +137,7 @@ When `OTEL_EXPORTER_OTLP_ENDPOINT` is set (`spec/cli-roles.md`), the engine post
 
 ### 2.9 Stopping
 
-`spec/cli-roles.md` asks servers to exit 0 on SIGTERM (what Kubernetes sends before killing a pod). The process uses the operating system default signal handling; graceful signal handling is added with the async server later in this part.
+`spec/cli-roles.md` asks servers to exit 0 on SIGTERM (what Kubernetes sends before killing a pod). The tracer's `main.rs` (yours, not a graded unit) starts a thread that waits for SIGTERM and exits 0; there is nothing to drain yet. The async server later in this part drains in-flight requests first.
 
 ## 3. Worked example by hand
 

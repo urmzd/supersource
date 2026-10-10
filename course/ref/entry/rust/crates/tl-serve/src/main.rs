@@ -67,6 +67,24 @@ fn serve_config(path: &str) -> ! {
     }
 }
 
+/// spec/cli-roles.md: a server exits 0 on SIGTERM, which Kubernetes sends
+/// before it kills a pod. The tracer has no requests worth draining, so a
+/// watcher thread waits for the signal and exits at once.
+fn exit_on_sigterm() {
+    thread::spawn(|| {
+        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build();
+        if let Ok(rt) = rt {
+            rt.block_on(async {
+                use tokio::signal::unix::{signal, SignalKind};
+                if let Ok(mut term) = signal(SignalKind::terminate()) {
+                    term.recv().await;
+                    process::exit(0);
+                }
+            });
+        }
+    });
+}
+
 fn main() {
     let argv: Vec<String> = std::env::args().collect();
     if argv.get(1).map(String::as_str) == Some("--config") {
@@ -78,6 +96,7 @@ fn main() {
             }
         }
     }
+    exit_on_sigterm();
     let args = parse_args().unwrap_or_else(|e| {
         eprintln!("tl-serve: {e}\nusage: tl-serve --model-dir <dir> --port <n> --health-port <n>");
         process::exit(2)

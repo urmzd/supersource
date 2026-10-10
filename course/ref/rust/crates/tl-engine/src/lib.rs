@@ -18,6 +18,7 @@
 
 pub mod block_manager;
 pub mod chunk;
+pub mod constrain;
 pub mod engine;
 pub mod forward;
 pub mod heartbeat;
