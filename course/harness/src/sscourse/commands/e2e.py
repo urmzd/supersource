@@ -292,6 +292,9 @@ def run(
             return
     lr = keep or tmp / "learner"
     env = learner_env(course, lr, tmp / "scratch")
+    # Sampled mutation grades everywhere in this run, MS-P0's "your CI is
+    # green" step included (verify check 6 holds the full grades).
+    env["SS_MUTATION_SAMPLE"] = "1"
     ok, what = assemble(reg, course, lr, env)
     if not ok:
         rep.fail("e2e", "assemble the reference learner", what)
@@ -301,7 +304,6 @@ def run(
     # Every module's full mutation grade is verify check 6; here the
     # reference learner's tests run against the required mutants plus a
     # seeded sample, so the whole repo checks in CI time.
-    env = {**env, "SS_MUTATION_SAMPLE": "1"}
     rc, out = _ss(env, "check", "--all", "--ci", timeout=3600)
     rep.fail("e2e", "ss check --all --ci", out) if rc != 0 else rep.ok(
         "e2e", "ss check --all --ci"
