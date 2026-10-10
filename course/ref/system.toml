@@ -49,5 +49,6 @@ local = [["bash", "scripts/ci-local.sh"]]
 kube_context = "kind-forge"
 namespace    = "forge"
 gateway_url  = "http://127.0.0.1:30080"
+prometheus   = "http://127.0.0.1:30090"   # dep.03: kube-prometheus-stack, NodePort 30090
 traces       = "http://127.0.0.1:30686"
 services     = { engine = "deploy/forge-engine", gateway = "deploy/forge-gateway" }

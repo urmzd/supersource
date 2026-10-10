@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -460,7 +460,7 @@
+@@ -478,7 +478,7 @@
  
      def only(*allowed: str) -> None:
          extra = sorted(keys - set(allowed))

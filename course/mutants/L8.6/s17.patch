@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -223,7 +223,6 @@
+@@ -250,7 +250,6 @@
          drafted += len(drafts)
          accepted += n_acc
          committed += len(pending) + n_acc

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -157,7 +157,7 @@
+@@ -174,7 +174,7 @@
      for i, x in enumerate(int(t) for t in draft_ids):
          if p.temperature == 0:
              g = sample(rows[i], p, hist + emitted, rng, prompt)[0]  # greedy: no draw

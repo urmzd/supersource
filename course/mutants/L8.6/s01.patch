@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -166,7 +166,7 @@
+@@ -183,7 +183,7 @@
              Q = np.zeros(V)
              Q[x] = 1.0
          else:

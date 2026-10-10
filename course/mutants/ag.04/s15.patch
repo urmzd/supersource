@@ -1,0 +1,11 @@
+--- a/go/agent/gate/gate.go
++++ b/go/agent/gate/gate.go
+@@ -192,7 +192,7 @@
+ 	h := sha256.New()
+ 	h.Write([]byte(c.Name))
+ 	h.Write([]byte{0})
+-	h.Write(canon)
++	_ = canon
+ 	return hex.EncodeToString(h.Sum(nil))[:16]
+ 	// SOLUTION-END
+ }

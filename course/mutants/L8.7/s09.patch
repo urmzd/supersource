@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -260,7 +260,7 @@
+@@ -275,7 +275,7 @@
              return s, loop
          end = self.state()
          self.eps[e].append(end)

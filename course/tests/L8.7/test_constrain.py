@@ -43,12 +43,40 @@ SEED = int(os.environ.get("SS_SEED", "0"))
 FIX = Path(os.environ.get("TINYLLM_FIXTURES", "")) / "L8.7" / "masks_golden.json"
 
 HAND = r"(cat|car|dog)s?"
-HAND_VOCAB = [b"c", b"a", b"t", b"r", b"d", b"o", b"g", b"s", b"ca", b"cat", b"dog", b"ts", b"x", None, b""]
+HAND_VOCAB = [
+    b"c",
+    b"a",
+    b"t",
+    b"r",
+    b"d",
+    b"o",
+    b"g",
+    b"s",
+    b"ca",
+    b"cat",
+    b"dog",
+    b"ts",
+    b"x",
+    None,
+    b"",
+]
 HAND_EOS = 13
 BYTE_VOCAB = [bytes([i]) for i in range(256)] + [None]  # id 256: EOS
 EOS = 256
 
-PROBES = [b"", b"\n", b"a\nb", b"a_b", b"a\xffb", b"\xff", b"ab\n", b"cat\n", b"[_ ]", b"(1.5)", b"x\x80"]
+PROBES = [
+    b"",
+    b"\n",
+    b"a\nb",
+    b"a_b",
+    b"a\xffb",
+    b"\xff",
+    b"ab\n",
+    b"cat\n",
+    b"[_ ]",
+    b"(1.5)",
+    b"x\x80",
+]
 PATTERNS = [
     HAND,
     r"[a-c]{2,3}(?:x|\d)*[^a-z]",
@@ -82,11 +110,15 @@ def walk(dfa, rng: PCG32, max_len: int = 12) -> bytes:
 def near_misses(data: bytes, rng: PCG32) -> list[bytes]:
     """data with one byte changed, dropped, or added, and every prefix."""
     out = [data[:i] for i in range(len(data) + 1)]
-    pool = b"abcdgorstxyz0129.()[]_ \n\"\\!AB\x80\xc3\xff"
+    pool = b'abcdgorstxyz0129.()[]_ \n"\\!AB\x80\xc3\xff'
     for _ in range(6):
         i = rng.below(len(data) + 1)
         c = pool[rng.below(len(pool))]
-        out += [data[:i] + bytes([c]) + data[i:], data[:i] + bytes([c]) + data[i + 1 :], data[:i] + data[i + 1 :]]
+        out += [
+            data[:i] + bytes([c]) + data[i:],
+            data[:i] + bytes([c]) + data[i + 1 :],
+            data[:i] + data[i + 1 :],
+        ]
     return out
 
 
@@ -105,13 +137,22 @@ def test_hand_example():
     d = regex_to_dfa(HAND)
     assert d.n_states == 7
     assert d.accept.tolist() == [False, False, False, False, False, True, True]
-    edges = {(s, chr(b)): int(d.trans[s, b]) for s in range(7) for b in range(256) if d.trans[s, b] != DEAD}
+    edges = {
+        (s, chr(b)): int(d.trans[s, b])
+        for s in range(7)
+        for b in range(256)
+        if d.trans[s, b] != DEAD
+    }
     assert edges == {
         (0, "c"): 1, (0, "d"): 2, (1, "a"): 3, (2, "o"): 4,
         (3, "r"): 5, (3, "t"): 5, (4, "g"): 5, (5, "s"): 6,
     }  # fmt: skip
     assert d.trans.dtype == np.int32 and d.trans.shape == (7, 256)
-    assert d.step(0, b"cats") == 6 and d.step(0, b"cab") == DEAD and d.step(DEAD, b"") == DEAD
+    assert (
+        d.step(0, b"cats") == 6
+        and d.step(0, b"cab") == DEAD
+        and d.step(DEAD, b"") == DEAD
+    )
     assert d.matches(b"dogs") and not d.matches(b"do") and not d.matches(b"catss")
 
 
@@ -169,10 +210,14 @@ def test_every_state_is_live():
         while grew:
             grew = False
             for s in range(d.n_states):
-                if s not in live and any(int(t) in live for t in d.trans[s] if t != DEAD):
+                if s not in live and any(
+                    int(t) in live for t in d.trans[s] if t != DEAD
+                ):
                     live.add(s)
                     grew = True
-        assert live == set(range(d.n_states)), f"{pattern!r}: dead states {set(range(d.n_states)) - live}"
+        assert live == set(range(d.n_states)), (
+            f"{pattern!r}: dead states {set(range(d.n_states)) - live}"
+        )
 
 
 def test_canonical_form():
@@ -192,7 +237,9 @@ def test_canonical_form():
     for p, q in pairs:
         a, b = regex_to_dfa(p), regex_to_dfa(q)
         assert a.n_states == b.n_states, (p, q)
-        assert np.array_equal(a.trans, b.trans) and np.array_equal(a.accept, b.accept), (p, q)
+        assert np.array_equal(a.trans, b.trans) and np.array_equal(
+            a.accept, b.accept
+        ), (p, q)
 
 
 def test_unsupported_syntax_raises():
@@ -202,7 +249,22 @@ def test_unsupported_syntax_raises():
     # KIND: boundary
     # CATCHES: s13, m004
     # CHAPTER: L8.7 section 4
-    for bad in [r"^a", r"a$", r"(a)\1", r"(?=a)a", r"a*?", "\u00e9", r"a{3,1}", r"a{300}", r"[z-a]", r"(a", r"a)", r"[^\x00-\xff]", r"[", r"\q"]:
+    for bad in [
+        r"^a",
+        r"a$",
+        r"(a)\1",
+        r"(?=a)a",
+        r"a*?",
+        "\u00e9",
+        r"a{3,1}",
+        r"a{300}",
+        r"[z-a]",
+        r"(a",
+        r"a)",
+        r"[^\x00-\xff]",
+        r"[",
+        r"\q",
+    ]:
         with pytest.raises(ValueError):
             regex_to_dfa(bad)
 
@@ -218,12 +280,29 @@ def test_masks_match_brute_force():
     # KIND: property
     # CATCHES: s06, s14, m002
     # CHAPTER: L8.7 section 2.3
-    vocab = BYTE_VOCAB[:256] + [b"ca", b"cat", b"cats", b"do", b"dog", b"(1", b"(1.", b".5)", b"[a", b"[a ]", b"ab", b"abb", None, b""]
+    vocab = BYTE_VOCAB[:256] + [
+        b"ca",
+        b"cat",
+        b"cats",
+        b"do",
+        b"dog",
+        b"(1",
+        b"(1.",
+        b".5)",
+        b"[a",
+        b"[a ]",
+        b"ab",
+        b"abb",
+        None,
+        b"",
+    ]
     for pattern in (HAND, r"\(\d+\.\d\)|\[\w\s?\]", r"(a|b)*abb"):
         d = regex_to_dfa(pattern)
         idx = TokenIndex(d, vocab)
         for s in range(d.n_states):
-            want = np.array([tb is not None and tb != b"" and d.step(s, tb) != DEAD for tb in vocab])
+            want = np.array(
+                [tb is not None and tb != b"" and d.step(s, tb) != DEAD for tb in vocab]
+            )
             assert np.array_equal(idx.mask(s), want), (pattern, s)
             for t in np.flatnonzero(want):
                 assert idx.next_state(s, int(t)) == d.step(s, vocab[t])
@@ -240,13 +319,19 @@ def test_masks_match_the_golden_file():
     # CHAPTER: L8.7 section 4
     doc = json.loads(FIX.read_text())
     for case in doc["cases"]:
-        pattern = case["pattern"] if "pattern" in case else json_schema_to_regex(case["schema"])
+        pattern = (
+            case["pattern"]
+            if "pattern" in case
+            else json_schema_to_regex(case["schema"])
+        )
         vocab = [None if v is None else bytes.fromhex(v) for v in case["vocab"]]
         idx = TokenIndex(regex_to_dfa(pattern), vocab, eos_id=case["eos_id"])
         for path in case["paths"]:
             c = Constraint(idx)
             for i, step in enumerate(path):
-                assert np.flatnonzero(c.mask()).tolist() == step["mask"], f"{case['name']} step {i}"
+                assert np.flatnonzero(c.mask()).tolist() == step["mask"], (
+                    f"{case['name']} step {i}"
+                )
                 assert c.is_complete() == step["complete"], f"{case['name']} step {i}"
                 if step["token"] is not None:
                     c.advance(step["token"])
@@ -260,7 +345,11 @@ def test_reachable_states_never_have_an_empty_mask():
     # KIND: property
     # CATCHES: s12, s14, m002
     # CHAPTER: L8.7 section 2.3
-    for pattern in PATTERNS + [json_schema_to_regex({"type": "array", "items": {"type": "integer"}, "maxItems": 2})]:
+    for pattern in PATTERNS + [
+        json_schema_to_regex(
+            {"type": "array", "items": {"type": "integer"}, "maxItems": 2}
+        )
+    ]:
         idx = TokenIndex(regex_to_dfa(pattern), BYTE_VOCAB, eos_id=EOS)
         seen, todo = {0}, [0]
         while todo:
@@ -328,7 +417,9 @@ def test_greedy_takes_the_best_allowed_token():
     logits[12] = 9.0  # x: not allowed
     logits[[4, 9]] = 2.0  # d and cat tie
     c = Constraint(idx)
-    tok, lp = constrained_sample(logits, c, SamplingParams(temperature=0.0), [], request_rng(0))
+    tok, lp = constrained_sample(
+        logits, c, SamplingParams(temperature=0.0), [], request_rng(0)
+    )
     assert tok == 4 and c.state == 2
     z = math.log(2 * math.exp(2.0) + 3 * math.exp(0.0))  # allowed: c, d, ca, cat, dog
     assert abs(lp - (2.0 - z)) < 1e-12
@@ -350,7 +441,11 @@ def schema_ok(v, s) -> bool:
             and all(schema_ok(v[k], s["properties"][k]) for k in v)
         )
     if t == "array":
-        return isinstance(v, list) and s.get("minItems", 0) <= len(v) <= s.get("maxItems", 1 << 30) and all(schema_ok(x, s["items"]) for x in v)
+        return (
+            isinstance(v, list)
+            and s.get("minItems", 0) <= len(v) <= s.get("maxItems", 1 << 30)
+            and all(schema_ok(x, s["items"]) for x in v)
+        )
     return {
         "string": lambda: isinstance(v, str),
         "integer": lambda: isinstance(v, int) and not isinstance(v, bool),
@@ -367,7 +462,12 @@ TOOL_SCHEMA = {
         "days": {"type": "integer"},
         "units": {"enum": ["c", "f"]},
         "hourly": {"type": "boolean"},
-        "at": {"type": "array", "items": {"type": "number"}, "minItems": 1, "maxItems": 3},
+        "at": {
+            "type": "array",
+            "items": {"type": "number"},
+            "minItems": 1,
+            "maxItems": 3,
+        },
     },
     "required": ["city", "days"],
 }
@@ -382,7 +482,9 @@ def test_constrained_generation_parses():
     # KIND: property
     # CATCHES: s15, s18, s20, s22, s23, s24
     # CHAPTER: L8.7 section 2.5
-    idx = TokenIndex(regex_to_dfa(json_schema_to_regex(TOOL_SCHEMA)), BYTE_VOCAB, eos_id=EOS)
+    idx = TokenIndex(
+        regex_to_dfa(json_schema_to_regex(TOOL_SCHEMA)), BYTE_VOCAB, eos_id=EOS
+    )
     noise = PCG32(SEED + 87)
     p = SamplingParams(temperature=1.0)
     closers = [ord(ch) for ch in '"},]']
@@ -422,7 +524,13 @@ def test_json_schema_documents():
 
     good = [
         {"city": "Oslo", "days": 3},
-        {"city": 'a"b\\cé\n', "days": -12, "units": "f", "hourly": False, "at": [1, -2.5, 3e10]},
+        {
+            "city": 'a"b\\cé\n',
+            "days": -12,
+            "units": "f",
+            "hourly": False,
+            "at": [1, -2.5, 3e10],
+        },
         {"city": "", "days": 0, "at": [0.0]},
         {"city": "x", "days": 7, "hourly": True},
     ]
@@ -464,7 +572,9 @@ def test_json_schema_rejects_keywords_outside_the_subset():
     ]:
         with pytest.raises(ValueError):
             json_schema_to_regex(s)
-    assert regex_to_dfa(json_schema_to_regex({"type": "string", "description": "ignored", "title": "t"})).matches(b'"ok"')
+    assert regex_to_dfa(
+        json_schema_to_regex({"type": "string", "description": "ignored", "title": "t"})
+    ).matches(b'"ok"')
 
 
 def test_vocab_bytes():
@@ -493,4 +603,9 @@ def test_vocab_bytes():
 
     # The second string is made of byte-map characters (U+00E9 stands for
     # byte 0xE9), so it is three bytes; CJK characters are not in the map.
-    assert vocab_bytes(Tiny()) == [b" cat", b"\xe9t\xe9", "\u65e5\u672c".encode("utf-8"), None]
+    assert vocab_bytes(Tiny()) == [
+        b" cat",
+        b"\xe9t\xe9",
+        "\u65e5\u672c".encode("utf-8"),
+        None,
+    ]

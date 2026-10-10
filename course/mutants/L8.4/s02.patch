@@ -1,6 +1,6 @@
 --- a/rust/crates/tl-engine/src/prefix.rs
 +++ b/rust/crates/tl-engine/src/prefix.rs
-@@ -82,7 +82,7 @@
+@@ -89,7 +89,7 @@
          let usable = tokens.len().saturating_sub(1) / b * b;
          let (matched, path) = self.tree.match_prefix(&tokens[..usable]);
          let mut blocks = Vec::with_capacity(matched / b);

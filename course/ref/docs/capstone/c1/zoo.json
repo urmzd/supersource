@@ -1,0 +1,105 @@
+{
+ "format": "tl.eval-results.v1",
+ "suite": "zoo",
+ "seed": 0,
+ "created": "2026-10-09T00:00:00Z",
+ "rows": [
+  {
+   "model": "kn-4",
+   "task": "ts-val",
+   "metric": "bpb",
+   "higher_is_better": false,
+   "value": 0.646334,
+   "ci95": [
+    0.599353,
+    0.725162
+   ],
+   "n": 5568,
+   "status": "ok"
+  },
+  {
+   "model": "nplm",
+   "task": "ts-val",
+   "metric": "bpb",
+   "higher_is_better": false,
+   "value": 0.602033,
+   "ci95": [
+    0.543929,
+    0.706639
+   ],
+   "n": 5537,
+   "status": "ok",
+   "tl_arch": "nplm",
+   "params": 230208
+  },
+  {
+   "model": "lstm",
+   "task": "ts-val",
+   "metric": "bpb",
+   "higher_is_better": false,
+   "value": 0.496431,
+   "ci95": [
+    0.453216,
+    0.578139
+   ],
+   "n": 5537,
+   "status": "ok",
+   "tl_arch": "rnnlm",
+   "params": 592384
+  },
+  {
+   "model": "gpt",
+   "task": "ts-val",
+   "metric": "bpb",
+   "higher_is_better": false,
+   "value": 0.942831,
+   "ci95": [
+    0.877278,
+    1.065298
+   ],
+   "n": 5537,
+   "status": "ok",
+   "tl_arch": "gpt",
+   "params": 875264
+  },
+  {
+   "model": "c1-llama",
+   "task": "ts-val",
+   "metric": "bpb",
+   "higher_is_better": false,
+   "value": 0.500221,
+   "ci95": [
+    0.448999,
+    0.597273
+   ],
+   "n": 5537,
+   "status": "ok",
+   "tl_arch": "llama",
+   "params": 791680
+  },
+  {
+   "model": "seq2seq",
+   "task": "dates",
+   "metric": "em",
+   "value": null,
+   "status": "skipped",
+   "reason": "smoke tier: seq2seq EM rows come from the L6.7 zoo suite on the full capstone run"
+  },
+  {
+   "model": "classifier",
+   "task": "sst2-2k",
+   "metric": "accuracy",
+   "value": null,
+   "status": "skipped",
+   "reason": "smoke tier: classification rows come from the L6.7 zoo suite on the full capstone run"
+  },
+  {
+   "model": "word2vec",
+   "task": "word-sim",
+   "metric": "spearman",
+   "value": null,
+   "status": "skipped",
+   "reason": "smoke tier: word similarity rows come from the L6.7 zoo suite on the full capstone run"
+  }
+ ]
+}

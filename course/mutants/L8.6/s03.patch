@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -170,6 +170,8 @@
+@@ -187,6 +187,8 @@
          u_accept = rng.uniform()
          u_resample = rng.uniform()
          y, ok = speculative_step(P, Q, x, u_accept, u_resample)

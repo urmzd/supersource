@@ -3,11 +3,18 @@ kind: Service
 metadata:
   name: {{ .Release.Name }}
   labels:
-    app.kubernetes.io/name: {{ .Release.Name }}
+    {{- include "engine.labels" . | nindent 4 }}
 spec:
+  type: ClusterIP
   selector:
     app.kubernetes.io/name: {{ .Release.Name }}
   ports:
     - name: http
-      port: {{ .Values.port }}
+      port: {{ .Values.service.httpPort }}
       targetPort: http
+    - name: grpc
+      port: {{ .Values.service.grpcPort }}
+      targetPort: grpc
+    - name: kv
+      port: {{ .Values.service.kvPort }}
+      targetPort: kv

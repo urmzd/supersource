@@ -15,7 +15,7 @@ const subCount = 1 << SubBits // 128
 
 // nBuckets covers every non-negative int64: exponents SubBits..62 give
 // (62 - SubBits + 1) groups of subCount after the exact range.
-const nBuckets = (62-SubBits+2)*subCount
+const nBuckets = (62 - SubBits + 2) * subCount
 
 // Histogram is a log-linear (HDR-style) histogram of non-negative int64
 // values, nanoseconds in the load generator. Record and Quantile are O(1)
@@ -133,8 +133,8 @@ func (h *Histogram) Quantile(q float64) int64 {
 	if q > 1 {
 		q = 1
 	}
-	// ceil(q * n), forgiving the rounding of q * n: 0.95 * 100 is
-	// 95.00000000000001 in float64, and its rank is 95, not 96.
+	// ceil(q * n), forgiving the rounding of q * n: 0.55 * 100 is
+	// 55.00000000000001 in float64, and its rank is 55, not 56.
 	rank := uint64(math.Ceil(q*float64(h.n) - 1e-9))
 	if rank < 1 {
 		rank = 1

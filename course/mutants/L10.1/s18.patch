@@ -1,0 +1,12 @@
+--- a/rust/crates/tl-sys/src/kv.rs
++++ b/rust/crates/tl-sys/src/kv.rs
+@@ -297,6 +297,6 @@
+     fn drop(&mut self) {
+         // SAFETY: raw came from tl_kv_pool_create and is destroyed only here;
+         // a moved-from KvPool is never dropped, so this runs once per pool.
+-        unsafe { tl_kv_pool_destroy(self.raw.as_ptr()) }
+-    }
+-}
++        let _ = self.raw;
++    }
++}

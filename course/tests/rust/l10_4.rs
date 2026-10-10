@@ -19,7 +19,8 @@ use tl_engine::forward::{ForwardBatch, ForwardSeq};
 use tl_engine::runner::{lock, EngineConfig, KvConfig, ModelRunner, PrefixCache, SchedPolicy, SharedPool};
 use tl_engine::sample::{self, Pcg32, SamplingParams};
 use tl_engine::sched::{BlockSpace, Request, RequestEvent, RequestId, Scheduler, SchedulerConfig, StepOutput};
-use tl_sys::{KvCfg, KvPool, TL_F16, TL_KV_FORMAT_V1};
+use tl_sys::kernels::TL_F16;
+use tl_sys::kv::{KvCfg, KvPool, TL_KV_FORMAT_V1};
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -133,7 +134,7 @@ fn hand_example_prefix_hit() {
     //      both (8 cached tokens) and needs one fresh block; A's partial
     //      third block was never shared.
     // KIND: unit
-    // CATCHES: s01, s06
+    // CATCHES: s01, s06, s07
     // CHAPTER: L10.4 section 3
     for mode in [PrefixCache::Hash, PrefixCache::Radix] {
         let p = pool(8);
@@ -177,7 +178,7 @@ fn last_token_is_always_computed() {
     //      tokens rounded down to a block: the model must run on the last
     //      prompt token to produce the logits of the first new one.
     // KIND: boundary
-    // CATCHES: s02
+    // CATCHES: s02, s07
     // CHAPTER: L10.4 section 5, Pitfalls
     for mode in [PrefixCache::Hash, PrefixCache::Radix] {
         let p = pool(8);
@@ -196,7 +197,6 @@ fn same_tokens_at_another_position_do_not_hit() {
     //      path): tokens 5 to 8 cached at positions 4..8 must not serve a
     //      prompt that starts with 5 6 7 8.
     // KIND: boundary
-    // CATCHES: s01
     // CHAPTER: L10.4 section 5, Pitfalls
     for mode in [PrefixCache::Hash, PrefixCache::Radix] {
         let p = pool(8);
@@ -217,7 +217,7 @@ fn refcounts_balance_under_random_workload() {
     //      mode exactly the cache's blocks are, and free + used + cached is
     //      the pool.
     // KIND: property
-    // CATCHES: s03, s04, s05
+    // CATCHES: s05, s06, s07
     // CHAPTER: L10.4 section 2
     for mode in [PrefixCache::None, PrefixCache::Hash, PrefixCache::Radix] {
         let mut g = frozen::Pcg32::new(ss_seed() + 404);
@@ -266,7 +266,7 @@ fn eviction_reclaims_cached_blocks() {
     //      full of cached prefixes, a new unrelated request evicts the least
     //      recently used ones and is admitted.
     // KIND: fault
-    // CATCHES: s05
+    // CATCHES: s05, s07
     // CHAPTER: L10.4 section 2
     for mode in [PrefixCache::Hash, PrefixCache::Radix] {
         let p = pool(6);
@@ -283,12 +283,59 @@ fn eviction_reclaims_cached_blocks() {
 }
 
 #[test]
+fn shared_blocks_return_to_free_after_eviction() {
+    // WHY: a request that reused cached blocks must give its reference back
+    //      when it ends; otherwise, once the cache evicts those blocks they
+    //      stay "used" forever and the pool shrinks. After A caches two
+    //      blocks and B reuses them, a request needing all 8 blocks must fit.
+    // KIND: property
+    // CATCHES: s01, s03, s05, s07
+    // CHAPTER: L10.4 section 5, Pitfalls
+    for mode in [PrefixCache::Hash, PrefixCache::Radix] {
+        let p = pool(8);
+        let mut bm = BlockManager::new(p.clone(), mode);
+        let a: Vec<u32> = (1..=9).collect();
+        bm.allocate(1, &a).unwrap();
+        bm.release(1, &a);
+        let b = [1, 2, 3, 4, 5, 6, 7, 8, 50, 51];
+        assert_eq!(bm.allocate(2, &b).unwrap().cached_tokens, 8);
+        bm.release(2, &b);
+        let big: Vec<u32> = (100..132).collect();
+        assert!(bm.allocate(3, &big).is_ok(), "{mode:?}: 32 tokens need every block, cached ones included");
+        bm.release(3, &[]);
+        let st = lock(&p).unwrap().stats();
+        assert_eq!(st.free + st.used + st.cached, 8);
+    }
+}
+
+#[test]
+fn failed_allocation_returns_its_cache_hits() {
+    // WHY: allocate is all or nothing: when the fresh blocks a request needs
+    //      are not there, the references its cache hits took must be dropped
+    //      too, or those blocks can never be evicted again.
+    // KIND: fault
+    // CATCHES: s04, s05
+    // CHAPTER: L10.4 section 5, Pitfalls
+    for mode in [PrefixCache::Hash, PrefixCache::Radix] {
+        let p = pool(8);
+        let mut bm = BlockManager::new(p.clone(), mode);
+        let a: Vec<u32> = (1..=9).collect();
+        bm.allocate(1, &a).unwrap();
+        bm.release(1, &a);
+        let mut b: Vec<u32> = (1..=8).collect();
+        b.extend(200..230);
+        assert!(bm.allocate(2, &b).is_err(), "{mode:?}: 38 tokens need 10 blocks of 8");
+        let big: Vec<u32> = (100..132).collect();
+        assert!(bm.allocate(3, &big).is_ok(), "{mode:?}: the failed request must not pin the cached blocks");
+    }
+}
+
+#[test]
 fn prefix_hit_skips_prefill_tokens() {
     // WHY: the scheduler starts a request's prefill at its cached length:
     //      the second request's first chunk begins at position 8, so only
     //      its new tokens run through the model.
     // KIND: unit
-    // CATCHES: s06
     // CHAPTER: L10.4 section 4
     let p = pool(16);
     let mut s = Scheduler::new(sched_cfg(4, 64), BlockManager::new(p, PrefixCache::Radix));
@@ -308,7 +355,7 @@ fn identical_outputs_with_and_without_cache() {
     //      the same in none, hash, and radix modes, and the caches prefill
     //      fewer tokens.
     // KIND: differential
-    // CATCHES: s01, s02, s03
+    // CATCHES: s01, s08
     // CHAPTER: L10.4 section 2
     let system = "You are a helpful bot. ";
     let users = ["Hi there", "Tell me a story", "What is 2+2?", "Bye"];

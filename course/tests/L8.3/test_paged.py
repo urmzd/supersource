@@ -29,7 +29,11 @@ SEED = int(os.environ.get("SS_SEED", "0"))
 def lib():
     L = load()
     L.declare("tl_kv_fill", ctypes.c_uint32, [ctypes.c_void_p, ctypes.c_uint32])
-    L.declare("tl_kv_block_ptr", ctypes.c_void_p, [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_int])
+    L.declare(
+        "tl_kv_block_ptr",
+        ctypes.c_void_p,
+        [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_int],
+    )
     return L
 
 
@@ -38,7 +42,11 @@ def raw_slab(cache: PagedKVCache, block: int, layer: int, is_v: int) -> np.ndarr
     ptr = cache.lib.tl_kv_block_ptr(cache.pool, int(block), layer, is_v)
     n = cache.n_kv_heads * cache.block_size * cache.d_head
     buf = (ctypes.c_uint16 * n).from_address(ptr)
-    return np.frombuffer(buf, dtype=np.float16).reshape(cache.n_kv_heads, cache.block_size, cache.d_head).copy()
+    return (
+        np.frombuffer(buf, dtype=np.float16)
+        .reshape(cache.n_kv_heads, cache.block_size, cache.d_head)
+        .copy()
+    )
 
 
 def rand(g: PCG32, shape, scale=1.0) -> np.ndarray:
@@ -64,8 +72,12 @@ class Contiguous:
             self.v[c, layer] = self.v[p, layer].copy()
 
     def append(self, s, layer, k, v):
-        self.k[s, layer] = np.concatenate([self.k[s, layer], np.asarray(k, np.float16)], axis=1)
-        self.v[s, layer] = np.concatenate([self.v[s, layer], np.asarray(v, np.float16)], axis=1)
+        self.k[s, layer] = np.concatenate(
+            [self.k[s, layer], np.asarray(k, np.float16)], axis=1
+        )
+        self.v[s, layer] = np.concatenate(
+            [self.v[s, layer], np.asarray(v, np.float16)], axis=1
+        )
 
     def free(self, s):
         for layer in range(self.L):
@@ -85,9 +97,15 @@ def test_hand_example_block_table():
         for t in range(5):
             k = np.array([[[t + 0.5, -t]]], np.float32)
             c.append(0, 0, k, -k)
-            assert len(c.block_table(0)) == t // 2 + 1  # a block only when a position needs it
+            assert (
+                len(c.block_table(0)) == t // 2 + 1
+            )  # a block only when a position needs it
         table = c.block_table(0)
-        assert table.dtype == np.int32 and len(table) == 3 and len(set(table.tolist())) == 3
+        assert (
+            table.dtype == np.int32
+            and len(table) == 3
+            and len(set(table.tolist())) == 3
+        )
         assert c.seq_len(0) == 5
         assert raw_slab(c, table[2], 0, 0)[0, 0].tolist() == [4.5, -4.0]
         assert raw_slab(c, table[2], 0, 1)[0, 0].tolist() == [-4.5, 4.0]
@@ -288,14 +306,20 @@ class ToyDecoder:
     def __init__(self, g: PCG32, V=13, d=8, H=2, D=4, L=2):
         self.V, self.d, self.H, self.D, self.L = V, d, H, D, L
         self.E = rand(g, (V, d), 1.5)
-        self.W = [[rand(g, (d, H * D)) for _ in range(4)] for _ in range(L)]  # q, k, v, o^T
+        self.W = [
+            [rand(g, (d, H * D)) for _ in range(4)] for _ in range(L)
+        ]  # q, k, v, o^T
         self.U = rand(g, (d, V), 2.0)
 
     def step(self, tok, put, get) -> np.ndarray:
         x = self.E[tok].astype(np.float32)
         for layer, (Wq, Wk, Wv, Wo) in enumerate(self.W):
             q = (x @ Wq).reshape(self.H, self.D)
-            put(layer, (x @ Wk).reshape(self.H, 1, self.D), (x @ Wv).reshape(self.H, 1, self.D))
+            put(
+                layer,
+                (x @ Wk).reshape(self.H, 1, self.D),
+                (x @ Wv).reshape(self.H, 1, self.D),
+            )
             K, V = get(layer)
             K, V = K.astype(np.float32), V.astype(np.float32)
             s = np.einsum("hd,htd->ht", q, K) / np.sqrt(self.D)
@@ -344,13 +368,19 @@ def test_paged_matches_contiguous_decoding():
     # CHAPTER: L8.3 section 4
     g = PCG32(SEED, 13)
     m = ToyDecoder(g)
-    prompt = [g.below(m.V) for _ in range(10)]  # 9 fed before the fork: block 2 is shared and partial
+    prompt = [
+        g.below(m.V) for _ in range(10)
+    ]  # 9 fed before the fork: block 2 is shared and partial
     refs = {0: Contiguous82(m.L, m.H, m.D)}
     with PagedKVCache(lib(), 16, 4, m.L, m.H, m.D) as c:
 
         def step(seq, tok, i):
             r = refs[seq]
-            lp = m.step(tok, lambda l_, k, v: c.append(seq, l_, k, v), lambda l_: c.gather(seq, l_))
+            lp = m.step(
+                tok,
+                lambda l_, k, v: c.append(seq, l_, k, v),
+                lambda l_: c.gather(seq, l_),
+            )
             lc = m.step(tok, r.put, r.get)
             assert_close(lp, lc, rtol=0.0, atol=1e-5, msg=f"sequence {seq}, step {i}")
             assert int(np.argmax(lp)) == int(np.argmax(lc))
@@ -377,7 +407,9 @@ def test_paged_matches_contiguous_decoding():
             for layer in range(m.L):
                 K, V = c.gather(s, layer)
                 RK, RV = refs[s].get(layer)
-                assert (K.astype(np.float32) == RK).all() and (V.astype(np.float32) == RV).all()
+                assert (K.astype(np.float32) == RK).all() and (
+                    V.astype(np.float32) == RV
+                ).all()
 
 
 def test_random_ops_conserve_blocks():

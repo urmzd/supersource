@@ -1,6 +1,6 @@
 --- a/go/loadgen/histogram.go
 +++ b/go/loadgen/histogram.go
-@@ -166,9 +166,6 @@
+@@ -147,9 +147,6 @@
  	if h.n == 0 || o.min < h.min {
  		h.min = o.min
  	}

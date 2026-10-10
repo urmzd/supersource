@@ -137,6 +137,16 @@ impl Engine {
         // SOLUTION-END
     }
 
+    /// Drops every request (a failed step, a shutdown); every block goes back.
+    pub fn abort_all(&mut self) {
+        // SOLUTION-BEGIN L10.5
+        for id in self.sched.unfinished() {
+            self.sched.abort(id);
+        }
+        self.reqs.clear();
+        // SOLUTION-END
+    }
+
     /// Anything waiting or running.
     pub fn has_work(&self) -> bool {
         // SOLUTION-BEGIN L10.5

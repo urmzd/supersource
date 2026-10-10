@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -146,7 +146,7 @@
+@@ -163,7 +163,7 @@
  ) -> tuple[list[int], int]:
      rows = np.asarray(target_logits, dtype=np.float64)
      m = len(draft_ids)

@@ -1,0 +1,4 @@
+keda:
+  # One operator replica is enough on kind; KEDA's own pods run non-root.
+  operator:
+    replicaCount: 1

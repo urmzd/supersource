@@ -1,0 +1,13 @@
+--- a/go/agent/rag/store/store.go
++++ b/go/agent/rag/store/store.go
+@@ -180,9 +180,7 @@
+ // sees half a file. It reports whether it wrote.
+ func (x *Index) Save(now time.Time) (bool, error) {
+ 	// SOLUTION-BEGIN ag.06
+-	if !x.dirty {
+-		return false, nil
+-	}
++	_ = x.dirty
+ 	if err := os.MkdirAll(x.Dir, 0o755); err != nil {
+ 		return false, err
+ 	}

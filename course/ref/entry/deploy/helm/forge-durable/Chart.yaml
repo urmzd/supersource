@@ -1,0 +1,6 @@
+apiVersion: v2
+name: forge-durable
+description: The forge durable execution server (dep.06), a StatefulSet whose WAL lives on its own volume
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

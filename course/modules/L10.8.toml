@@ -1,0 +1,35 @@
+id        = "L10.8"
+title     = "Speculative decoding in the engine"
+kind      = "build"
+lang      = ["rust"]
+pass      = 7
+chapter   = "ml/08-tinyllm/p10-serving/08-speculative-decoding-in-the-engine.md"
+# No Rust trait contract (K01); spec.pyi (L8.6), whose rules this port
+# follows, and config/runtime.schema.json's [engine].speculative are linked
+# from the card.
+contract  = []
+# L8.6: the Python specification the course tests hold this port to (its
+# recorded answers, DEVIATIONS B92-02). L10.1: the sampler (apply_penalties,
+# distribution, sample, stream) and tl-sys's KvPool for the rollback. rt.04:
+# the C pool behind it.
+deps      = ["L8.6", "L10.1", "rt.04"]
+# The scheduler and block manager it plugs into; M07.6's rejection step is
+# re-implemented here.
+reading   = ["L10.2", "L10.4", "M07.6"]
+# Catalog call site: the serve loop ([engine].speculative). No registered
+# module calls it yet; verify check 9 fails until one does (DEVIATIONS
+# B92-01).
+used_by   = []
+units     = ["rust/crates/tl-engine/src/spec.rs"]
+upgrades  = []
+milestone = "MS-L10"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/rust/l10_8.rs"
+smoke     = ["hand_example_prompt_lookup", "hand_example_greedy_verify", "greedy_spec_equals_greedy_without_spec"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/L10.8/spec_golden.json"]

@@ -3,13 +3,18 @@ kind: Service
 metadata:
   name: {{ .Release.Name }}
   labels:
-    app.kubernetes.io/name: {{ .Release.Name }}
+    {{- include "gateway.labels" . | nindent 4 }}
 spec:
-  type: NodePort
+  type: {{ .Values.service.type }}
   selector:
     app.kubernetes.io/name: {{ .Release.Name }}
   ports:
     - name: http
-      port: {{ .Values.port }}
+      port: {{ .Values.service.port }}
       targetPort: http
-      nodePort: {{ .Values.nodePort }}
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+    - name: registry
+      port: {{ .Values.service.registryPort }}
+      targetPort: registry

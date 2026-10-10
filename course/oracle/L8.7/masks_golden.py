@@ -109,7 +109,13 @@ def alt(items) -> tuple:
             if y != EMPTY and y not in seen:
                 seen.add(y)
                 out.append(y)
-    return EMPTY if not out else out[0] if len(out) == 1 else ("alt", tuple(sorted(out, key=repr)))
+    return (
+        EMPTY
+        if not out
+        else out[0]
+        if len(out) == 1
+        else ("alt", tuple(sorted(out, key=repr)))
+    )
 
 
 def rep(x, lo, hi) -> tuple:
@@ -200,7 +206,13 @@ STRING = cat(
                     ("set", frozenset(range(0x20, 0x80)) - frozenset(b'"\\')),
                     cat([R(0xC2, 0xDF), CONT]),
                     cat([lit_b(0xE0), R(0xA0, 0xBF), CONT]),
-                    cat([("set", frozenset(range(0xE1, 0xED)) | {0xEE, 0xEF}), CONT, CONT]),
+                    cat(
+                        [
+                            ("set", frozenset(range(0xE1, 0xED)) | {0xEE, 0xEF}),
+                            CONT,
+                            CONT,
+                        ]
+                    ),
                     cat([lit_b(0xED), R(0x80, 0x9F), CONT]),
                     cat([lit_b(0xF0), R(0x90, 0xBF), CONT, CONT]),
                     cat([R(0xF1, 0xF3), CONT, CONT, CONT]),
@@ -222,7 +234,17 @@ NUMBER = cat(
     [
         INTEGER,
         rep(cat([lit("."), rep(DIG, 1, None)]), 0, 1),
-        rep(cat([("set", frozenset(b"eE")), rep(("set", frozenset(b"+-")), 0, 1), rep(DIG, 1, None)]), 0, 1),
+        rep(
+            cat(
+                [
+                    ("set", frozenset(b"eE")),
+                    rep(("set", frozenset(b"+-")), 0, 1),
+                    rep(DIG, 1, None),
+                ]
+            ),
+            0,
+            1,
+        ),
     ]
 )
 
@@ -230,7 +252,12 @@ NUMBER = cat(
 def schema_tree(s: dict) -> tuple:
     if "enum" in s or "const" in s:
         vals = s["enum"] if "enum" in s else [s["const"]]
-        return alt([lit(json.dumps(v, separators=(",", ":"), ensure_ascii=False)) for v in vals])
+        return alt(
+            [
+                lit(json.dumps(v, separators=(",", ":"), ensure_ascii=False))
+                for v in vals
+            ]
+        )
     if "anyOf" in s:
         return alt([schema_tree(x) for x in s["anyOf"]])
     t = s["type"]
@@ -249,14 +276,32 @@ def schema_tree(s: dict) -> tuple:
         lo, hi = s.get("minItems", 0), s.get("maxItems")
         if hi == 0:
             return lit("[]")
-        body = cat([item, rep(cat([lit(","), item]), max(lo - 1, 0), None if hi is None else hi - 1)])
+        body = cat(
+            [
+                item,
+                rep(
+                    cat([lit(","), item]),
+                    max(lo - 1, 0),
+                    None if hi is None else hi - 1,
+                ),
+            ]
+        )
         return cat([lit("["), body if lo >= 1 else rep(body, 0, 1), lit("]")])
     if t == "object":
         req = set(s.get("required", []))
         # Every subset of the properties that holds the required ones, in
         # the given order, comma-separated: a tree per subset, all OR-ed.
         names = list(s.get("properties", {}))
-        members = [cat([lit(json.dumps(k, ensure_ascii=False)), lit(":"), schema_tree(s["properties"][k])]) for k in names]
+        members = [
+            cat(
+                [
+                    lit(json.dumps(k, ensure_ascii=False)),
+                    lit(":"),
+                    schema_tree(s["properties"][k]),
+                ]
+            )
+            for k in names
+        ]
         alts = []
         for mask in range(1 << len(names)):
             chosen = [i for i in range(len(names)) if mask >> i & 1]
@@ -276,22 +321,73 @@ def schema_tree(s: dict) -> tuple:
 # -- cases ------------------------------------------------------------------------------
 
 LETTERS = [bytes([c]) for c in b"abcdgorstx"]
-SMALL_VOCAB = [b"c", b"a", b"t", b"r", b"d", b"o", b"g", b"s", b"ca", b"cat", b"dog", b"ts", b"x", None, b""]
+SMALL_VOCAB = [
+    b"c",
+    b"a",
+    b"t",
+    b"r",
+    b"d",
+    b"o",
+    b"g",
+    b"s",
+    b"ca",
+    b"cat",
+    b"dog",
+    b"ts",
+    b"x",
+    None,
+    b"",
+]
 JSON_VOCAB = (
     [bytes([c]) for c in b'{}[]",:0123456789-.eE+abcdefilmnrstu\\/ ']
-    + [b'{"', b'":', b'",', b'"}', b"true", b"false", b"null", b'"name"', b'"age"', b'"tags"', b"\xc3\xa9", b"\xc3", b"\xa9", b"12", b'\\"']
+    + [
+        b'{"',
+        b'":',
+        b'",',
+        b'"}',
+        b"true",
+        b"false",
+        b"null",
+        b'"name"',
+        b'"age"',
+        b'"tags"',
+        b"\xc3\xa9",
+        b"\xc3",
+        b"\xa9",
+        b"12",
+        b'\\"',
+    ]
     + [None, b""]
 )
 
 CASES = [
-    {"name": "hand_example", "pattern": r"(cat|car|dog)s?", "vocab": SMALL_VOCAB, "eos_id": 13},
-    {"name": "classes_and_repeats", "pattern": r"[a-c]{2,3}(?:x|\d)*[^a-z]", "vocab": LETTERS + [b"0", b"5", b"!", b"ab", b"bc", b"x0", None], "eos_id": 16},
-    {"name": "escapes", "pattern": r"\(\d+\.\d\)|\[\w\s?\]", "vocab": [bytes([c]) for c in b"()[].0123456789ab _"] + [b"(1", b".5)", None], "eos_id": 21},
+    {
+        "name": "hand_example",
+        "pattern": r"(cat|car|dog)s?",
+        "vocab": SMALL_VOCAB,
+        "eos_id": 13,
+    },
+    {
+        "name": "classes_and_repeats",
+        "pattern": r"[a-c]{2,3}(?:x|\d)*[^a-z]",
+        "vocab": LETTERS + [b"0", b"5", b"!", b"ab", b"bc", b"x0", None],
+        "eos_id": 16,
+    },
+    {
+        "name": "escapes",
+        "pattern": r"\(\d+\.\d\)|\[\w\s?\]",
+        "vocab": [bytes([c]) for c in b"()[].0123456789ab _"] + [b"(1", b".5)", None],
+        "eos_id": 21,
+    },
     {
         "name": "json_object",
         "schema": {
             "type": "object",
-            "properties": {"name": {"type": "string"}, "age": {"type": "integer"}, "tags": {"type": "array", "items": {"type": "string"}, "maxItems": 2}},
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "integer"},
+                "tags": {"type": "array", "items": {"type": "string"}, "maxItems": 2},
+            },
             "required": ["name"],
         },
         "vocab": JSON_VOCAB,
@@ -299,7 +395,18 @@ CASES = [
     },
     {
         "name": "json_enum_number_bool",
-        "schema": {"type": "array", "items": {"anyOf": [{"enum": ["on", "off", 3]}, {"type": "number"}, {"type": "boolean"}]}, "minItems": 1, "maxItems": 3},
+        "schema": {
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    {"enum": ["on", "off", 3]},
+                    {"type": "number"},
+                    {"type": "boolean"},
+                ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+        },
         "vocab": JSON_VOCAB,
         "eos_id": len(JSON_VOCAB) - 2,
     },

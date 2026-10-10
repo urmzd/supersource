@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/quant.py
 +++ b/python/tinyllm/infer/quant.py
-@@ -124,7 +124,7 @@
+@@ -137,7 +137,7 @@
      a = _matrix(w, "quantize_fp8_per_channel")
      top = np.float32(fp8_max(fmt))
      amax = np.abs(a).max(axis=1)

@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/spec.rs
++++ b/rust/crates/tl-engine/src/spec.rs
+@@ -175,7 +175,7 @@
+ /// M07.6's residual distribution: normalize(max(0, p - q)); p itself when
+ /// p == q leaves nothing (then nothing is ever rejected).
+ pub fn residual(p: &[f64], q: &[f64]) -> Vec<f64> {
+-    let r: Vec<f64> = p.iter().zip(q).map(|(&a, &b)| (a - b).max(0.0)).collect();
++    let r: Vec<f64> = p.iter().zip(q).map(|(&a, &b)| (a - b).abs()).collect();
+     let mut z = 0.0f64;
+     for &v in &r {
+         z += v;

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -170,7 +170,7 @@
+@@ -202,7 +202,7 @@
          B, T = self.block_size, want[1]
          start = self._lens[seq_id][layer]
          end = start + T

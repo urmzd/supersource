@@ -25,3 +25,10 @@ timeout_s = 60
 determinism_runs = 2
 # A ThreadSanitizer build after the ASan one (DEVIATIONS X16; SS_TSAN=0 skips).
 sanitize  = ["thread"]
+
+[learner_tests]                     # rung R4: properties with ss_prop.h (as ds.01)
+rung      = 4
+path      = "c/tests/rt03_pool_test.c"
+threshold = 0.80
+required_mutants = ["s01", "s02", "s03", "s04", "s06", "s07", "s08", "s09", "s10", "s11", "s12", "s13", "s14", "s15"]   # s05 is a race only TSan sees (DEVIATIONS B83-09)
+time_budget_s = 60

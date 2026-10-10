@@ -192,7 +192,7 @@ fn hand_example_schedule() {
     //      both and B finishes; step 3 decodes A and admits C into the block
     //      B gave back.
     // KIND: unit
-    // CATCHES: s01, s05
+    // CATCHES: s05, s09, s10
     // CHAPTER: L10.2 section 3
     let mut s = Scheduler::new(cfg(2, 8), free_list(4, 6));
     let a = s.add(req(&[1, 2, 3, 4, 5], 3, 0)).unwrap();
@@ -226,6 +226,7 @@ fn free_list_is_all_or_nothing() {
     // WHY: the block space hands out the lowest ids first and never a
     //      partial allocation: a request that does not fit takes nothing.
     // KIND: unit
+    // CATCHES: s10
     // CHAPTER: L10.2 section 2
     let mut f = free_list(4, 3);
     assert_eq!(f.allocate(1, &[0; 9]).unwrap().cached_tokens, 0);
@@ -249,7 +250,7 @@ fn every_request_finishes_and_no_block_leaks() {
     //      exceed it only in a step of its own), and every block is free at
     //      the end.
     // KIND: property
-    // CATCHES: s02, s03, s04, s06, s07
+    // CATCHES: s03, s04, s05, s09
     // CHAPTER: L10.2 section 2
     let mut g = frozen::Pcg32::new(ss_seed() + 101);
     let mut s = Scheduler::new(cfg(4, 24), free_list(4, 12));
@@ -283,7 +284,7 @@ fn priority_runs_first() {
     // WHY: under Priority, the waiting request with the higher priority is
     //      admitted first whatever its arrival; under Fcfs, arrival order.
     // KIND: unit
-    // CATCHES: s01
+    // CATCHES: s01, s05
     // CHAPTER: L10.2 section 2
     for (policy, first) in [(SchedPolicy::Priority, 2usize), (SchedPolicy::Fcfs, 0usize)] {
         let mut s = Scheduler::new(SchedulerConfig { policy, aging_steps: 10, ..cfg(1, 64) }, free_list(4, 16));
@@ -301,7 +302,7 @@ fn aging_bounds_the_wait() {
     //      every 4 steps, so it overtakes newer priority-10 arrivals within
     //      about 10 x 4 steps; with aging off it waits out the whole stream.
     // KIND: property
-    // CATCHES: s02
+    // CATCHES: s01, s02, s05, s09
     // CHAPTER: L10.2 section 2
     let wait = |aging: u64| {
         let mut s = Scheduler::new(SchedulerConfig { policy: SchedPolicy::Priority, aging_steps: aging, ..cfg(1, 64) }, free_list(4, 64));
@@ -353,7 +354,6 @@ fn batched_greedy_equals_single_request() {
     //      kernel is batch-invariant (c/ABI.md rule 10) and positions,
     //      blocks, and logits rows never mix between sequences.
     // KIND: differential
-    // CATCHES: s05
     // CHAPTER: L10.2 section 2
     let prompts = vec![bytes("Once upon a time"), bytes("The cat"), bytes("Hello, world"), bytes("In the beginning there was")];
     let (mut r, f) = real(64, 16);
@@ -372,7 +372,7 @@ fn abort_frees_blocks_and_drops_waiting() {
     //      once whether it was running or waiting, and never produces
     //      another token.
     // KIND: unit
-    // CATCHES: s06
+    // CATCHES: s05, s06
     // CHAPTER: L10.2 section 4
     let mut s = Scheduler::new(cfg(1, 64), free_list(4, 8));
     let a = s.add(req(&[1, 2, 3, 4, 5], 10, 0)).unwrap();
@@ -386,6 +386,25 @@ fn abort_frees_blocks_and_drops_waiting() {
     assert!(s.on_step(&[StepOutput { id: a, token: 1, stop: false }]).is_empty());
     assert!(s.schedule().is_empty());
     assert!(!s.has_unfinished());
+}
+
+#[test]
+fn decodes_count_against_the_budget() {
+    // WHY: every decode is one token of the step's budget: with three
+    //      requests decoding and a budget of 8, a 6-token prompt does not fit
+    //      (3 + 6 > 8) and waits, holding its blocks, for the next step.
+    // KIND: boundary
+    // CATCHES: s08
+    // CHAPTER: L10.2 section 2
+    let mut s = Scheduler::new(cfg(4, 8), free_list(4, 16));
+    let ids: Vec<RequestId> = (0..3).map(|i| s.add(req(&[i], 5, 0)).unwrap()).collect();
+    s.schedule();
+    s.on_step(&ids.iter().map(|&id| StepOutput { id, token: 1, stop: false }).collect::<Vec<_>>());
+    s.add(req(&[9; 6], 1, 0)).unwrap();
+    let out = s.schedule();
+    assert_eq!(out.decode.len(), 3);
+    assert!(out.prefill.is_empty(), "the prompt does not fit beside 3 decodes: {out:?}");
+    assert_eq!(out.num_tokens(), 3);
 }
 
 #[test]

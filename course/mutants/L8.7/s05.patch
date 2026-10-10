@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -565,7 +565,7 @@
+@@ -598,7 +598,7 @@
                      mask[tid] = True
                      nxt[tid] = t
                  stack.append((child, t))

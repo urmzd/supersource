@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -163,8 +163,7 @@
+@@ -180,8 +180,7 @@
              continue
          P = sampling_distribution(rows[i], p, hist + emitted, prompt)
          if q is None:

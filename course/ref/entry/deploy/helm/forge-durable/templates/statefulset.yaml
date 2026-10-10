@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "durable.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-headless
+  replicas: {{ .Values.replicaCount }}
+  # The WAL has one writer: never run the old and the new pod at once.
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "durable.labels" . | nindent 8 }}
+      annotations:
+        checksum/runtime: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      # SIGTERM: stop accepting, fsync, exit; the WAL's torn tail is
+      # truncated on the next start anyway (dur.01).
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        {{- with .Values.securityContext.runAsGroup }}
+        runAsGroup: {{ . }}
+        # The volume is mounted group-writable for this gid, so a non-root
+        # server can write its WAL.
+        fsGroup: {{ . }}
+        {{- end }}
+      containers:
+        - name: durable
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}{{ with .Values.image.digest }}@{{ . }}{{ end }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          args:
+            - --config
+            - /etc/tinyllm/runtime.toml
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.otel.serviceName | default .Release.Name | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otel.endpoint | quote }}
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.service.grpcPort }}
+            - name: raft
+              containerPort: {{ .Values.service.raftPort }}
+            - name: health
+              containerPort: {{ .Values.service.healthPort }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: health
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds | default 5 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: health
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds | default 0 }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds | default 10 }}
+          volumeMounts:
+            - name: wal
+              mountPath: /var/lib/durable
+            - name: runtime
+              mountPath: /etc/tinyllm
+              readOnly: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem | default true }}
+      volumes:
+        - name: runtime
+          configMap:
+            name: {{ .Release.Name }}-runtime
+  volumeClaimTemplates:
+    - metadata:
+        name: wal
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}

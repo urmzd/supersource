@@ -1,8 +1,8 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -235,7 +235,7 @@
-                 text = tok.decode(out)
-                 hit = min((i for i in (text.find(s) for s in stops) if i >= 0), default=-1)
+@@ -264,7 +264,7 @@
+                     (i for i in (text.find(s) for s in stops) if i >= 0), default=-1
+                 )
                  if hit >= 0:
 -                    finish, cut = "stop", text[:hit]
 +                    finish, cut = "stop", text

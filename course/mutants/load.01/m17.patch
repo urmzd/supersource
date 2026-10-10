@@ -1,6 +1,6 @@
 --- a/go/loadgen/run.go
 +++ b/go/loadgen/run.go
-@@ -458,7 +458,7 @@
+@@ -439,7 +439,7 @@
  		}
  	}
  	if r.Requests > 0 {

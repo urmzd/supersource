@@ -1,6 +1,6 @@
 --- a/go/loadgen/run.go
 +++ b/go/loadgen/run.go
-@@ -123,6 +123,7 @@
+@@ -120,6 +120,7 @@
  				errEvent = strings.TrimSpace(line[len("event:"):]) == "error"
  			case strings.HasPrefix(line, "data:"):
  				at := now()

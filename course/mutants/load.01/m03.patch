@@ -1,6 +1,6 @@
 --- a/go/loadgen/histogram.go
 +++ b/go/loadgen/histogram.go
-@@ -147,9 +147,6 @@
+@@ -130,9 +130,6 @@
  		cum += c
  		if cum >= rank {
  			_, hi := bounds(i)

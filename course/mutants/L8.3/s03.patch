@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -139,7 +139,7 @@
+@@ -167,7 +167,7 @@
          ptr = self.lib.tl_kv_block_ptr(self._pool, block, layer, is_v)
          if not ptr:
              raise TlError("tl_kv_block_ptr", 1, self.lib.last_error())

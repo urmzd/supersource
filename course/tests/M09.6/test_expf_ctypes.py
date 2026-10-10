@@ -73,11 +73,15 @@ def test_within_2_ulp_of_exp_range_reduced():
     x64 = x.astype(np.float64)
     want = exp_range_reduced(x64, 7)
     ref = np.exp(x64)
-    assert np.max(np.abs(want - ref) / ref) < 1e-8, "the M02.1 oracle disagrees with numpy"
+    assert np.max(np.abs(want - ref) / ref) < 1e-8, (
+        "the M02.1 oracle disagrees with numpy"
+    )
     got = c_exp(x).astype(np.float64)
     err = np.abs(got - want) / ulp32(want)
     i = int(np.argmax(err))
-    assert err[i] <= 2.0, f"{err[i]:.3f} ulp at x = {x[i]!r}: C {got[i]!r}, Python {want[i]!r}"
+    assert err[i] <= 2.0, (
+        f"{err[i]:.3f} ulp at x = {x[i]!r}: C {got[i]!r}, Python {want[i]!r}"
+    )
 
 
 def test_edges_through_ctypes():
@@ -87,7 +91,17 @@ def test_edges_through_ctypes():
     # KIND: boundary
     # CATCHES: s04, s05, s07
     # CHAPTER: M09.6 section 5
-    x = np.array([X_OVER, np.nextafter(X_OVER, np.float32(np.inf)), -np.inf, np.inf, np.nan, -104.0], dtype=np.float32)
+    x = np.array(
+        [
+            X_OVER,
+            np.nextafter(X_OVER, np.float32(np.inf)),
+            -np.inf,
+            np.inf,
+            np.nan,
+            -104.0,
+        ],
+        dtype=np.float32,
+    )
     y = c_exp(x)
     assert np.isfinite(y[0]) and y[0] > 3.4e38
     assert np.isposinf(y[1]) and np.isposinf(y[3])

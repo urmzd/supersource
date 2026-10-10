@@ -46,7 +46,9 @@ class NGramDraft:
 
     lm: NGramLM
     def __init__(self, lm: NGramLM) -> None: ...
-    def propose(self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]) -> tuple[list[int], Optional[NDArray]]: ...
+    def propose(
+        self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]
+    ) -> tuple[list[int], Optional[NDArray]]: ...
 
 class PromptLookupDraft:
     """Drafts by copying from the context itself (prompt-lookup decoding):
@@ -61,7 +63,9 @@ class PromptLookupDraft:
     min_ngram: int
     def __init__(self, max_ngram: int = 3, min_ngram: int = 1) -> None:
         """ValueError unless 1 <= min_ngram <= max_ngram."""
-    def propose(self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]) -> tuple[list[int], Optional[NDArray]]: ...
+    def propose(
+        self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]
+    ) -> tuple[list[int], Optional[NDArray]]: ...
 
 class ModelDraft:
     """Drafts with a smaller CausalLM (L8.2's protocol) and its own KVCache.
@@ -75,7 +79,9 @@ class ModelDraft:
     temperature: float
     def __init__(self, model: Any, temperature: float = 1.0) -> None:
         """ValueError for temperature <= 0."""
-    def propose(self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]) -> tuple[list[int], Optional[NDArray]]:
+    def propose(
+        self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]
+    ) -> tuple[list[int], Optional[NDArray]]:
         """ValueError for an empty ctx."""
 
 def verify_draft(

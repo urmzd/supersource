@@ -27,7 +27,11 @@ from tinyllm.nn.module import Module
 
 # Zero, or a magnitude where float16 scales do not underflow (a group whose
 # amax / 7 underflows float16 stores scale 0 by the rule, outside the bound).
-finite = st.one_of(st.just(0.0), st.floats(0.0009765625, 100, width=32), st.floats(-100, -0.0009765625, width=32))
+finite = st.one_of(
+    st.just(0.0),
+    st.floats(0.0009765625, 100, width=32),
+    st.floats(-100, -0.0009765625, width=32),
+)
 
 
 def test_by_hand():
@@ -37,8 +41,18 @@ def test_by_hand():
     assert q8.tolist() == [[127, -4, 2, 0]] and s.tolist() == [1.0]
 
 
+def test_codes_use_the_stored_float16_scale():
+    # amax 1: the stored scale is float16(1/7); 3.5 stored scales is a tie (to 4)
+    s16 = np.float32(np.float16(np.float32(1.0) / np.float32(7.0)))
+    row = np.zeros((1, 8), np.float32)
+    row[0, 0], row[0, 1] = 1.0, np.float32(3.5) * s16
+    assert unpack_int4(quantize_int4_group(row, 8).packed)[0, :2].tolist() == [7, 4]
+
+
 def test_pack_unpack_identity_and_low_nibble():
-    v = np.array([[a, b] for a in range(-8, 8) for b in range(-8, 8)], np.int8).reshape(1, -1)
+    v = np.array([[a, b] for a in range(-8, 8) for b in range(-8, 8)], np.int8).reshape(
+        1, -1
+    )
     assert (unpack_int4(pack_int4(v)) == v).all()
     assert pack_int4(np.array([[1, 2]])).tolist() == [[0x21]]
 
@@ -52,7 +66,9 @@ def test_half_step_bound_with_the_stored_scale(w):
     assert (d == unpack_int4(q.packed) * s).all()
     assert (np.abs(w - d) <= s / 2 * (1 + 1e-6) + 1e-30).all()
     safe = np.where(s > 0, s, 1.0)
-    assert (unpack_int4(q.packed) == np.where(s > 0, np.clip(np.rint(w / safe), -8, 7), 0)).all()
+    assert (
+        unpack_int4(q.packed) == np.where(s > 0, np.clip(np.rint(w / safe), -8, 7), 0)
+    ).all()
 
 
 @settings(max_examples=40)
@@ -107,4 +123,8 @@ def test_quant_linear_and_model():
     assert isinstance(net.a, QuantLinear) and not isinstance(net.lm_head, QuantLinear)
     assert net.a.bias is not None and net.a.bias.shape == (16,)
     tensors, meta = export_q4(net)
-    assert meta["quant"] == "int4-g32-sym" and "a.weight.qweight" in tensors and "a.bias" in tensors
+    assert (
+        meta["quant"] == "int4-g32-sym"
+        and "a.weight.qweight" in tensors
+        and "a.bias" in tensors
+    )

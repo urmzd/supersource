@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -172,8 +172,6 @@
+@@ -204,8 +204,6 @@
          end = start + T
          first, last = start // B, (end - 1) // B  # blocks this write touches
          # 1. Copy every shared block the write touches; nothing is written yet.

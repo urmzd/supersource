@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -560,7 +560,7 @@
+@@ -593,7 +593,7 @@
              for b, child in children.items():
                  t = int(trans[s, b])
                  if t == DEAD:

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -188,7 +188,7 @@
+@@ -205,7 +205,7 @@
      eos_ids: Sequence[int] = (),
  ) -> Generation:
      p.validate()

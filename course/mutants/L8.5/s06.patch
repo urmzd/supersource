@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/quant.py
 +++ b/python/tinyllm/infer/quant.py
-@@ -77,7 +77,7 @@
+@@ -83,7 +83,7 @@
  
  def quantize_int8_per_channel(w: ArrayLike) -> tuple[NDArray, NDArray]:
      a = _matrix(w, "quantize_int8_per_channel")

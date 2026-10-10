@@ -1,0 +1,26 @@
+id        = "C1"
+title     = "Capstone: TinyStories, owned end to end"
+kind      = "practice"
+lang      = ["python", "go", "ops"]
+pass      = 9
+chapter   = "ml/08-tinyllm/capstones/01-tinystories.md"
+contract  = []                       # formats/train-spec, eval-results, ledger schemas and the report schema in course/tests/C1, linked from the card
+# The check runs YOUR ModelRelease preflight and spec validation (dur.12)
+# on your capstone release spec. Everything else the capstone runs goes
+# through your entry points ({tinyllm} train --spec, eval, export, {ctl}
+# release), which MS-C1 drives. The library modules the capstone exercises
+# through those entry points are reading; L11.1, data.09, dur.11, ethics.03,
+# and ethics.04 join when their batches register them (DEVIATIONS B112-05).
+deps      = ["dur.12"]
+reading   = ["data.07", "data.08", "L1.2", "L1.4", "L1.6", "L2.1", "L6.7", "L7.4", "L7.6", "L7.8", "L7.9",
+             "M03.5", "M05.1", "M07.5", "M10.3", "M10.4", "dur.09", "craft.22", "ml/08-tinyllm/capstones"]
+used_by   = []                       # the capstone: C2 (B12) and ops.08 (B13) start from its release
+units     = []
+artifacts = ["specs/c1", "docs/capstone/c1"]   # specs, report, zoo, samples, card, ledger: hashed into the verdict, present = started
+upgrades  = []
+milestone = "MS-C1"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/C1"        # `check` validates and recomputes the report, then runs your dur.12 preflight on the release spec
+timeout_s = 300

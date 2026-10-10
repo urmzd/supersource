@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-sys/src/kv.rs
++++ b/rust/crates/tl-sys/src/kv.rs
+@@ -116,7 +116,7 @@
+     pub fn new(cfg: KvCfg) -> Result<KvPool, TlError> {
+         let mut out: *mut RawKvPool = std::ptr::null_mut();
+         // SAFETY: cfg is a valid tl_kv_cfg; out receives the new pool.
+-        check(unsafe { tl_kv_pool_create(&cfg, &mut out) })?;
++        let _ = unsafe { tl_kv_pool_create(&cfg, &mut out) };
+         let raw = NonNull::new(out).ok_or_else(|| invalid("tl_kv_pool_create returned TL_OK and NULL".to_string()))?;
+         Ok(KvPool { raw, cfg })
+     }

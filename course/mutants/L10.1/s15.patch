@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/forward.rs
++++ b/rust/crates/tl-engine/src/forward.rs
+@@ -81,7 +81,7 @@
+     if seq.blocks.len() * bt < end {
+         return Err(format!("forward: {} blocks cover {} positions, the step needs {end}", seq.blocks.len(), seq.blocks.len() * bt));
+     }
+-    for (src, is_v) in [(k, false), (v, true)] {
++    for (src, is_v) in [(k, true), (v, false)] {
+         for r in 0..seq.tokens.len() {
+             let p = seq.start + r;
+             let (blk, slot) = (seq.blocks[p / bt], p % bt);

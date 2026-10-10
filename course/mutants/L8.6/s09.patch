@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -164,7 +164,7 @@
+@@ -181,7 +181,7 @@
          P = sampling_distribution(rows[i], p, hist + emitted, prompt)
          if q is None:
              Q = np.zeros(V)

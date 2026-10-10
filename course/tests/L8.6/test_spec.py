@@ -29,7 +29,13 @@ from _toy import BagLM, Letters, greedy_reference
 
 from tinyllm.infer.generate import generate
 from tinyllm.infer.sample import SamplingParams, request_rng, sampling_distribution
-from tinyllm.infer.spec import ModelDraft, NGramDraft, PromptLookupDraft, speculative_generate, verify_draft
+from tinyllm.infer.spec import (
+    ModelDraft,
+    NGramDraft,
+    PromptLookupDraft,
+    speculative_generate,
+    verify_draft,
+)
 from tinyllm.lm.ngram import NGramLM
 
 GREEDY = SamplingParams(temperature=0.0, max_tokens=40)
@@ -145,7 +151,9 @@ def test_one_token_output_is_the_target_exactly():
     for x, qx in enumerate(Q5):
         if qx == 0:
             continue
-        for (first,), w in enumerate_draws(lambda s, x=x: tuple(verify_draft(rows, [x], Qf, T1, [], s)[0][:1]), 8).items():
+        for (first,), w in enumerate_draws(
+            lambda s, x=x: tuple(verify_draft(rows, [x], Qf, T1, [], s)[0][:1]), 8
+        ).items():
             dist[first] += qx * w
     assert [dist[i] for i in range(5)] == P5
 
@@ -179,9 +187,20 @@ def test_two_token_draft_is_exact_at_each_position():
         for x2, q2 in enumerate(Q2):
             if q2 == 0:
                 continue
-            rows = np.stack([logits_of([float(v) for v in P1]), logits_of([float(v) for v in TARGET2[x1]]), logits_of([1.0, 0, 0, 0, 0])])
+            rows = np.stack(
+                [
+                    logits_of([float(v) for v in P1]),
+                    logits_of([float(v) for v in TARGET2[x1]]),
+                    logits_of([1.0, 0, 0, 0, 0]),
+                ]
+            )
             Q = np.array([[float(v) for v in Q1], [float(v) for v in Q2]])
-            res = enumerate_draws(lambda s, x1=x1, x2=x2: tuple(verify_draft(rows, [x1, x2], Q, T1, [], s)[0]), 4)
+            res = enumerate_draws(
+                lambda s, x1=x1, x2=x2: tuple(
+                    verify_draft(rows, [x1, x2], Q, T1, [], s)[0]
+                ),
+                4,
+            )
             for em, w in res.items():
                 first[em[0]] += q1 * q2 * w
                 if len(em) >= 2:
@@ -204,7 +223,9 @@ def test_deterministic_draft_is_exact():
     PD = [Fraction(1, 4)] * 4 + [Fraction(0)]  # residuals in thirds: grid of 24
     rows = np.stack([logits_of([float(x) for x in PD])] * 2)
     for x in range(5):
-        res = enumerate_draws(lambda s, x=x: tuple(verify_draft(rows, [x], None, T1, [], s)[0][:1]), 24)
+        res = enumerate_draws(
+            lambda s, x=x: tuple(verify_draft(rows, [x], None, T1, [], s)[0][:1]), 24
+        )
         assert [res.get((i,), Fraction(0)) for i in range(5)] == PD, f"draft {x}"
 
 
@@ -251,10 +272,16 @@ def test_prompt_lookup_hand_example():
     d = PromptLookupDraft(max_ngram=3)
     assert d.propose([1, 2, 3, 9, 1, 2], 3, None) == ([3, 9, 1], None)
     assert d.propose([5, 1, 7, 1, 8, 1], 2, None) == ([8, 1], None)
-    assert d.propose([4, 4, 4], 5, None) == ([4], None)  # the continuation may reach the suffix itself
+    assert d.propose([4, 4, 4], 5, None) == (
+        [4],
+        None,
+    )  # the continuation may reach the suffix itself
     assert d.propose([1, 2, 3], 2, None) == ([], None)
     assert d.propose([1, 2, 1, 2], 0, None) == ([], None)
-    assert d.propose([1, 2, 3, 7, 2, 3, 1, 2, 3], 2, None) == ([7, 2], None)  # the longest n-gram first
+    assert d.propose([1, 2, 3, 7, 2, 3, 1, 2, 3], 2, None) == (
+        [7, 2],
+        None,
+    )  # the longest n-gram first
     with pytest.raises(ValueError):
         PromptLookupDraft(max_ngram=1, min_ngram=2)
 
@@ -313,7 +340,9 @@ def test_model_draft_syncs_its_cache():
 # --- the decoding loop ------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("draft_kind", ["prompt-lookup", "ngram", "model-same", "model-other"])
+@pytest.mark.parametrize(
+    "draft_kind", ["prompt-lookup", "ngram", "model-same", "model-other"]
+)
 def test_speculative_greedy_equals_greedy(draft_kind):
     # WHY: the guarantee the engine (L10.8) is sold on: with greedy decoding,
     #      speculation changes the speed, never the output. Four drafts that
@@ -352,14 +381,20 @@ def test_rejected_drafts_are_rolled_back():
     # CATCHES: s15, s17, s18, s19
     # CHAPTER: L8.6 section 2.1
     target, tok = BagLM(seed=1), Letters()
-    g = speculative_generate(target, ModelDraft(BagLM(seed=9)), tok, "abcab", GREEDY, k=3)
+    g = speculative_generate(
+        target, ModelDraft(BagLM(seed=9)), tok, "abcab", GREEDY, k=3
+    )
     full = tok.encode("abcab") + g.ids
-    assert target.calls[0][0][0] == 0 and target.calls[0][1][:5] == full[:5]  # the prompt first
+    assert (
+        target.calls[0][0][0] == 0 and target.calls[0][1][:5] == full[:5]
+    )  # the prompt first
     last = -1
     for pos, ids in target.calls:
         assert pos == list(range(pos[0], pos[0] + len(ids)))
         assert pos[0] > last
-        assert ids[0] == full[pos[0]], "a round must start by feeding the last kept token"
+        assert ids[0] == full[pos[0]], (
+            "a round must start by feeding the last kept token"
+        )
         last = pos[0]
     assert 0 < g.stats["acceptance_rate"] < 1, "the test wants some rejections"
 
@@ -376,10 +411,19 @@ def test_stats_and_one_pass_per_round():
     t = BagLM(seed=1)
     g = speculative_generate(t, ModelDraft(BagLM(seed=1)), tok, "abc", GREEDY, k=4)
     assert g.stats["target_calls"] == 8 and len(t.calls) == 8
-    assert g.stats["acceptance_rate"] == 1.0 and g.stats["drafted"] == g.stats["accepted"] == 32
+    assert (
+        g.stats["acceptance_rate"] == 1.0
+        and g.stats["drafted"] == g.stats["accepted"] == 32
+    )
     assert g.stats["completion_tokens"] == 40 and g.stats["prompt_tokens"] == 3
-    g0 = speculative_generate(BagLM(seed=1), PromptLookupDraft(), tok, "abc", GREEDY, k=0)
-    assert g0.stats["target_calls"] == 40 and g0.stats["drafted"] == 0 and g0.stats["acceptance_rate"] == 0.0
+    g0 = speculative_generate(
+        BagLM(seed=1), PromptLookupDraft(), tok, "abc", GREEDY, k=0
+    )
+    assert (
+        g0.stats["target_calls"] == 40
+        and g0.stats["drafted"] == 0
+        and g0.stats["acceptance_rate"] == 0.0
+    )
 
 
 def test_sampled_speculation_matches_the_target_distribution():
@@ -392,18 +436,26 @@ def test_sampled_speculation_matches_the_target_distribution():
     # CHAPTER: L8.6 section 2.2
     target, tok = BagLM(seed=1, scale=1.0), Letters()
     prompt = "abcab"
-    P = sampling_distribution(target.forward(np.asarray([tok.encode(prompt)]))[0, -1], T1)
+    P = sampling_distribution(
+        target.forward(np.asarray([tok.encode(prompt)]))[0, -1], T1
+    )
     counts = np.zeros(8)
     draft = ModelDraft(BagLM(seed=9, scale=1.0))
     for s in range(400):
         p = SamplingParams(temperature=1.0, max_tokens=2, seed=s)
-        counts[speculative_generate(BagLM(seed=1, scale=1.0), draft, tok, prompt, p, k=2).ids[0]] += 1
+        counts[
+            speculative_generate(
+                BagLM(seed=1, scale=1.0), draft, tok, prompt, p, k=2
+            ).ids[0]
+        ] += 1
     exp = 400 * P
     keep = exp >= 5
     chi2 = float((((counts - exp) ** 2) / exp)[keep].sum() + 0.0)
     dof = int(keep.sum()) - 1
     # Upper 1e-3 quantile of chi-square for dof <= 7 is at most 24.3.
-    assert dof >= 2 and chi2 < 24.3, f"chi2 {chi2:.2f} with {dof} dof, counts {counts}, expected {exp.round(1)}"
+    assert dof >= 2 and chi2 < 24.3, (
+        f"chi2 {chi2:.2f} with {dof} dof, counts {counts}, expected {exp.round(1)}"
+    )
 
 
 def test_eos_stop_and_budget():
@@ -417,15 +469,26 @@ def test_eos_stop_and_budget():
     tok = Letters()
     want = greedy_reference(BagLM(seed=1), tok.encode("abc"), 40)
     eos = want[7]
-    g = speculative_generate(BagLM(seed=1), ModelDraft(BagLM(seed=1)), tok, "abc", GREEDY, k=4, eos_ids=[eos])
+    g = speculative_generate(
+        BagLM(seed=1), ModelDraft(BagLM(seed=1)), tok, "abc", GREEDY, k=4, eos_ids=[eos]
+    )
     assert g.ids == want[: want.index(eos)] and g.finish_reason == "stop"
     stop = tok.decode(want[5:7])
     p = SamplingParams(temperature=0.0, max_tokens=40, stop=[stop])
-    g = speculative_generate(BagLM(seed=1), ModelDraft(BagLM(seed=1)), tok, "abc", p, k=4)
+    g = speculative_generate(
+        BagLM(seed=1), ModelDraft(BagLM(seed=1)), tok, "abc", p, k=4
+    )
     full = tok.decode(want)
     assert g.text == full[: full.index(stop)] and g.finish_reason == "stop"
     for n in (1, 3, 7):
-        g = speculative_generate(BagLM(seed=1), ModelDraft(BagLM(seed=1)), tok, "abc", SamplingParams(temperature=0.0, max_tokens=n), k=4)
+        g = speculative_generate(
+            BagLM(seed=1),
+            ModelDraft(BagLM(seed=1)),
+            tok,
+            "abc",
+            SamplingParams(temperature=0.0, max_tokens=n),
+            k=4,
+        )
         assert g.ids == want[:n]
 
 
@@ -441,7 +504,9 @@ def test_bad_arguments():
     with pytest.raises(ValueError):
         speculative_generate(BagLM(), PromptLookupDraft(), tok, "", GREEDY)
     with pytest.raises(ValueError):
-        speculative_generate(BagLM(max_len=4), PromptLookupDraft(), tok, "abcde", GREEDY)
+        speculative_generate(
+            BagLM(max_len=4), PromptLookupDraft(), tok, "abcde", GREEDY
+        )
 
 
 def test_logprobs_are_the_targets():
@@ -452,7 +517,9 @@ def test_logprobs_are_the_targets():
     # CATCHES: s25
     # CHAPTER: L8.6 section 4
     tok = Letters()
-    g = speculative_generate(BagLM(seed=1), ModelDraft(BagLM(seed=9)), tok, "abcab", GREEDY, k=3)
+    g = speculative_generate(
+        BagLM(seed=1), ModelDraft(BagLM(seed=9)), tok, "abcab", GREEDY, k=3
+    )
     ref = generate(BagLM(seed=1), tok, "abcab", GREEDY)
     assert_close(np.array(g.logprobs), np.array(ref.logprobs), rtol=0, atol=1e-12)
     assert all(math.isfinite(x) and x <= 0 for x in g.logprobs)

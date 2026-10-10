@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -606,7 +606,7 @@
+@@ -639,7 +639,7 @@
          if nxt == DEAD:
              raise ValueError(f"token {token_id} is not allowed in state {self.state}")
          if token_id == self.index.eos_id:

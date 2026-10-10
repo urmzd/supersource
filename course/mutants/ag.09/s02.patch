@@ -1,0 +1,14 @@
+--- a/go/agent/eval/eval.go
++++ b/go/agent/eval/eval.go
+@@ -151,11 +151,6 @@
+ func scoreOne(ctx context.Context, s Scorer, o Observation) (out Score) {
+ 	// SOLUTION-BEGIN ag.09
+ 	name := s.Name()
+-	defer func() {
+-		if p := recover(); p != nil {
+-			out = Score{Name: name, Error: fmt.Sprintf("scorer panicked: %v", p)}
+-		}
+-	}()
+ 	sc, err := s.Score(ctx, o)
+ 	sc.Name = name
+ 	switch {

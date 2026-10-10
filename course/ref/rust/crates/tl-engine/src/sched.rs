@@ -657,6 +657,15 @@ impl<B: BlockSpace> Scheduler<B> {
         // SOLUTION-END
     }
 
+    /// Every request not finished (waiting or running), in id order.
+    pub fn unfinished(&self) -> Vec<RequestId> {
+        // SOLUTION-BEGIN L10.2
+        let mut ids: Vec<RequestId> = self.seqs.keys().copied().collect();
+        ids.sort_unstable();
+        ids
+        // SOLUTION-END
+    }
+
     /// Requests not finished (waiting or running).
     pub fn has_unfinished(&self) -> bool {
         // SOLUTION-BEGIN L10.2

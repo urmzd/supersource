@@ -13,7 +13,8 @@
 //! KV pool (rt.04) as f16, then read back for attention: the pool is the
 //! only place a sequence's past lives between steps.
 
-use tl_sys::{AttnShape, KvPool, RopeLayout};
+use tl_sys::kernels::{AttnShape, RopeLayout};
+use tl_sys::kv::KvPool;
 
 use crate::model::{Linear, LlamaWeights, ModelConfig};
 use crate::quant::{f16_to_f32, f32_to_f16};
@@ -181,18 +182,18 @@ pub fn llama_forward(
     }
     let n = ids.len();
     let mut x = vec![0.0f32; n * d];
-    tl_sys::embedding_f32(&w.embed, cfg.vocab_size, &ids, &mut x, d).map_err(err)?;
+    tl_sys::kernels::embedding_f32(&w.embed, cfg.vocab_size, &ids, &mut x, d).map_err(err)?;
     let mut hbuf = vec![0.0f32; n * d];
     let scale = 1.0 / (hd as f32).sqrt();
     for (li, lw) in w.layers.iter().enumerate() {
         let layer = li as u32;
         // attention block
-        tl_sys::rmsnorm_f32(&x, &lw.input_norm, &mut hbuf, n, d, cfg.rms_norm_eps).map_err(err)?;
+        tl_sys::kernels::rmsnorm_f32(&x, &lw.input_norm, &mut hbuf, n, d, cfg.rms_norm_eps).map_err(err)?;
         let mut q = project(&lw.q, &hbuf, n)?;
         let mut k = project(&lw.k, &hbuf, n)?;
         let v = project(&lw.v, &hbuf, n)?;
-        tl_sys::rope_f32(&mut q, &pos, n, h, hd, hd, inv_freq, 1.0, RopeLayout::Half).map_err(err)?;
-        tl_sys::rope_f32(&mut k, &pos, n, hkv, hd, hd, inv_freq, 1.0, RopeLayout::Half).map_err(err)?;
+        tl_sys::kernels::rope_f32(&mut q, &pos, n, h, hd, hd, inv_freq, 1.0, RopeLayout::Half).map_err(err)?;
+        tl_sys::kernels::rope_f32(&mut k, &pos, n, hkv, hd, hd, inv_freq, 1.0, RopeLayout::Half).map_err(err)?;
         let mut attn = vec![0.0f32; n * h * hd];
         for (s, &off) in batch.seqs.iter().zip(&offs) {
             let ns = s.tokens.len();
@@ -210,7 +211,7 @@ pub fn llama_forward(
             }
             let mut o = vec![0.0f32; h * ns * hd];
             let shape = AttnShape { batch: 1, heads: h, kv_heads: hkv, tq: ns, tk, head_dim: hd, scale, q_offset: s.start, causal: true, window: 0 };
-            tl_sys::flash_attn_f32(&qs, &kc, &vc, &mut o, &shape).map_err(err)?;
+            tl_sys::kernels::flash_attn_f32(&qs, &kc, &vc, &mut o, &shape).map_err(err)?;
             for i in 0..ns {
                 for hh in 0..h {
                     let dst = &mut attn[((off + i) * h + hh) * hd..((off + i) * h + hh + 1) * hd];
@@ -219,19 +220,19 @@ pub fn llama_forward(
             }
         }
         let ao = project(&lw.o, &attn, n)?;
-        tl_sys::add_assign_f32(&mut x, &ao).map_err(err)?;
+        tl_sys::kernels::add_assign_f32(&mut x, &ao).map_err(err)?;
         // MLP block
-        tl_sys::rmsnorm_f32(&x, &lw.post_norm, &mut hbuf, n, d, cfg.rms_norm_eps).map_err(err)?;
+        tl_sys::kernels::rmsnorm_f32(&x, &lw.post_norm, &mut hbuf, n, d, cfg.rms_norm_eps).map_err(err)?;
         let g = project(&lw.gate, &hbuf, n)?;
         let u = project(&lw.up, &hbuf, n)?;
         let mut m = vec![0.0f32; g.len()];
-        tl_sys::silu_mul_f32(&g, &u, &mut m).map_err(err)?;
+        tl_sys::kernels::silu_mul_f32(&g, &u, &mut m).map_err(err)?;
         let dn = project(&lw.down, &m, n)?;
-        tl_sys::add_assign_f32(&mut x, &dn).map_err(err)?;
+        tl_sys::kernels::add_assign_f32(&mut x, &dn).map_err(err)?;
     }
     if let Some(out) = hidden {
         out.resize(n * d, 0.0);
-        tl_sys::rmsnorm_f32(&x, &w.norm, out, n, d, cfg.rms_norm_eps).map_err(err)?;
+        tl_sys::kernels::rmsnorm_f32(&x, &w.norm, out, n, d, cfg.rms_norm_eps).map_err(err)?;
     }
     // final norm and LM head on each sequence's last token only
     let rows = batch.seqs.len();
@@ -241,7 +242,7 @@ pub fn llama_forward(
         last[r * d..(r + 1) * d].copy_from_slice(&x[i * d..(i + 1) * d]);
     }
     let mut normed = vec![0.0f32; rows * d];
-    tl_sys::rmsnorm_f32(&last, &w.norm, &mut normed, rows, d, cfg.rms_norm_eps).map_err(err)?;
+    tl_sys::kernels::rmsnorm_f32(&last, &w.norm, &mut normed, rows, d, cfg.rms_norm_eps).map_err(err)?;
     let v = cfg.vocab_size;
     let mut data = vec![0.0f32; rows * v];
     match &w.lm_head {

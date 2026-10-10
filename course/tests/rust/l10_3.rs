@@ -168,7 +168,7 @@ fn hand_example_chunk_plan() {
     //      (2 tokens), so B's first token comes at step 3 and no step
     //      exceeds 8 tokens.
     // KIND: unit
-    // CATCHES: s01, s02
+    // CATCHES: s02
     // CHAPTER: L10.3 section 3
     let mut s = chunked(cfg(4, 8), free_list(4, 16), 4);
     let a = s.add(req(&[1, 2], 3)).unwrap();
@@ -223,7 +223,7 @@ fn plan_samples_only_sequence_ends() {
     //      and chunks that end the sequence are sampled: a middle chunk's
     //      logits predict a token the prompt already has.
     // KIND: unit
-    // CATCHES: s03, s04
+    // CATCHES: s02, s03, s04
     // CHAPTER: L10.3 section 4
     let mut s = chunked(cfg(4, 6), free_list(4, 16), 3);
     let a = s.add(req(&[1, 2], 5)).unwrap();
@@ -274,7 +274,6 @@ fn long_prompt_progresses_beside_decodes() {
     //      its first token within a few steps under Chunked, but waits for
     //      the decodes to end under WholePrompt (budget 16).
     // KIND: property
-    // CATCHES: s02
     // CHAPTER: L10.3 section 2
     let ttft = |policy: Box<dyn PrefillPolicy + Send>| {
         let mut s = Scheduler::new(cfg(8, 16), free_list(4, 64)).with_prefill_policy(policy);

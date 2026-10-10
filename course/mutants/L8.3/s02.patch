@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -208,7 +208,7 @@
+@@ -245,7 +245,7 @@
          K = np.empty((self.n_kv_heads, n, self.d_head), dtype=np.float16)
          V = np.empty_like(K)
          for b in range((n + B - 1) // B):

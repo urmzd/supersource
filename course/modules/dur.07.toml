@@ -1,0 +1,25 @@
+id        = "dur.07"
+title     = "Durable timers and the test clock"
+kind      = "build"
+lang      = ["go"]
+pass      = 8
+chapter   = "ai-platform-engineering/05-durable-orchestration-and-workers/07-durable-timers.md"
+contract  = []
+deps      = ["dur.06"]
+reading   = []
+# Call sites in the catalog: dur.11 (eval cadence), dur.12 (canary wait),
+# ag.05 (approval TTL). None lists dur.07 in deps yet: they drive workflows
+# through the workflows.Runtime seam (dur.08), whose composition root adapts
+# workflow.Sleep. Until one does, verify check 9 reports no call site
+# (deviation B101-14).
+used_by   = []
+units     = ["go/durable/timer/timer.go", "go/durable/server/timers.go"]
+upgrades  = []
+milestone = "MS-durable"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/go/dur_07/"
+smoke     = ["TestHeapHandExample", "TestServiceHandExample", "TestStartTimerHand", "TestRestartWithPendingTimers"]
+timeout_s = 120
+determinism_runs = 2

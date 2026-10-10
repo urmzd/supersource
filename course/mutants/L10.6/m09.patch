@@ -1,0 +1,13 @@
+--- a/rust/crates/tl-engine/src/kv_transfer.rs
++++ b/rust/crates/tl-engine/src/kv_transfer.rs
+@@ -395,9 +395,7 @@
+ 
+     /// Frees the blocks held for a handle; an unknown handle is fine.
+     pub fn release(&self, handle_id: &str) {
+-        if let Some(ids) = self.claim(handle_id) {
+-            self.release_ids(&ids);
+-        }
++        let _ = self.claim(handle_id);
+     }
+ 
+     /// A whole push from an iterator of chunks (the gRPC stream adapts to

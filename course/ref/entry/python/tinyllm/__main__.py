@@ -43,6 +43,15 @@ Pass 6 verbs (course/milestones/MS-L9.toml, glue in cli_kernels.py):
 
     generate|logits ... --backend numpy|c [--check]    bench decode --backend numpy,c ...
 
+Pass 6 verbs (course/milestones/MS-L8.toml, glue in cli_infer.py):
+
+    generate --cache none|contiguous|paged --kv-dtype f32|f16    generate --spec ngram|prompt-lookup --k K
+    generate --json-schema <file>    eval ppl --quant <scheme>    bench decode
+
+Pass 9 verbs (course/milestones/MS-L11.toml, glue in cli_capstone.py):
+
+    train llama --cfg <config.json> --data <text> [--micro-batch B] [--accum K] [--bf16] [--checkpoint-activations]
+
 Entry-point territory (D16): this file is yours. It is glue over L0.0
 (BigramLM, safetensors) and rt.01 (the ctypes loader); the reference is used
 by course CI only. Runs as `python -m tinyllm` with python/ on the path, or
@@ -224,12 +233,35 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Pass 9 (MS-L11): train llama with --bf16, --accum, and
+    # --checkpoint-activations, glue in cli_capstone.py (it claims only that form).
+    from tinyllm.cli_capstone import intercept as intercept_capstone
+
+    code = intercept_capstone(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
+    # Pass 8 (MS-durable): train --spec and eval --spec, the subprocess
+    # activities of TrainRun and EvalSuite, glue in cli_activity.py (first:
+    # it claims only those two verbs with --spec).
+    from tinyllm.cli_activity import intercept as intercept_activity
+
+    code = intercept_activity(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
     # Pass 6 (MS-L9): generate, logits, and bench decode with --backend
     # numpy|c [--check], glue in cli_kernels.py (first: it claims only forms
     # that carry --backend).
     from tinyllm.cli_kernels import intercept as intercept_kernels
 
     code = intercept_kernels(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
+    # Pass 6 (MS-L8): generate with --cache, --kv-dtype, --spec, or
+    # --json-schema, eval ppl --quant, and bench decode (no --backend) on a
+    # Llama-family directory, glue in cli_infer.py (it claims only those).
+    from tinyllm.cli_infer import intercept as intercept_infer
+
+    code = intercept_infer(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
     # Pass 5 (MS-L7): pull, and info, logits, generate on a Llama-family

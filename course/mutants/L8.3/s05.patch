@@ -1,11 +1,11 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -180,7 +180,7 @@
+@@ -212,7 +212,7 @@
          p = start
          while p < end:
              b, slot = divmod(p, B)
 -            n = min(B - slot, end - p)
 +            n = min(B, end - p)
-             self._slab(table[b], layer, 0)[:, slot : slot + n, :] = k16[:, p - start : p - start + n, :]
-             self._slab(table[b], layer, 1)[:, slot : slot + n, :] = v16[:, p - start : p - start + n, :]
-             p += n
+             src = slice(p - start, p - start + n)
+             self._slab(table[b], layer, 0)[:, slot : slot + n, :] = k16[:, src, :]
+             self._slab(table[b], layer, 1)[:, slot : slot + n, :] = v16[:, src, :]

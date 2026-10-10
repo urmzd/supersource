@@ -1,0 +1,53 @@
+# The collector's pipelines (obs.01, obs.02 reference), as values for the
+# observability umbrella chart of dep.03 (deploy/observability/Chart.yaml,
+# subchart alias otel-collector), passed at install:
+#   helm upgrade --install observability deploy/observability -n observability \
+#     -f deploy/observability/values.yaml -f deploy/observability/collector.yaml
+# Services reach it at otel-collector.observability:4317 (runtime.toml [otel].endpoint).
+otel-collector:
+  replicaCount: 1
+  resources:
+    limits: {cpu: 500m, memory: 512Mi}
+  ports:
+    prom-exporter:
+      enabled: true
+      containerPort: 8889
+      servicePort: 8889
+      protocol: TCP
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc: {endpoint: "0.0.0.0:4317"}
+          http: {endpoint: "0.0.0.0:4318"}
+    processors:
+      # First in every pipeline: refuse data before the pod is OOM-killed.
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      batch:
+        timeout: 2s
+        send_batch_size: 1024
+    exporters:
+      otlp/tempo:
+        endpoint: tempo.observability:4317
+        tls: {insecure: true}
+      # The Python subprocesses' metrics (they cannot be scraped, D9), exposed
+      # for Prometheus with the names of otel/metrics.yaml.
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        resource_to_telemetry_conversion: {enabled: false}
+    extensions:
+      health_check: {endpoint: "0.0.0.0:13133"}
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp/tempo]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [prometheus]

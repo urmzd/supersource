@@ -1,6 +1,6 @@
 --- a/rust/crates/tl-ds/src/radix.rs
 +++ b/rust/crates/tl-ds/src/radix.rs
-@@ -357,7 +357,6 @@
+@@ -364,7 +364,6 @@
                  break;
              }
              self.nodes[n].lock -= 1;

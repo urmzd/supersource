@@ -1,0 +1,25 @@
+id        = "load.02"
+title     = "Run comparison and regression gate"
+kind      = "build"
+lang      = ["go"]
+pass      = 7
+chapter   = "ml/08-tinyllm/p10-serving/11-run-comparison-and-regression-gate.md"
+# The input is formats/loadgen-report.schema.json, linked from the card
+# (DEVIATIONS B92-03).
+contract  = []
+deps      = ["load.01"]   # Report, Histogram buckets, and rng.Stream's Shuffle
+reading   = ["M07.5"]     # the two-sample permutation test, re-implemented in Go
+# Catalog call sites: dep.05 (the CI perf job) and ops.07 (git bisect run).
+# Not registered yet, so verify check 9 fails until dep.05 lists load.02 in
+# deps (DEVIATIONS B92-01).
+used_by   = []
+units     = ["go/loadgen/compare/compare.go"]
+upgrades  = []
+milestone = "MS-L10"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/go/load_02/"
+smoke     = ["TestCompareHandExample"]
+timeout_s = 60
+determinism_runs = 2

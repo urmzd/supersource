@@ -48,8 +48,11 @@ def test_hand_example_through_ctypes(name):
     # CHAPTER: L9.2 section 3
     y = c_softmax(name, np.array([[1, 2, 3]], dtype=np.float32))
     assert_close(
-        y, np.array([[0.09003057317038046, 0.24472847105479764, 0.6652409557748219]])
-    , rtol=1e-6, atol=1e-7)
+        y,
+        np.array([[0.09003057317038046, 0.24472847105479764, 0.6652409557748219]]),
+        rtol=1e-6,
+        atol=1e-7,
+    )
 
 
 @pytest.mark.parametrize("name", KERNELS)
@@ -69,7 +72,10 @@ def test_matches_your_m09_2_softmax(name):
                 x[1, ::3] = -np.inf
             want = py_softmax(x.astype(np.float64), axis=-1)
             assert_close(
-                c_softmax(name, x), want, dtype="float32", msg=f"{name} cols={cols} scale={scale}"
+                c_softmax(name, x),
+                want,
+                dtype="float32",
+                msg=f"{name} cols={cols} scale={scale}",
             )
 
 

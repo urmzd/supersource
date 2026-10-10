@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -406,7 +406,7 @@
+@@ -424,7 +424,7 @@
          b0 = q.popleft()
          s = rep_of[b0]
          row = []

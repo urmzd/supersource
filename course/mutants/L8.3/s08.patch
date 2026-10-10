@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -117,8 +117,6 @@
+@@ -145,8 +145,6 @@
  
      def free(self, seq_id: int) -> None:
          table = self._table(seq_id)

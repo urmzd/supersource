@@ -11,8 +11,11 @@ from tinyllm.infer.paged import OutOfBlocks, PagedKVCache
 
 def chunk(t0, T, H=2, D=3):
     """Distinct, float16-exact values per position."""
-    return (np.arange(t0, t0 + T, dtype=np.float32)[None, :, None] + np.zeros((H, 1, D), np.float32)
-            + np.arange(H, dtype=np.float32)[:, None, None] * 0.5)
+    return (
+        np.arange(t0, t0 + T, dtype=np.float32)[None, :, None]
+        + np.zeros((H, 1, D), np.float32)
+        + np.arange(H, dtype=np.float32)[:, None, None] * 0.5
+    )
 
 
 @settings(max_examples=40)
@@ -40,7 +43,9 @@ def test_fork_then_write_never_changes_the_parent():
         c.fork(0, 1)
         assert c.stats()["used"] == used
         c.append(1, 0, chunk(100, 1), chunk(100, 1))
-        c.append(0, 0, chunk(200, 1), chunk(200, 1))  # both write position 3 of the shared block
+        c.append(
+            0, 0, chunk(200, 1), chunk(200, 1)
+        )  # both write position 3 of the shared block
         assert c.gather(0, 0)[0][0, :, 0].tolist() == [0, 1, 2, 200]
         assert c.gather(1, 0)[0][0, 3, 0] == 100
         c.free(0)

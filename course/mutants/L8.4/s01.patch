@@ -1,6 +1,6 @@
 --- a/rust/crates/tl-engine/src/prefix.rs
 +++ b/rust/crates/tl-engine/src/prefix.rs
-@@ -79,7 +79,7 @@
+@@ -86,7 +86,7 @@
      /// counts the lookup in `stats`.
      pub fn match_prefix(&mut self, tokens: &[u32]) -> PrefixMatch {
          let b = self.block_size;

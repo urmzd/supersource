@@ -67,8 +67,15 @@ impl RadixCache {
     /// An empty cache for blocks of `block_size` tokens. Panics on 0.
     pub fn new(block_size: usize) -> Self {
         // SOLUTION-BEGIN L8.4
-        assert!(block_size >= 1, "RadixCache::new: block_size must be at least 1");
-        RadixCache { tree: RadixTree::new(block_size), block_size, stats: PrefixStats::default() }
+        assert!(
+            block_size >= 1,
+            "RadixCache::new: block_size must be at least 1"
+        );
+        RadixCache {
+            tree: RadixTree::new(block_size),
+            block_size,
+            stats: PrefixStats::default(),
+        }
         // SOLUTION-END
     }
 
@@ -93,7 +100,11 @@ impl RadixCache {
         self.stats.lookups += 1;
         self.stats.query_tokens += tokens.len() as u64;
         self.stats.hit_tokens += matched as u64;
-        PrefixMatch { matched_tokens: matched, blocks, node: path.last().copied().unwrap_or(ROOT) }
+        PrefixMatch {
+            matched_tokens: matched,
+            blocks,
+            node: path.last().copied().unwrap_or(ROOT),
+        }
         // SOLUTION-END
     }
 
@@ -131,7 +142,12 @@ impl RadixCache {
         for &id in path.iter().rev() {
             kept.extend_from_slice(self.tree.values(id));
         }
-        let duplicates = handed_back.iter().zip(kept.iter()).filter(|(a, k)| a != k).map(|(a, _)| *a).collect();
+        let duplicates = handed_back
+            .iter()
+            .zip(kept.iter())
+            .filter(|(a, k)| a != k)
+            .map(|(a, _)| *a)
+            .collect();
         Inserted { node, duplicates }
         // SOLUTION-END
     }

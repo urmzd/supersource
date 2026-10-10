@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/sample.rs
++++ b/rust/crates/tl-engine/src/sample.rs
+@@ -75,7 +75,7 @@
+ /// `stream(seed, purpose) = pcg32_srandom_r(child_seed(seed, p), p)`. The
+ /// engine creates `stream(request.seed, PURPOSE_SAMPLE)` once per request.
+ pub fn stream(seed: u64, purpose: u64) -> Pcg32 {
+-    Pcg32::new(child_seed(seed, purpose), purpose)
++    Pcg32::new(child_seed(seed, purpose), 54)
+ }
+ 
+ /// The knobs of spec/sampling.md; `Default` turns every step off at T = 1.

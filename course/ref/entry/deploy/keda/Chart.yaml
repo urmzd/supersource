@@ -1,0 +1,13 @@
+# KEDA, pinned (dep.06; contracts/helm/observability.md): installed once per
+# cluster, release `keda` in namespace `keda`, before any ScaledObject.
+#   helm dependency build deploy/keda
+#   helm upgrade --install keda deploy/keda -n keda --create-namespace
+apiVersion: v2
+name: forge-keda
+description: KEDA for the forge worker autoscaling (dep.06)
+type: application
+version: 0.1.0
+dependencies:
+  - name: keda
+    version: 2.21.0
+    repository: https://kedacore.github.io/charts

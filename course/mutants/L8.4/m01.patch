@@ -1,6 +1,6 @@
 --- a/rust/crates/tl-engine/src/prefix.rs
 +++ b/rust/crates/tl-engine/src/prefix.rs
-@@ -144,7 +144,6 @@
+@@ -160,7 +160,6 @@
      pub fn evict(&mut self, n_blocks: usize) -> Vec<BlockId> {
          let mut out = Vec::new();
          self.tree.evict(n_blocks, |blk| out.push(blk));

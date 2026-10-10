@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -86,7 +86,7 @@
+@@ -96,7 +96,7 @@
              return [], None
          for n in range(min(self.max_ngram, L - 1), self.min_ngram - 1, -1):
              suffix = ctx[L - n :]

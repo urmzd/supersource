@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -186,7 +186,7 @@
+@@ -219,7 +219,7 @@
              p += n
          self._lens[seq_id][layer] = end
          # 4. A block's fill is the positions every layer holds.
@@ -8,4 +8,4 @@
 +        held = max(self._lens[seq_id])
          for i in range(first, last + 1):
              fill = min(B, max(0, held - i * B))
-             _check(self.lib, "tl_kv_set_fill", self.lib.tl_kv_set_fill(self._pool, table[i], fill))
+             _check(

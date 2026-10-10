@@ -1,23 +1,32 @@
-// Package proxy is the tracer gateway's request path (gw.00): one static API
-// key, then the request forwarded to the engine and its response streamed
-// back byte for byte, with W3C trace context and X-Request-Id carried across.
+// Package proxy is the gateway's request path to an engine. gw.00 built the
+// tracer form: one static API key, the request forwarded, the response
+// streamed back byte for byte, W3C trace context and X-Request-Id carried
+// across. gw.04 takes the package over and adds the streaming observer
+// (first byte, every SSE event, the final usage), the commitment boundary
+// that routing's failover relies on (Forward), and the chain handler that
+// records the stream on the server Exchange.
 //
-// Contract: course/contracts/openapi/openai-subset.v0.yaml (gateway tier) and
-// course/contracts/spec/cli-roles.md (role `gateway`, tracer form).
-// Chapter: ai-platform-engineering/12-gateway/00-streaming-proxy.md.
-// gw.04 takes this package over and adds the StreamObserver.
+// Contract: course/contracts/openapi/openai-subset.v1.yaml (Streaming,
+// Disconnect, Errors; gateway tier) and openai-subset.v0.yaml for NewProxy.
+// Chapters: ai-platform-engineering/12-gateway/00-streaming-proxy.md (gw.00)
+// and ai-platform-engineering/12-gateway/04-sse-streaming-proxy.md (gw.04).
 package proxy
 
 import (
+	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"tinyllm/gateway/server"
 )
 
 // Config is everything the tracer proxy needs.
@@ -35,6 +44,9 @@ type Config struct {
 	// OnSpan, when set, receives the gateway.proxy span once the response is
 	// finished. The entry point exports it (obs.00); the library only records.
 	OnSpan func(Span)
+	// Observer, when set, makes the observer for each request (gw.04). Inside
+	// the server chain the default records on the Exchange (ExchangeObserver).
+	Observer func(r *http.Request) StreamObserver
 }
 
 // Span is the record of one proxied request. Ids are lowercase hex as in a
@@ -59,16 +71,33 @@ var hopHeaders = []string{
 	"Te", "Trailer", "Transfer-Encoding", "Upgrade",
 }
 
-// NewProxy returns the gateway's handler for every API path.
+// NewProxy returns the tracer gateway's handler for every API path: the
+// static key check of gw.00, then Handler.
 func NewProxy(cfg Config) http.Handler {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	client := cfg.Client
 	if client == nil {
 		client = &http.Client{}
 	}
 	base := strings.TrimRight(cfg.Upstream, "/")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		serve(w, r, cfg, client, base)
+		serve(w, r, cfg, client, base, true)
+	})
+	// SOLUTION-END
+}
+
+// Handler is the proxy stage of the server chain (gw.04): the same request
+// path as NewProxy without the static key, because the authn stage (gw.02)
+// already authenticated the request.
+func Handler(cfg Config) http.Handler {
+	// SOLUTION-BEGIN gw.04
+	client := cfg.Client
+	if client == nil {
+		client = &http.Client{}
+	}
+	base := strings.TrimRight(cfg.Upstream, "/")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serve(w, r, cfg, client, base, false)
 	})
 	// SOLUTION-END
 }
@@ -80,7 +109,7 @@ type statusWriter struct {
 }
 
 func (s *statusWriter) WriteHeader(code int) {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	if s.code == 0 {
 		s.code = code
 	}
@@ -89,15 +118,16 @@ func (s *statusWriter) WriteHeader(code int) {
 }
 
 func (s *statusWriter) Unwrap() http.ResponseWriter {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	return s.ResponseWriter
 	// SOLUTION-END
 }
 
-func serve(w http.ResponseWriter, r *http.Request, cfg Config, client *http.Client, base string) {
-	// SOLUTION-BEGIN gw.00
-	span := Span{Name: SpanName, Start: time.Now(), RequestID: requestID(r.Header.Get("X-Request-Id"))}
+func serve(w http.ResponseWriter, r *http.Request, cfg Config, client *http.Client, base string, checkKey bool) {
+	// SOLUTION-BEGIN gw.04
 	sw := &statusWriter{ResponseWriter: w}
+	reqID := requestID(r.Header.Get("X-Request-Id"))
+	span := Span{Name: SpanName, Start: time.Now(), RequestID: reqID}
 	defer func() {
 		if cfg.OnSpan != nil {
 			span.End = time.Now()
@@ -105,99 +135,335 @@ func serve(w http.ResponseWriter, r *http.Request, cfg Config, client *http.Clie
 			cfg.OnSpan(span)
 		}
 	}()
-	w.Header().Set("X-Request-Id", span.RequestID)
+	w.Header().Set("X-Request-Id", reqID)
 
-	// 1. The key, before anything leaves the gateway.
-	if !authorized(r.Header.Get("Authorization"), cfg.APIKey) {
+	// 1. The key, before anything leaves the gateway (tracer form only).
+	if checkKey && !authorized(r.Header.Get("Authorization"), cfg.APIKey) {
 		writeError(sw, http.StatusUnauthorized, "invalid_request_error", "invalid_api_key",
 			"Incorrect or missing API key: send the header Authorization: Bearer KEY.")
 		return
 	}
 
-	// 2. Trace context: continue the caller's trace, or start one.
+	// 2. The outbound request: trace context, request id, no key.
+	body, err := io.ReadAll(io.LimitReader(r.Body, server.DefaultMaxBody+1))
+	if err != nil || len(body) > server.DefaultMaxBody {
+		writeError(sw, http.StatusBadRequest, "invalid_request_error", "", "cannot read the request body")
+		return
+	}
+	r.Header.Set("X-Request-Id", reqID) // so the outbound carries the same id
+	out, s := NewOutbound(r, body)
+	span.TraceID, span.SpanID, span.ParentSpanID = s.TraceID, s.SpanID, s.ParentSpanID
+
+	// 3. Forward and stream; before the first byte a failure is a 503.
+	var obs StreamObserver
+	if cfg.Observer != nil {
+		obs = cfg.Observer(r)
+	} else if ex := server.ExchangeFrom(r.Context()); ex != nil {
+		obs = ExchangeObserver(ex)
+	}
+	err = Forward(r.Context(), sw, base, out, client, obs)
+	var ue *UpstreamError
+	if errors.As(err, &ue) && !ue.Committed && r.Context().Err() == nil {
+		writeError(sw, http.StatusServiceUnavailable, "server_error", "no_capacity",
+			"the upstream engine is unavailable: "+ue.Err.Error())
+	}
+	// SOLUTION-END
+}
+
+// Outbound is one request as it will be sent upstream: the method, path, and
+// query of the client's request, its end-to-end headers minus Authorization,
+// a traceparent naming the gateway's span as parent, and the body. gw.05
+// sends one Outbound to several workers in turn (failover), so it is built
+// once.
+type Outbound struct {
+	Method, Path, RawQuery string
+	Header                 http.Header
+	Body                   []byte
+	// Retry503: an upstream 503 is returned as an uncommitted UpstreamError
+	// (nothing written) so the caller can try another worker.
+	Retry503 bool
+}
+
+// NewOutbound applies the gw.00 header rules to r: hop-by-hop headers and
+// Authorization dropped, the caller's trace continued with a new span id (or
+// a new sampled trace), tracestate kept only with a valid traceparent, and
+// X-Request-Id set. The returned Span carries the ids.
+func NewOutbound(r *http.Request, body []byte) (*Outbound, Span) {
+	// SOLUTION-BEGIN gw.04
+	span := Span{Name: SpanName, RequestID: requestID(r.Header.Get("X-Request-Id"))}
 	traceID, parent, flags, ok := ParseTraceparent(r.Header.Get("Traceparent"))
 	if !ok {
 		traceID, parent, flags = randomHex(16), "", "01"
 	}
 	span.TraceID, span.ParentSpanID, span.SpanID = traceID, parent, randomHex(8)
-
-	// 3. The upstream request: same method, path, query, and body, on the
-	// client's context so a client that leaves cancels the engine's work.
-	target := base + r.URL.EscapedPath()
-	if r.URL.RawQuery != "" {
-		target += "?" + r.URL.RawQuery
-	}
-	up, err := http.NewRequestWithContext(r.Context(), r.Method, target, r.Body)
-	if err != nil {
-		writeError(sw, http.StatusBadGateway, "server_error", "no_capacity", "cannot build the upstream request")
-		return
-	}
-	up.ContentLength = r.ContentLength
-	copyHeaders(up.Header, r.Header)
-	up.Header.Del("Authorization")
-	up.Header.Del("Tracestate")
+	h := http.Header{}
+	copyHeaders(h, r.Header)
+	h.Del("Authorization")
+	h.Del("Tracestate")
 	if ok && r.Header.Get("Tracestate") != "" {
-		up.Header.Set("Tracestate", r.Header.Get("Tracestate"))
+		h.Set("Tracestate", r.Header.Get("Tracestate"))
 	}
-	up.Header.Set("Traceparent", "00-"+traceID+"-"+span.SpanID+"-"+flags)
-	up.Header.Set("X-Request-Id", span.RequestID)
+	h.Set("Traceparent", "00-"+traceID+"-"+span.SpanID+"-"+flags)
+	h.Set("X-Request-Id", span.RequestID)
+	return &Outbound{Method: r.Method, Path: r.URL.EscapedPath(), RawQuery: r.URL.RawQuery, Header: h, Body: body}, span
+	// SOLUTION-END
+}
 
+// UpstreamError is a failure talking to the upstream. Committed reports
+// whether any part of the response (status line included) was already sent
+// to the client: an uncommitted failure may be retried on another worker, a
+// committed one never is (a retried stream would repeat or splice tokens).
+type UpstreamError struct {
+	Committed  bool
+	StatusCode int // the upstream's status when it answered (Retry503), else 0
+	Err        error
+}
+
+func (e *UpstreamError) Error() string {
+	// SOLUTION-BEGIN gw.04
+	if e.Committed {
+		return "upstream failed after the first byte: " + e.Err.Error()
+	}
+	return "upstream failed before the first byte: " + e.Err.Error()
+	// SOLUTION-END
+}
+
+func (e *UpstreamError) Unwrap() error {
+	// SOLUTION-BEGIN gw.04
+	return e.Err
+	// SOLUTION-END
+}
+
+// Forward sends out to base (the engine's URL without /v1) on ctx and relays
+// the answer with StreamProxy. A failure before the upstream answers (refused,
+// reset, or a 503 with Retry503) returns an uncommitted *UpstreamError and
+// writes nothing to w. ctx is the client's request context: when the client
+// leaves, the upstream request is cancelled.
+func Forward(ctx context.Context, w http.ResponseWriter, base string, out *Outbound, client *http.Client, o StreamObserver) error {
+	// SOLUTION-BEGIN gw.04
+	if client == nil {
+		client = &http.Client{}
+	}
+	target := strings.TrimRight(base, "/") + out.Path
+	if out.RawQuery != "" {
+		target += "?" + out.RawQuery
+	}
+	up, err := http.NewRequestWithContext(ctx, out.Method, target, bytes.NewReader(out.Body))
+	if err != nil {
+		return &UpstreamError{Err: err}
+	}
+	up.ContentLength = int64(len(out.Body))
+	for k, vs := range out.Header {
+		up.Header[k] = append([]string(nil), vs...)
+	}
 	resp, err := client.Do(up)
 	if err != nil {
-		if r.Context().Err() != nil {
-			return // the client left; nobody is listening
-		}
-		writeError(sw, http.StatusServiceUnavailable, "server_error", "no_capacity",
-			"the upstream engine is unavailable: "+err.Error())
-		return
+		return &UpstreamError{Err: err}
 	}
 	defer resp.Body.Close()
+	if out.Retry503 && resp.StatusCode == http.StatusServiceUnavailable {
+		return &UpstreamError{StatusCode: resp.StatusCode, Err: errors.New("the upstream answered 503")}
+	}
+	if err := StreamProxy(w, resp.Request, resp, o); err != nil {
+		return &UpstreamError{Committed: true, Err: err}
+	}
+	return nil
+	// SOLUTION-END
+}
 
-	// 4. Status and headers first, then the body as it arrives.
-	copyHeaders(w.Header(), resp.Header)
-	w.Header().Set("X-Request-Id", span.RequestID)
-	sw.WriteHeader(resp.StatusCode)
-	err = copyFlush(sw, resp.Body)
-	if err != nil && r.Context().Err() == nil &&
-		strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
-		// A failure after the first byte is an SSE error event, never a
-		// silent truncation (openai-subset.v0.yaml, Streaming).
-		_, _ = io.WriteString(sw, `data: {"error":{"message":"the upstream stream failed","type":"server_error","param":null,"code":null}}`+"\n\n")
-		_ = http.NewResponseController(sw).Flush()
+// StreamObserver watches one response as it passes through: OnFirstByte
+// just before the first body byte is written to the client, OnChunk with the
+// data of every complete SSE event (comments skipped, "[DONE]" included),
+// and OnDone with the usage when the response ended cleanly (zero when the
+// upstream reported none). gw.07 meters TTFT and usage with it; gw.06
+// records streams for replay.
+type StreamObserver interface {
+	OnFirstByte()
+	OnChunk(data []byte)
+	OnDone(u server.Usage)
+}
+
+type exchangeObserver struct{ ex *server.Exchange }
+
+func (e exchangeObserver) OnFirstByte() {
+	// SOLUTION-BEGIN gw.04
+	e.ex.MarkFirstByte()
+	// SOLUTION-END
+}
+
+func (e exchangeObserver) OnChunk([]byte) {
+	// SOLUTION-BEGIN gw.04
+	// SOLUTION-END
+}
+
+func (e exchangeObserver) OnDone(u server.Usage) {
+	// SOLUTION-BEGIN gw.04
+	e.ex.SetUsage(u)
+	// SOLUTION-END
+}
+
+// ExchangeObserver records the first byte and the usage on ex, which is how
+// the ratelimit stage settles and the meter stage records (gw.01 chain).
+func ExchangeObserver(ex *server.Exchange) StreamObserver {
+	// SOLUTION-BEGIN gw.04
+	return exchangeObserver{ex}
+	// SOLUTION-END
+}
+
+// Observers fans one response out to several observers.
+type Observers []StreamObserver
+
+func (os Observers) OnFirstByte() {
+	// SOLUTION-BEGIN gw.04
+	for _, o := range os {
+		o.OnFirstByte()
 	}
 	// SOLUTION-END
 }
 
-// copyFlush writes every chunk the upstream sends and flushes it before the
-// next read, so SSE events reach the client one by one.
-func copyFlush(w http.ResponseWriter, body io.Reader) error {
-	// SOLUTION-BEGIN gw.00
+func (os Observers) OnChunk(d []byte) {
+	// SOLUTION-BEGIN gw.04
+	for _, o := range os {
+		o.OnChunk(d)
+	}
+	// SOLUTION-END
+}
+
+func (os Observers) OnDone(u server.Usage) {
+	// SOLUTION-BEGIN gw.04
+	for _, o := range os {
+		o.OnDone(u)
+	}
+	// SOLUTION-END
+}
+
+// usageOf returns the usage object of one JSON document (a chunk or a whole
+// response), and whether it had a non-null one.
+func usageOf(doc []byte) (server.Usage, bool) {
+	// SOLUTION-BEGIN gw.04
+	if !bytes.Contains(doc, []byte(`"usage"`)) {
+		return server.Usage{}, false
+	}
+	var v struct {
+		Usage *server.Usage `json:"usage"`
+	}
+	if json.Unmarshal(doc, &v) != nil || v.Usage == nil {
+		return server.Usage{}, false
+	}
+	u := *v.Usage
+	if u.TotalTokens == 0 {
+		u.TotalTokens = u.PromptTokens + u.CompletionTokens
+	}
+	return u, true
+	// SOLUTION-END
+}
+
+// sseSplitter cuts a byte stream into SSE events at blank lines, whatever
+// the read boundaries, and hands each event's data to emit.
+type sseSplitter struct {
+	buf  []byte
+	emit func(data []byte)
+}
+
+func (s *sseSplitter) write(p []byte) {
+	// SOLUTION-BEGIN gw.04
+	s.buf = append(s.buf, p...)
+	for {
+		i := bytes.Index(s.buf, []byte("\n\n"))
+		if i < 0 {
+			return
+		}
+		event := s.buf[:i]
+		s.buf = s.buf[i+2:]
+		var data [][]byte
+		for _, line := range bytes.Split(event, []byte("\n")) {
+			line = bytes.TrimSuffix(line, []byte("\r"))
+			if bytes.HasPrefix(line, []byte("data:")) {
+				data = append(data, bytes.TrimPrefix(bytes.TrimPrefix(line, []byte("data:")), []byte(" ")))
+			}
+		}
+		if data != nil {
+			s.emit(bytes.Join(data, []byte("\n")))
+		}
+	}
+	// SOLUTION-END
+}
+
+// StreamProxy relays up to w: the end-to-end headers (w's own X-Request-Id
+// kept), the status, then every body chunk as it arrives, flushed before the
+// next read and never re-framed. For text/event-stream it also cuts the
+// passing bytes into events for o.OnChunk and takes the usage from the last
+// event that carries one; for a JSON body it takes the usage from the body.
+// If the upstream breaks mid-body, an SSE response gets one error event
+// (never a silent truncation) and the error is returned; if the client went
+// away (r's context done), nothing more is written. o may be nil.
+func StreamProxy(w http.ResponseWriter, r *http.Request, up *http.Response, o StreamObserver) error {
+	// SOLUTION-BEGIN gw.04
+	if o == nil {
+		o = Observers(nil)
+	}
+	reqID := w.Header().Get("X-Request-Id")
+	copyHeaders(w.Header(), up.Header)
+	if reqID != "" {
+		w.Header().Set("X-Request-Id", reqID)
+	}
+	w.WriteHeader(up.StatusCode)
+	sse := strings.HasPrefix(up.Header.Get("Content-Type"), "text/event-stream")
+	var usage server.Usage
+	var whole bytes.Buffer
+	split := &sseSplitter{emit: func(d []byte) {
+		o.OnChunk(d)
+		if u, ok := usageOf(d); ok {
+			usage = u
+		}
+	}}
 	rc := http.NewResponseController(w)
 	buf := make([]byte, 32*1024)
+	first := true
 	for {
-		n, err := body.Read(buf)
+		n, err := up.Body.Read(buf)
 		if n > 0 {
+			if first {
+				o.OnFirstByte()
+				first = false
+			}
 			if _, werr := w.Write(buf[:n]); werr != nil {
 				return werr
 			}
 			if ferr := rc.Flush(); ferr != nil && !errors.Is(ferr, http.ErrNotSupported) {
 				return ferr
 			}
+			if sse {
+				split.write(buf[:n])
+			} else if whole.Len() < server.DefaultMaxBody {
+				whole.Write(buf[:n])
+			}
 		}
 		if errors.Is(err, io.EOF) {
-			return nil
+			break
 		}
 		if err != nil {
-			return err
+			if r.Context().Err() == nil && sse {
+				_, _ = io.WriteString(w, `data: {"error":{"message":"the upstream stream failed","type":"server_error","param":null,"code":null}}`+"\n\n")
+				_ = rc.Flush()
+			}
+			return fmt.Errorf("reading the upstream body: %w", err)
 		}
 	}
+	if !sse {
+		if u, ok := usageOf(whole.Bytes()); ok {
+			usage = u
+		}
+	}
+	o.OnDone(usage)
+	return nil
 	// SOLUTION-END
 }
 
 // authorized reports whether header is "Bearer <key>" for the configured key,
 // comparing in constant time so the response time leaks nothing about it.
 func authorized(header, key string) bool {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	if key == "" {
 		return false
 	}
@@ -214,7 +480,7 @@ func authorized(header, key string) bool {
 // <16 hex parent id>-<2 hex flags>"). ok is false for anything else: another
 // version, uppercase hex, or an all-zero trace or parent id.
 func ParseTraceparent(h string) (traceID, parentID, flags string, ok bool) {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	parts := strings.Split(strings.TrimSpace(h), "-")
 	if len(parts) != 4 || parts[0] != "00" {
 		return "", "", "", false
@@ -231,7 +497,7 @@ func ParseTraceparent(h string) (traceID, parentID, flags string, ok bool) {
 }
 
 func lowerHex(s string, n int) bool {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	if len(s) != n {
 		return false
 	}
@@ -247,7 +513,7 @@ func lowerHex(s string, n int) bool {
 // requestID keeps the caller's X-Request-Id when it is printable ASCII of at
 // most 128 bytes, and otherwise makes a new one.
 func requestID(in string) string {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	if in != "" && len(in) <= 128 {
 		printable := true
 		for i := 0; i < len(in); i++ {
@@ -266,7 +532,7 @@ func requestID(in string) string {
 
 // randomHex returns n random bytes as 2n lowercase hex digits, never all zero.
 func randomHex(n int) string {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	b := make([]byte, n)
 	for {
 		if _, err := rand.Read(b); err != nil {
@@ -283,7 +549,7 @@ func randomHex(n int) string {
 
 // copyHeaders copies every end-to-end header from src to dst.
 func copyHeaders(dst, src http.Header) {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	for k, vs := range src {
 		if isHop(k) {
 			continue
@@ -296,7 +562,7 @@ func copyHeaders(dst, src http.Header) {
 }
 
 func isHop(name string) bool {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	for _, h := range hopHeaders {
 		if strings.EqualFold(name, h) {
 			return true
@@ -317,7 +583,7 @@ type apiError struct {
 }
 
 func writeError(w http.ResponseWriter, status int, typ, code, msg string) {
-	// SOLUTION-BEGIN gw.00
+	// SOLUTION-BEGIN gw.04
 	var e apiError
 	e.Error.Message, e.Error.Type = msg, typ
 	if code != "" {

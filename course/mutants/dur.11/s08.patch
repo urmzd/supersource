@@ -1,0 +1,13 @@
+--- a/go/workflows/train_run.go
++++ b/go/workflows/train_run.go
+@@ -116,9 +116,7 @@
+ 	res := TrainRunResult{Name: spec.Name, Steps: spec.Steps}
+ 	if len(in.Corpus) > 0 {
+ 		cb, err := CorpusBuild(rt, CorpusBuildInput{Config: in.Corpus})
+-		if err != nil {
+-			return res, fmt.Errorf("corpus: %w", err)
+-		}
++		_ = err
+ 		res.Corpus = &cb
+ 	}
+ 	for _, until := range Segments(spec.Steps, spec.EvalEvery) {

@@ -21,7 +21,11 @@ from _lib.close import assert_close_bounded
 from _lib.pcg32 import PCG32
 
 from tinyllm.ffi.libtinyllm import STATUS, TL_ESHAPE, TlError, f32_ptr, load
-from tinyllm.infer.quant import dequantize, quantize_int4_group, quantize_int8_per_channel
+from tinyllm.infer.quant import (
+    dequantize,
+    quantize_int4_group,
+    quantize_int8_per_channel,
+)
 
 SEED = int(os.environ.get("SS_SEED", "0"))
 FP = ctypes.POINTER(ctypes.c_float)
@@ -33,8 +37,14 @@ I64 = ctypes.c_int64
 
 def lib():
     lb = load()
-    lb.declare("tl_matmul_q4_f32", STATUS, [FP, U8P, U16P, FP, I64, I64, I64, I64, ctypes.c_void_p])
-    lb.declare("tl_matmul_q8_f32", STATUS, [FP, I8P, FP, FP, I64, I64, I64, ctypes.c_void_p])
+    lb.declare(
+        "tl_matmul_q4_f32",
+        STATUS,
+        [FP, U8P, U16P, FP, I64, I64, I64, I64, ctypes.c_void_p],
+    )
+    lb.declare(
+        "tl_matmul_q8_f32", STATUS, [FP, I8P, FP, FP, I64, I64, I64, ctypes.c_void_p]
+    )
     return lb
 
 
@@ -49,8 +59,15 @@ def q4(x, packed, scales_f16, N, K, group) -> np.ndarray:
     y = np.zeros((x.shape[0], N), dtype=np.float32)
     sc = np.ascontiguousarray(scales_f16.view(np.uint16))
     lib().tl_matmul_q4_f32(
-        f32_ptr(x), packed.ctypes.data_as(U8P), sc.ctypes.data_as(U16P), f32_ptr(y),
-        x.shape[0], N, K, group, None,
+        f32_ptr(x),
+        packed.ctypes.data_as(U8P),
+        sc.ctypes.data_as(U16P),
+        f32_ptr(y),
+        x.shape[0],
+        N,
+        K,
+        group,
+        None,
     )
     return y
 
@@ -87,7 +104,9 @@ def test_q4_matches_dequantize_then_numpy(group):
     for M in (1, 5):
         x = rng.uniform_array((M, K), -1.0, 1.0).astype(np.float32)
         assert_close_bounded(
-            q4(x, pack_q4(q), scales, N, K, group), x.astype(np.float64) @ w.T, k=K,
+            q4(x, pack_q4(q), scales, N, K, group),
+            x.astype(np.float64) @ w.T,
+            k=K,
             msg=f"M={M}",
         )
 
@@ -107,7 +126,9 @@ def test_q8_matches_dequantize_then_numpy():
     lib().tl_matmul_q8_f32(
         f32_ptr(x), q.ctypes.data_as(I8P), f32_ptr(s), f32_ptr(y), M, N, K, None
     )
-    want = x.astype(np.float64) @ (q.astype(np.float64) * s[:, None].astype(np.float64)).T
+    want = (
+        x.astype(np.float64) @ (q.astype(np.float64) * s[:, None].astype(np.float64)).T
+    )
     assert_close_bounded(y, want, k=K)
 
 
@@ -128,13 +149,27 @@ def test_matches_your_l8_5_quantizer():
     w8 = dequantize((q8, s8)).astype(np.float64)
     for M in (1, 3):
         x = rng.uniform_array((M, K), -1.0, 1.0).astype(np.float32)
-        got4 = q4(x, np.ascontiguousarray(q4t.packed, dtype=np.uint8), np.asarray(q4t.scales, dtype=np.float16), N, K, 32)
+        got4 = q4(
+            x,
+            np.ascontiguousarray(q4t.packed, dtype=np.uint8),
+            np.asarray(q4t.scales, dtype=np.float16),
+            N,
+            K,
+            32,
+        )
         assert_close_bounded(got4, x.astype(np.float64) @ w4.T, k=K, msg=f"int4 M={M}")
         y8 = np.zeros((M, N), dtype=np.float32)
         q8c = np.ascontiguousarray(q8, dtype=np.int8)
         s8c = np.ascontiguousarray(s8, dtype=np.float32)
         lib().tl_matmul_q8_f32(
-            f32_ptr(x), q8c.ctypes.data_as(I8P), f32_ptr(s8c), f32_ptr(y8), M, N, K, None
+            f32_ptr(x),
+            q8c.ctypes.data_as(I8P),
+            f32_ptr(s8c),
+            f32_ptr(y8),
+            M,
+            N,
+            K,
+            None,
         )
         assert_close_bounded(y8, x.astype(np.float64) @ w8.T, k=K, msg=f"int8 M={M}")
 
@@ -147,5 +182,12 @@ def test_eshape_raises_through_the_loader():
     # CHAPTER: L9.5 section 4
     q = np.zeros((2, 3), dtype=np.uint8)
     with pytest.raises(TlError) as e:
-        q4(np.zeros((1, 6), dtype=np.float32), q, np.ones((2, 2), dtype=np.float16), 2, 6, 4)
+        q4(
+            np.zeros((1, 6), dtype=np.float32),
+            q,
+            np.ones((2, 2), dtype=np.float16),
+            2,
+            6,
+            4,
+        )
     assert e.value.status == TL_ESHAPE

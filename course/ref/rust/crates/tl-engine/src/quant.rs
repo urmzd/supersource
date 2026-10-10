@@ -176,7 +176,7 @@ impl QLinear {
     /// y [m, out] = x [m, inp] @ W^T through `tl_matmul_q4_f32`.
     pub fn forward(&self, x: &[f32], m: usize, y: &mut [f32]) -> Result<(), TlError> {
         // SOLUTION-BEGIN L10.1
-        tl_sys::matmul_q4_f32(x, &self.qweight, &self.scales, y, m, self.out, self.inp, self.group)
+        tl_sys::kernels::matmul_q4_f32(x, &self.qweight, &self.scales, y, m, self.out, self.inp, self.group)
         // SOLUTION-END
     }
 }

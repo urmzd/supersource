@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -595,8 +595,6 @@
+@@ -628,8 +628,6 @@
          self.done = False
  
      def mask(self) -> NDArray:

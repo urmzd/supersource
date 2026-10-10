@@ -157,7 +157,7 @@ impl BlockManager {
                 let mut pool = lock(&self.pool).expect("pool lock");
                 let mut parent = 0u64;
                 for i in 0..usable {
-                    let h = tl_sys::kv_block_hash(parent, &tokens[i * bt..(i + 1) * bt]);
+                    let h = tl_sys::kv::kv_block_hash(parent, &tokens[i * bt..(i + 1) * bt]);
                     match pool.lookup(h) {
                         Some(b) => blocks.push(b),
                         None => break,
@@ -264,7 +264,7 @@ impl BlockSpace for BlockManager {
                     let mut pool = lock(&self.pool).expect("pool lock");
                     let mut parent = 0u64;
                     for i in 0..full {
-                        let h = tl_sys::kv_block_hash(parent, &computed[i * bt..(i + 1) * bt]);
+                        let h = tl_sys::kv::kv_block_hash(parent, &computed[i * bt..(i + 1) * bt]);
                         let b = t.blocks[i];
                         if i >= t.matched {
                             // the block is full of computed K and V; only a

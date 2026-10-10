@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -429,7 +429,7 @@
+@@ -447,7 +447,7 @@
  # a well-formed UTF-8 sequence of 2 to 4 bytes (RFC 3629, table 3-7 of the
  # Unicode standard: no overlong forms, no surrogates, nothing above U+10FFFF).
  UTF8_CHAR = (

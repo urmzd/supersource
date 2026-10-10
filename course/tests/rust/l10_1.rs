@@ -23,7 +23,9 @@ use tl_engine::model::{parse_layout, Linear, ModelConfig, Weights};
 use tl_engine::quant::{bf16_to_f32, f16_to_f32, f32_to_f16, pack_int4, unpack_int4, QLinear};
 use tl_engine::runner::{lock, EngineConfig, KvConfig, ModelRunner, Quant};
 use tl_engine::sample::{self, child_seed, stream, Pcg32, SamplingParams, PURPOSE_SAMPLE};
-use tl_sys::{KvCfg, KvPool, TL_EFULL, TL_EINVAL, TL_ENOMEM, TL_F16, TL_KV_FORMAT_V1};
+use tl_sys::kernels::{self, TL_EFULL, TL_ENOMEM, TL_F16};
+use tl_sys::kv::{self, KvCfg, KvPool, TL_KV_FORMAT_V1};
+use tl_sys::TL_EINVAL;
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -314,7 +316,7 @@ fn hand_example_sampling() {
     //      draws u = 0.80209..., and the walk lands on id 3 with logprob
     //      -ln(2.52153) = -0.92487.
     // KIND: unit
-    // CATCHES: s02, s04
+    // CATCHES: s01, s02, s05
     // CHAPTER: L10.1 section 3
     assert_eq!(child_seed(0, PURPOSE_SAMPLE), 0xF88BB8A8724C81EC);
     let mut g = stream(0, PURPOSE_SAMPLE);
@@ -357,7 +359,7 @@ fn sampler_matches_l81_golden() {
     //      greedy, and -inf masks (spec/sampling.md, D11). Twelve tokens per
     //      case, each fed back as history.
     // KIND: differential, golden
-    // CATCHES: s03, s04, s05, s06, s07
+    // CATCHES: s01, s02, s03, s05, s06, s07
     // CHAPTER: L10.1 section 2
     let text = std::fs::read_to_string(fixtures().join("L8.1/sampler_golden.json")).unwrap();
     let doc = j::parse(&text);
@@ -445,7 +447,7 @@ fn seeded_sampling_matches_the_distribution() {
     //      them (chi-square, 3 degrees of freedom, below 16.27, p = 1e-3), and
     //      the same seed gives the same draws.
     // KIND: statistical
-    // CATCHES: s05
+    // CATCHES: s01
     // CHAPTER: L10.1 section 2
     let probs = [0.4f64, 0.3, 0.2, 0.1];
     let logits: Vec<f32> = probs.iter().map(|p| p.ln() as f32).collect();
@@ -471,7 +473,6 @@ fn abi_version_check() {
     // WHY: the binding refuses a library built for another ABI version
     //      (c/ABI.md rule 12), and ModelRunner::load checks it first.
     // KIND: conformance
-    // CATCHES: s20
     // CHAPTER: L10.1 section 4
     assert_eq!(tl_sys::abi_version(), 1);
     assert!(tl_sys::check_abi().is_ok());
@@ -518,11 +519,11 @@ fn kv_pool_drop_frees_exactly_once() {
     // KIND: unit, fault
     // CATCHES: s18, s19
     // CHAPTER: L10.1 section 2
-    let hook = tl_sys::Allocator { alloc: Some(count_alloc), free: Some(count_free), user: std::ptr::null_mut() };
+    let hook = kernels::Allocator { alloc: Some(count_alloc), free: Some(count_free), user: std::ptr::null_mut() };
     ALLOCS.store(0, Ordering::SeqCst);
     FREES.store(0, Ordering::SeqCst);
     FAIL_AFTER.store(usize::MAX, Ordering::SeqCst);
-    unsafe { tl_sys::set_allocator(Some(&hook)).unwrap() };
+    unsafe { kernels::set_allocator(Some(&hook)).unwrap() };
     {
         let mut pool = KvPool::new(kv_cfg(8)).expect("pool");
         let ids = pool.alloc(3).unwrap();
@@ -539,7 +540,7 @@ fn kv_pool_drop_frees_exactly_once() {
     let failed = KvPool::new(kv_cfg(8));
     let (a2, f2) = (ALLOCS.load(Ordering::SeqCst), FREES.load(Ordering::SeqCst));
     FAIL_AFTER.store(usize::MAX, Ordering::SeqCst);
-    unsafe { tl_sys::set_allocator(None).unwrap() };
+    unsafe { kernels::set_allocator(None).unwrap() };
     assert_eq!(f, a, "a dropped KvPool frees each of its {a} allocations once (freed {f})");
     let e = failed.err().expect("create must fail when the hook returns NULL");
     assert_eq!(e.status, TL_ENOMEM);
@@ -554,7 +555,6 @@ fn kv_pool_wrappers_map_c_errors() {
     //      block through the error slot, and an out-of-range slab is refused
     //      before C sees the id.
     // KIND: boundary
-    // CATCHES: s19
     // CHAPTER: L10.1 section 4
     let mut pool = KvPool::new(kv_cfg(4)).unwrap();
     let e = pool.alloc(5).unwrap_err();
@@ -573,7 +573,7 @@ fn kv_pool_wrappers_map_c_errors() {
     assert_eq!((s.free, s.used, s.cached), (3, 1, 0));
     // full block: register, release (cached), look up (used again)
     pool.set_fill(ids[1], 4).unwrap();
-    let h = tl_sys::kv_block_hash(0, &[1, 2, 3, 4]);
+    let h = kv::kv_block_hash(0, &[1, 2, 3, 4]);
     assert!(pool.register(ids[1], h).unwrap());
     pool.release(ids[1]).unwrap();
     assert_eq!(pool.stats().cached, 1);
@@ -587,21 +587,21 @@ fn wrappers_check_lengths_before_c() {
     //      slice lengths (and embedding ids against the table) first, so a
     //      bad call is an Err and C never reads past a buffer.
     // KIND: boundary
-    // CATCHES: s19
+    // CATCHES: s21
     // CHAPTER: L10.1 section 5, Pitfalls
     let table = vec![1.0f32; 4 * 3];
     let mut out = vec![0.0f32; 2 * 3];
-    assert!(tl_sys::embedding_f32(&table, 4, &[0, 4], &mut out, 3).is_err(), "id 4 of a 4-row table");
-    assert!(tl_sys::embedding_f32(&table, 4, &[-1, 0], &mut out, 3).is_err());
-    tl_sys::embedding_f32(&table, 4, &[3, 0], &mut out, 3).unwrap();
+    assert!(kernels::embedding_f32(&table, 4, &[0, 4], &mut out, 3).is_err(), "id 4 of a 4-row table");
+    assert!(kernels::embedding_f32(&table, 4, &[-1, 0], &mut out, 3).is_err());
+    kernels::embedding_f32(&table, 4, &[3, 0], &mut out, 3).unwrap();
     let x = vec![1.0f32; 6];
     let mut y = vec![0.0f32; 6];
-    assert!(tl_sys::rmsnorm_f32(&x, &[1.0; 2], &mut y, 2, 3, 1e-5).is_err(), "w shorter than d");
-    let s = tl_sys::AttnShape { batch: 1, heads: 2, kv_heads: 1, tq: 1, tk: 2, head_dim: 4, scale: 0.5, q_offset: 1, causal: true, window: 0 };
+    assert!(kernels::rmsnorm_f32(&x, &[1.0; 2], &mut y, 2, 3, 1e-5).is_err(), "w shorter than d");
+    let s = kernels::AttnShape { batch: 1, heads: 2, kv_heads: 1, tq: 1, tk: 2, head_dim: 4, scale: 0.5, q_offset: 1, causal: true, window: 0 };
     let q = vec![0.1f32; 8];
     let mut o = vec![0.0f32; 8];
-    assert!(tl_sys::flash_attn_f32(&q, &[0.0; 7], &[0.0; 8], &mut o, &s).is_err(), "k one element short");
-    assert!(tl_sys::matmul_q4_f32(&[0.0; 6], &[0; 3], &[0; 1], &mut [0.0; 1], 1, 1, 6, 4).is_err(), "k % group != 0");
+    assert!(kernels::flash_attn_f32(&q, &[0.0; 7], &[0.0; 8], &mut o, &s).is_err(), "k one element short");
+    assert!(kernels::matmul_q4_f32(&[0.0; 6], &[0; 3], &[0; 1], &mut [0.0; 1], 1, 1, 6, 4).is_err(), "k % group != 0");
 }
 
 // ---------------------------------------------------------------------------
@@ -639,16 +639,17 @@ fn f16_rounds_to_nearest_even() {
 fn int4_hand_example() {
     // WHY: the chapter's worked example: q = [-8, 7, 1, -1] packs to bytes
     //      0x78 0xF1 (even column in the low nibble, two's complement), and
-    //      the weights [0.7, -1.4, 0.0, 0.35] in one group of 4 get the f16
-    //      scale 0.19995117 = f16(1.4 / 7) and q = [4, -7, 0, 2], computed
-    //      with the stored f16 scale (L8.5's rule).
+    //      the weights [0.7, -1.4, 0.0, 0.29995] in one group of 4 get the
+    //      f16 scale 0.19995117 = f16(1.4 / 7) and q = [4, -7, 0, 2]: the
+    //      last one is 2 only with the stored f16 scale (0.29995 / 0.2 is
+    //      1.49975, which rounds to 1), L8.5's rule.
     // KIND: unit
     // CATCHES: s09, s10
     // CHAPTER: L10.1 section 3
     assert_eq!(pack_int4(&[-8, 7, 1, -1], 1, 4).unwrap(), [0x78, 0xF1]);
     assert_eq!(unpack_int4(&[0x78, 0xF1]), [-8, 7, 1, -1]);
     assert!(pack_int4(&[8, 0], 1, 2).is_err());
-    let q = QLinear::quantize(&[0.7, -1.4, 0.0, 0.35], 1, 4, 4).unwrap();
+    let q = QLinear::quantize(&[0.7, -1.4, 0.0, 0.29995], 1, 4, 4).unwrap();
     assert_eq!(q.scales, [f32_to_f16(0.2)]);
     assert_eq!(f16_to_f32(q.scales[0]), 0.199951171875);
     assert_eq!(unpack_int4(&q.qweight), [4, -7, 0, 2]);
@@ -748,6 +749,7 @@ fn bigram_checkpoint_still_serves() {
     //      keeps serving through the new runner (D32): after `a` the logits
     //      are row 97 of W, and greedy decoding continues `bcd`.
     // KIND: conformance
+    // CATCHES: s11
     // CHAPTER: L10.1 section 4
     let mut r = ModelRunner::load(&succ_bigram(), &engine_cfg(8, 16)).unwrap();
     let mut toks = bytes("a");
@@ -775,7 +777,7 @@ fn tiny_llama_logits_match_hf() {
     //      float32 LlamaForCausalLM computes on the same weights (BF16 file,
     //      tied embeddings, GQA 4:2), within the f16-KV bound of section 2.
     // KIND: golden
-    // CATCHES: s12, s13, s14, s15, s16, s21
+    // CATCHES: s11, s12, s15, s16, s20, s22
     // CHAPTER: L10.1 section 2
     let mut r = ModelRunner::load(&tiny_llama(), &engine_cfg(32, 16)).unwrap();
     let doc = j::parse(&std::fs::read_to_string(fixtures().join("L7.9/tiny_logits.json")).unwrap());
@@ -794,7 +796,7 @@ fn tiny_llama_greedy_matches_hf() {
     //      (DESIGN 5.7): a step whose top-2 margin in the reference is below
     //      the tolerance may differ, and the comparison of that prompt stops.
     // KIND: golden
-    // CATCHES: s13, s14, s15
+    // CATCHES: s11, s12, s13, s14, s15, s16, s20, s22
     // CHAPTER: L10.1 section 2
     let mut r = ModelRunner::load(&tiny_llama(), &engine_cfg(32, 16)).unwrap();
     let doc = j::parse(&std::fs::read_to_string(fixtures().join("L7.9/tiny_greedy_32.json")).unwrap());
@@ -849,6 +851,7 @@ fn batched_forward_equals_single() {
     //      once and the kernels are batch-invariant, which is what makes
     //      continuous batching (L10.2) output-preserving.
     // KIND: differential
+    // CATCHES: s17
     // CHAPTER: L10.1 section 2
     let mut r = ModelRunner::load(&tiny_llama(), &engine_cfg(32, 16)).unwrap();
     let a = bytes("Hello, world");
@@ -896,7 +899,7 @@ fn int4_runner_matches_its_dequantized_model() {
     //      model holding the dequantized weights; an int4 FILE written in the
     //      formats/safetensors.md layout loads to the same model bit for bit.
     // KIND: differential
-    // CATCHES: s09, s10
+    // CATCHES: s09, s11, s12
     // CHAPTER: L10.1 section 2
     let group = 8;
     let cfg = EngineConfig { quant: Some(Quant::Int4 { group }), ..engine_cfg(16, 16) };

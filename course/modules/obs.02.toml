@@ -1,0 +1,24 @@
+id        = "obs.02"
+title     = "Metrics and log correlation"
+kind      = "practice"
+lang      = ["ops", "go"]
+pass      = 7
+chapter   = "systems/04-observability/02-metrics-and-log-correlation.md"
+contract  = []
+# The gateway's telemetry is wired with go/otelx (LogHandler, Middleware,
+# Setup), so obs.01 is a dep and obs.02 its call site; the static tier
+# renders dep.03's charts to find the pods to scrape. The services whose
+# /metrics the local tier scrapes are the engine (L10.5 serves the gauges;
+# L10.7 adds the histograms) and the gateway (gw.01 composition): reading,
+# as their owners' used_by rows are not this group's (B95-06).
+deps      = ["obs.01", "dep.03"]
+reading   = ["obs.00", "L10.5", "L10.7", "gw.01", "systems/04-observability"]
+used_by   = []
+units     = []                          # entry points and deploy files (D16)
+artifacts = ["deploy/observability/monitors.yaml", "deploy/observability/collector.yaml"]
+milestone = "MS-prod"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/obs.02"       # executable `check` (H15); artifacts.py
+timeout_s = 2400                        # runs your [build] steps before starting the services

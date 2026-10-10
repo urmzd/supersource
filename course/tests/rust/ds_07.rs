@@ -23,7 +23,10 @@ struct Pcg32 {
 
 impl Pcg32 {
     fn new(seed: u64, seq: u64) -> Pcg32 {
-        let mut g = Pcg32 { state: 0, inc: (seq << 1) | 1 };
+        let mut g = Pcg32 {
+            state: 0,
+            inc: (seq << 1) | 1,
+        };
         g.next_u32();
         g.state = g.state.wrapping_add(seed);
         g.next_u32();
@@ -47,7 +50,10 @@ impl Pcg32 {
 }
 
 fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+    std::env::var("SS_SEED")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0)
 }
 
 /// The values on a matched path, in order.
@@ -79,11 +85,19 @@ fn hand_example_split_and_match() {
     assert!(back.is_empty());
     assert_eq!(t.key(abc), &[1, 2, 3]);
     let (de, back) = t.insert(&[1, 2, 4, 5], vec!['x', 'y', 'd', 'e']);
-    assert_eq!(back, vec!['x', 'y'], "the stored prefix keeps a b; the caller's x y come back");
+    assert_eq!(
+        back,
+        vec!['x', 'y'],
+        "the stored prefix keeps a b; the caller's x y come back"
+    );
     let mid = t.parent(de).unwrap();
     assert_eq!(t.key(mid), &[1, 2]);
     assert_eq!(t.values(mid), &['a', 'b']);
-    assert_eq!(t.key(abc), &[3], "the old leaf keeps its id and the rest of its label");
+    assert_eq!(
+        t.key(abc),
+        &[3],
+        "the old leaf keeps its id and the rest of its label"
+    );
     assert_eq!(t.parent(abc), Some(mid));
     assert_eq!(t.key(de), &[4, 5]);
     assert_eq!(t.children(mid).len(), 2);
@@ -101,7 +115,11 @@ fn hand_example_split_and_match() {
     assert_eq!(t.parent(mid), Some(one));
     assert_eq!(t.key(mid), &[2]);
     assert_eq!(t.match_prefix(&[7, 1]), (0, vec![]));
-    assert_eq!(t.len(), 5, "splits move values, they never copy or drop them");
+    assert_eq!(
+        t.len(),
+        5,
+        "splits move values, they never copy or drop them"
+    );
 }
 
 #[test]
@@ -207,7 +225,10 @@ fn locks_pin_the_path() {
     let mid = t.parent(other).unwrap();
     t.lock(long);
     t.lock(long);
-    assert_eq!((t.lock_count(long), t.lock_count(mid), t.lock_count(other)), (2, 2, 0));
+    assert_eq!(
+        (t.lock_count(long), t.lock_count(mid), t.lock_count(other)),
+        (2, 2, 0)
+    );
     assert_eq!(t.lru_order(), vec![other]);
     assert_eq!(evict_all(&mut t, 100), vec![7]);
     assert_eq!(t.len(), 4);
@@ -340,7 +361,10 @@ impl Model {
 fn model_run(seed: u64, g: usize) {
     let mut r = Pcg32::new(seed, g as u64);
     let mut t: RadixTree<u32> = RadixTree::new(g);
-    let mut m = Model { g, pos: HashMap::new() };
+    let mut m = Model {
+        g,
+        pos: HashMap::new(),
+    };
     let mut locks: Vec<(NodeId, Vec<u32>)> = Vec::new(); // node and the prefix it ends at
     let mut next_val = 1u32;
     let (mut inserted, mut evicted) = (0usize, 0usize);
@@ -349,15 +373,28 @@ fn model_run(seed: u64, g: usize) {
         let key: Vec<u32> = (0..len).map(|_| r.below(3)).collect();
         match r.below(10) {
             0..=3 => {
-                let vals: Vec<u32> = (0..len / g).map(|_| {
-                    next_val += 1;
-                    next_val
-                }).collect();
+                let vals: Vec<u32> = (0..len / g)
+                    .map(|_| {
+                        next_val += 1;
+                        next_val
+                    })
+                    .collect();
                 let (node, back) = t.insert(&key, vals.clone());
                 let had = m.longest(&key);
-                assert_eq!(back, vals[..had / g].to_vec(), "values handed back for the stored part");
+                assert_eq!(
+                    back,
+                    vals[..had / g].to_vec(),
+                    "values handed back for the stored part"
+                );
                 for i in had / g..len / g {
-                    m.pos.insert(key[..(i + 1) * g].to_vec(), Pos { value: vals[i], last_use: op, locks: 0 });
+                    m.pos.insert(
+                        key[..(i + 1) * g].to_vec(),
+                        Pos {
+                            value: vals[i],
+                            last_use: op,
+                            locks: 0,
+                        },
+                    );
                 }
                 m.touch(&key, len, op);
                 assert_eq!(t.key(node).last(), key.last());
@@ -414,7 +451,10 @@ fn model_run(seed: u64, g: usize) {
                             assert_eq!(p.last_use, stamp, "not the least recently used leaf");
                         }
                         for w in keys.windows(2) {
-                            assert!(w[1].len() == w[0].len() + g && w[1].starts_with(&w[0]), "a leaf is one chain");
+                            assert!(
+                                w[1].len() == w[0].len() + g && w[1].starts_with(&w[0]),
+                                "a leaf is one chain"
+                            );
                         }
                         assert!(m.is_leaf(keys.last().unwrap()));
                         for k in &keys {
@@ -426,7 +466,11 @@ fn model_run(seed: u64, g: usize) {
             }
         }
         assert_eq!(t.len(), m.pos.len());
-        assert_eq!(inserted, t.len() + evicted, "every stored value is in the tree or was evicted");
+        assert_eq!(
+            inserted,
+            t.len() + evicted,
+            "every stored value is in the tree or was evicted"
+        );
     }
 }
 

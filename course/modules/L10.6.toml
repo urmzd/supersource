@@ -1,0 +1,39 @@
+id        = "L10.6"
+title     = "Disaggregated prefill/decode, KV transfer, heartbeat client"
+kind      = "build"
+lang      = ["rust"]
+pass      = 7
+chapter   = "ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md"
+# The interfaces are proto/tl/{engine,kv,control}/v1 (generated code in
+# contracts/rust/tl-proto) and the bytes formats/kv-block.md, all linked from
+# the chapter card; none carries a `chapter:` back-pointer yet (DEVIATIONS
+# B92-03).
+contract  = []
+# Code this module's units and tests call: tl-sys's KvPool and the sampler's
+# stream (L10.1), and the C pool's export, import, register, and lookup
+# (rt.04). The scheduler, block manager, and engine loop (L10.2, L10.4,
+# L10.5) are the serve loop this plugs into; the Prefill RPC reaches them
+# through the PrefillBackend trait, so no code of theirs is called here.
+deps      = ["L10.1", "rt.04"]
+reading   = ["L10.2", "L10.4", "L10.5", "lang.09", "lang.10"]   # the serve loop it plugs into; async Rust; gRPC and the generated stubs
+# Catalog call sites: craft.13 (upgrades kv_transfer.rs to format v2) and
+# gw.05 (calls Prefill and Release over gRPC). Neither is registered yet, so
+# verify check 9 fails until one lists L10.6 (DEVIATIONS B92-01).
+used_by   = []
+units     = [
+  "rust/crates/tl-engine/src/kv_transfer.rs",
+  "rust/crates/tl-engine/src/heartbeat.rs",
+  "rust/crates/tl-serve/src/control.rs",
+]
+upgrades  = []
+milestone = "MS-L10"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/rust/l10_6.rs"
+smoke     = ["hand_example_envelope", "disaggregated_equals_colocated", "worker_status_fields"]
+timeout_s = 120
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/parity/kv_wire_v1.json"]

@@ -1,0 +1,69 @@
+# Scrape targets for the control plane (obs.05 reference): the durable
+# server's and the workers' health ports, and the collector's Prometheus
+# exporter, where the Python subprocesses' OTLP metrics (tl_train_*) appear
+# (they cannot be scraped themselves, D9). Applied with:
+#   kubectl apply -f deploy/observability/control-plane-monitors.yaml
+# Same conventions as monitors.yaml (obs.02): PodMonitors on the port named
+# `health`, the stack's `release: observability` label, a job per component.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: forge-durable
+  namespace: observability
+  labels:
+    release: observability
+spec:
+  namespaceSelector:
+    matchNames: [forge]
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: durable
+  podMetricsEndpoints:
+    - port: health
+      path: /metrics
+      interval: 10s
+      relabelings:
+        - targetLabel: job
+          replacement: forge-durable
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: forge-worker
+  namespace: observability
+  labels:
+    release: observability
+spec:
+  namespaceSelector:
+    matchNames: [forge]
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+  podMetricsEndpoints:
+    - port: health
+      path: /metrics
+      interval: 10s
+      relabelings:
+        - targetLabel: job
+          replacement: forge-worker
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: forge-python
+  namespace: observability
+  labels:
+    release: observability
+spec:
+  namespaceSelector:
+    matchNames: [observability]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opentelemetry-collector
+  podMetricsEndpoints:
+    - port: prom-exporter
+      path: /metrics
+      interval: 15s
+      relabelings:
+        - targetLabel: job
+          replacement: forge-python

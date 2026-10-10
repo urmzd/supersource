@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -84,7 +84,7 @@
+@@ -94,7 +94,7 @@
          L = len(ctx)
          if k <= 0:
              return [], None

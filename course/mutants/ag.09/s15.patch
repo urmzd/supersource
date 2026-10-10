@@ -1,0 +1,15 @@
+--- a/go/agent/eval/report.go
++++ b/go/agent/eval/report.go
+@@ -76,7 +76,11 @@
+ // InputSHA is the hex SHA-256 of a case's input bytes.
+ func InputSHA(input json.RawMessage) string {
+ 	// SOLUTION-BEGIN ag.09
+-	h := sha256.Sum256(input)
++	var s string
++	if json.Unmarshal(input, &s) != nil {
++		s = string(input)
++	}
++	h := sha256.Sum256([]byte(s))
+ 	return hex.EncodeToString(h[:])
+ 	// SOLUTION-END
+ }

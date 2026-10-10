@@ -11,7 +11,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{anyhow, bail, Context, Result};
-use tl_sys::{KvCfg, KvPool, TL_F16, TL_KV_FORMAT_V1};
+use tl_sys::kernels::TL_F16;
+use tl_sys::kv::{KvCfg, KvPool, TL_KV_FORMAT_V1};
 
 use crate::forward::{bigram_forward, llama_forward, rope_inv_freq, ForwardBatch, ForwardSeq, Logits};
 use crate::model::{load_weights, Arch, ModelConfig, SafeTensors, Weights};

@@ -1,6 +1,6 @@
 --- a/go/loadgen/run.go
 +++ b/go/loadgen/run.go
-@@ -308,7 +308,7 @@
+@@ -297,7 +297,7 @@
  			break
  		}
  		wg.Add(1)

@@ -23,3 +23,10 @@ dir       = "course/tests/rt.02"
 smoke     = ["hand_example"]
 timeout_s = 60
 determinism_runs = 2
+
+[learner_tests]                     # rung R4: properties with ss_prop.h (as ds.01)
+rung      = 4
+path      = "c/tests/rt02_arena_test.c"
+threshold = 0.80
+required_mutants = ["s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12", "s13"]
+time_budget_s = 60

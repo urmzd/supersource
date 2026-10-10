@@ -1,0 +1,11 @@
+--- a/go/durable/server/activities.go
++++ b/go/durable/server/activities.go
+@@ -50,7 +50,7 @@
+ 	a.lastHeartbeat, a.lastHeartbeatMs = req.GetDetails(), s.o.Clock.Now().UnixMilli()
+ 	return &durablev1.HeartbeatResponse{
+ 		CancelRequested: a.cancelRequested || r.cancelRequested,
+-		DeadlineUnixMs:  l.Deadline.UnixMilli(),
++		DeadlineUnixMs:  l.Deadline.Unix(),
+ 	}, nil
+ }
+ 

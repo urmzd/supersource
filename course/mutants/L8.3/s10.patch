@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -175,6 +175,7 @@
+@@ -207,6 +207,7 @@
          for i in range(first, min(last + 1, len(table))):
              self._private(table, i)
          # 2. Allocate the new blocks, all or nothing.

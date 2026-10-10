@@ -15,7 +15,10 @@ fn split_by_hand() {
     let (de, back) = t.insert(&[1, 2, 4, 5], vec!['x', 'y', 'd', 'e']);
     assert_eq!(back, vec!['x', 'y']);
     let mid = t.parent(de).unwrap();
-    assert_eq!((t.key(mid), t.values(mid)), (&[1u32, 2][..], &['a', 'b'][..]));
+    assert_eq!(
+        (t.key(mid), t.values(mid)),
+        (&[1u32, 2][..], &['a', 'b'][..])
+    );
     assert_eq!((t.key(abc), t.parent(abc)), (&[3u32][..], Some(mid)));
     assert_eq!(t.len(), 5);
 }

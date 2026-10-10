@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -162,7 +162,7 @@
+@@ -194,7 +194,7 @@
          k16 = np.asarray(k, dtype=np.float16)
          v16 = np.asarray(v, dtype=np.float16)
          want = (self.n_kv_heads, k16.shape[1] if k16.ndim == 3 else -1, self.d_head)

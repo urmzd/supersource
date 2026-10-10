@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/quant.py
 +++ b/python/tinyllm/infer/quant.py
-@@ -193,7 +193,7 @@
+@@ -234,7 +234,7 @@
  
      def forward(self, x: Tensor) -> Tensor:
          y = x @ self._w_t

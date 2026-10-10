@@ -1,0 +1,11 @@
+--- a/go/agent/durableagent/journal.go
++++ b/go/agent/durableagent/journal.go
+@@ -82,7 +82,7 @@
+ 
+ func (s *FileStore) path(runID string) (string, error) {
+ 	// SOLUTION-BEGIN ag.05
+-	if !ValidRunID(runID) {
++	if runID == "" {
+ 		return "", fmt.Errorf("durableagent: invalid run id %q", runID)
+ 	}
+ 	return filepath.Join(s.dir, runID+".jsonl"), nil

@@ -1,0 +1,205 @@
+# Rendered by render_slo_rules.py from slo.yaml: do not edit by hand.
+# Profile drill: fast 5m/25s, slow 30m/150s.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: forge-slo-drill
+  namespace: observability
+  labels:
+    release: observability          # the kube-prometheus-stack rule selector (contracts/helm/observability.md)
+    app.kubernetes.io/part-of: forge
+spec:
+  groups:
+    - name: forge-slo-drill
+      interval: 5s
+      rules:
+        - record: slo:sli_error:ratio_rate5m
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_to_first_token_seconds_bucket{job="forge-gateway",le="0.5"}[5m]))
+              /
+              sum(rate(gen_ai_server_time_to_first_token_seconds_count{job="forge-gateway"}[5m]))
+            )
+          labels:
+            slo: ttft
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate25s
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_to_first_token_seconds_bucket{job="forge-gateway",le="0.5"}[25s]))
+              /
+              sum(rate(gen_ai_server_time_to_first_token_seconds_count{job="forge-gateway"}[25s]))
+            )
+          labels:
+            slo: ttft
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate30m
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_to_first_token_seconds_bucket{job="forge-gateway",le="0.5"}[30m]))
+              /
+              sum(rate(gen_ai_server_time_to_first_token_seconds_count{job="forge-gateway"}[30m]))
+            )
+          labels:
+            slo: ttft
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate150s
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_to_first_token_seconds_bucket{job="forge-gateway",le="0.5"}[150s]))
+              /
+              sum(rate(gen_ai_server_time_to_first_token_seconds_count{job="forge-gateway"}[150s]))
+            )
+          labels:
+            slo: ttft
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate5m
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_per_output_token_seconds_bucket{job="forge-gateway",le="0.05"}[5m]))
+              /
+              sum(rate(gen_ai_server_time_per_output_token_seconds_count{job="forge-gateway"}[5m]))
+            )
+          labels:
+            slo: tpot
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate25s
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_per_output_token_seconds_bucket{job="forge-gateway",le="0.05"}[25s]))
+              /
+              sum(rate(gen_ai_server_time_per_output_token_seconds_count{job="forge-gateway"}[25s]))
+            )
+          labels:
+            slo: tpot
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate30m
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_per_output_token_seconds_bucket{job="forge-gateway",le="0.05"}[30m]))
+              /
+              sum(rate(gen_ai_server_time_per_output_token_seconds_count{job="forge-gateway"}[30m]))
+            )
+          labels:
+            slo: tpot
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate150s
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_per_output_token_seconds_bucket{job="forge-gateway",le="0.05"}[150s]))
+              /
+              sum(rate(gen_ai_server_time_per_output_token_seconds_count{job="forge-gateway"}[150s]))
+            )
+          labels:
+            slo: tpot
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate5m
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway",http_response_status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway"}[5m]))
+          labels:
+            slo: availability
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate25s
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway",http_response_status_code=~"5.."}[25s]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway"}[25s]))
+          labels:
+            slo: availability
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate30m
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway",http_response_status_code=~"5.."}[30m]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway"}[30m]))
+          labels:
+            slo: availability
+            slo_profile: drill
+        - record: slo:sli_error:ratio_rate150s
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway",http_response_status_code=~"5.."}[150s]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway"}[150s]))
+          labels:
+            slo: availability
+            slo_profile: drill
+        - alert: TTFTBudgetBurnFast
+          expr: |
+            slo:sli_error:ratio_rate5m{slo="ttft",slo_profile="drill"} > (14.4 * 0.01)
+            and
+            slo:sli_error:ratio_rate25s{slo="ttft",slo_profile="drill"} > (14.4 * 0.01)
+          for: 10s
+          labels:
+            severity: page
+            slo: ttft
+            slo_profile: drill
+          annotations:
+            summary: ttft error budget burning at more than 14.4x over 5m and 25s
+            runbook: docs/runbooks/TTFTBudgetBurnFast.md
+        - alert: TTFTBudgetBurnSlow
+          expr: |
+            slo:sli_error:ratio_rate30m{slo="ttft",slo_profile="drill"} > (6 * 0.01)
+            and
+            slo:sli_error:ratio_rate150s{slo="ttft",slo_profile="drill"} > (6 * 0.01)
+          for: 75s
+          labels:
+            severity: ticket
+            slo: ttft
+            slo_profile: drill
+          annotations:
+            summary: ttft error budget burning at more than 6x over 30m and 150s
+            runbook: docs/runbooks/TTFTBudgetBurnSlow.md
+        - alert: TPOTBudgetBurnFast
+          expr: |
+            slo:sli_error:ratio_rate5m{slo="tpot",slo_profile="drill"} > (14.4 * 0.01)
+            and
+            slo:sli_error:ratio_rate25s{slo="tpot",slo_profile="drill"} > (14.4 * 0.01)
+          for: 10s
+          labels:
+            severity: page
+            slo: tpot
+            slo_profile: drill
+          annotations:
+            summary: tpot error budget burning at more than 14.4x over 5m and 25s
+            runbook: docs/runbooks/TPOTBudgetBurnFast.md
+        - alert: TPOTBudgetBurnSlow
+          expr: |
+            slo:sli_error:ratio_rate30m{slo="tpot",slo_profile="drill"} > (6 * 0.01)
+            and
+            slo:sli_error:ratio_rate150s{slo="tpot",slo_profile="drill"} > (6 * 0.01)
+          for: 75s
+          labels:
+            severity: ticket
+            slo: tpot
+            slo_profile: drill
+          annotations:
+            summary: tpot error budget burning at more than 6x over 30m and 150s
+            runbook: docs/runbooks/TPOTBudgetBurnSlow.md
+        - alert: AvailabilityBudgetBurnFast
+          expr: |
+            slo:sli_error:ratio_rate5m{slo="availability",slo_profile="drill"} > (14.4 * 0.005)
+            and
+            slo:sli_error:ratio_rate25s{slo="availability",slo_profile="drill"} > (14.4 * 0.005)
+          for: 10s
+          labels:
+            severity: page
+            slo: availability
+            slo_profile: drill
+          annotations:
+            summary: availability error budget burning at more than 14.4x over 5m and 25s
+            runbook: docs/runbooks/AvailabilityBudgetBurnFast.md
+        - alert: AvailabilityBudgetBurnSlow
+          expr: |
+            slo:sli_error:ratio_rate30m{slo="availability",slo_profile="drill"} > (6 * 0.005)
+            and
+            slo:sli_error:ratio_rate150s{slo="availability",slo_profile="drill"} > (6 * 0.005)
+          for: 75s
+          labels:
+            severity: ticket
+            slo: availability
+            slo_profile: drill
+          annotations:
+            summary: availability error budget burning at more than 6x over 30m and 150s
+            runbook: docs/runbooks/AvailabilityBudgetBurnSlow.md

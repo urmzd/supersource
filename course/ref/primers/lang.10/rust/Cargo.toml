@@ -1,0 +1,21 @@
+# primers/lang.10/rust: the Rust half of the lang.10 primer (section 4).
+#   src/lib.rs   CRC-32C, the toy block hash, and the gRPC client calls over
+#                the vendored tl-proto stubs (tonic)
+#   src/main.rs  the `kvpush` binary
+[package]
+name = "kvpush"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "kvpush"
+path = "src/main.rs"
+
+[dependencies]
+tl-proto = { path = "../../../contracts/rust/tl-proto" }
+tonic = "0.14"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"

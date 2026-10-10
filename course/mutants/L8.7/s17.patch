@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -522,7 +522,7 @@
+@@ -553,7 +553,7 @@
          after, first = "", ""
          for m, req in reversed(members):
              first = f"{m}{after}" if req else f"(?:{m}{after}|{first})"

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -224,7 +224,7 @@
+@@ -251,7 +251,7 @@
          accepted += n_acc
          committed += len(pending) + n_acc
          cache.truncate(committed)  # drop the rejected drafts' keys and values

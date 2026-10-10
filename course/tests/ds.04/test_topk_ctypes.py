@@ -81,9 +81,7 @@ def test_matches_numpy_full_sort():
     # CATCHES: s01, s02, s06, m01
     # CHAPTER: ds.04 section 4
     rng = PCG32(SEED, seq=41)
-    x = (np.floor(rng.uniform_array((49152,), -8.0, 8.0) * 64) / 64).astype(
-        np.float32
-    )
+    x = (np.floor(rng.uniform_array((49152,), -8.0, 8.0) * 64) / 64).astype(np.float32)
     order = by_rank(x)
     for k in (1, 2, 40, 1000):
         idx, val = topk(x, k)

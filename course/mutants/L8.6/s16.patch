@@ -1,11 +1,11 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -115,7 +115,7 @@
-         # Sync the cache with ctx: keep the common prefix, but always re-feed
+@@ -128,7 +128,7 @@
          # at least the last id, whose logits are the ones we need.
          common = 0
--        while common < min(len(self._ids), len(ctx) - 1) and self._ids[common] == ctx[common]:
-+        while common < min(len(self._ids), len(ctx)) and self._ids[common] == ctx[common]:
+         while (
+-            common < min(len(self._ids), len(ctx) - 1)
++            common < min(len(self._ids), len(ctx))
+             and self._ids[common] == ctx[common]
+         ):
              common += 1
-         self._cache.truncate(common)
-         self._ids = ctx[:common]

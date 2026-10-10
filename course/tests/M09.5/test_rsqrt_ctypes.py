@@ -108,9 +108,15 @@ def test_two_float_steps_are_not_enough():
     # CHAPTER: M09.5 section 2.2
     x = normals(5000, SEED + 2)
     exact = 1.0 / np.sqrt(x.astype(np.float64))
-    rel = [np.max(np.abs(rsqrt_newton(x, guess(x), k).astype(np.float64) - exact) / exact) for k in (0, 1, 2)]
+    rel = [
+        np.max(np.abs(rsqrt_newton(x, guess(x), k).astype(np.float64) - exact) / exact)
+        for k in (0, 1, 2)
+    ]
     assert rel[0] < 0.035 and rel[1] < 1.8e-3 and rel[2] < 5e-6
     rounding = 4 * 2.0**-24
-    assert rel[1] <= 1.5 * rel[0] ** 2 + rounding and rel[2] <= 1.5 * rel[1] ** 2 + rounding
+    assert (
+        rel[1] <= 1.5 * rel[0] ** 2 + rounding
+        and rel[2] <= 1.5 * rel[1] ** 2 + rounding
+    )
     c_rel = np.max(np.abs(c_rsqrt(x).astype(np.float64) - exact) / exact)
     assert c_rel < 1.2e-7, f"C relative error {c_rel:.3g}: the float64 step is missing"

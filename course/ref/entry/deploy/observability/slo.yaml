@@ -1,0 +1,28 @@
+# The reference system's SLOs (obs.03; schema contracts/otel/slo.schema.json).
+# Rendered into rules/slo-prod.yaml and rules/slo-drill.yaml by
+# render_slo_rules.py; edit this file, then rerun it.
+#
+# Latency SLOs are ratio SLIs over the gateway's histograms: the fraction of
+# requests whose TTFT (TPOT) is at most threshold_ms. Each threshold is a
+# bucket boundary of otel/metrics.yaml, so the SLI is exact: 500 ms for TTFT
+# (the course default) and 50 ms for TPOT (stricter than the 60 ms default,
+# which is not a bucket boundary). Objectives are 0.99 for both: at the
+# schema's floor of 0.95 the largest possible burn rate is 1 / 0.05 = 20, so
+# a fast-burn alert at 14.4x would need 72% of requests to be slow before it
+# could fire.
+version: 1
+profile: prod
+windows:
+  fast: {long: 1h, short: 5m, burn_rate: 14.4}
+  slow: {long: 6h, short: 30m, burn_rate: 6}
+slos:
+  ttft: {threshold_ms: 500, objective: 0.99}
+  tpot: {threshold_ms: 50, objective: 0.99}
+  availability: {objective: 0.995, period: 30d}
+alerts:
+  TTFTBudgetBurnFast: {slo: ttft, window: fast, severity: page}
+  TTFTBudgetBurnSlow: {slo: ttft, window: slow, severity: ticket}
+  TPOTBudgetBurnFast: {slo: tpot, window: fast, severity: page}
+  TPOTBudgetBurnSlow: {slo: tpot, window: slow, severity: ticket}
+  AvailabilityBudgetBurnFast: {slo: availability, window: fast, severity: page}
+  AvailabilityBudgetBurnSlow: {slo: availability, window: slow, severity: ticket}

@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/chunk.rs
++++ b/rust/crates/tl-engine/src/chunk.rs
+@@ -31,7 +31,7 @@
+ 
+ impl PrefillPolicy for Chunked {
+     fn chunk_len(&self, remaining: usize, budget: usize, _alone: bool) -> usize {
+-        remaining.min(self.chunk.max(1)).min(budget)
++        remaining.min(budget)
+     }
+ }
+ 

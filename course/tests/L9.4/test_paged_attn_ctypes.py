@@ -33,8 +33,22 @@ def lib():
     lb.declare(
         "tl_paged_attn_decode_f32",
         STATUS,
-        [FP, ctypes.c_void_p, ctypes.c_uint32, U32P, ctypes.c_int32, I32P, FP, I64, I64, I64, I64,
-         ctypes.c_float, I64, ctypes.c_void_p],
+        [
+            FP,
+            ctypes.c_void_p,
+            ctypes.c_uint32,
+            U32P,
+            ctypes.c_int32,
+            I32P,
+            FP,
+            I64,
+            I64,
+            I64,
+            I64,
+            ctypes.c_float,
+            I64,
+            ctypes.c_void_p,
+        ],
     )
     return lb
 
@@ -51,8 +65,20 @@ def decode(cache: PagedKVCache, seqs, q, layer, *, scale, window=0) -> np.ndarra
     out = np.zeros_like(q)
     B, H, D = q.shape
     lib().tl_paged_attn_decode_f32(
-        f32_ptr(q), cache.pool, layer, tb.ctypes.data_as(U32P), max_blocks,
-        ctx.ctypes.data_as(I32P), f32_ptr(out), B, H, cache.n_kv_heads, D, scale, window, None,
+        f32_ptr(q),
+        cache.pool,
+        layer,
+        tb.ctypes.data_as(U32P),
+        max_blocks,
+        ctx.ctypes.data_as(I32P),
+        f32_ptr(out),
+        B,
+        H,
+        cache.n_kv_heads,
+        D,
+        scale,
+        window,
+        None,
     )
     return out
 
@@ -64,7 +90,9 @@ def test_hand_example_through_ctypes():
     # KIND: unit, smoke
     # CATCHES: s07, s08
     # CHAPTER: L9.4 section 3
-    with PagedKVCache(load(), num_blocks=4, block_size=2, n_layers=1, n_kv_heads=1, d_head=2) as c:
+    with PagedKVCache(
+        load(), num_blocks=4, block_size=2, n_layers=1, n_kv_heads=1, d_head=2
+    ) as c:
         c.add_seq(7)
         k = np.array([[[1, 0], [0, 1], [1, 1]]], dtype=np.float32)
         v = np.array([[[1, 2], [3, 4], [5, 6]]], dtype=np.float32)
@@ -84,9 +112,15 @@ def test_matches_your_l8_3_gather_and_l7_7_attention():
     # CHAPTER: L9.4 section 4
     rng = PCG32(SEED, seq=94)
     H, Hkv, D = 9, 3, 64
-    with PagedKVCache(load(), num_blocks=32, block_size=16, n_layers=2, n_kv_heads=Hkv, d_head=D) as c:
+    with PagedKVCache(
+        load(), num_blocks=32, block_size=16, n_layers=2, n_kv_heads=Hkv, d_head=D
+    ) as c:
+
         def kv(T):
-            return (rng.uniform_array((Hkv, T, D), -1.0, 1.0), rng.uniform_array((Hkv, T, D), -1.0, 1.0))
+            return (
+                rng.uniform_array((Hkv, T, D), -1.0, 1.0),
+                rng.uniform_array((Hkv, T, D), -1.0, 1.0),
+            )
 
         c.add_seq(0)
         c.add_seq(1)
@@ -107,7 +141,17 @@ def test_matches_your_l8_3_gather_and_l7_7_attention():
                     K, V = c.gather(s, layer)
                     n = K.shape[1]
                     want, _ = windowed_attention(
-                        q[i][None, :, None, :], K[None].astype(np.float32), V[None].astype(np.float32),
-                        window=window or None, q_offset=n - 1, scale=D**-0.5,
+                        q[i][None, :, None, :],
+                        K[None].astype(np.float32),
+                        V[None].astype(np.float32),
+                        window=window or None,
+                        q_offset=n - 1,
+                        scale=D**-0.5,
                     )
-                    assert_close(got[i], want[0, :, 0, :], rtol=1e-4, atol=1e-5, msg=f"seq {s} layer {layer} w {window}")
+                    assert_close(
+                        got[i],
+                        want[0, :, 0, :],
+                        rtol=1e-4,
+                        atol=1e-5,
+                        msg=f"seq {s} layer {layer} w {window}",
+                    )

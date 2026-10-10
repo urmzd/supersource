@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -150,7 +150,7 @@
+@@ -167,7 +167,7 @@
          raise ValueError(f"target_logits must be [{m + 1}, V], got {rows.shape}")
      V = rows.shape[1]
      q = None if draft_probs is None else np.asarray(draft_probs, dtype=np.float64)

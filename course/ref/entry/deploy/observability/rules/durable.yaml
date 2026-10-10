@@ -1,0 +1,38 @@
+# Alerts of the durable control plane (drills ops.02 durable-kill9 and
+# ops.03 poison-task). Not SLO burn alerts: they page on symptoms the queue
+# metrics of otel/metrics.yaml show directly. Every series carries the
+# `namespace` and `service` labels the ServiceMonitors of obs.05 add.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: forge-durable
+  namespace: observability
+  labels:
+    release: observability          # the kube-prometheus-stack rule selector (contracts/helm/observability.md)
+    app.kubernetes.io/part-of: forge
+spec:
+  groups:
+    - name: forge-durable
+      interval: 5s
+      rules:
+        # Workers or the server keep dying: tasks whose lease expired are
+        # handed out again. A handful per minute is normal churn (a deploy, a
+        # preempted node); more than 5 in 2 minutes for 20 s is not.
+        - alert: DurableRedeliveriesSpike
+          expr: sum by (namespace, queue) (increase(tl_durable_redeliveries_total{namespace="forge"}[2m])) > 5
+          for: 20s
+          labels:
+            severity: page
+          annotations:
+            summary: "{{ $labels.queue }}: {{ $value | humanize }} redeliveries in 2 minutes"
+            runbook: docs/runbooks/DurableRedeliveriesSpike.md
+        # A task exhausted its attempts. Nothing retries it any more: the
+        # workflow waiting on it is stuck until someone redrives it.
+        - alert: DurableDeadLetters
+          expr: sum by (namespace, queue) (tl_durable_dlq_size{namespace="forge"}) > 0
+          for: 15s
+          labels:
+            severity: page
+          annotations:
+            summary: "{{ $labels.queue }}: {{ $value }} dead-lettered task(s)"
+            runbook: docs/runbooks/DurableDeadLetters.md

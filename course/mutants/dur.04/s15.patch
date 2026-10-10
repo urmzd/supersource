@@ -1,0 +1,12 @@
+--- a/go/durable/worker/worker.go
++++ b/go/durable/worker/worker.go
+@@ -114,9 +114,6 @@
+ 	for i := 1; i < n && d < max; i++ {
+ 		d *= 2
+ 	}
+-	if d > max {
+-		d = max
+-	}
+ 	return d
+ }
+ 

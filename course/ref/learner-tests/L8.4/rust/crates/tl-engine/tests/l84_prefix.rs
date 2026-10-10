@@ -20,7 +20,10 @@ fn inserting_what_a_match_returned_hands_nothing_back() {
     let m = c.match_prefix(&[1, 2, 3, 4, 5, 6, 7]);
     let mut blocks = m.blocks.clone();
     blocks.push(13);
-    assert!(c.insert(&[1, 2, 3, 4, 5, 6, 7, 8], &blocks).duplicates.is_empty());
+    assert!(c
+        .insert(&[1, 2, 3, 4, 5, 6, 7, 8], &blocks)
+        .duplicates
+        .is_empty());
     assert_eq!(c.insert(&[1, 2, 9, 9], &[20, 21]).duplicates, vec![20]);
 }
 
@@ -50,7 +53,9 @@ fn blocks_in_equal_blocks_out() {
     let mut c = RadixCache::new(2);
     let mut seed = 7u64;
     let mut next = || {
-        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         (seed >> 33) as u32
     };
     let mut given = 0usize;
@@ -59,10 +64,12 @@ fn blocks_in_equal_blocks_out() {
     for _ in 0..400 {
         let n = 2 * (1 + next() as usize % 4);
         let toks: Vec<u32> = (0..n).map(|_| next() % 3).collect();
-        let blocks: Vec<u32> = (0..n / 2).map(|_| {
-            id += 1;
-            id
-        }).collect();
+        let blocks: Vec<u32> = (0..n / 2)
+            .map(|_| {
+                id += 1;
+                id
+            })
+            .collect();
         given += blocks.len();
         back += c.insert(&toks, &blocks).duplicates.len();
         if next() % 4 == 0 {

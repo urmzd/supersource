@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/forward.rs
++++ b/rust/crates/tl-engine/src/forward.rs
+@@ -195,7 +195,7 @@
+                 }
+             }
+             let mut o = vec![0.0f32; h * ns * hd];
+-            let shape = AttnShape { batch: 1, heads: h, kv_heads: hkv, tq: ns, tk, head_dim: hd, scale, q_offset: s.start, causal: true, window: 0 };
++            let shape = AttnShape { batch: 1, heads: h, kv_heads: hkv, tq: ns, tk, head_dim: hd, scale, q_offset: 0, causal: true, window: 0 };
+             tl_sys::kernels::flash_attn_f32(&qs, &kc, &vc, &mut o, &shape).map_err(err)?;
+             for i in 0..ns {
+                 for hh in 0..h {

@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-sys/src/kernels.rs
++++ b/rust/crates/tl-sys/src/kernels.rs
+@@ -216,7 +216,7 @@
+ pub fn embedding_f32(table: &[f32], rows: usize, ids: &[i32], out: &mut [f32], d: usize) -> Result<(), TlError> {
+     need("embedding_f32: table", table.len(), mul(rows, d)?)?;
+     need("embedding_f32: out", out.len(), mul(ids.len(), d)?)?;
+-    if let Some(&bad) = ids.iter().find(|&&i| i < 0 || i as usize >= rows) {
++    if let Some(&bad) = ids.iter().find(|&&i| i < 0) {
+         return Err(invalid(format!("tl_sys::embedding_f32: id {bad} outside [0, {rows})")));
+     }
+     // SAFETY: every id indexes a full row of table; out holds ids.len() rows.

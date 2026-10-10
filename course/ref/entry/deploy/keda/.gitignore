@@ -1,0 +1,2 @@
+# helm dependency build restores these from Chart.lock
+charts/

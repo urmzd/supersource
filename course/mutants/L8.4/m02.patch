@@ -1,6 +1,6 @@
 --- a/rust/crates/tl-engine/src/prefix.rs
 +++ b/rust/crates/tl-engine/src/prefix.rs
-@@ -150,7 +150,7 @@
+@@ -166,7 +166,7 @@
  
      /// Tokens covered by the cached blocks.
      pub fn cached_tokens(&self) -> usize {

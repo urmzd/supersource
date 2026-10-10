@@ -579,6 +579,14 @@ impl Template {
         self.render(&ctx)
         // SOLUTION-END
     }
+
+    /// `render_chat` for (role, content) pairs and no tools.
+    pub fn render_messages(&self, messages: &[(&str, &str)], add_generation_prompt: bool, bos_token: &str, eos_token: &str) -> Result<String, String> {
+        // SOLUTION-BEGIN L10.5
+        let m: Vec<Value> = messages.iter().map(|(r, c)| serde_json::json!({"role": r, "content": c})).collect();
+        self.render_chat(&Value::Array(m), add_generation_prompt, bos_token, eos_token, None)
+        // SOLUTION-END
+    }
 }
 
 /// The template used when a model directory ships none (the tracer bigram,

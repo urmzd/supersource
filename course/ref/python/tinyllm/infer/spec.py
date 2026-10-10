@@ -45,12 +45,16 @@ def _forward_rows(model: Any, ids: Sequence[int], start: int, cache: Any) -> NDA
     + len(ids) - 1, appending those positions to cache."""
     # SOLUTION-BEGIN L8.6
     pos = np.arange(start, start + len(ids), dtype=np.int64)
-    out = model.forward(np.asarray([list(ids)], dtype=np.int64), positions=pos, cache=cache)
+    out = model.forward(
+        np.asarray([list(ids)], dtype=np.int64), positions=pos, cache=cache
+    )
     return np.asarray(getattr(out, "data", out), dtype=np.float64)[0]
     # SOLUTION-END
 
 
-def _draft_token(logits: NDArray, p: SamplingParams, rng: Optional[UniformSource]) -> tuple[int, Optional[NDArray]]:
+def _draft_token(
+    logits: NDArray, p: SamplingParams, rng: Optional[UniformSource]
+) -> tuple[int, Optional[NDArray]]:
     """One draft id from logits: greedy with no rng, else L8.1's sample under
     p with its exact distribution as the row."""
     # SOLUTION-BEGIN L8.6
@@ -66,7 +70,9 @@ class NGramDraft:
         self.lm = lm
         # SOLUTION-END
 
-    def propose(self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]) -> tuple[list[int], Optional[NDArray]]:
+    def propose(
+        self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]
+    ) -> tuple[list[int], Optional[NDArray]]:
         # SOLUTION-BEGIN L8.6
         cur = [int(t) for t in ctx]
         ids, rows = [], []
@@ -85,11 +91,15 @@ class PromptLookupDraft:
     def __init__(self, max_ngram: int = 3, min_ngram: int = 1) -> None:
         # SOLUTION-BEGIN L8.6
         if not 1 <= min_ngram <= max_ngram:
-            raise ValueError(f"need 1 <= min_ngram <= max_ngram, got {min_ngram}, {max_ngram}")
+            raise ValueError(
+                f"need 1 <= min_ngram <= max_ngram, got {min_ngram}, {max_ngram}"
+            )
         self.max_ngram, self.min_ngram = int(max_ngram), int(min_ngram)
         # SOLUTION-END
 
-    def propose(self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]) -> tuple[list[int], Optional[NDArray]]:
+    def propose(
+        self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]
+    ) -> tuple[list[int], Optional[NDArray]]:
         # SOLUTION-BEGIN L8.6
         ctx = [int(t) for t in ctx]
         L = len(ctx)
@@ -118,7 +128,9 @@ class ModelDraft:
         self._ids: list[int] = []  # what the cache holds, position by position
         # SOLUTION-END
 
-    def propose(self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]) -> tuple[list[int], Optional[NDArray]]:
+    def propose(
+        self, ctx: Sequence[int], k: int, rng: Optional[UniformSource]
+    ) -> tuple[list[int], Optional[NDArray]]:
         # SOLUTION-BEGIN L8.6
         ctx = [int(t) for t in ctx]
         if not ctx:
@@ -130,7 +142,10 @@ class ModelDraft:
         # Sync the cache with ctx: keep the common prefix, but always re-feed
         # at least the last id, whose logits are the ones we need.
         common = 0
-        while common < min(len(self._ids), len(ctx) - 1) and self._ids[common] == ctx[common]:
+        while (
+            common < min(len(self._ids), len(ctx) - 1)
+            and self._ids[common] == ctx[common]
+        ):
             common += 1
         self._cache.truncate(common)
         self._ids = ctx[:common]
@@ -143,7 +158,9 @@ class ModelDraft:
             ids.append(tok)
             rows.append(row)
             if i + 1 < k:
-                logits = _forward_rows(self.model, [tok], len(self._ids), self._cache)[-1]
+                logits = _forward_rows(self.model, [tok], len(self._ids), self._cache)[
+                    -1
+                ]
                 self._ids.append(tok)
         if rng is None:
             return ids, None
@@ -214,7 +231,9 @@ def speculative_generate(
         raise ValueError("the prompt encodes to no tokens")
     n_layers, n_kv, d_head, model_max = cache_dims(target)
     if len(prompt_ids) > model_max:
-        raise ValueError(f"prompt of {len(prompt_ids)} tokens exceeds max_len {model_max}")
+        raise ValueError(
+            f"prompt of {len(prompt_ids)} tokens exceeds max_len {model_max}"
+        )
     limit = min(model_max, len(prompt_ids) + p.max_tokens + k)
     cache = KVCache(n_layers, n_kv, d_head, limit, batch=1, dtype=kv_dtype)
     rng = request_rng(p.seed if p.seed is not None else 0)
@@ -232,13 +251,21 @@ def speculative_generate(
     while len(out) < p.max_tokens:
         room = limit - committed - len(pending)  # cache positions left for drafts
         k_eff = max(0, min(k, p.max_tokens - len(out) - 1, room))
-        drafts, q = draft.propose(prompt_ids + out, k_eff, draft_rng) if k_eff > 0 else ([], None)
+        drafts, q = (
+            draft.propose(prompt_ids + out, k_eff, draft_rng)
+            if k_eff > 0
+            else ([], None)
+        )
         drafts = [int(t) for t in drafts[:k_eff]]
         if q is not None:
             q = np.asarray(q, dtype=np.float64)[: len(drafts)]
-        rows = _forward_rows(target, pending + drafts, committed, cache)[len(pending) - 1 :]
+        rows = _forward_rows(target, pending + drafts, committed, cache)[
+            len(pending) - 1 :
+        ]
         calls += 1
-        emitted, n_acc = verify_draft(rows, drafts, q if drafts else None, p, out, rng, prompt_ids)
+        emitted, n_acc = verify_draft(
+            rows, drafts, q if drafts else None, p, out, rng, prompt_ids
+        )
         drafted += len(drafts)
         accepted += n_acc
         committed += len(pending) + n_acc
@@ -252,7 +279,9 @@ def speculative_generate(
             out.append(t)
             if stops:
                 text = tok.decode(out)
-                hit = min((i for i in (text.find(s) for s in stops) if i >= 0), default=-1)
+                hit = min(
+                    (i for i in (text.find(s) for s in stops) if i >= 0), default=-1
+                )
                 if hit >= 0:
                     finish, cut = "stop", text[:hit]
                     break

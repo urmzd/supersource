@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -604,7 +604,7 @@
+@@ -637,7 +637,7 @@
              raise ValueError("the constraint is done (EOS was emitted)")
          nxt = self.index.next_state(self.state, int(token_id))
          if nxt == DEAD:

@@ -55,7 +55,12 @@ class Pcg32:
 
 class Node:
     def __init__(self, key, blocks, parent, stamp):
-        self.key, self.blocks, self.parent, self.stamp = list(key), list(blocks), parent, stamp
+        self.key, self.blocks, self.parent, self.stamp = (
+            list(key),
+            list(blocks),
+            parent,
+            stamp,
+        )
         self.children: dict[tuple, Node] = {}
         self.lock = 0
 
@@ -71,8 +76,12 @@ class Cache:
             if child is None:
                 break
             m = 0
-            while (m + 1) * b <= len(child.key) and (m + 1) * b <= len(toks) - done and \
-                    child.key[m * b : (m + 1) * b] == toks[done + m * b : done + (m + 1) * b]:
+            while (
+                (m + 1) * b <= len(child.key)
+                and (m + 1) * b <= len(toks) - done
+                and child.key[m * b : (m + 1) * b]
+                == toks[done + m * b : done + (m + 1) * b]
+            ):
                 m += 1
             node = child
             if m * b < len(child.key):  # split
@@ -146,7 +155,10 @@ def trace() -> str:
     r = Pcg32(2026, 84)
     c = Cache(B)
     systems = [[r.below(50) for _ in range(B * (1 + r.below(4)))] for _ in range(4)]
-    lines = ["# L8.4 reference trace: course/oracle/L8.4/radix_trace.py (do not edit)", f"B {B}"]
+    lines = [
+        "# L8.4 reference trace: course/oracle/L8.4/radix_trace.py (do not edit)",
+        f"B {B}",
+    ]
     ops = 0
     nodes: dict[int, Node] = {}
     running: list[int] = []  # op lines whose node is locked
@@ -154,9 +166,13 @@ def trace() -> str:
     for _ in range(320):
         k = r.below(10)
         if k < 5:
-            prompt = list(systems[r.below(4)]) + [r.below(50) for _ in range(r.below(11))]
+            prompt = list(systems[r.below(4)]) + [
+                r.below(50) for _ in range(r.below(11))
+            ]
             matched, blocks, node = c.match(prompt)
-            lines.append(f"M {' '.join(map(str, prompt))} ; {matched} {' '.join(map(str, blocks))}".rstrip())
+            lines.append(
+                f"M {' '.join(map(str, prompt))} ; {matched} {' '.join(map(str, blocks))}".rstrip()
+            )
             nodes[ops] = node
             this = ops
             ops += 1
@@ -171,7 +187,11 @@ def trace() -> str:
                 for _ in range(full - len(blocks)):
                     new.append(next_block)
                     next_block += 1
-                own = list(blocks) if r.below(4) else [next_block + 1000 + i for i in range(len(blocks))]
+                own = (
+                    list(blocks)
+                    if r.below(4)
+                    else [next_block + 1000 + i for i in range(len(blocks))]
+                )
                 node2, dups = c.insert(prompt, own + new)
                 lines.append(
                     f"I {' '.join(map(str, prompt))} / {' '.join(map(str, own + new))} ; {' '.join(map(str, dups))}".rstrip()
@@ -198,7 +218,11 @@ def main() -> int:
     text = trace()
     if "--check" in sys.argv:
         same = OUT.read_text() == text
-        print("radix_trace.txt is current" if same else "radix_trace.txt differs from the oracle")
+        print(
+            "radix_trace.txt is current"
+            if same
+            else "radix_trace.txt differs from the oracle"
+        )
         return 0 if same else 1
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(text)

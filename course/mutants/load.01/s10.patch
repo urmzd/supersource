@@ -1,6 +1,6 @@
 --- a/go/loadgen/run.go
 +++ b/go/loadgen/run.go
-@@ -142,7 +142,7 @@
+@@ -139,7 +139,7 @@
  		}
  		if err != nil {
  			if errors.Is(err, io.EOF) {

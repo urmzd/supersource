@@ -1,0 +1,13 @@
+--- a/go/agent/gate/gate.go
++++ b/go/agent/gate/gate.go
+@@ -170,7 +170,9 @@
+ 	case map[string]any:
+ 		for k, e := range x {
+ 			*out = append(*out, k)
+-			collectStrings(e, out)
++			if s, ok := e.(string); ok {
++				*out = append(*out, s)
++			}
+ 		}
+ 	}
+ 	// SOLUTION-END

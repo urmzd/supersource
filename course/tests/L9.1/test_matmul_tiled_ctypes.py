@@ -30,8 +30,19 @@ def matmul(A, B, *, trans_b=False, alpha=1.0, beta=0.0, C=None):
         C = np.zeros((M, N), dtype=np.float32)
     lda, ldb, ldc = (x.strides[0] // 4 for x in (A, B, C))
     load().tl_matmul_f32(
-        f32_ptr(A), f32_ptr(B), f32_ptr(C), M, N, K, lda, ldb, ldc, alpha, beta,
-        int(trans_b), None,
+        f32_ptr(A),
+        f32_ptr(B),
+        f32_ptr(C),
+        M,
+        N,
+        K,
+        lda,
+        ldb,
+        ldc,
+        alpha,
+        beta,
+        int(trans_b),
+        None,
     )
     return C
 
@@ -61,11 +72,20 @@ def test_matches_numpy_across_tile_edges(trans_b):
     # CATCHES: s01, s03, s05, m01, m03
     # CHAPTER: L9.1 section 4
     rng = PCG32(SEED, seq=91)
-    for M, N, K in [(1, 1, 1), (3, 17, 129), (4, 16, 128), (63, 130, 5), (2, 257, 257), (65, 3, 200)]:
+    for M, N, K in [
+        (1, 1, 1),
+        (3, 17, 129),
+        (4, 16, 128),
+        (63, 130, 5),
+        (2, 257, 257),
+        (65, 3, 200),
+    ]:
         A = rand(rng, (M, K))
         B = rand(rng, (N, K) if trans_b else (K, N))
         want = A.astype(np.float64) @ (B.T if trans_b else B).astype(np.float64)
-        assert_close_bounded(matmul(A, B, trans_b=trans_b), want, k=K, msg=f"{M},{N},{K}")
+        assert_close_bounded(
+            matmul(A, B, trans_b=trans_b), want, k=K, msg=f"{M},{N},{K}"
+        )
 
 
 def test_strided_views_with_alpha_beta():
@@ -100,4 +120,6 @@ def test_batch_invariance_through_ctypes():
     rng = PCG32(SEED, seq=93)
     W = rand(rng, (24, 300))
     x = rand(rng, (16, 300))
-    assert_batch_invariant(lambda xb: matmul(np.ascontiguousarray(xb), W, trans_b=True), x)
+    assert_batch_invariant(
+        lambda xb: matmul(np.ascontiguousarray(xb), W, trans_b=True), x
+    )

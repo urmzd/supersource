@@ -154,3 +154,37 @@ course/fixtures/L8.4/radix_trace.txt	23f84c89af08dbacac76651c0797dba0a54844f6d8d
 course/fixtures/parity/kv_wire_v1.json	1e4f791d4f1a930fdca5cfb4ddc7483dce02ffbc2cb1dfb1d810c6491c64577c	16569	course/oracle/parity/kv_wire_v1_golden.py	-	-	Apache-2.0
 course/fixtures/L8.7/masks_golden.json	44c2221b7b3dc12bf3ca5bbcc3cb15f7493f397a18ec6f9279ee7378daedf6a6	20536	course/oracle/L8.7/masks_golden.py	python stdlib	-	Apache-2.0
 course/fixtures/parity/flash_fwd.json	8f3247336cf73e65fff4740f9f3f039a98ec54970da833c56a4baad9d4824d2d	107454	course/oracle/parity/flash_fwd_golden.py	numpy==2.2.6	-	Apache-2.0
+course/fixtures/MS-L8/tool_schema.json	670c71ad0bbb592268109eeaf27c0d85c2e68970dcbcc5008f0f32b8d5d04a20	215	hand	-	-	Apache-2.0
+course/fixtures/parity/sampler.json	cd76cc5e05e246e5e5d96e62df3413b41f9ee99d2cec9843079c70ae9211a327	18453	course/oracle/parity/sampler_golden.py	-	course/fixtures/L8.1/sampler_golden.json	Apache-2.0
+course/fixtures/parity/ring_hash.json	c09f07bf0372403aa906e368e4558e819f274cb671b5bb7c5009c56b667f482f	20638	course/oracle/ds.09/ring_golden.py	-	-	Apache-2.0
+course/fixtures/gw.04/streams.json	1fc72a38f301d210207ba306034864c162484571fdd767d13a5294f907654935	6630	course/oracle/gw.04/streams.py	-	-	Apache-2.0
+course/fixtures/gw.05/cascade_sweep.json	e3b1cc9d69641ce90fc20e34726f56f6e80be13011414829ff3b73857a5a0c29	29654	course/oracle/gw.05/cascade_sweep.py	-	-	Apache-2.0
+course/fixtures/L10.7/engine_metrics.json	b66da0d647348f31cc50c0f7462dca7c969ad7e08f05206a77dcd79eba00c236	4856	course/oracle/L10.7/engine_metrics.py	PyYAML	-	Apache-2.0
+course/fixtures/L10.8/spec_golden.json	a94accea0ce6be6d41a132f62f03a8dd85d8a770afff24a6eab66ac84c3a375e	87593	course/oracle/L10.8/spec_golden.py	numpy	-	Apache-2.0
+course/fixtures/L10.9/constrain_golden.json	532a40140bd659a5e3e3aad70a64ca5e820dc59a1f55dd0a8df3ac8bec199fec	85107	course/oracle/L10.9/constrain_golden.py	-	-	Apache-2.0
+course/fixtures/lang.11/usage_rows.jsonl	4518fc740dc828839de733b9f764cb81a80b392b6dabc53cc6f3bf2c2400c4ba	95660	course/oracle/lang.11/make_usage_rows.py	-	-	Apache-2.0
+course/fixtures/dep.01/image-budget.json	ed1fff9531516cdf404f31efd9a39e8dc433b8b7d1cbb63f482a3763db877852	813	course/oracle/dep.01/measure_images.sh	docker 27.4.0	-	Apache-2.0
+course/fixtures/dur.09/fake_child.py	e79224a6e0dc179330da3770265edbb63b7a94d0b1f55863c3fe679f5830e429	5110	hand-written (dur.09 conformance: scripted fake Python activity)	-	-	Apache-2.0
+course/fixtures/M08.4/torch_hvp.npz	9163301da844d287e3887509526ff4a367efb650d59daf70feffe3180ca8648d	4606	course/oracle/M08.4/torch_hvp_golden.py	torch==2.14.1 numpy==2.4.2	-	Apache-2.0
+course/fixtures/craft.22/tinylm.npz	305aaf9b665ef9fd811870fe780ddf83b5a074218d3dd7d18c0ddb728a83decd	121850	course/oracle/craft.22/train_tinylm.py	torch==2.14.1	-	Apache-2.0
+course/fixtures/craft.22/val.txt	df7ce7ee4a11bf5340f2651eb19b762911173838c2ec31df9ebbf6dca520f7b9	8234	course/oracle/craft.22/train_tinylm.py	torch==2.14.1	-	Apache-2.0
+course/fixtures/craft.22/words.txt	4a2509e9e78dce8448bf8eae1d5ea22320ace8c1a4e415cf7f718af6549c61c0	1241	course/oracle/craft.22/train_tinylm.py	torch==2.14.1	-	Apache-2.0
+course/fixtures/ethics.04/lexicon.json	d523edbbbf4fe756c5dc0d294be153b5b2b9e1de2dead08630a4c7db7bca62cd	706	hand-written (ethics.04 fixture: synthetic, written for the course)	-	-	Apache-2.0
+course/fixtures/ethics.04/labelled.jsonl	408e9c45d31f2f4278535f36ed601ff9a9d560cd90e0d300439c5687469fda6f	1958	hand-written (ethics.04 fixture: synthetic, written for the course)	-	-	Apache-2.0
+course/fixtures/ethics.04/prompts.jsonl	e6ecda72b0d59057dd0cd1984310dde73fbc1252744e78908dd0b99162b67015	1815	hand-written (ethics.04 fixture: synthetic, written for the course)	-	-	Apache-2.0
+course/fixtures/ethics.04/bias.json	67ecf4f0bda6ad76129619f4df94c3bf189cb178be71ab53aab0e0c37d29bd6c	2201	hand-written (ethics.04 fixture: synthetic, written for the course)	-	-	Apache-2.0
+course/fixtures/dur/histories/clock.json	2f4d56f7055d528f3b13b4829ecf27db7f85a74c2a884cd51a7c97a0ed4db443	1901	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/counter-1.json	eb94e03dcfce3ebdc2aea9bb0e51d873f19177cde1073a8cb5bf86dca7173fbb	1959	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/counter-2.json	94aaeab580bd604c54626d46a5950ee32467b1792319e7b34818a98b5dd189e2	1998	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/counter-3.json	dcc21d4f27a3e69fdd7454514cdfb5df1ebc74b56446c1821786bf1055da2c5e	1999	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/counter-4.json	cf0bcf14fe650aa636aad97a1225797411a29d82e300d0d8f3948ac5415731bc	839	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/parallel.json	5756c3412f6178330c65565244b1aa20502d2d2b34560e211e93b26cbb9396fe	4035	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/reorder.json	dcffa091a6343c335af48f810980fe7f50336c0de72b3b7395a697c2bee8261f	2962	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/sequence.json	7c9cbdb15f89b607fa290f8f5dc5e5e91e188c18e67721a622460dce306d6486	4060	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/side-effects.json	d57c60f0db34b8b779d68642685a8cf9dad7279e12f43b8a1b66359d4f3feccf	2234	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/versioned-before.json	67f66089fe6eb25f5c5d1640d07af02f94f3c93c63679933c00264b3d16cec14	1890	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/dur/histories/versioned-new.json	d508260deb1a6212fcc437a7393fe18b9a69880c0a9638b4f1dc7592babdf071	2101	course/oracle/dur/record-histories.sh	go1.27.1	-	Apache-2.0
+course/fixtures/configs/llama-2m.json	c71c25251bc4c24a0cb6f9ac6e88bd5c6f5454f68be98ee2fcff7af605d5b94d	325	hand-written (MS-L11: a byte-level Llama of 1,623,744 parameters)	-	-	Apache-2.0
+course/fixtures/ag.01/streams.json	a2d2e7cf2890076dea8ec6dd1254ff2736a726ba06b89d371ee94cd25fda81ad	8110	course/oracle/ag.01/streams.py	-	-	Apache-2.0
+course/fixtures/ag.04/sql_corpus.json	165400771be4807197c955bb7f05cdad1f153d98a39be6e61716762ee4155496	6528	course/oracle/ag.04/sql_corpus.py	-	-	Apache-2.0
+course/fixtures/ag.04/injection.json	1258615614f53b3dc9293bd47fc487d719c06877db44853c38d28a4a4c1f38fb	13984	course/oracle/ag.04/injection.py	-	-	Apache-2.0

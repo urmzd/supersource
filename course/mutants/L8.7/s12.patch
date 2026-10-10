@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -343,8 +343,7 @@
+@@ -358,8 +358,7 @@
          row = []
          for tgt in targets:
              if not tgt:
@@ -10,7 +10,7 @@
              key = frozenset(tgt)
              if key not in closures:
                  closures[key] = nfa.closure(key)
-@@ -375,11 +374,10 @@
+@@ -390,11 +389,10 @@
                  stack.append(p)
      if not live[0]:
          raise ValueError(f"regex: {pattern!r} matches nothing")
@@ -22,4 +22,4 @@
 +    alive = list(range(n))
      block = {s: int(acc[s]) for s in alive}
      while True:
-         sig = {s: (block[s],) + tuple(block[t] if t != DEAD else -1 for t in moves[s]) for s in alive}
+         sig = {

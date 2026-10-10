@@ -1,0 +1,11 @@
+--- a/go/agent/tool/registry.go
++++ b/go/agent/tool/registry.go
+@@ -34,7 +34,7 @@
+ func (r *Registry) Register(t Tool) error {
+ 	// SOLUTION-BEGIN ag.02
+ 	d := t.Definition()
+-	if !NamePattern.MatchString(d.Name) {
++	if d.Name == "" {
+ 		return fmt.Errorf("tool: name %q does not match %s", d.Name, NamePattern)
+ 	}
+ 	params := d.Parameters

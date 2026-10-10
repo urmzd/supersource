@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/kv_transfer.rs
++++ b/rust/crates/tl-engine/src/kv_transfer.rs
+@@ -127,7 +127,7 @@
+ 
+     /// Payload bytes of one v1 block: f16 [L][2][Hkv][B][D].
+     pub fn payload_bytes(&self) -> usize {
+-        self.n_layers as usize * 2 * self.n_kv_heads as usize * self.block_tokens as usize * self.head_dim as usize * 2
++        self.n_layers as usize * 2 * self.n_kv_heads as usize * self.block_tokens as usize * self.head_dim as usize
+     }
+ 
+     /// Bytes of a whole envelope: 28 + n (12 + P) + 4.

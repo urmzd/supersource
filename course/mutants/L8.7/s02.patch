@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -208,7 +208,7 @@
+@@ -223,7 +223,7 @@
                  bits |= _range(lo, hi)
              else:
                  bits |= lo_set

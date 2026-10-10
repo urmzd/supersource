@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -162,7 +162,7 @@
+@@ -179,7 +179,7 @@
                  return emitted, i
              continue
          P = sampling_distribution(rows[i], p, hist + emitted, prompt)

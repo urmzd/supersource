@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Artifact check for craft.21 (DESIGN 4.6, rung R10; H15: `ss check craft.21`
+# runs this in your repo and its exit code is the verdict). The tests and why
+# each exists are in artifacts.py (`ss tests craft.21`); every Go run is its
+# own process group with a timeout, one at a time.
+command -v go >/dev/null || { echo "craft.21: go is not installed (ss doctor)" >&2; exit 5; }
+exec python3 "$(dirname "$0")/artifacts.py" "$@"

@@ -49,7 +49,12 @@ def _declare(lib: Any) -> None:
     functions are declared with a plain int32 result and checked by _check,
     so this module needs nothing from the loader but Lib.declare and TlError."""
     # SOLUTION-BEGIN L8.3
-    vp, u32, u32p, st = ctypes.c_void_p, ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.c_int32
+    vp, u32, u32p, st = (
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_uint32),
+        ctypes.c_int32,
+    )
     sigs = {
         "tl_kv_pool_create": (st, [ctypes.POINTER(_KvCfg), ctypes.POINTER(vp)]),
         "tl_kv_pool_destroy": (None, [vp]),
@@ -83,19 +88,42 @@ class OutOfBlocks(RuntimeError):
 
 class PagedKVCache:
     def __init__(
-        self, lib: Any, num_blocks: int, block_size: int, n_layers: int, n_kv_heads: int, d_head: int
+        self,
+        lib: Any,
+        num_blocks: int,
+        block_size: int,
+        n_layers: int,
+        n_kv_heads: int,
+        d_head: int,
     ) -> None:
         # SOLUTION-BEGIN L8.3
         dims = (num_blocks, block_size, n_layers, n_kv_heads, d_head)
         if any(int(x) < 1 for x in dims):
             raise ValueError(f"PagedKVCache: every size must be at least 1, got {dims}")
         self.lib = lib
-        self.num_blocks, self.block_size, self.n_layers, self.n_kv_heads, self.d_head = map(int, dims)
+        (
+            self.num_blocks,
+            self.block_size,
+            self.n_layers,
+            self.n_kv_heads,
+            self.d_head,
+        ) = map(int, dims)
         _declare(lib)
-        cfg = _KvCfg(self.num_blocks, self.block_size, self.n_layers, self.n_kv_heads, self.d_head,
-                     _TL_F16, _FORMAT_V1)
+        cfg = _KvCfg(
+            self.num_blocks,
+            self.block_size,
+            self.n_layers,
+            self.n_kv_heads,
+            self.d_head,
+            _TL_F16,
+            _FORMAT_V1,
+        )
         self._pool = ctypes.c_void_p()
-        _check(lib, "tl_kv_pool_create", lib.tl_kv_pool_create(ctypes.byref(cfg), ctypes.byref(self._pool)))
+        _check(
+            lib,
+            "tl_kv_pool_create",
+            lib.tl_kv_pool_create(ctypes.byref(cfg), ctypes.byref(self._pool)),
+        )
         self._tables: dict[int, list[int]] = {}
         self._lens: dict[int, list[int]] = {}
         # SOLUTION-END
@@ -176,7 +204,11 @@ class PagedKVCache:
         """Make table[i] a block this sequence alone holds (copy on write)."""
         # SOLUTION-BEGIN L8.3
         out = ctypes.c_uint32()
-        _check(self.lib, "tl_kv_cow", self.lib.tl_kv_cow(self._pool, table[i], ctypes.byref(out)))
+        _check(
+            self.lib,
+            "tl_kv_cow",
+            self.lib.tl_kv_cow(self._pool, table[i], ctypes.byref(out)),
+        )
         table[i] = out.value
         # SOLUTION-END
 
@@ -206,15 +238,20 @@ class PagedKVCache:
         while p < end:
             b, slot = divmod(p, B)
             n = min(B - slot, end - p)
-            self._slab(table[b], layer, 0)[:, slot : slot + n, :] = k16[:, p - start : p - start + n, :]
-            self._slab(table[b], layer, 1)[:, slot : slot + n, :] = v16[:, p - start : p - start + n, :]
+            src = slice(p - start, p - start + n)
+            self._slab(table[b], layer, 0)[:, slot : slot + n, :] = k16[:, src, :]
+            self._slab(table[b], layer, 1)[:, slot : slot + n, :] = v16[:, src, :]
             p += n
         self._lens[seq_id][layer] = end
         # 4. A block's fill is the positions every layer holds.
         held = min(self._lens[seq_id])
         for i in range(first, last + 1):
             fill = min(B, max(0, held - i * B))
-            _check(self.lib, "tl_kv_set_fill", self.lib.tl_kv_set_fill(self._pool, table[i], fill))
+            _check(
+                self.lib,
+                "tl_kv_set_fill",
+                self.lib.tl_kv_set_fill(self._pool, table[i], fill),
+            )
         # SOLUTION-END
 
     # -- reads ------------------------------------------------------------------
@@ -249,7 +286,12 @@ class PagedKVCache:
         # SOLUTION-BEGIN L8.3
         s = _KvStats()
         self.lib.tl_kv_stats_get(self._pool, ctypes.byref(s))
-        return {"free": s.free, "used": s.used, "cached": s.cached, "evictions": s.evictions}
+        return {
+            "free": s.free,
+            "used": s.used,
+            "cached": s.cached,
+            "evictions": s.evictions,
+        }
         # SOLUTION-END
 
     def num_free_blocks(self) -> int:

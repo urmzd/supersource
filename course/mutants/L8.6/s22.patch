@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -226,7 +226,7 @@
+@@ -253,7 +253,7 @@
          cache.truncate(committed)  # drop the rejected drafts' keys and values
          pending = [emitted[-1]]  # the extra token is not in the cache yet
          for j, t in enumerate(emitted):

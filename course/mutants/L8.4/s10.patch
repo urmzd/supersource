@@ -1,6 +1,6 @@
 --- a/rust/crates/tl-engine/src/prefix.rs
 +++ b/rust/crates/tl-engine/src/prefix.rs
-@@ -162,7 +162,7 @@
+@@ -178,7 +178,7 @@
          let mut n = 0;
          let mut stack = self.tree.children(ROOT);
          while let Some(id) = stack.pop() {

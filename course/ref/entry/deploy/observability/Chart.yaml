@@ -1,0 +1,23 @@
+# The Pass 7 observability stack (dep.03): one umbrella chart whose
+# dependencies are the upstream charts pinned in contracts/helm/observability.md.
+# Install it as release `observability` in namespace `observability`: the
+# kube-prometheus-stack rule selector then picks up every PrometheusRule and
+# ServiceMonitor labelled release: observability (obs.02, obs.03).
+#   helm dependency build deploy/observability
+#   helm upgrade --install observability deploy/observability -n observability --create-namespace
+apiVersion: v2
+name: observability
+description: OTel collector, Prometheus with Grafana, and Tempo for the forge serving platform
+type: application
+version: 0.2.0
+dependencies:
+  - name: opentelemetry-collector
+    alias: otel-collector
+    version: 0.173.1
+    repository: https://open-telemetry.github.io/opentelemetry-helm-charts
+  - name: kube-prometheus-stack
+    version: 91.5.2
+    repository: https://prometheus-community.github.io/helm-charts
+  - name: tempo
+    version: 1.24.4
+    repository: https://grafana.github.io/helm-charts

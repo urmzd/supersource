@@ -21,7 +21,10 @@ struct Pcg32 {
 
 impl Pcg32 {
     fn new(seed: u64, seq: u64) -> Pcg32 {
-        let mut g = Pcg32 { state: 0, inc: (seq << 1) | 1 };
+        let mut g = Pcg32 {
+            state: 0,
+            inc: (seq << 1) | 1,
+        };
         g.next_u32();
         g.state = g.state.wrapping_add(seed);
         g.next_u32();
@@ -45,7 +48,10 @@ impl Pcg32 {
 }
 
 fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+    std::env::var("SS_SEED")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0)
 }
 
 fn fixture(rel: &str) -> String {
@@ -93,9 +99,22 @@ fn the_last_prompt_token_is_never_covered() {
     // CHAPTER: L8.4 section 5, Pitfalls
     let mut c = RadixCache::new(2);
     c.insert(&[1, 2, 3, 4, 5, 6], &[10, 11, 12]);
-    for (n, want) in [(0usize, 0usize), (1, 0), (2, 0), (3, 2), (4, 2), (5, 4), (6, 4), (7, 6)] {
+    for (n, want) in [
+        (0usize, 0usize),
+        (1, 0),
+        (2, 0),
+        (3, 2),
+        (4, 2),
+        (5, 4),
+        (6, 4),
+        (7, 6),
+    ] {
         let toks: Vec<u32> = (1..=n as u32).chain(std::iter::once(99)).take(n).collect();
-        assert_eq!(c.match_prefix(&toks).matched_tokens, want, "prompt of {n} tokens");
+        assert_eq!(
+            c.match_prefix(&toks).matched_tokens,
+            want,
+            "prompt of {n} tokens"
+        );
     }
 }
 
@@ -198,12 +217,20 @@ fn golden_reference_trace() {
             continue;
         }
         let (head, want) = match line.split_once(" ; ") {
-            Some((h, w)) => (h, w.split_whitespace().map(|x| x.parse::<u64>().unwrap()).collect::<Vec<_>>()),
+            Some((h, w)) => (
+                h,
+                w.split_whitespace()
+                    .map(|x| x.parse::<u64>().unwrap())
+                    .collect::<Vec<_>>(),
+            ),
             None => (line.trim_end_matches(" ;"), Vec::new()),
         };
         let mut parts = head.split_whitespace();
         let kind = parts.next().unwrap();
-        let nums: Vec<u64> = parts.filter(|x| *x != "/").map(|x| x.parse().unwrap()).collect();
+        let nums: Vec<u64> = parts
+            .filter(|x| *x != "/")
+            .map(|x| x.parse().unwrap())
+            .collect();
         let at = format!("trace line {}: {line}", ln + 1);
         match kind {
             "B" => {
@@ -221,15 +248,22 @@ fn golden_reference_trace() {
             "M" => {
                 let toks: Vec<u32> = nums.iter().map(|&x| x as u32).collect();
                 let m = cache.match_prefix(&toks);
-                let got: Vec<u64> =
-                    std::iter::once(m.matched_tokens as u64).chain(m.blocks.iter().map(|&b| b as u64)).collect();
+                let got: Vec<u64> = std::iter::once(m.matched_tokens as u64)
+                    .chain(m.blocks.iter().map(|&b| b as u64))
+                    .collect();
                 assert_eq!(got, want, "{at}");
                 nodes.insert(op, m.node);
             }
             "I" => {
                 let (toks, blocks) = head[2..].split_once(" / ").unwrap();
-                let toks: Vec<u32> = toks.split_whitespace().map(|x| x.parse().unwrap()).collect();
-                let blocks: Vec<u32> = blocks.split_whitespace().map(|x| x.parse().unwrap()).collect();
+                let toks: Vec<u32> = toks
+                    .split_whitespace()
+                    .map(|x| x.parse().unwrap())
+                    .collect();
+                let blocks: Vec<u32> = blocks
+                    .split_whitespace()
+                    .map(|x| x.parse().unwrap())
+                    .collect();
                 let ins = cache.insert(&toks, &blocks);
                 let got: Vec<u64> = ins.duplicates.iter().map(|&b| b as u64).collect();
                 assert_eq!(got, want, "{at}");
@@ -238,7 +272,11 @@ fn golden_reference_trace() {
             "L" => cache.lock(nodes[&(nums[0] as usize)]),
             "U" => cache.unlock(nodes[&(nums[0] as usize)]),
             "E" => {
-                let got: Vec<u64> = cache.evict(nums[0] as usize).iter().map(|&b| b as u64).collect();
+                let got: Vec<u64> = cache
+                    .evict(nums[0] as usize)
+                    .iter()
+                    .map(|&b| b as u64)
+                    .collect();
                 assert_eq!(got, want, "{at}");
             }
             other => panic!("{at}: unknown op {other}"),
@@ -277,7 +315,13 @@ fn blocks_are_conserved_and_locked_prefixes_stay() {
         own: Vec<BlockId>,
     }
     let mut running: Vec<Req> = Vec::new();
-    let systems: Vec<Vec<u32>> = (0..5).map(|s| (0..(B * (1 + s % 3)) as u32).map(|i| i * 7 + s as u32).collect()).collect();
+    let systems: Vec<Vec<u32>> = (0..5)
+        .map(|s| {
+            (0..(B * (1 + s % 3)) as u32)
+                .map(|i| i * 7 + s as u32)
+                .collect()
+        })
+        .collect();
     for _ in 0..3000 {
         if r.below(3) > 0 || running.is_empty() {
             let mut prompt = systems[r.below(5) as usize].clone();
@@ -289,7 +333,10 @@ fn blocks_are_conserved_and_locked_prefixes_stay() {
             let need = prompt.len() / B - m.blocks.len() + 1; // full blocks past the match, plus the tail
             if free.len() < need {
                 for b in c.evict(need - free.len()) {
-                    assert!(!running.iter().any(|q| q.shared.contains(&b)), "evicted block {b} a request is reading");
+                    assert!(
+                        !running.iter().any(|q| q.shared.contains(&b)),
+                        "evicted block {b} a request is reading"
+                    );
                     free.push(b);
                 }
             }
@@ -298,23 +345,47 @@ fn blocks_are_conserved_and_locked_prefixes_stay() {
                 continue;
             }
             let own: Vec<BlockId> = (0..need).map(|_| free.pop().unwrap()).collect();
-            let full: Vec<BlockId> = m.blocks.iter().chain(own[..need - 1].iter()).copied().collect();
+            let full: Vec<BlockId> = m
+                .blocks
+                .iter()
+                .chain(own[..need - 1].iter())
+                .copied()
+                .collect();
             let ins = c.insert(&prompt, &full);
-            assert!(ins.duplicates.iter().all(|d| own.contains(d)), "only the request's own blocks come back");
+            assert!(
+                ins.duplicates.iter().all(|d| own.contains(d)),
+                "only the request's own blocks come back"
+            );
             let mut probe = prompt[..prompt.len() / B * B].to_vec();
             probe.push(999);
-            assert_eq!(c.match_prefix(&probe).matched_tokens, prompt.len() / B * B, "longest prefix after insert");
+            assert_eq!(
+                c.match_prefix(&probe).matched_tokens,
+                prompt.len() / B * B,
+                "longest prefix after insert"
+            );
             // what the cache now owns leaves the request; duplicates and the tail stay its own
-            let stored: HashSet<BlockId> = own[..need - 1].iter().copied().filter(|b| !ins.duplicates.contains(b)).collect();
+            let stored: HashSet<BlockId> = own[..need - 1]
+                .iter()
+                .copied()
+                .filter(|b| !ins.duplicates.contains(b))
+                .collect();
             let keep: Vec<BlockId> = own.into_iter().filter(|b| !stored.contains(b)).collect();
-            running.push(Req { node: m.node, shared: m.blocks, own: keep });
+            running.push(Req {
+                node: m.node,
+                shared: m.blocks,
+                own: keep,
+            });
         } else {
             let q = running.swap_remove(r.below(running.len() as u32) as usize);
             c.unlock(q.node);
             free.extend(q.own);
         }
         let held: usize = running.iter().map(|q| q.own.len()).sum();
-        assert_eq!(free.len() + held + c.cached_blocks(), N as usize, "every block is in exactly one place");
+        assert_eq!(
+            free.len() + held + c.cached_blocks(),
+            N as usize,
+            "every block is in exactly one place"
+        );
         let mut seen: HashSet<BlockId> = free.iter().copied().collect();
         for q in &running {
             for b in &q.own {

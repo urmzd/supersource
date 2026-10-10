@@ -1,6 +1,6 @@
 --- a/rust/crates/tl-ds/src/radix.rs
 +++ b/rust/crates/tl-ds/src/radix.rs
-@@ -315,7 +315,7 @@
+@@ -319,7 +319,7 @@
          let stamp = self.clock;
          let (done, path) = self.walk(key, stamp);
          let mut values = values;

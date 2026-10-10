@@ -46,7 +46,9 @@ def crc32c(data: bytes) -> int:
     return c ^ 0xFFFFFFFF
 
 
-def envelope(B: int, L: int, H: int, D: int, tokens: list[int], values: list[int]) -> bytes:
+def envelope(
+    B: int, L: int, H: int, D: int, tokens: list[int], values: list[int]
+) -> bytes:
     n = len(tokens)
     nb = (n + B - 1) // B
     out = bytearray(b"TLKV" + struct.pack("<HHIIIII", 1, 1, nb, B, L, H, D))
@@ -54,7 +56,13 @@ def envelope(B: int, L: int, H: int, D: int, tokens: list[int], values: list[int
     for i in range(nb):
         toks = tokens[i * B : (i + 1) * B]
         if len(toks) == B:
-            h = fnv1a64(struct.pack("<Q", parent) + b"".join(struct.pack("<I", t) for t in toks)) or 1
+            h = (
+                fnv1a64(
+                    struct.pack("<Q", parent)
+                    + b"".join(struct.pack("<I", t) for t in toks)
+                )
+                or 1
+            )
             parent = h
         else:
             h = 0
@@ -65,7 +73,11 @@ def envelope(B: int, L: int, H: int, D: int, tokens: list[int], values: list[int
                     for t in range(B):
                         p = i * B + t
                         for d in range(D):
-                            v = values[(((p * L + layer) * 2 + kv) * H + head) * D + d] if t < len(toks) else 0
+                            v = (
+                                values[(((p * L + layer) * 2 + kv) * H + head) * D + d]
+                                if t < len(toks)
+                                else 0
+                            )
                             out += struct.pack("<H", v)
     out += struct.pack("<I", crc32c(bytes(out)))
     return bytes(out)
@@ -90,14 +102,41 @@ def cases() -> list[dict]:
     out = []
 
     def add(name, B, L, H, D, tokens, values):
-        out.append({"name": name, "input": {"B": B, "L": L, "H": H, "D": D, "tokens": tokens, "values": values},
-                    "output": {"hex": envelope(B, L, H, D, tokens, values).hex()}})
+        out.append(
+            {
+                "name": name,
+                "input": {
+                    "B": B,
+                    "L": L,
+                    "H": H,
+                    "D": D,
+                    "tokens": tokens,
+                    "values": values,
+                },
+                "output": {"hex": envelope(B, L, H, D, tokens, values).hex()},
+            }
+        )
 
     # formats/kv-block.md: K = [[1, 2], [3, 4]], V = [[0.5, -1], [0, 0.25]] as [position][dim]
-    add("worked-example", 2, 1, 1, 2, [1, 2],
-        [0x3C00, 0x4000, 0x3800, 0xBC00, 0x4200, 0x4400, 0x0000, 0x3400])
+    add(
+        "worked-example",
+        2,
+        1,
+        1,
+        2,
+        [1, 2],
+        [0x3C00, 0x4000, 0x3800, 0xBC00, 0x4200, 0x4400, 0x0000, 0x3400],
+    )
     r = Pcg32(4096, 6)
-    for i, (B, L, H, D, n) in enumerate([(2, 1, 1, 2, 5), (4, 2, 2, 3, 9), (16, 2, 1, 4, 33), (3, 3, 2, 2, 6), (8, 1, 4, 8, 7)]):
+    for i, (B, L, H, D, n) in enumerate(
+        [
+            (2, 1, 1, 2, 5),
+            (4, 2, 2, 3, 9),
+            (16, 2, 1, 4, 33),
+            (3, 3, 2, 2, 6),
+            (8, 1, 4, 8, 7),
+        ]
+    ):
         tokens = [r.next() % 50000 for _ in range(n)]
         # finite f16 patterns only (exponent field below 31)
         values = []
@@ -110,11 +149,17 @@ def cases() -> list[dict]:
 
 def main() -> int:
     doc = {"generator": "course/oracle/parity/kv_wire_v1_golden.py", "cases": cases()}
-    assert doc["cases"][0]["output"]["hex"].endswith("1c540b4f"), "the worked example's CRC"
+    assert doc["cases"][0]["output"]["hex"].endswith("1c540b4f"), (
+        "the worked example's CRC"
+    )
     text = json.dumps(doc, separators=(",", ":")) + "\n"
     if "--check" in sys.argv:
         same = OUT.read_text() == text
-        print("kv_wire_v1.json is current" if same else "kv_wire_v1.json differs from the oracle")
+        print(
+            "kv_wire_v1.json is current"
+            if same
+            else "kv_wire_v1.json differs from the oracle"
+        )
         return 0 if same else 1
     OUT.write_text(text)
     print(f"wrote {OUT} ({len(text)} bytes, {len(doc['cases'])} cases)")

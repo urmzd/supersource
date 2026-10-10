@@ -311,7 +311,11 @@ impl<V> RadixTree<V> {
                 None => break,
             };
             let m = self.common(&self.nodes[child].key, rest);
-            let node = if m * g < self.nodes[child].key.len() { self.split(child, m, stamp) } else { child };
+            let node = if m * g < self.nodes[child].key.len() {
+                self.split(child, m, stamp)
+            } else {
+                child
+            };
             self.nodes[node].stamp = stamp;
             path.push(node);
             done += m * g;
@@ -396,7 +400,10 @@ impl<V> RadixTree<V> {
         // SOLUTION-BEGIN ds.07
         self.node(id);
         if id != ROOT {
-            assert!(self.nodes[id].lock > 0, "RadixTree::unlock: node {id} is not locked");
+            assert!(
+                self.nodes[id].lock > 0,
+                "RadixTree::unlock: node {id} is not locked"
+            );
         }
         let mut cur = Some(id);
         while let Some(n) = cur {
@@ -421,7 +428,9 @@ impl<V> RadixTree<V> {
         while freed < n {
             let Some(id) = self.head else { break };
             self.lru_unlink(id);
-            let parent = self.nodes[id].parent.expect("the root is never on the list");
+            let parent = self.nodes[id]
+                .parent
+                .expect("the root is never on the list");
             let first = self.nodes[id].key[..g].to_vec();
             self.nodes[parent].children.remove(&first[..]);
             let vals = std::mem::take(&mut self.nodes[id].values);

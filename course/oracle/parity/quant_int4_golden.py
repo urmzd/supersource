@@ -49,7 +49,9 @@ def quantize(w: np.ndarray, group: int):
     g = w.reshape(n, k // group, group)
     scale = (np.abs(g).max(axis=2) / np.float32(7)).astype(np.float16)
     s32 = scale.astype(np.float32)
-    q = np.clip(np.rint(g / np.where(s32 == 0, np.float32(1), s32)[:, :, None]), -8, 7).astype(np.int8)
+    q = np.clip(
+        np.rint(g / np.where(s32 == 0, np.float32(1), s32)[:, :, None]), -8, 7
+    ).astype(np.int8)
     q = q.reshape(n, k)
     u = (q.astype(np.int16) & 0xF).astype(np.uint8)
     packed = u[:, 0::2] | (u[:, 1::2] << 4)
@@ -62,7 +64,9 @@ def main() -> None:
     cases = []
     for i, (n, k, group) in enumerate(SHAPES):
         g = root.split(i)
-        w = np.array([g.normal() * 0.1 for _ in range(n * k)], dtype=np.float32).reshape(n, k)
+        w = np.array(
+            [g.normal() * 0.1 for _ in range(n * k)], dtype=np.float32
+        ).reshape(n, k)
         packed, scale, _ = quantize(w, group)
         cases.append(
             {
@@ -84,7 +88,11 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(
         json.dumps(
-            {"generator": "course/oracle/parity/quant_int4_golden.py", "numpy": np.__version__, "cases": cases},
+            {
+                "generator": "course/oracle/parity/quant_int4_golden.py",
+                "numpy": np.__version__,
+                "cases": cases,
+            },
             separators=(",", ":"),
         )
         + "\n"

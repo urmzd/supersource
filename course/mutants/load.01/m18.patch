@@ -1,6 +1,6 @@
 --- a/go/loadgen/run.go
 +++ b/go/loadgen/run.go
-@@ -295,7 +295,7 @@
+@@ -284,7 +284,7 @@
  		// The intended time comes from the schedule alone, never from when
  		// the previous request finished.
  		next = next.Add(cfg.Schedule.Next())

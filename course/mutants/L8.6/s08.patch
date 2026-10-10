@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -156,12 +156,12 @@
+@@ -173,12 +173,12 @@
      emitted: list[int] = []
      for i, x in enumerate(int(t) for t in draft_ids):
          if p.temperature == 0:

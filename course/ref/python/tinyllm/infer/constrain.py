@@ -47,7 +47,14 @@ DIGIT = _range(0x30, 0x39)
 WORD = DIGIT | _range(0x41, 0x5A) | _range(0x61, 0x7A) | _bits([0x5F])
 SPACE = _bits(b" \t\n\r\f\v")
 DOT = ALL & ~_bits(b"\n")
-CLASS_ESC = {"d": DIGIT, "w": WORD, "s": SPACE, "D": ALL & ~DIGIT, "W": ALL & ~WORD, "S": ALL & ~SPACE}
+CLASS_ESC = {
+    "d": DIGIT,
+    "w": WORD,
+    "s": SPACE,
+    "D": ALL & ~DIGIT,
+    "W": ALL & ~WORD,
+    "S": ALL & ~SPACE,
+}
 CHAR_ESC = {"n": 0x0A, "t": 0x09, "r": 0x0D, "f": 0x0C, "v": 0x0B}
 LITERAL_ESC = set("\\.*+?()[]{}|^$/\"-,:#&~ '")
 
@@ -62,7 +69,9 @@ class _Parser:
         # SOLUTION-BEGIN L8.7
         for ch in pattern:
             if ord(ch) > 0x7F:
-                raise ValueError(f"non-ASCII character {ch!r} in pattern: write it as \\xHH bytes")
+                raise ValueError(
+                    f"non-ASCII character {ch!r} in pattern: write it as \\xHH bytes"
+                )
         self.s = pattern
         self.i = 0
         # SOLUTION-END
@@ -136,7 +145,9 @@ class _Parser:
         except ValueError:
             raise self.error(f"bad repetition {{{body}}}") from None
         if m < 0 or (n is not None and n < m) or max(m, n or 0) > MAX_REPEAT:
-            raise self.error(f"repetition {{{body}}} out of range (0 <= m <= n <= {MAX_REPEAT})")
+            raise self.error(
+                f"repetition {{{body}}} out of range (0 <= m <= n <= {MAX_REPEAT})"
+            )
         self.i = j + 1
         return m, n
         # SOLUTION-END
@@ -212,7 +223,11 @@ class _Parser:
             else:
                 self.i += 1
                 lo_set, is_class = 1 << ord(c), False
-            if not is_class and self.peek() == "-" and self.s[self.i + 1 : self.i + 2] not in ("]", ""):
+            if (
+                not is_class
+                and self.peek() == "-"
+                and self.s[self.i + 1 : self.i + 2] not in ("]", "")
+            ):
                 self.i += 1
                 d = self.peek()
                 if d == "\\":
@@ -421,7 +436,10 @@ def regex_to_dfa(pattern: str) -> DFA:
     alive = [s for s in range(n) if live[s]]
     block = {s: int(acc[s]) for s in alive}
     while True:
-        sig = {s: (block[s],) + tuple(block[t] if t != DEAD else -1 for t in moves[s]) for s in alive}
+        sig = {
+            s: (block[s],) + tuple(block[t] if t != DEAD else -1 for t in moves[s])
+            for s in alive
+        }
         keys = {k: i for i, k in enumerate(sorted(set(sig.values())))}
         nb = {s: keys[sig[s]] for s in alive}
         if len(keys) == len(set(block.values())):
@@ -511,7 +529,10 @@ def json_schema_to_regex(schema: dict[str, Any]) -> str:
         values = schema["enum"] if "enum" in schema else [schema["const"]]
         if not values:
             raise ValueError("enum must not be empty")
-        alts = [_escape(json.dumps(v, separators=(",", ":"), ensure_ascii=False)) for v in values]
+        alts = [
+            _escape(json.dumps(v, separators=(",", ":"), ensure_ascii=False))
+            for v in values
+        ]
         return "(?:" + "|".join(alts) + ")"
     if "anyOf" in schema:
         only("anyOf")
@@ -552,13 +573,23 @@ def json_schema_to_regex(schema: dict[str, Any]) -> str:
     if t == "object":
         only("type", "properties", "required", "additionalProperties")
         if schema.get("additionalProperties", False) is not False:
-            raise ValueError("additionalProperties must be false (or absent) in the subset")
+            raise ValueError(
+                "additionalProperties must be false (or absent) in the subset"
+            )
         props = schema.get("properties", {})
         required = set(schema.get("required", []))
         unknown = required - set(props)
         if unknown:
             raise ValueError(f"required names unknown properties {sorted(unknown)}")
-        members = [(_escape(json.dumps(k, ensure_ascii=False)) + ":" + json_schema_to_regex(v), k in required) for k, v in props.items()]
+        members = [
+            (
+                _escape(json.dumps(k, ensure_ascii=False))
+                + ":"
+                + json_schema_to_regex(v),
+                k in required,
+            )
+            for k, v in props.items()
+        ]
         # Built from the end. rest_after[i]: members i.. once something has
         # been written (each needs a leading comma); rest_first[i]: members
         # i.. when nothing has been written yet.
@@ -575,7 +606,9 @@ def json_schema_to_regex(schema: dict[str, Any]) -> str:
 
 
 class TokenIndex:
-    def __init__(self, dfa: DFA, vocab: Sequence[Optional[bytes]], eos_id: Optional[int] = None) -> None:
+    def __init__(
+        self, dfa: DFA, vocab: Sequence[Optional[bytes]], eos_id: Optional[int] = None
+    ) -> None:
         # SOLUTION-BEGIN L8.7
         self.dfa = dfa
         self.vocab = list(vocab)
@@ -678,7 +711,9 @@ def apply_mask(logits: ArrayLike, mask: ArrayLike) -> NDArray:
     out = np.array(logits, dtype=np.float64)
     m = np.asarray(mask, dtype=bool)
     if out.ndim != 1 or m.shape != out.shape:
-        raise ValueError(f"logits {out.shape} and mask {m.shape} must be the same 1-D shape")
+        raise ValueError(
+            f"logits {out.shape} and mask {m.shape} must be the same 1-D shape"
+        )
     if not m.any():
         raise ValueError("the mask allows no token")
     out[~m] = -np.inf

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -167,8 +167,8 @@
+@@ -184,8 +184,8 @@
              Q[x] = 1.0
          else:
              Q = q[i]

@@ -1,0 +1,38 @@
+{
+ "model_id": "c1-smoke",
+ "version": "v1",
+ "from": "runs/c1-smoke/ckpt",
+ "dtype": "f32",
+ "quant": "none",
+ "model_card": "docs/capstone/c1/MODEL_CARD.md",
+ "ledger": "docs/capstone/c1/LEDGER.jsonl",
+ "suites": [
+  "quality",
+  "safety"
+ ],
+ "eval_seed": 0,
+ "gates": [
+  {
+   "suite": "quality",
+   "task": "ts-val",
+   "metric": "bpb",
+   "op": "<=",
+   "value": 0.6
+  },
+  {
+   "suite": "safety",
+   "task": "refusal",
+   "metric": "score",
+   "op": ">=",
+   "value": 0.9
+  }
+ ],
+ "route": "tinystories",
+ "canary_weight": 0.1,
+ "canary_wait_s": 600,
+ "approve_timeout_s": 86400,
+ "burn": {
+  "query": "sum(rate(http_server_request_duration_seconds_count{model=\"c1-smoke-v1\",http_response_status_code=~\"5..\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{model=\"c1-smoke-v1\"}[5m])) / (1 - 0.99)",
+  "max": 14.4
+ }
+}

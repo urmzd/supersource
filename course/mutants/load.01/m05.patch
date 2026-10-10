@@ -1,9 +1,9 @@
 --- a/go/loadgen/histogram.go
 +++ b/go/loadgen/histogram.go
-@@ -73,9 +73,6 @@
+@@ -66,9 +66,6 @@
+ 
  // Record adds one value; a negative value is recorded as 0.
  func (h *Histogram) Record(ns int64) {
- 	// SOLUTION-BEGIN load.01
 -	if ns < 0 {
 -		ns = 0
 -	}

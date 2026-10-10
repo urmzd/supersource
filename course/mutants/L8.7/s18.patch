@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/constrain.py
 +++ b/python/tinyllm/infer/constrain.py
-@@ -502,7 +502,7 @@
+@@ -523,7 +523,7 @@
              raise ValueError(f"bad array bounds minItems={lo} maxItems={hi}")
          if hi == 0:
              return r"\[\]"

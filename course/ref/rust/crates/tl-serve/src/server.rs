@@ -321,6 +321,14 @@ fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop:
     // SOLUTION-BEGIN L10.5
     let mut live: HashMap<RequestId, Live> = HashMap::new();
     loop {
+        if stop.load(Ordering::SeqCst) {
+            // the drain is over: whatever still runs is cut
+            engine.abort_all();
+            for (_, l) in live.drain() {
+                let _ = l.tx.send(Ev::Failed("the engine stopped".to_string()));
+            }
+            return;
+        }
         loop {
             let cmd = if engine.has_work() {
                 match rx.try_recv() {
@@ -388,8 +396,10 @@ fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop:
                     }
                 }
                 Err(e) => {
-                    for (id, l) in live.drain() {
-                        engine.abort(id);
+                    // a failed step fails every request in flight; the
+                    // engine itself keeps serving
+                    engine.abort_all();
+                    for (_, l) in live.drain() {
                         let _ = l.tx.send(Ev::Failed(e.to_string()));
                     }
                 }

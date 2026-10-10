@@ -31,7 +31,15 @@ sys.path.insert(0, str(ROOT / "course" / "tests"))
 from _lib.pcg32 import PCG32  # noqa: E402
 
 OUT = ROOT / "course" / "fixtures" / "parity" / "softmax.json"
-SHAPES = [(1, 1, 1.0), (1, 3, 1.0), (2, 5, 4.0), (3, 17, 30.0), (1, 64, 1e4), (4, 100, 10.0), (2, 333, 0.01)]
+SHAPES = [
+    (1, 1, 1.0),
+    (1, 3, 1.0),
+    (2, 5, 4.0),
+    (3, 17, 30.0),
+    (1, 64, 1e4),
+    (4, 100, 10.0),
+    (2, 333, 0.01),
+]
 
 
 def main() -> None:
@@ -40,21 +48,33 @@ def main() -> None:
     for i, (rows, cols, scale) in enumerate(SHAPES):
         for online in (0, 1):
             g = root.split(2 * i + online)
-            x = np.array([(g.uniform() * 2 - 1) * scale for _ in range(rows * cols)], dtype=np.float32)
+            x = np.array(
+                [(g.uniform() * 2 - 1) * scale for _ in range(rows * cols)],
+                dtype=np.float32,
+            )
             x64 = x.astype(np.float64).reshape(rows, cols)
             e = np.exp(x64 - x64.max(axis=1, keepdims=True))
             y = e / e.sum(axis=1, keepdims=True)
             cases.append(
                 {
                     "name": f"{'online' if online else 'three_pass'}_{rows}x{cols}_s{scale:g}",
-                    "input": {"rows": rows, "cols": cols, "online": online, "x": [float(v) for v in x]},
+                    "input": {
+                        "rows": rows,
+                        "cols": cols,
+                        "online": online,
+                        "x": [float(v) for v in x],
+                    },
                     "output": [float(v) for v in y.reshape(-1)],
                 }
             )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(
         json.dumps(
-            {"generator": "course/oracle/parity/softmax_golden.py", "numpy": np.__version__, "cases": cases},
+            {
+                "generator": "course/oracle/parity/softmax_golden.py",
+                "numpy": np.__version__,
+                "cases": cases,
+            },
             separators=(",", ":"),
         )
         + "\n"

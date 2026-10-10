@@ -1,0 +1,35 @@
+id        = "L10.7"
+title     = "Serving metrics, SLO histograms, OTel spans and propagation"
+kind      = "build"
+lang      = ["rust"]
+pass      = 7
+chapter   = "ml/08-tinyllm/p10-serving/07-serving-metrics-and-tracing.md"
+# The interfaces are otel/metrics.yaml and otel/semconv.md, linked from the
+# card; neither carries a `chapter:` back-pointer for this chapter
+# (DEVIATIONS B92-03).
+contract  = []
+# EngineGauges::from_stats reads the engine loop's EngineStats (L10.5).
+deps      = ["L10.5"]
+# Confidence intervals and quantiles (M07.4); the Pass 1 hand-written trace
+# export this replaces (obs.00).
+reading   = ["M07.4", "obs.00"]
+# Catalog call site: obs.01 (the serving-path tracing setup lists L10.7 in
+# its prerequisites). Not registered yet, so verify check 9 fails until it
+# lists L10.7 in deps (DEVIATIONS B92-01).
+used_by   = []
+units     = [
+  "rust/crates/tl-serve/src/metrics.rs",
+  "rust/crates/tl-serve/src/telemetry.rs",
+]
+upgrades  = []
+milestone = "MS-L10"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/rust/l10_7.rs"
+smoke     = ["hand_example_histogram", "names_and_buckets_match_the_contract", "traceparent_hand_example"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/L10.7/engine_metrics.json"]

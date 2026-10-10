@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -67,7 +67,6 @@
+@@ -73,7 +73,6 @@
              tok, row = _draft_token(self.lm.logprobs(cur), SamplingParams(), rng)
              ids.append(tok)
              rows.append(row)

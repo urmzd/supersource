@@ -27,3 +27,10 @@ dir       = "course/tests/L8.6"
 smoke     = ["test_hand_example", "test_hand_example_greedy", "test_prompt_lookup_hand_example"]
 timeout_s = 60
 determinism_runs = 2
+
+[learner_tests]
+rung      = 5
+path      = "python/tests/l8-6-spec"
+threshold = 0.80
+required_mutants = ["s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12", "s13", "s14", "s15", "s16", "s17", "s18", "s19", "s20", "s21", "s22", "s23", "s24", "s25"]
+time_budget_s = 30

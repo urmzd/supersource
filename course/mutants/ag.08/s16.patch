@@ -1,0 +1,14 @@
+--- a/go/agent/rag/assemble/assemble.go
++++ b/go/agent/rag/assemble/assemble.go
+@@ -69,10 +69,7 @@
+ // as zero tokens.
+ func (p Packer) Assemble(ctx context.Context, q string, hits []retrieve.Hit, maxTokens int) (Context, []Citation, error) {
+ 	// SOLUTION-BEGIN ag.08
+-	if p.Ledger != nil {
+-		p.Ledger.mu.Lock()
+-		defer p.Ledger.mu.Unlock()
+-	}
++
+ 	var out Context
+ 	var cites []Citation
+ 	var b strings.Builder

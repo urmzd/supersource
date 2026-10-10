@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/quant.py
 +++ b/python/tinyllm/infer/quant.py
-@@ -79,7 +79,7 @@
+@@ -85,7 +85,7 @@
      a = _matrix(w, "quantize_int8_per_channel")
      scales = (np.abs(a).max(axis=1) / np.float32(127.0)).astype(np.float32)
      safe = np.where(scales > 0, scales, np.float32(1.0))

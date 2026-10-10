@@ -5,8 +5,9 @@
 // Nothing here sleeps. Runs that involve time use the course testkit's fake
 // clock: the test moves time with Advance and waits for the runner with
 // BlockUntil, so every latency below is an exact number, not a range.
-// Random test data comes from math/rand/v2 with fixed seeds; the generator
-// under test is checked against the golden vectors of parity/rng.
+// Random test data comes from the tests' own SplitMix64 generator with fixed
+// seeds; the generator under test is checked against the golden vectors of
+// parity/rng.
 package load_01
 
 import (
@@ -15,7 +16,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,6 +31,35 @@ import (
 	"tinyllm/ds/rng"
 	"tinyllm/loadgen"
 )
+
+// testRand is the tests' own generator (SplitMix64), so test data never
+// depends on the code under test or on math/rand (DESIGN D35).
+type testRand struct{ s uint64 }
+
+func newTestRand(a, b uint64) *testRand { return &testRand{s: a*0x9E3779B97F4A7C15 ^ b} }
+
+func (r *testRand) next() uint64 {
+	r.s += 0x9E3779B97F4A7C15
+	z := r.s
+	z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9
+	z = (z ^ (z >> 27)) * 0x94D049BB133111EB
+	return z ^ (z >> 31)
+}
+
+// Float64 is uniform on [0, 1) with 53 bits.
+func (r *testRand) Float64() float64 { return float64(r.next()>>11) / (1 << 53) }
+
+// IntN is uniform on [0, n) (the modulo bias is negligible for test sizes).
+func (r *testRand) IntN(n int) int { return int(r.next() % uint64(n)) }
+
+// ExpFloat64 is a standard exponential by inverse CDF.
+func (r *testRand) ExpFloat64() float64 { return -math.Log(1 - r.Float64()) }
+
+// NormFloat64 is a standard normal by Box-Muller (the cosine half).
+func (r *testRand) NormFloat64() float64 {
+	u1, u2 := r.Float64(), r.Float64()
+	return math.Sqrt(-2*math.Log(1-u1)) * math.Cos(2*math.Pi*u2)
+}
 
 const patience = 5 * time.Second
 
@@ -174,7 +203,7 @@ func TestQuantilesWithinOnePercentOfExactSort(t *testing.T) {
 	// KIND: property
 	// CATCHES: s01, m04
 	// CHAPTER: load.01 section 2
-	r := rand.New(rand.NewPCG(1, 2))
+	r := newTestRand(1, 2)
 	for trial := 0; trial < 20; trial++ {
 		h := loadgen.NewHistogram()
 		n := 1 + r.IntN(3000)
@@ -194,10 +223,10 @@ func TestQuantilesWithinOnePercentOfExactSort(t *testing.T) {
 }
 
 func TestQuantileRankRounding(t *testing.T) {
-	// WHY: in float64, 0.95 * 100 = 95.00000000000001, so a plain ceil makes
-	//      the p95 of 1..100 the 96th value. The rank must forgive that
-	//      rounding. Values below 128 have a bucket each, so the answers are
-	//      exact.
+	// WHY: in float64, 0.55 * 100 = 55.00000000000001 and 0.07 * 100 =
+	//      7.000000000000001, so a plain ceil makes the p55 of 1..100 the
+	//      56th value. The rank must forgive that rounding. Values below 128
+	//      have a bucket each, so the answers are exact.
 	// KIND: boundary
 	// CATCHES: s02
 	// CHAPTER: load.01 section 5, Pitfalls
@@ -208,7 +237,7 @@ func TestQuantileRankRounding(t *testing.T) {
 	for _, c := range []struct {
 		q    float64
 		want int64
-	}{{0, 1}, {0.01, 1}, {0.5, 50}, {0.9, 90}, {0.95, 95}, {0.99, 99}, {1, 100}} {
+	}{{0, 1}, {0.01, 1}, {0.07, 7}, {0.5, 50}, {0.55, 55}, {0.9, 90}, {0.95, 95}, {0.99, 99}, {1, 100}} {
 		if got := h.Quantile(c.q); got != c.want {
 			t.Errorf("Quantile(%v) of 1..100 = %d, want %d", c.q, got, c.want)
 		}
@@ -243,7 +272,7 @@ func TestMergeEqualsRecordingEverything(t *testing.T) {
 	// KIND: property
 	// CATCHES: m06, m07
 	// CHAPTER: load.01 section 4
-	r := rand.New(rand.NewPCG(3, 4))
+	r := newTestRand(3, 4)
 	a, b, all := loadgen.NewHistogram(), loadgen.NewHistogram(), loadgen.NewHistogram()
 	for i := 0; i < 2000; i++ {
 		v := int64(r.ExpFloat64() * 5e7)

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/paged.py
 +++ b/python/tinyllm/infer/paged.py
-@@ -110,8 +110,6 @@
+@@ -138,8 +138,6 @@
          table = self._table(parent)
          if child in self._tables:
              raise ValueError(f"sequence {child} already exists")

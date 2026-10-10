@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/forward.rs
++++ b/rust/crates/tl-engine/src/forward.rs
+@@ -211,7 +211,7 @@
+         let g = project(&lw.gate, &hbuf, n)?;
+         let u = project(&lw.up, &hbuf, n)?;
+         let mut m = vec![0.0f32; g.len()];
+-        tl_sys::kernels::silu_mul_f32(&g, &u, &mut m).map_err(err)?;
++        tl_sys::kernels::silu_mul_f32(&u, &g, &mut m).map_err(err)?;
+         let dn = project(&lw.down, &m, n)?;
+         tl_sys::kernels::add_assign_f32(&mut x, &dn).map_err(err)?;
+     }

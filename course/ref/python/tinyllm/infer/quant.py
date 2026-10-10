@@ -24,7 +24,13 @@ from numpy.typing import ArrayLike, NDArray
 from tinyllm.autograd.tensor import Tensor
 from tinyllm.nn.layers import Linear
 from tinyllm.nn.module import Module
-from tinyllm.num.lowp import dequantize_fp8, fp8_max, mx_dequantize, mx_quantize, quantize_fp8
+from tinyllm.num.lowp import (
+    dequantize_fp8,
+    fp8_max,
+    mx_dequantize,
+    mx_quantize,
+    quantize_fp8,
+)
 
 
 @dataclass
@@ -96,7 +102,8 @@ def pack_int4(q: ArrayLike) -> NDArray:
     if v.size and (v.min() < -8 or v.max() > 7):
         raise ValueError("pack_int4: values must be in [-8, 7]")
     n = (v.astype(np.int16) & 0xF).astype(np.uint8)  # 4-bit two's complement
-    return (n[:, 0::2] | (n[:, 1::2] << 4)).astype(np.uint8)  # even column in the low nibble
+    # the even column goes in the low nibble, the odd one in the high nibble
+    return (n[:, 0::2] | (n[:, 1::2] << 4)).astype(np.uint8)
     # SOLUTION-END
 
 
@@ -116,13 +123,17 @@ def quantize_int4_group(w: ArrayLike, group: int = 32) -> Q4Tensor:
     a = _matrix(w, "quantize_int4_group")
     rows, cols = a.shape
     if group < 2 or group % 2 or cols % group:
-        raise ValueError(f"quantize_int4_group: group {group} must be even and divide in = {cols}")
+        raise ValueError(
+            f"quantize_int4_group: group {group} must be even and divide in = {cols}"
+        )
     g = a.reshape(rows, cols // group, group)
     amax = np.abs(g).max(axis=2)
     with np.errstate(over="ignore"):
         s16 = (amax / np.float32(7.0)).astype(np.float16)  # the scale that is stored
     if not np.isfinite(s16).all():
-        raise ValueError("quantize_int4_group: a scale overflows float16 (|w| above about 4.6e5)")
+        raise ValueError(
+            "quantize_int4_group: a scale overflows float16 (|w| above about 4.6e5)"
+        )
     s = s16.astype(np.float32)[:, :, None]  # quantize against the stored scale
     q = np.where(s > 0, np.rint(g / np.where(s > 0, s, 1.0)), 0.0)
     q = np.clip(q, -8, 7).astype(np.int8).reshape(rows, cols)
@@ -130,7 +141,9 @@ def quantize_int4_group(w: ArrayLike, group: int = 32) -> Q4Tensor:
     # SOLUTION-END
 
 
-def quantize_fp8_per_channel(w: ArrayLike, fmt: Literal["e4m3", "e5m2"] = "e4m3") -> FP8Tensor:
+def quantize_fp8_per_channel(
+    w: ArrayLike, fmt: Literal["e4m3", "e5m2"] = "e4m3"
+) -> FP8Tensor:
     # SOLUTION-BEGIN L8.5
     a = _matrix(w, "quantize_fp8_per_channel")
     top = np.float32(fp8_max(fmt))
@@ -143,11 +156,15 @@ def quantize_fp8_per_channel(w: ArrayLike, fmt: Literal["e4m3", "e5m2"] = "e4m3"
     # SOLUTION-END
 
 
-def quantize_mx(w: ArrayLike, block: int = 32, elem: Literal["fp4_e2m1", "fp8_e4m3"] = "fp4_e2m1") -> MXTensor:
+def quantize_mx(
+    w: ArrayLike, block: int = 32, elem: Literal["fp4_e2m1", "fp8_e4m3"] = "fp4_e2m1"
+) -> MXTensor:
     # SOLUTION-BEGIN L8.5
     a = _matrix(w, "quantize_mx")
     codes, scales = mx_quantize(a, block, elem)
-    return MXTensor(np.asarray(codes, np.uint8), np.asarray(scales, np.uint8), int(block), elem)
+    return MXTensor(
+        np.asarray(codes, np.uint8), np.asarray(scales, np.uint8), int(block), elem
+    )
     # SOLUTION-END
 
 
@@ -155,11 +172,15 @@ def quantize_kv_fp8(x: ArrayLike) -> KVQuant:
     # SOLUTION-BEGIN L8.5
     a = np.asarray(x, dtype=np.float32)
     if a.ndim != 3:
-        raise ValueError(f"quantize_kv_fp8: want [n_kv_heads, T, d_head], got shape {a.shape}")
+        raise ValueError(
+            f"quantize_kv_fp8: want [n_kv_heads, T, d_head], got shape {a.shape}"
+        )
     if not np.isfinite(a).all():
         raise ValueError("quantize_kv_fp8: the slab holds a NaN or an infinity")
-    amax = np.abs(a).reshape(a.shape[0], -1).max(axis=1) if a.size else np.zeros(a.shape[0], np.float32)
-    scales = np.where(amax > 0, amax / np.float32(448.0), np.float32(1.0)).astype(np.float32)
+    flat = np.abs(a).reshape(a.shape[0], -1)
+    amax = flat.max(axis=1) if a.size else np.zeros(a.shape[0], np.float32)  # per head
+    e4m3_max = np.float32(448.0)
+    scales = np.where(amax > 0, amax / e4m3_max, np.float32(1.0)).astype(np.float32)
     codes = np.empty(a.shape, dtype=np.uint8)
     for h in range(a.shape[0]):
         codes[h] = quantize_fp8(a[h], "e4m3", float(scales[h]))
@@ -172,16 +193,27 @@ def dequantize(q: Union[Quantized, tuple[NDArray, NDArray]]) -> NDArray:
     if isinstance(q, tuple):
         q = Q8Tensor(*q)
     if isinstance(q, Q8Tensor):
-        return (q.q.astype(np.float32) * np.asarray(q.scales, np.float32)[:, None]).astype(np.float32)
+        return (
+            q.q.astype(np.float32) * np.asarray(q.scales, np.float32)[:, None]
+        ).astype(np.float32)
     if isinstance(q, Q4Tensor):
         vals = unpack_int4(q.packed).astype(np.float32)
         s = np.repeat(np.asarray(q.scales).astype(np.float32), q.group, axis=1)
         return vals * s
     if isinstance(q, FP8Tensor):
-        rows = [dequantize_fp8(q.codes[r], q.fmt, float(q.scales[r])) for r in range(q.codes.shape[0])]
-        return np.stack(rows).astype(np.float32) if rows else np.zeros(q.codes.shape, np.float32)
+        rows = [
+            dequantize_fp8(q.codes[r], q.fmt, float(q.scales[r]))
+            for r in range(q.codes.shape[0])
+        ]
+        return (
+            np.stack(rows).astype(np.float32)
+            if rows
+            else np.zeros(q.codes.shape, np.float32)
+        )
     if isinstance(q, MXTensor):
-        return np.asarray(mx_dequantize(q.codes, q.scales, q.block, q.elem), dtype=np.float32)
+        return np.asarray(
+            mx_dequantize(q.codes, q.scales, q.block, q.elem), dtype=np.float32
+        )
     if isinstance(q, KVQuant):
         out = np.empty(q.codes.shape, dtype=np.float32)
         for h in range(q.codes.shape[0]):
@@ -195,9 +227,14 @@ def nbytes(q: Union[Quantized, tuple[NDArray, NDArray]]) -> int:
     # SOLUTION-BEGIN L8.5
     if isinstance(q, tuple):
         return int(sum(np.asarray(x).nbytes for x in q))
-    data = q.packed if isinstance(q, Q4Tensor) else (q.q if isinstance(q, Q8Tensor) else q.codes)
+    data = (
+        q.packed
+        if isinstance(q, Q4Tensor)
+        else (q.q if isinstance(q, Q8Tensor) else q.codes)
+    )
     if isinstance(q, MXTensor) and q.elem == "fp4_e2m1":
-        return int(data.size // 2 + np.asarray(q.scales).nbytes)  # two fp4 codes per byte when packed
+        # two fp4 codes per byte once packed
+        return int(data.size // 2 + np.asarray(q.scales).nbytes)
     return int(np.asarray(data).nbytes + np.asarray(q.scales).nbytes)
     # SOLUTION-END
 
@@ -210,7 +247,11 @@ class QuantLinear(Module):
         self.q = q
         self.out_f, self.in_f = int(w.shape[0]), int(w.shape[1])
         self._w_t = np.ascontiguousarray(w.T)  # [in, out], dequantized once
-        self.bias = None if bias is None else np.asarray(bias, dtype=np.float32).reshape(self.out_f)
+        self.bias = (
+            None
+            if bias is None
+            else np.asarray(bias, dtype=np.float32).reshape(self.out_f)
+        )
         # SOLUTION-END
 
     def forward(self, x: Tensor) -> Tensor:
@@ -234,7 +275,9 @@ def _quantize_weight(w: NDArray, scheme: str) -> Any:
     # SOLUTION-END
 
 
-def quantize_model(model: Module, scheme: str, skip: Sequence[str] = ("lm_head",)) -> Module:
+def quantize_model(
+    model: Module, scheme: str, skip: Sequence[str] = ("lm_head",)
+) -> Module:
     # SOLUTION-BEGIN L8.5
     if scheme not in SCHEMES:
         raise ValueError(f"unknown scheme {scheme!r}; one of {SCHEMES}")
@@ -246,7 +289,11 @@ def quantize_model(model: Module, scheme: str, skip: Sequence[str] = ("lm_head",
             continue
         parent_name, _, attr = name.rpartition(".")
         bias = None if mod.bias is None else mod.bias.data
-        setattr(found[parent_name], attr, QuantLinear(_quantize_weight(mod.weight.data, scheme), bias))
+        setattr(
+            found[parent_name],
+            attr,
+            QuantLinear(_quantize_weight(mod.weight.data, scheme), bias),
+        )
     return model
     # SOLUTION-END
 
@@ -259,11 +306,15 @@ def export_q4(model: Module) -> tuple[dict[str, NDArray], dict[str, str]]:
         if isinstance(mod, QuantLinear) and isinstance(mod.q, Q4Tensor):
             groups.add(mod.q.group)
             tensors[f"{name}.weight.qweight"] = mod.q.packed.astype(np.uint8)
-            tensors[f"{name}.weight.scales"] = np.asarray(mod.q.scales, dtype=np.float16)
+            tensors[f"{name}.weight.scales"] = np.asarray(
+                mod.q.scales, dtype=np.float16
+            )
             if mod.bias is not None:
                 tensors[f"{name}.bias"] = mod.bias.astype(np.float32)
     if len(groups) != 1:
-        raise ValueError(f"export_q4: want Q4 weights of one group size, found {sorted(groups) or 'none'}")
+        raise ValueError(
+            f"export_q4: want Q4 weights of one group size, found {sorted(groups) or 'none'}"
+        )
     for name, p in model.named_parameters():
         tensors[name] = np.asarray(p.data)
     return tensors, {"format": "tinyllm", "quant": f"int4-g{groups.pop()}-sym"}

@@ -1,8 +1,8 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -117,7 +117,6 @@
-         common = 0
-         while common < min(len(self._ids), len(ctx) - 1) and self._ids[common] == ctx[common]:
+@@ -132,7 +132,6 @@
+             and self._ids[common] == ctx[common]
+         ):
              common += 1
 -        self._cache.truncate(common)
          self._ids = ctx[:common]

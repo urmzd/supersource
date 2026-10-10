@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -64,7 +64,7 @@
+@@ -70,7 +70,7 @@
          cur = [int(t) for t in ctx]
          ids, rows = [], []
          for _ in range(max(int(k), 0)):

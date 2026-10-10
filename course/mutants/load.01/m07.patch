@@ -1,10 +1,10 @@
 --- a/go/loadgen/histogram.go
 +++ b/go/loadgen/histogram.go
-@@ -173,7 +173,6 @@
+@@ -154,7 +154,6 @@
  		h.counts[i] += c
  	}
  	h.n += o.n
 -	h.sum += o.sum
- 	// SOLUTION-END
  }
  
+ // Buckets lists the non-empty buckets in ascending order.

@@ -65,9 +65,15 @@ def main() -> None:
                 kv = h // (H // Hkv)
                 for i in range(Tq):
                     p = q_offset + i
-                    vis = [j for j in range(Tk) if (not causal or j <= p) and (window <= 0 or j > p - window)]
+                    vis = [
+                        j
+                        for j in range(Tk)
+                        if (not causal or j <= p) and (window <= 0 or j > p - window)
+                    ]
                     assert vis, "every row must see a key"
-                    s = scale * (k[b, kv, vis].astype(np.float64) @ q[b, h, i].astype(np.float64))
+                    s = scale * (
+                        k[b, kv, vis].astype(np.float64) @ q[b, h, i].astype(np.float64)
+                    )
                     m = s.max()
                     e = np.exp(s - m)
                     o[b, h, i] = (e / e.sum()) @ v[b, kv, vis].astype(np.float64)
@@ -76,19 +82,34 @@ def main() -> None:
             {
                 "name": f"B{B}H{H}kv{Hkv}_Tq{Tq}Tk{Tk}D{D}_off{q_offset}_c{causal}_w{window}",
                 "input": {
-                    "B": B, "H": H, "Hkv": Hkv, "Tq": Tq, "Tk": Tk, "D": D, "scale": scale,
-                    "q_offset": q_offset, "causal": causal, "window": window,
+                    "B": B,
+                    "H": H,
+                    "Hkv": Hkv,
+                    "Tq": Tq,
+                    "Tk": Tk,
+                    "D": D,
+                    "scale": scale,
+                    "q_offset": q_offset,
+                    "causal": causal,
+                    "window": window,
                     "q": [float(x) for x in q.reshape(-1)],
                     "k": [float(x) for x in k.reshape(-1)],
                     "v": [float(x) for x in v.reshape(-1)],
                 },
-                "output": {"o": [float(x) for x in o.reshape(-1)], "lse": [float(x) for x in lse.reshape(-1)]},
+                "output": {
+                    "o": [float(x) for x in o.reshape(-1)],
+                    "lse": [float(x) for x in lse.reshape(-1)],
+                },
             }
         )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(
         json.dumps(
-            {"generator": "course/oracle/parity/flash_fwd_golden.py", "numpy": np.__version__, "cases": cases},
+            {
+                "generator": "course/oracle/parity/flash_fwd_golden.py",
+                "numpy": np.__version__,
+                "cases": cases,
+            },
             separators=(",", ":"),
         )
         + "\n"

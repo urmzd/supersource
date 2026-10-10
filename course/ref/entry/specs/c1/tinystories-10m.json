@@ -1,0 +1,59 @@
+{
+ "name": "tinystories-10m",
+ "model": {
+  "tl_arch": "llama",
+  "tl_tokenizer": "file",
+  "vocab_size": 4096,
+  "hidden_size": 320,
+  "intermediate_size": 864,
+  "num_hidden_layers": 8,
+  "num_attention_heads": 8,
+  "num_key_value_heads": 4,
+  "max_position_embeddings": 512,
+  "rms_norm_eps": 1e-05,
+  "rope_theta": 10000.0,
+  "tie_word_embeddings": true,
+  "tl_format": 1
+ },
+ "tokenizer": {
+  "id": "ts-bpe-4k",
+  "path": "tokenizers/ts-bpe-4k/tokenizer.json"
+ },
+ "data": {
+  "train": [
+   "tokens/ts-bpe-4k/tinystories/_MANIFEST.json"
+  ],
+  "val": [
+   "tokens/ts-bpe-4k/ts-val.bin"
+  ]
+ },
+ "optimizer": {
+  "name": "adamw",
+  "lr": 0.001,
+  "betas": [
+   0.9,
+   0.95
+  ],
+  "weight_decay": 0.1
+ },
+ "schedule": {
+  "name": "wsd",
+  "warmup_steps": 100,
+  "decay_frac": 0.2,
+  "min_lr_ratio": 0.1
+ },
+ "precision": {
+  "dtype": "bf16",
+  "recompute": true
+ },
+ "batch": {
+  "micro_batch": 16,
+  "accum": 4,
+  "seq_len": 512
+ },
+ "steps": 3052,
+ "eval_every": 250,
+ "ckpt_every": 250,
+ "keep_ckpts": 3,
+ "seed": 0
+}

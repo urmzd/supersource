@@ -91,7 +91,9 @@ class TokenIndex:
     vocab_size: int
     eos_id: Optional[int]
 
-    def __init__(self, dfa: DFA, vocab: Sequence[Optional[bytes]], eos_id: Optional[int] = None) -> None:
+    def __init__(
+        self, dfa: DFA, vocab: Sequence[Optional[bytes]], eos_id: Optional[int] = None
+    ) -> None:
         """ValueError for an eos_id outside [0, len(vocab))."""
 
     def mask(self, state: int) -> NDArray:

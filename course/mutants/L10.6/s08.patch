@@ -1,0 +1,11 @@
+--- a/rust/crates/tl-engine/src/kv_transfer.rs
++++ b/rust/crates/tl-engine/src/kv_transfer.rs
+@@ -324,7 +324,7 @@
+     /// its hash) and imported, and a full block is registered under its
+     /// hash. Returns whether the chunk was deduped.
+     pub fn accept_chunk(&self, c: &KvChunk, expect_index: u32, taken: &mut Vec<u32>) -> Result<bool, Status> {
+-        if c.kv_format != KV_FORMAT {
++        if c.kv_format > 2 {
+             return Err(Status::failed_precondition(format!("kv_format {}: this engine reads format {KV_FORMAT}", c.kv_format)));
+         }
+         if c.block_index != expect_index {

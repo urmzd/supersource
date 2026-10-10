@@ -1,6 +1,6 @@
 --- a/rust/crates/tl-ds/src/radix.rs
 +++ b/rust/crates/tl-ds/src/radix.rs
-@@ -320,7 +320,6 @@
+@@ -324,7 +324,6 @@
          if fresh.is_empty() {
              return (last, values);
          }

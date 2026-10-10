@@ -1,0 +1,6 @@
+apiVersion: v2
+name: forge-worker
+description: The forge worker (dep.06), the Go worker with the Python environment, scaled by KEDA on queue depth
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

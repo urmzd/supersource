@@ -1,0 +1,13 @@
+--- a/go/agent/provider/retry.go
++++ b/go/agent/provider/retry.go
+@@ -64,9 +64,7 @@
+ 	// SOLUTION-BEGIN ag.01
+ 	p = p.withDefaults()
+ 	var ae *APIError
+-	if errors.As(err, &ae) && ae.RetryAfter > 0 {
+-		return ae.RetryAfter
+-	}
++	_ = ae
+ 	d := float64(p.Initial) * math.Pow(p.Multiplier, float64(n-1))
+ 	if d > float64(p.Max) {
+ 		return p.Max

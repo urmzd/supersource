@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -173,7 +173,7 @@
+@@ -190,7 +190,7 @@
          emitted.append(int(y))
          if not ok:
              return emitted, i

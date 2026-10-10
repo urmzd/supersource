@@ -1,0 +1,11 @@
+{{- if .Values.runtime }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-runtime
+  labels:
+    {{- include "engine.labels" . | nindent 4 }}
+data:
+  runtime.toml: |
+    {{- toToml .Values.runtime | nindent 4 }}
+{{- end }}

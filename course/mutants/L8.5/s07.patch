@@ -1,9 +1,9 @@
 --- a/python/tinyllm/infer/quant.py
 +++ b/python/tinyllm/infer/quant.py
-@@ -114,7 +114,7 @@
-         s16 = (amax / np.float32(7.0)).astype(np.float16)  # the scale that is stored
-     if not np.isfinite(s16).all():
-         raise ValueError("quantize_int4_group: a scale overflows float16 (|w| above about 4.6e5)")
+@@ -125,7 +125,7 @@
+         raise ValueError(
+             "quantize_int4_group: a scale overflows float16 (|w| above about 4.6e5)"
+         )
 -    s = s16.astype(np.float32)[:, :, None]  # quantize against the stored scale
 +    s = (amax / np.float32(7.0))[:, :, None]
      q = np.where(s > 0, np.rint(g / np.where(s > 0, s, 1.0)), 0.0)

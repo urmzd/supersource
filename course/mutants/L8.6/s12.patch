@@ -1,6 +1,6 @@
 --- a/python/tinyllm/infer/spec.py
 +++ b/python/tinyllm/infer/spec.py
-@@ -88,7 +88,7 @@
+@@ -98,7 +98,7 @@
              suffix = ctx[L - n :]
              for i in range(L - n - 1, -1, -1):  # most recent earlier occurrence first
                  if ctx[i : i + n] == suffix:

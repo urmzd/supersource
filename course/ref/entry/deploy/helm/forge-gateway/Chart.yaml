@@ -1,6 +1,6 @@
 apiVersion: v2
 name: forge-gateway
-description: The tracer gateway (API key check and SSE proxy) in front of the engine
+description: The forge gateway (keys, limits, cache, routing, SSE proxy, usage ledger) in front of the engines
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.0
+appVersion: "0.2.0"

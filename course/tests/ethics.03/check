@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Artifact check for ethics.03 (DESIGN 4.6, 6.4; H15: `ss check ethics.03`
+# runs this from the root of your repo and its exit code is the verdict).
+#
+# It runs the annotated tests next to this file against your model card,
+# docs/MODEL_CARD.md, your datasheet, docs/DATASHEET.md, and the card of the
+# third-party agent model, docs/models/smollm2-135m-instruct.md. The
+# datasheet's sources are checked against your ethics.01 allowlist,
+# docs/data/license-allowlist.toml, and the third-party card against the
+# pinned revision in the course's fixtures/ASSETS.tsv. Standard library only
+# (tomllib), so uv supplies a Python >= 3.11 and pytest. Read them with
+# `ss tests ethics.03`.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+tests="$(cd "$here/.." && pwd)"
+
+fail() { echo "ethics.03: $*" >&2; exit 1; }
+command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
+for f in docs/MODEL_CARD.md docs/DATASHEET.md docs/models/smollm2-135m-instruct.md; do
+  [ -f "$PWD/$f" ] || fail "$f is missing: write it from the chapter's templates (section 4)"
+done
+
+export SS_REPO="$PWD" PYTHONPATH="$tests" PYTHONDONTWRITEBYTECODE=1
+export SS_COURSE_TREE="${SS_COURSE_TREE:-$(cd "$tests/.." && pwd)}"
+exec uv run --no-project --python ">=3.11" --quiet --with pytest \
+  python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

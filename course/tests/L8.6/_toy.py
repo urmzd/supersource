@@ -16,26 +16,38 @@ from _lib.pcg32 import PCG32
 
 
 class BagLM:
-    def __init__(self, vocab: int = 8, d: int = 6, max_len: int = 96, seed: int = 0, scale: float = 3.0) -> None:
+    def __init__(
+        self,
+        vocab: int = 8,
+        d: int = 6,
+        max_len: int = 96,
+        seed: int = 0,
+        scale: float = 3.0,
+    ) -> None:
         rng = PCG32(seed)
         self.vocab, self.d = vocab, d
         self.n_layers, self.n_kv_heads, self.d_head, self.max_len = 1, 1, d, max_len
         self.emb = rng.normal_array((vocab, d))
         self.pos = 0.5 * rng.normal_array((max_len, d))
         self.W = scale * rng.normal_array((vocab, d))
-        self.calls: list[tuple[list[int], list[int]]] = []  # (positions, ids) per forward
+        # (positions, ids) of every forward call
+        self.calls: list[tuple[list[int], list[int]]] = []
 
     def forward(self, ids, positions=None, cache=None):
         ids = np.asarray(ids, dtype=np.int64)
         assert ids.ndim == 2 and ids.shape[0] == 1
         T = ids.shape[1]
-        pos = np.arange(T) if positions is None else np.asarray(positions, dtype=np.int64)
+        pos = (
+            np.arange(T) if positions is None else np.asarray(positions, dtype=np.int64)
+        )
         self.calls.append((pos.tolist(), ids[0].tolist()))
         k = self.emb[ids[0]].astype(np.float32)[None, None]  # [1, 1, T, d]
         if cache is not None:
             K, _ = cache.update(0, k, k)
             base = int(pos[0])
-            assert K.shape[2] == base + T, "the cache must hold exactly the positions before this chunk"
+            assert K.shape[2] == base + T, (
+                "the cache must hold exactly the positions before this chunk"
+            )
         else:
             K, base = k, 0
             assert int(pos[0]) == 0

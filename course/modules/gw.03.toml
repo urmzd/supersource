@@ -1,0 +1,23 @@
+id        = "gw.03"
+title     = "Rate limiting: RPM token bucket + TPM reserve/settle"
+kind      = "build"
+lang      = ["go"]
+pass      = 7
+chapter   = "ai-platform-engineering/08-authorization-and-access-control/02-rate-limiting.md"
+contract  = []                      # openapi/openai-subset.v1.yaml (429, x-ratelimit-*) is linked from the card (B82-02)
+deps      = ["gw.01", "gw.02"]
+reading   = ["S-M07d", "practice/build/cloud/go/README.md"]   # Little's law and queueing; practice go/07 is the warm-up
+# The composition root (your go/cmd/gateway) plugs the stage in; no library
+# module calls it yet, so verify check 9 fails until one does (DEVIATIONS B93-05).
+used_by   = []
+units     = ["go/gateway/limit/limit.go"]
+upgrades  = []
+milestone = "MS-gateway"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/go/gw_03/"
+smoke     = ["TestHandExample", "TestMiddleware429Headers", "TestKeysAreIndependent", "TestPromptText",
+             "TestTokenizeCounter", "TestNoPrincipalPassesThrough"]
+timeout_s = 120
+determinism_runs = 2

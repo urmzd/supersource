@@ -1,0 +1,13 @@
+--- a/go/gateway/limit/limit.go
++++ b/go/gateway/limit/limit.go
+@@ -171,9 +171,7 @@
+ 	defer l.mu.Unlock()
+ 	st := l.state(key, lim, now)
+ 	var wait time.Duration
+-	if lim.RPM > 0 {
+-		wait = max(wait, st.req.wait(float64(min(c.Requests, lim.RPM))))
+-	}
++	wait = max(wait, st.req.wait(float64(min(c.Requests, max(lim.RPM, 1)))))
+ 	if lim.TPM > 0 {
+ 		wait = max(wait, st.tok.wait(float64(min(c.Tokens, lim.TPM))))
+ 	}

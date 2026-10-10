@@ -1,0 +1,13 @@
+--- a/rust/crates/tl-engine/src/sample.rs
++++ b/rust/crates/tl-engine/src/sample.rs
+@@ -49,8 +49,8 @@
+     /// 53 random bits in [0, 1): a = next >> 5, b = next >> 6,
+     /// (a * 2^26 + b) * 2^-53. Two `next_u32` per call.
+     pub fn uniform_f64(&mut self) -> f64 {
+-        let a = (self.next_u32() >> 5) as u64;
+-        let b = (self.next_u32() >> 6) as u64;
++        let a = (self.next_u32() >> 6) as u64;
++        let b = (self.next_u32() >> 5) as u64;
+         ((a << 26) + b) as f64 * (1.0 / 9007199254740992.0)
+     }
+ 

@@ -43,7 +43,9 @@ from tinyllm.nn.layers import Linear
 from tinyllm.nn.module import Module
 
 SEED = int(os.environ.get("SS_SEED", "0"))
-FIX = Path(os.environ.get("TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures"))
+FIX = Path(
+    os.environ.get("TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures")
+)
 
 
 def weights(g: PCG32, shape, scale=1.0) -> np.ndarray:
@@ -67,7 +69,10 @@ def test_hand_example_int4_group():
     w = np.array([[1.75, -0.6, 0.1, 0.3], [0.375, -0.125, 0.625, 1.75]], np.float32)
     q = quantize_int4_group(w, group=4)
     assert isinstance(q, Q4Tensor) and q.group == 4 and q.shape == (2, 4)
-    assert q.packed.dtype == np.uint8 and q.packed.tolist() == [[0xE7, 0x10], [0x02, 0x72]]
+    assert q.packed.dtype == np.uint8 and q.packed.tolist() == [
+        [0xE7, 0x10],
+        [0x02, 0x72],
+    ]
     assert q.scales.dtype == np.float16 and q.scales.tolist() == [[0.25], [0.25]]
     assert unpack_int4(q.packed).tolist() == [[7, -2, 0, 1], [2, 0, 2, 7]]
     assert dequantize(q).tolist() == [[1.75, -0.5, 0.0, 0.25], [0.5, 0.0, 0.5, 1.75]]
@@ -148,7 +153,11 @@ def test_int4_error_is_at_most_half_a_step():
             q = quantize_int4_group(w, group)
             s = np.repeat(q.scales.astype(np.float32), group, axis=1)
             err = np.abs(w - dequantize(q))
-            assert (err <= s / 2 * (1 + 1e-6) + 1e-30).all(), (scale, group, float((err / s).max()))
+            assert (err <= s / 2 * (1 + 1e-6) + 1e-30).all(), (
+                scale,
+                group,
+                float((err / s).max()),
+            )
 
 
 def test_int4_dequantizes_with_the_stored_scale():
@@ -172,7 +181,9 @@ def test_int4_dequantizes_with_the_stored_scale():
     s16 = q.scales.astype(np.float32)
     codes = unpack_int4(q.packed).astype(np.float32)
     assert (dequantize(q) == codes * np.repeat(s16, 32, axis=1)).all()
-    expect = np.clip(np.rint(w.reshape(4, 2, 32) / s16[:, :, None]), -8, 7).reshape(4, 64)
+    expect = np.clip(np.rint(w.reshape(4, 2, 32) / s16[:, :, None]), -8, 7).reshape(
+        4, 64
+    )
     assert (codes == expect).all()
 
 
@@ -241,7 +252,11 @@ def test_fp8_per_channel_relative_error():
     g = PCG32(SEED, 34)
     w = weights(g, (8, 64), 5.0)
     q = quantize_fp8_per_channel(w, "e4m3")
-    assert isinstance(q, FP8Tensor) and q.codes.dtype == np.uint8 and q.scales.dtype == np.float32
+    assert (
+        isinstance(q, FP8Tensor)
+        and q.codes.dtype == np.uint8
+        and q.scales.dtype == np.float32
+    )
     assert_close(q.scales, np.abs(w).max(axis=1) / 448.0, rtol=1e-6, atol=0.0)
     d = dequantize(q)
     big = np.abs(w) >= q.scales[:, None] * 2.0**-6
@@ -278,7 +293,11 @@ def test_kv_fp8_follows_format_v2():
     x = weights(g, (3, 5, 8), 4.0)
     x[1] = 0.0
     kv = quantize_kv_fp8(x)
-    assert isinstance(kv, KVQuant) and kv.codes.shape == (3, 5, 8) and kv.scales.dtype == np.float32
+    assert (
+        isinstance(kv, KVQuant)
+        and kv.codes.shape == (3, 5, 8)
+        and kv.scales.dtype == np.float32
+    )
     amax = np.abs(x).reshape(3, -1).max(axis=1)
     assert kv.scales[0] == np.float32(amax[0]) / np.float32(448.0)
     assert kv.scales[1] == 1.0 and (kv.codes[1] == 0).all()
@@ -297,12 +316,14 @@ class TinyLM(Module):
         self.up = Linear(d, h, bias=True)
         self.down = Linear(h, d, bias=False)
         self.lm_head = Linear(d, v, bias=False)
-        self.load_state_dict({
-            "up.weight": weights(g, (h, d), 0.5),
-            "up.bias": weights(g, (h,), 0.1),
-            "down.weight": weights(g, (d, h), 0.5),
-            "lm_head.weight": weights(g, (v, d), 0.5),
-        })
+        self.load_state_dict(
+            {
+                "up.weight": weights(g, (h, d), 0.5),
+                "up.bias": weights(g, (h,), 0.1),
+                "down.weight": weights(g, (d, h), 0.5),
+                "lm_head.weight": weights(g, (v, d), 0.5),
+            }
+        )
 
     def forward(self, x):
         return self.lm_head(self.down(self.up(x)))
@@ -319,7 +340,11 @@ def test_quant_linear_is_the_dequantized_matmul():
     g = PCG32(SEED, 37)
     w, b = weights(g, (24, 64)), weights(g, (24,), 0.2)
     x = weights(g, (3, 5, 64))
-    for q in (quantize_int4_group(w, 32), Q8Tensor(*quantize_int8_per_channel(w)), quantize_fp8_per_channel(w)):
+    for q in (
+        quantize_int4_group(w, 32),
+        Q8Tensor(*quantize_int8_per_channel(w)),
+        quantize_fp8_per_channel(w),
+    ):
         lin = QuantLinear(q, bias=b)
         assert (lin.in_f, lin.out_f) == (64, 24)
         y = lin(Tensor(x))
@@ -329,7 +354,10 @@ def test_quant_linear_is_the_dequantized_matmul():
         assert list(lin.named_parameters()) == []
 
 
-@pytest.mark.parametrize("scheme,budget", [("int8", 0.02), ("q4_g32", 0.2), ("fp8_e4m3", 0.08), ("mxfp4", 0.35)])
+@pytest.mark.parametrize(
+    "scheme,budget",
+    [("int8", 0.02), ("q4_g32", 0.2), ("fp8_e4m3", 0.08), ("mxfp4", 0.35)],
+)
 def test_quantize_model_within_budget(scheme, budget):
     # WHY: quantize_model swaps every Linear but lm_head for a QuantLinear
     #      and leaves lm_head's parameters alone; the model's logits stay
@@ -367,12 +395,22 @@ def test_export_q4_names_and_metadata():
     m = quantize_model(TinyLM(g), "q4_g32")
     tensors, meta = export_q4(m)
     assert meta == {"format": "tinyllm", "quant": "int4-g32-sym"}
-    assert sorted(tensors) == sorted([
-        "up.weight.qweight", "up.weight.scales", "up.bias",
-        "down.weight.qweight", "down.weight.scales", "lm_head.weight",
-    ])
-    assert tensors["up.weight.qweight"].dtype == np.uint8 and tensors["up.weight.qweight"].shape == (128, 32)
-    assert tensors["down.weight.scales"].dtype == np.float16 and tensors["down.weight.scales"].shape == (64, 4)
+    assert sorted(tensors) == sorted(
+        [
+            "up.weight.qweight",
+            "up.weight.scales",
+            "up.bias",
+            "down.weight.qweight",
+            "down.weight.scales",
+            "lm_head.weight",
+        ]
+    )
+    assert tensors["up.weight.qweight"].dtype == np.uint8 and tensors[
+        "up.weight.qweight"
+    ].shape == (128, 32)
+    assert tensors["down.weight.scales"].dtype == np.float16 and tensors[
+        "down.weight.scales"
+    ].shape == (64, 4)
     assert nbytes(m.up.q) == 128 * 32 + 128 * 2 * 2
     with pytest.raises(ValueError):
         export_q4(TinyLM(g))

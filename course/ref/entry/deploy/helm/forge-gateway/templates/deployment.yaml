@@ -4,61 +4,100 @@ kind: Deployment
 metadata:
   name: {{ .Release.Name }}
   labels:
-    app.kubernetes.io/name: {{ .Release.Name }}
-    app.kubernetes.io/component: gateway
+    {{- include "gateway.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicas }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ .Release.Name }}
-        app.kubernetes.io/component: gateway
+        {{- include "gateway.labels" . | nindent 8 }}
+      {{- if .Values.runtime }}
+      annotations:
+        checksum/runtime: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- end }}
     spec:
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        {{- with .Values.securityContext.runAsGroup }}
+        runAsGroup: {{ . }}
+        fsGroup: {{ . }}
+        {{- end }}
       containers:
         - name: gateway
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}{{ with .Values.image.digest }}@{{ . }}{{ end }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
           args:
+            {{- if .Values.runtime }}
+            - --config
+            - /etc/tinyllm/runtime.toml
+            {{- else }}
             - --port
-            - {{ .Values.port | quote }}
+            - {{ .Values.service.port | quote }}
             - --health-port
-            - {{ .Values.healthPort | quote }}
+            - {{ .Values.service.healthPort | quote }}
             - --upstream
             - {{ $upstream | quote }}
+            {{- end }}
           env:
             - name: TL_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.apiKey.secretName }}
                   key: {{ .Values.apiKey.secretKey }}
+            - name: TL_GATEWAY_PEPPER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.pepper.name }}
+                  key: {{ .Values.pepper.key }}
+            - name: TL_GATEWAY__USAGE_DB
+              value: {{ printf "%s/usage.db" .Values.ledger.mountPath | quote }}
             - name: OTEL_SERVICE_NAME
-              value: {{ .Release.Name | quote }}
+              value: {{ .Values.otel.serviceName | default .Release.Name | quote }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.otlpEndpoint | quote }}
+              value: {{ .Values.otel.endpoint | quote }}
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
-              containerPort: {{ .Values.port }}
+              containerPort: {{ .Values.service.port }}
             - name: health
-              containerPort: {{ .Values.healthPort }}
-          # Readiness follows the engine (/readyz); liveness checks only the
-          # gateway itself (/healthz), so an engine outage never restarts it.
+              containerPort: {{ .Values.service.healthPort }}
+            - name: registry
+              containerPort: {{ .Values.service.registryPort }}
           readinessProbe:
             httpGet:
-              path: /readyz
+              path: {{ .Values.probes.readiness.path }}
               port: health
-            periodSeconds: 2
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds | default 5 }}
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: {{ .Values.probes.liveness.path }}
               port: health
-            periodSeconds: 10
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds | default 10 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem | default true }}
+          volumeMounts:
+            - name: ledger
+              mountPath: {{ .Values.ledger.mountPath }}
+            {{- if .Values.runtime }}
+            - name: runtime
+              mountPath: /etc/tinyllm
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: ledger
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-ledger
+        {{- if .Values.runtime }}
+        - name: runtime
+          configMap:
+            name: {{ .Release.Name }}-runtime
+        {{- end }}

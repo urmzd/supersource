@@ -1,0 +1,13 @@
+--- a/rust/crates/tl-serve/src/server.rs
++++ b/rust/crates/tl-serve/src/server.rs
+@@ -774,9 +774,7 @@
+             error_response(&e)
+         }
+     };
+-    if let Ok(v) = HeaderValue::from_str(&rid) {
+-        resp.headers_mut().insert("x-request-id", v);
+-    }
++
+     Ok(resp)
+ }
+ 

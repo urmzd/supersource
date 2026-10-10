@@ -182,30 +182,23 @@ def tree_sha256(art: Path, dirs: list[Path]) -> str:
 
 
 def cmd_run(a) -> dict:
-    cfg_path = Path(a.config)
-    cfg = load_config(cfg_path)
-    base = cfg_path.resolve().parent
+    if isinstance(a.config, dict):
+        # An activity (data.09, cli_activity.py): the config arrives parsed,
+        # and relative paths resolve against a.base (TL_ARTIFACTS).
+        cfg = a.config
+        base = Path(a.base).resolve()
+        cfg_bytes = json.dumps(cfg, sort_keys=True, separators=(",", ":")).encode()
+    else:
+        cfg_path = Path(a.config)
+        cfg = load_config(cfg_path)
+        base = cfg_path.resolve().parent
+        cfg_bytes = cfg_path.read_bytes()
     art = artifacts()
     corpus_root = art / "corpus"
     until = a.until
     if until not in STAGES:
         raise Fail(2, f"--until must be one of {', '.join(STAGES)}")
-    rust_module()
-    from corpus.dedup import exact_dedup
     from corpus.fetch import FetchError, fetch, sources_from_config
-    from corpus.filter import (
-        gopher_rules,
-        lang_filter,
-        length_filter,
-        normalize_unicode,
-        repetition_filter,
-    )
-    from corpus.ledger import LedgerError, check, latest, read_ledger, reconcile
-    from corpus.minhash import decontaminate, near_dedup
-    from corpus.pii import scrub_stage
-    from corpus.shard import write_shards
-    from corpus.stage import compose, extract
-    from corpus.tokenize import tokenize_shards
 
     try:
         srcs = sources_from_config(cfg)
@@ -227,6 +220,21 @@ def cmd_run(a) -> dict:
     out = {"dataset": cfg["dataset"], "version": cfg["version"], "stage": until}
     if until == "fetch":
         return out
+    rust_module()  # after fetch: only the later stages need tinyllm_rs
+    from corpus.dedup import exact_dedup
+    from corpus.filter import (
+        gopher_rules,
+        lang_filter,
+        length_filter,
+        normalize_unicode,
+        repetition_filter,
+    )
+    from corpus.ledger import LedgerError, check, latest, read_ledger, reconcile
+    from corpus.minhash import decontaminate, near_dedup
+    from corpus.pii import scrub_stage
+    from corpus.shard import write_shards
+    from corpus.stage import compose, extract
+    from corpus.tokenize import tokenize_shards
 
     def restore_urls(docs):
         for d in docs:
@@ -340,7 +348,7 @@ def cmd_run(a) -> dict:
             "ngram": ngram,
         },
         ledger_ref="corpus/LEDGER.jsonl",
-        config_sha256=hashlib.sha256(cfg_path.read_bytes()).hexdigest(),
+        config_sha256=hashlib.sha256(cfg_bytes).hexdigest(),
     )
     out["n_shards"] = m["n_shards"]
     reconcile(ledger, cdir, filters_applied=["length", "lang", "gopher", "repetition"])
@@ -373,6 +381,25 @@ def cmd_run(a) -> dict:
     run_file = corpus_root / f"RUN-{cfg['dataset']}-{cfg['version']}.json"
     run_file.write_text(json.dumps(out) + "\n")
     return out
+
+
+def tokenize_only(cfg: dict, art: Path, base: Path) -> dict:
+    """The tokenize stage alone, over the manifest the shard stage wrote
+    (data.09's tokenize activity: the shards are not rebuilt)."""
+    rust_module()
+    from corpus.tokenize import tokenize_shards
+
+    cdir = art / "corpus" / cfg["dataset"] / cfg["version"]
+    tk = cfg["tokenizer"]
+    tok_json = None if tk.get("path") is None else (base / tk["path"] if not Path(tk["path"]).is_absolute() else Path(tk["path"]))
+    tdir = art / "tokens" / tk["id"] / cfg["dataset"]
+    tm = tokenize_shards(cdir / "_MANIFEST.json", tok_json, tdir, tokenizer_id=tk["id"])
+    return {
+        "dataset": cfg["dataset"], "version": cfg["version"], "stage": "tokenize",
+        "train_tokens": sum(x["n_tokens"] for x in tm.files if x["split"] == "train"),
+        "val_tokens": sum(x["n_tokens"] for x in tm.files if x["split"] == "val"),
+        "output_sha256": tree_sha256(art, [cdir, tdir]),
+    }
 
 
 def scrub_stage_with(policy, scrub_stage):
@@ -411,6 +438,13 @@ def cmd_datasheet(a) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Pass 8 (data.09): run --stage and cleanup, the subprocess activities of
+    # CorpusBuild, glue in cli_activity.py (it claims only those forms).
+    from corpus.cli_activity import intercept
+
+    code = intercept(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
     p = argparse.ArgumentParser(prog="corpus")
     sub = p.add_subparsers(dest="verb", required=True)
     r = sub.add_parser("run")
