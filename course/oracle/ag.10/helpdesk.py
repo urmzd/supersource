@@ -69,11 +69,23 @@ READS, WRITES = ["get_item", "list_items"], ["update_item"]
 
 
 def read(name, args, returned):
-    return {"name": name, "args": args, "verdict": "allow", "is_error": False, "result": json.dumps(returned)}
+    return {
+        "name": name,
+        "args": args,
+        "verdict": "allow",
+        "is_error": False,
+        "result": json.dumps(returned),
+    }
 
 
 def write(item_id, fields):
-    return {"name": "update_item", "args": {"id": item_id, **fields}, "verdict": "allow", "is_error": False, "result": "{\"ok\": true}"}
+    return {
+        "name": "update_item",
+        "args": {"id": item_id, **fields},
+        "verdict": "allow",
+        "is_error": False,
+        "result": '{"ok": true}',
+    }
 
 
 def after(edit):
@@ -120,7 +132,10 @@ def grade(task, aft, calls):
         if k not in delta or delta[k] != v:
             failed.add("required_changes")
     for k in delta:
-        if not any(k == a or (a.endswith(".*") and k.startswith(a[:-1])) for a in task["allowed"]):
+        if not any(
+            k == a or (a.endswith(".*") and k.startswith(a[:-1]))
+            for a in task["allowed"]
+        ):
             failed.add("only_requested_changes")
     if task["read_before_write"]:
         seen = set()
@@ -139,6 +154,7 @@ def set_(row, field, value, stamp=True):
         w[row][field] = value
         if stamp:
             w[row]["updated_at"] = 200
+
     return edit
 
 
@@ -146,18 +162,21 @@ def chain(*edits):
     def edit(w):
         for e in edits:
             e(w)
+
     return edit
 
 
 def drop(row, field):
     def edit(w):
         del w[row][field]
+
     return edit
 
 
 def create(row, fields):
     def edit(w):
         w[row] = fields
+
     return edit
 
 
@@ -166,38 +185,161 @@ I2 = {"id": "i2", "sku": "KB-1", "wh": "paris", "qty": 7}
 
 ATTEMPTS = [
     # restock
-    ("restock", "oracle", "read-then-write", after(set_("items/i1", "qty", 5)),
-     [read("list_items", {"sku": "KB-1"}, {"items": [I1, I2]}), write("i1", {"qty": 5})], []),
-    ("restock", "oracle", "bookkeeping-only-extra", after(chain(set_("items/i1", "qty", 5), set_("items/i3", "updated_at", 300, False))),
-     [read("get_item", {"id": "i1"}, {"item": I1}), write("i1", {"qty": 5})], []),
-    ("restock", "mutant", "wrong-warehouse", after(set_("items/i2", "qty", 5)),
-     [read("list_items", {"sku": "KB-1"}, {"items": [I1, I2]}), write("i2", {"qty": 5})],
-     ["only_requested_changes", "required_changes"]),
-    ("restock", "mutant", "did-nothing", after(lambda w: None),
-     [read("list_items", {"sku": "KB-1"}, {"items": [I1, I2]})], ["required_changes"]),
-    ("restock", "mutant", "extra-note", after(chain(set_("items/i1", "qty", 5), set_("items/i1", "note", "restocked"))),
-     [read("get_item", {"id": "i1"}, {"item": I1}), write("i1", {"qty": 5, "note": "restocked"})], ["only_requested_changes"]),
-    ("restock", "mutant", "blind-write", after(set_("items/i1", "qty", 5)),
-     [write("i1", {"qty": 5})], ["read_before_write"]),
-    ("restock", "mutant", "asked-but-not-returned", after(set_("items/i1", "qty", 5)),
-     [read("list_items", {"id": "i1", "wh": "paris"}, {"items": [I2]}), write("i1", {"qty": 5})], ["read_before_write"]),
-    ("restock", "mutant", "string-quantity", after(set_("items/i1", "qty", "5")),
-     [read("get_item", {"id": "i1"}, {"item": I1}), write("i1", {"qty": "5"})], ["required_changes"]),
+    (
+        "restock",
+        "oracle",
+        "read-then-write",
+        after(set_("items/i1", "qty", 5)),
+        [
+            read("list_items", {"sku": "KB-1"}, {"items": [I1, I2]}),
+            write("i1", {"qty": 5}),
+        ],
+        [],
+    ),
+    (
+        "restock",
+        "oracle",
+        "bookkeeping-only-extra",
+        after(
+            chain(
+                set_("items/i1", "qty", 5), set_("items/i3", "updated_at", 300, False)
+            )
+        ),
+        [read("get_item", {"id": "i1"}, {"item": I1}), write("i1", {"qty": 5})],
+        [],
+    ),
+    (
+        "restock",
+        "mutant",
+        "wrong-warehouse",
+        after(set_("items/i2", "qty", 5)),
+        [
+            read("list_items", {"sku": "KB-1"}, {"items": [I1, I2]}),
+            write("i2", {"qty": 5}),
+        ],
+        ["only_requested_changes", "required_changes"],
+    ),
+    (
+        "restock",
+        "mutant",
+        "did-nothing",
+        after(lambda w: None),
+        [read("list_items", {"sku": "KB-1"}, {"items": [I1, I2]})],
+        ["required_changes"],
+    ),
+    (
+        "restock",
+        "mutant",
+        "extra-note",
+        after(chain(set_("items/i1", "qty", 5), set_("items/i1", "note", "restocked"))),
+        [
+            read("get_item", {"id": "i1"}, {"item": I1}),
+            write("i1", {"qty": 5, "note": "restocked"}),
+        ],
+        ["only_requested_changes"],
+    ),
+    (
+        "restock",
+        "mutant",
+        "blind-write",
+        after(set_("items/i1", "qty", 5)),
+        [write("i1", {"qty": 5})],
+        ["read_before_write"],
+    ),
+    (
+        "restock",
+        "mutant",
+        "asked-but-not-returned",
+        after(set_("items/i1", "qty", 5)),
+        [
+            read("list_items", {"id": "i1", "wh": "paris"}, {"items": [I2]}),
+            write("i1", {"qty": 5}),
+        ],
+        ["read_before_write"],
+    ),
+    (
+        "restock",
+        "mutant",
+        "string-quantity",
+        after(set_("items/i1", "qty", "5")),
+        [read("get_item", {"id": "i1"}, {"item": I1}), write("i1", {"qty": "5"})],
+        ["required_changes"],
+    ),
     # assign-unowned
-    ("assign-unowned", "oracle", "null-and-absent", after(chain(set_("tickets/t2", "owner", "ann"), set_("tickets/t3", "owner", "ann"))),
-     [], []),
-    ("assign-unowned", "mutant", "null-only", after(set_("tickets/t2", "owner", "ann")),
-     [], ["required_changes"]),
-    ("assign-unowned", "mutant", "also-reassigned-bob", after(chain(set_("tickets/t2", "owner", "ann"), set_("tickets/t3", "owner", "ann"), set_("tickets/t4", "owner", "ann"))),
-     [], ["only_requested_changes"]),
+    (
+        "assign-unowned",
+        "oracle",
+        "null-and-absent",
+        after(
+            chain(
+                set_("tickets/t2", "owner", "ann"), set_("tickets/t3", "owner", "ann")
+            )
+        ),
+        [],
+        [],
+    ),
+    (
+        "assign-unowned",
+        "mutant",
+        "null-only",
+        after(set_("tickets/t2", "owner", "ann")),
+        [],
+        ["required_changes"],
+    ),
+    (
+        "assign-unowned",
+        "mutant",
+        "also-reassigned-bob",
+        after(
+            chain(
+                set_("tickets/t2", "owner", "ann"),
+                set_("tickets/t3", "owner", "ann"),
+                set_("tickets/t4", "owner", "ann"),
+            )
+        ),
+        [],
+        ["only_requested_changes"],
+    ),
     # unassign
     ("unassign", "oracle", "field-removed", after(drop("tickets/t1", "owner")), [], []),
-    ("unassign", "mutant", "set-to-null", after(set_("tickets/t1", "owner", None)), [], ["required_changes"]),
+    (
+        "unassign",
+        "mutant",
+        "set-to-null",
+        after(set_("tickets/t1", "owner", None)),
+        [],
+        ["required_changes"],
+    ),
     # new-ticket
-    ("new-ticket", "oracle", "created", after(create("tickets/t5", {"status": "open", "subject": "damaged keyboard"})), [], []),
-    ("new-ticket", "mutant", "created-and-closed-t1", after(chain(create("tickets/t5", {"status": "open"}), set_("tickets/t1", "status", "closed"))),
-     [], ["only_requested_changes"]),
-    ("new-ticket", "mutant", "deleted-t4-instead", after(lambda w: w.pop("tickets/t4")), [], ["only_requested_changes", "required_changes"]),
+    (
+        "new-ticket",
+        "oracle",
+        "created",
+        after(create("tickets/t5", {"status": "open", "subject": "damaged keyboard"})),
+        [],
+        [],
+    ),
+    (
+        "new-ticket",
+        "mutant",
+        "created-and-closed-t1",
+        after(
+            chain(
+                create("tickets/t5", {"status": "open"}),
+                set_("tickets/t1", "status", "closed"),
+            )
+        ),
+        [],
+        ["only_requested_changes"],
+    ),
+    (
+        "new-ticket",
+        "mutant",
+        "deleted-t4-instead",
+        after(lambda w: w.pop("tickets/t4")),
+        [],
+        ["only_requested_changes", "required_changes"],
+    ),
 ]
 
 
@@ -210,17 +352,34 @@ def main() -> None:
     for task, kind, name, aft, calls, fails in ATTEMPTS:
         got = grade(TASKS[task], aft, calls)
         if got != sorted(fails):
-            raise SystemExit(f"{task}/{name}: declared {sorted(fails)}, the checker says {got}")
+            raise SystemExit(
+                f"{task}/{name}: declared {sorted(fails)}, the checker says {got}"
+            )
         if kind == "oracle" and fails:
             raise SystemExit(f"{task}/{name}: an oracle must pass")
-        attempts.append({"task": task, "kind": kind, "name": name, "after": encode_state(aft), "tool_calls": calls, "fails": sorted(fails)})
+        attempts.append(
+            {
+                "task": task,
+                "kind": kind,
+                "name": name,
+                "after": encode_state(aft),
+                "tool_calls": calls,
+                "fails": sorted(fails),
+            }
+        )
     covered = {c for a in attempts for c in a["fails"]}
     criteria = ["only_requested_changes", "read_before_write", "required_changes"]
     if sorted(covered) != criteria:
-        raise SystemExit(f"criteria without a failing mutant: {sorted(set(criteria) - covered)}")
+        raise SystemExit(
+            f"criteria without a failing mutant: {sorted(set(criteria) - covered)}"
+        )
     doc = {
         "world": WORLD,
-        "tasks": {k: {kk: vv for kk, vv in v.items() if kk != "instruction"} | {"instruction": v["instruction"]} for k, v in TASKS.items()},
+        "tasks": {
+            k: {kk: vv for kk, vv in v.items() if kk != "instruction"}
+            | {"instruction": v["instruction"]}
+            for k, v in TASKS.items()
+        },
         "read_tools": READS,
         "write_tools": WRITES,
         "criteria": criteria,
@@ -228,7 +387,9 @@ def main() -> None:
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(doc, indent=1) + "\n")
-    print(f"wrote {len(attempts)} attempts ({sum(a['kind'] == 'oracle' for a in attempts)} oracles) to {OUT}")
+    print(
+        f"wrote {len(attempts)} attempts ({sum(a['kind'] == 'oracle' for a in attempts)} oracles) to {OUT}"
+    )
 
 
 if __name__ == "__main__":

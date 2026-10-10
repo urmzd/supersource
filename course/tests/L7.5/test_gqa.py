@@ -60,9 +60,16 @@ class Rng:
         return self.g.below(n)
 
 
-def spec(dh: int = 8, scaling: float = 1.0, rot: int | None = None, layout: str = "half") -> RopeSpec:
+def spec(
+    dh: int = 8, scaling: float = 1.0, rot: int | None = None, layout: str = "half"
+) -> RopeSpec:
     r = rot or dh
-    return RopeSpec(inv_freq=1e4 ** (-np.arange(0, r, 2) / r), attention_scaling=scaling, layout=layout, rotary_dim=r)
+    return RopeSpec(
+        inv_freq=1e4 ** (-np.arange(0, r, 2) / r),
+        attention_scaling=scaling,
+        layout=layout,
+        rotary_dim=r,
+    )
 
 
 def attn(seed: int = 0, **kw) -> GQAttention:
@@ -98,9 +105,14 @@ def test_hand_example():
     # CATCHES: s11
     # CHAPTER: L7.5 section 3, Worked example by hand
     a = GQAttention(2, 2, 1, 2, RopeSpec(np.array([0.0]), 1.0, "half", 2), rng=Rng(0))
-    a.load_state_dict({
-        "q_proj.weight": [[1, 0], [0, 1], [-1, 0], [0, -1]], "k_proj.weight": [[1, 0], [0, 1]],
-        "v_proj.weight": [[1, 0], [0, 2]], "o_proj.weight": [[1, 0, 0, 0], [0, 0, 0, 1]]})
+    a.load_state_dict(
+        {
+            "q_proj.weight": [[1, 0], [0, 1], [-1, 0], [0, -1]],
+            "k_proj.weight": [[1, 0], [0, 1]],
+            "v_proj.weight": [[1, 0], [0, 2]],
+            "o_proj.weight": [[1, 0, 0, 0], [0, 0, 0, 1]],
+        }
+    )
     y = a(Tensor([[[1.0, 0.0], [0.0, 1.0]]]), np.arange(2))
     w = 1.0 / (1.0 + math.exp(math.sqrt(0.5)))
     assert_close(y.data, [[[1.0, 0.0], [w, 2.0 * w]]], dtype="float32")
@@ -121,10 +133,12 @@ def test_golden_hf(name):
     # CATCHES: s01, s02, s04, s05, s07, s08, s09, s11
     # CHAPTER: L7.5 section 4, The interface
     f = np.load(FIX)
-    kw = {"qwen2-bias": {"qkv_bias": True}, "gptoss": {"window": 3, "sinks": True}}.get(name, {})
+    kw = {"qwen2-bias": {"qkv_bias": True}, "gptoss": {"window": 3, "sinks": True}}.get(
+        name, {}
+    )
     a = attn(1, rope=RopeSpec(f[f"{name}.inv_freq"], 1.0, "half", 8), **kw)
     p = f"{name}.param."
-    a.load_state_dict({k[len(p):]: f[k] for k in f.files if k.startswith(p)})
+    a.load_state_dict({k[len(p) :]: f[k] for k in f.files if k.startswith(p)})
     x = Tensor(f[f"{name}.x"], requires_grad=True)
     mask = f[f"{name}.visible"] if name == "llama-mask" else None
     y = a(x, f[f"{name}.positions"], mask)
@@ -142,7 +156,9 @@ def test_gradcheck_every_parameter():
     # KIND: gradcheck
     # CATCHES: s12
     # CHAPTER: L7.5 section 2.6, Backward
-    a = GQAttention(4, 2, 1, 2, spec(2), qkv_bias=True, window=2, sinks=True, rng=Rng(2))
+    a = GQAttention(
+        4, 2, 1, 2, spec(2), qkv_bias=True, window=2, sinks=True, rng=Rng(2)
+    )
     g = PCG32(seed=3)
     params = [p for _, p in a.named_parameters()]
     for p in params:
@@ -157,8 +173,12 @@ def test_gradcheck_every_parameter():
 
     x = Tensor(x0, requires_grad=True, dtype=np.float64)
     F.sum(a(x, np.arange(3)) * gy).backward()
-    gradcheck(f, [x0] + start, [x.grad] + [p.grad for p in params],
-              names=["x"] + [n for n, _ in a.named_parameters()])
+    gradcheck(
+        f,
+        [x0] + start,
+        [x.grad] + [p.grad for p in params],
+        names=["x"] + [n for n, _ in a.named_parameters()],
+    )
 
 
 # --- grouping ------------------------------------------------------------------------------------
@@ -173,7 +193,14 @@ def test_repeat_kv_repeats_each_head_in_a_row():
     # CHAPTER: L7.5 section 2.2, Sharing kv heads
     x = Tensor(np.array([10.0, 20.0]).reshape(1, 2, 1, 1), requires_grad=True)
     y = repeat_kv(x, 3)
-    assert y.shape == (1, 6, 1, 1) and y.data.ravel().tolist() == [10, 10, 10, 20, 20, 20]
+    assert y.shape == (1, 6, 1, 1) and y.data.ravel().tolist() == [
+        10,
+        10,
+        10,
+        20,
+        20,
+        20,
+    ]
     F.sum(y * np.arange(1.0, 7.0).reshape(1, 6, 1, 1)).backward()
     assert x.grad.ravel().tolist() == [6.0, 15.0]
     assert repeat_kv(x, 1) is x
@@ -193,7 +220,12 @@ def test_gqa_equals_mha_with_repeated_kv_weights():
         sd[k] = np.repeat(sd[k].reshape(2, 8, 24), 3, axis=0).reshape(48, 24)
     m.load_state_dict(sd)
     x = inputs(6)
-    assert_close(g(Tensor(x), np.arange(6)).data, m(Tensor(x), np.arange(6)).data, rtol=1e-5, atol=1e-6)
+    assert_close(
+        g(Tensor(x), np.arange(6)).data,
+        m(Tensor(x), np.arange(6)).data,
+        rtol=1e-5,
+        atol=1e-6,
+    )
 
 
 # --- the cache hook ---------------------------------------------------------------------------------
@@ -215,7 +247,9 @@ def test_cache_chunks_equal_full_forward(kw):
     cache = ConcatKVCache()
     parts = [a(Tensor(x[:, :3]), np.arange(3), cache=cache, layer=4).data]
     for t in range(3, 6):
-        parts.append(a(Tensor(x[:, t:t + 1]), np.array([t]), cache=cache, layer=4).data)
+        parts.append(
+            a(Tensor(x[:, t : t + 1]), np.array([t]), cache=cache, layer=4).data
+        )
     assert cache.seq_len(4) == 6 and cache.seq_len(0) == 0
     assert_close(np.concatenate(parts, axis=1), full, rtol=1e-5, atol=1e-6)
 
@@ -231,9 +265,18 @@ def test_cache_holds_kv_heads_only():
     a = attn(9)
     cache = CountingCache()
     a(Tensor(inputs(10, B=1, T=5)), np.arange(5), cache=cache, layer=2)
-    (layer, nbytes, shape), = cache.seen
+    ((layer, nbytes, shape),) = cache.seen
     assert layer == 2 and shape == (1, 2, 5, 8)
-    cfg = ModelConfig(vocab=1, d_model=24, n_layers=1, n_heads=6, n_kv_heads=2, d_head=8, d_ff=1, tie_embeddings=True)
+    cfg = ModelConfig(
+        vocab=1,
+        d_model=24,
+        n_layers=1,
+        n_heads=6,
+        n_kv_heads=2,
+        d_head=8,
+        d_ff=1,
+        tie_embeddings=True,
+    )
     assert nbytes == 5 * kv_bytes_per_token(cfg, 4)
 
 
@@ -249,7 +292,11 @@ def test_concat_cache():
     ka, va = c.update(0, k, 2 * k)
     k[:] = 7.0
     ka, va = c.update(0, k[:, :, :1], k[:, :, :1])
-    assert ka.shape == (1, 2, 4, 4) and np.all(ka[:, :, :3] == 1.0) and np.all(ka[:, :, 3] == 7.0)
+    assert (
+        ka.shape == (1, 2, 4, 4)
+        and np.all(ka[:, :, :3] == 1.0)
+        and np.all(ka[:, :, 3] == 7.0)
+    )
     assert np.all(va[:, :, :3] == 2.0) and c.seq_len(0) == 4
     with pytest.raises(ValueError):
         c.update(0, np.ones((1, 3, 1, 4)), np.ones((1, 3, 1, 4)))
@@ -341,7 +388,13 @@ def test_positions_shift_and_per_row():
     rows = np.array([[0, 1, 2, 3, 4, 5], [0, 2, 3, 7, 8, 12]])
     y = a(Tensor(x), rows).data
     for b in range(2):
-        assert_close(y[b], a(Tensor(x[b:b + 1]), rows[b]).data[0], rtol=1e-5, atol=1e-6, msg=f"row {b}")
+        assert_close(
+            y[b],
+            a(Tensor(x[b : b + 1]), rows[b]).data[0],
+            rtol=1e-5,
+            atol=1e-6,
+            msg=f"row {b}",
+        )
 
 
 def test_attention_scaling_squares_into_the_scores():
@@ -358,7 +411,12 @@ def test_attention_scaling_squares_into_the_scores():
     sd["q_proj.weight"] = sd["q_proj.weight"] * s * s
     b.load_state_dict(sd)
     x = inputs(23)
-    assert_close(a(Tensor(x), np.arange(6)).data, b(Tensor(x), np.arange(6)).data, rtol=1e-4, atol=1e-5)
+    assert_close(
+        a(Tensor(x), np.arange(6)).data,
+        b(Tensor(x), np.arange(6)).data,
+        rtol=1e-4,
+        atol=1e-5,
+    )
 
 
 # --- structure ------------------------------------------------------------------------------------
@@ -374,16 +432,33 @@ def test_parameter_names_shapes_and_draw_order():
     # CHAPTER: L7.5 section 4, The interface
     a = attn(24, qkv_bias=True, sinks=True)
     assert [(n, p.data.shape) for n, p in a.named_parameters()] == [
-        ("sinks", (6,)), ("q_proj.weight", (48, 24)), ("q_proj.bias", (48,)), ("k_proj.weight", (16, 24)),
-        ("k_proj.bias", (16,)), ("v_proj.weight", (16, 24)), ("v_proj.bias", (16,)), ("o_proj.weight", (24, 48))]
+        ("sinks", (6,)),
+        ("q_proj.weight", (48, 24)),
+        ("q_proj.bias", (48,)),
+        ("k_proj.weight", (16, 24)),
+        ("k_proj.bias", (16,)),
+        ("v_proj.weight", (16, 24)),
+        ("v_proj.bias", (16,)),
+        ("o_proj.weight", (24, 48)),
+    ]
     assert np.all(a.sinks.data == 0.0) and a.sinks.data.dtype == np.float32
     r = Rng(25)
-    want = [Linear(24, 48, False, r), Linear(24, 16, False, r), Linear(24, 16, False, r), Linear(48, 24, False, r)]
+    want = [
+        Linear(24, 48, False, r),
+        Linear(24, 16, False, r),
+        Linear(24, 16, False, r),
+        Linear(48, 24, False, r),
+    ]
     b = attn(25)
     for (n, p), lin in zip(b.named_parameters(), want):
         assert np.array_equal(p.data, lin.weight.data), n
     c = GQAttention(24, 6, 2, None, spec(4), rng=Rng(0))
-    assert c.d_head == 4 and c.q_proj.weight.shape == (24, 24) and c.window is None and c.sinks is None
+    assert (
+        c.d_head == 4
+        and c.q_proj.weight.shape == (24, 24)
+        and c.window is None
+        and c.sinks is None
+    )
 
 
 def test_validation():
@@ -394,7 +469,12 @@ def test_validation():
     # KIND: boundary
     # CATCHES: m04, m05
     # CHAPTER: L7.5 section 4, The interface
-    for kw in (dict(n_kv_heads=4), dict(d_head=None, d=25), dict(window=0), dict(rope=spec(16))):
+    for kw in (
+        dict(n_kv_heads=4),
+        dict(d_head=None, d=25),
+        dict(window=0),
+        dict(rope=spec(16)),
+    ):
         with pytest.raises(ValueError):
             attn(0, **kw)
     a = attn(26)

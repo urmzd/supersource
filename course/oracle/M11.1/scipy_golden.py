@@ -37,7 +37,9 @@ def norm(a: np.ndarray, axis: int) -> np.ndarray:
 def cases() -> list[tuple[str, np.ndarray, np.ndarray, int]]:
     rng = np.random.default_rng(1101)
     out = []
-    out.append(("dense", norm(rng.random((5, 8)), -1), norm(rng.random((5, 8)), -1), -1))
+    out.append(
+        ("dense", norm(rng.random((5, 8)), -1), norm(rng.random((5, 8)), -1), -1)
+    )
     p = rng.random((4, 6))
     p[p < 0.3] = 0.0  # zeros in p only: KL stays finite
     p[:, 0] += 0.1

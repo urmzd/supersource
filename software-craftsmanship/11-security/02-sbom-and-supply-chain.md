@@ -6,7 +6,7 @@
 | | |
 |---|---|
 | **Module** | `craft.18` · practice · docs · Pass 11 · 1 to 2 h |
-| **You build** | SBOM per image, allowed-deps.toml |
+| **You build** | `docs/sbom/engine.spdx.json` and `docs/sbom/gateway.spdx.json`; use [`course/contracts/allowed-deps.toml`](../../course/contracts/allowed-deps.toml) as the dependency policy |
 | **Tests** | `course/tests/craft.18` (named below, with why each exists) |
 | **Needs** | none |
 | **Used by** | no code call site; this is an independent artifact |
@@ -34,7 +34,7 @@ A deployment is built from many direct and transitive packages. An SBOM and depe
 
 ## 2. Principles
 
-Generate inventories from the exact image digest. Pin base images and dependencies, record licenses and provenance, and define a review path for exceptions. Regenerate after every release.
+Generate inventories from the exact image digest. Pin base images and dependencies, record licenses and provenance, and define a review path for exceptions. `course/contracts/allowed-deps.toml` is the source policy; it is not a generated learner artifact. Regenerate an SPDX document for each released image and retain the image digest with the CI run.
 
 ## 3. Worked example
 
@@ -44,7 +44,7 @@ Build each service image, capture its digest, generate an SPDX or CycloneDX SBOM
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_artifact_paths_are_declared` | artifact | Confirms the submitted paths and required evidence exist, so a plausible narrative cannot pass without the reviewable deliverable. |
+| `test_artifact_paths_are_declared` | artifact | Parses both SPDX 2.3 JSON files, checks package IDs and dependency relationships, and confirms the engine and gateway policy sections exist. This catches malformed inventories and disconnected package rows. |
 
 ## 5. Pitfalls
 

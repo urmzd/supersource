@@ -43,7 +43,11 @@ from tinyllm.eval.seqmetrics import (
     tokenize_13a,
 )
 
-FIX = Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures")) / "L4.5" / "sacrebleu_golden.json"
+FIX = (
+    Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures"))
+    / "L4.5"
+    / "sacrebleu_golden.json"
+)
 HYP = "the cat sat on the mat"
 REF = "the cat is on the mat"
 
@@ -83,7 +87,26 @@ def test_hand_example_chrf():
     # KIND: unit
     # CATCHES: s12, s13, m05
     # CHAPTER: L4.5 section 3, Worked example by hand
-    assert chrf_stats("cat", ["cats"]) == [3, 4, 3, 2, 3, 2, 1, 2, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+    assert chrf_stats("cat", ["cats"]) == [
+        3,
+        4,
+        3,
+        2,
+        3,
+        2,
+        1,
+        2,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    ]
     assert_close(chrf(["cat"], [["cats"]]), 100 * 115 / 167, dtype="float64")
 
 
@@ -111,7 +134,11 @@ def test_clipping():
     # CHAPTER: L4.5 section 5, Pitfalls, item 1
     s = bleu_stats("the the the the", ["the cat"])
     assert s[2] == 1 and s[6] == 4
-    assert_close(corpus_bleu(["the the the the"], [["the cat"]]), 100 * (1 / 1536) ** 0.25, dtype="float64")
+    assert_close(
+        corpus_bleu(["the the the the"], [["the cat"]]),
+        100 * (1 / 1536) ** 0.25,
+        dtype="float64",
+    )
 
 
 def test_closest_reference_length():
@@ -123,7 +150,10 @@ def test_closest_reference_length():
     # KIND: boundary
     # CATCHES: s02
     # CHAPTER: L4.5 section 2.2, BLEU
-    assert bleu_stats("a b c d e f g", ["a b c d e f g h i j k l", "a b c d e f x y"])[1] == 8
+    assert (
+        bleu_stats("a b c d e f g", ["a b c d e f g h i j k l", "a b c d e f x y"])[1]
+        == 8
+    )
     assert bleu_stats("a b c d e f g", ["a b c d e f g h i", "a b c d e"])[1] == 5
     assert bleu_stats("a b c d e f g", ["a b c d e f g h i", "a b c d"])[1] == 9
 
@@ -138,7 +168,9 @@ def test_brevity_penalty():
     short = [4, 6, 4, 3, 2, 1, 4, 3, 2, 1]
     assert_close(bleu_from_stats(short), 100 * math.exp(1 - 6 / 4), dtype="float64")
     long = [8, 4, 4, 3, 2, 1, 8, 7, 6, 5]
-    want = 100 * math.exp((math.log(4 / 8) + math.log(3 / 7) + math.log(2 / 6) + math.log(1 / 5)) / 4)
+    want = 100 * math.exp(
+        (math.log(4 / 8) + math.log(3 / 7) + math.log(2 / 6) + math.log(1 / 5)) / 4
+    )
     assert_close(bleu_from_stats(long), want, dtype="float64")
 
 
@@ -151,7 +183,15 @@ def test_smoothing_and_zero_orders():
     # CATCHES: s08, m03
     # CHAPTER: L4.5 section 2.2, BLEU
     stats = [5, 5, 3, 0, 0, 0, 5, 4, 3, 2]
-    want = 100 * math.exp((math.log(3 / 5) + math.log(1 / (2 * 4)) + math.log(1 / (4 * 3)) + math.log(1 / (8 * 2))) / 4)
+    want = 100 * math.exp(
+        (
+            math.log(3 / 5)
+            + math.log(1 / (2 * 4))
+            + math.log(1 / (4 * 3))
+            + math.log(1 / (8 * 2))
+        )
+        / 4
+    )
     assert_close(bleu_from_stats(stats), want, dtype="float64")
     assert corpus_bleu(["xyz qqq"], [["the cat sat"]]) == 0.0
     assert corpus_bleu(["the cat", "a dog ran"], [["the cat"], ["a dog ran"]]) == 0.0
@@ -168,7 +208,10 @@ def test_corpus_pools_statistics():
     c = case("bleu", "two-sentences")
     got = corpus_bleu(c["hyps"], c["refs"])
     assert_close(got, c["score"], rtol=1e-12, atol=1e-12)
-    summed = [sum(col) for col in zip(*(bleu_stats(h, r) for h, r in zip(c["hyps"], c["refs"])))]
+    summed = [
+        sum(col)
+        for col in zip(*(bleu_stats(h, r) for h, r in zip(c["hyps"], c["refs"])))
+    ]
     assert_close(got, bleu_from_stats(summed), rtol=1e-12, atol=1e-12)
     mean = sum(corpus_bleu([h], [r]) for h, r in zip(c["hyps"], c["refs"])) / 2
     assert abs(got - mean) > 4
@@ -183,7 +226,10 @@ def test_references_are_per_hypothesis():
     # CATCHES: s05, s06
     # CHAPTER: L4.5 section 5, Pitfalls, item 4
     hyps = ["the cat sat on the mat", "a dog ran in the park"]
-    per_hyp = [["the cat is on the mat", "a cat sat on a mat"], ["the dog ran in a park", "a dog ran in the yard"]]
+    per_hyp = [
+        ["the cat is on the mat", "a cat sat on a mat"],
+        ["the dog ran in a park", "a dog ran in the yard"],
+    ]
     want = corpus_bleu([hyps[0]], [per_hyp[0]]), corpus_bleu([hyps[1]], [per_hyp[1]])
     both = corpus_bleu(hyps, per_hyp)
     assert min(want) - 1e-9 <= both <= max(want) + 1e-9
@@ -218,7 +264,13 @@ def test_bleu_matches_sacrebleu():
     for c in golden()["bleu"]:
         got = [bleu_stats(h, r, c["tokenize"]) for h, r in zip(c["hyps"], c["refs"])]
         assert got == c["stats"], c["name"]
-        assert_close(corpus_bleu(c["hyps"], c["refs"], c["tokenize"]), c["score"], rtol=1e-12, atol=1e-12, msg=c["name"])
+        assert_close(
+            corpus_bleu(c["hyps"], c["refs"], c["tokenize"]),
+            c["score"],
+            rtol=1e-12,
+            atol=1e-12,
+            msg=c["name"],
+        )
 
 
 def test_case_counts():
@@ -228,7 +280,11 @@ def test_case_counts():
     # CATCHES: s10
     # CHAPTER: L4.5 section 5, Pitfalls, item 6
     assert corpus_bleu(["The Cat Sat On The Mat"], [["the cat sat on the mat"]]) == 0.0
-    assert_close(corpus_bleu(["the cat sat on the mat"], [["the cat sat on the mat"]]), 100.0, dtype="float64")
+    assert_close(
+        corpus_bleu(["the cat sat on the mat"], [["the cat sat on the mat"]]),
+        100.0,
+        dtype="float64",
+    )
 
 
 def test_chrf_matches_sacrebleu():
@@ -241,7 +297,13 @@ def test_chrf_matches_sacrebleu():
     for c in golden()["chrf"]:
         got = [chrf_stats(h, r) for h, r in zip(c["hyps"], c["refs"])]
         assert got == c["stats"], c["name"]
-        assert_close(chrf(c["hyps"], c["refs"]), c["score"], rtol=1e-12, atol=1e-12, msg=c["name"])
+        assert_close(
+            chrf(c["hyps"], c["refs"]),
+            c["score"],
+            rtol=1e-12,
+            atol=1e-12,
+            msg=c["name"],
+        )
 
 
 def test_chrf_ignores_white_space_and_forgives_inflection():
@@ -275,8 +337,16 @@ def test_chrf_uses_the_best_reference():
     # KIND: unit
     # CATCHES: s14
     # CHAPTER: L4.5 section 2.3, chrF
-    assert_close(chrf(["the quick fox"], [["a slow dog", "the quick fox!"]]), chrf(["the quick fox"], [["the quick fox!"]]), dtype="float64")
-    assert_close(chrf(["the quick fox"], [["the quick fox!", "a slow dog"]]), chrf(["the quick fox"], [["the quick fox!"]]), dtype="float64")
+    assert_close(
+        chrf(["the quick fox"], [["a slow dog", "the quick fox!"]]),
+        chrf(["the quick fox"], [["the quick fox!"]]),
+        dtype="float64",
+    )
+    assert_close(
+        chrf(["the quick fox"], [["the quick fox!", "a slow dog"]]),
+        chrf(["the quick fox"], [["the quick fox!"]]),
+        dtype="float64",
+    )
 
 
 def test_exact_match_is_strict_inside():
@@ -301,8 +371,21 @@ def test_metric_ci_matches_independent_bootstrap():
     # CATCHES: s18
     # CHAPTER: L4.5 section 4, The interface
     for c in golden()["ci"]:
-        got = metric_ci(c["metric"], c["hyps"], c["refs"], c["n_boot"], c["alpha"], PCG32(seed=c["seed"]))
-        assert_close(got, c["want"], rtol=1e-10, atol=1e-10, msg=f"{c['metric']} seed={c['seed']}")
+        got = metric_ci(
+            c["metric"],
+            c["hyps"],
+            c["refs"],
+            c["n_boot"],
+            c["alpha"],
+            PCG32(seed=c["seed"]),
+        )
+        assert_close(
+            got,
+            c["want"],
+            rtol=1e-10,
+            atol=1e-10,
+            msg=f"{c['metric']} seed={c['seed']}",
+        )
 
 
 def test_metric_ci_brackets_the_score():
@@ -324,7 +407,11 @@ def test_metric_ci_brackets_the_score():
     rows = sentence_stats("bleu", c["hyps"], c["refs"])
     assert rows.shape == (len(c["hyps"]), 10)
     same = [r[0] for r in c["refs"]]
-    for metric, refs in (("bleu", c["refs"]), ("chrf", c["refs"]), ("exact_match", same)):
+    for metric, refs in (
+        ("bleu", c["refs"]),
+        ("chrf", c["refs"]),
+        ("exact_match", same),
+    ):
         hyps = [r[0] for r in c["refs"]]
         got = metric_ci(metric, hyps, refs, 50, 0.05, PCG32(seed=seed()))
         top = 1.0 if metric == "exact_match" else 100.0

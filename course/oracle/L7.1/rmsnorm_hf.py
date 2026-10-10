@@ -45,26 +45,61 @@ def case(name: str, mod, x: np.ndarray, out: dict) -> None:
     tx = torch.tensor(x, requires_grad=True)
     y = mod(tx)
     (y * torch.tensor(g)).sum().backward()
-    out.update({f"{name}.x": x, f"{name}.weight": w, f"{name}.g": g, f"{name}.y": y.detach().numpy(),
-                f"{name}.grad.x": tx.grad.numpy(), f"{name}.grad.weight": mod.weight.grad.numpy()})
+    out.update(
+        {
+            f"{name}.x": x,
+            f"{name}.weight": w,
+            f"{name}.g": g,
+            f"{name}.y": y.detach().numpy(),
+            f"{name}.grad.x": tx.grad.numpy(),
+            f"{name}.grad.weight": mod.weight.grad.numpy(),
+        }
+    )
 
 
 def main() -> None:
     out: dict = {}
-    case("llama", LlamaRMSNorm(D, eps=1e-5), rng.normal(size=(2, 3, D)).astype(np.float32), out)
-    case("gemma", GemmaRMSNorm(D, eps=1e-6), rng.normal(size=(2, 3, D)).astype(np.float32), out)
-    case("llama-small", LlamaRMSNorm(D, eps=1e-5), (1e-3 * rng.normal(size=(4, D))).astype(np.float32), out)
-    out["__meta__"] = np.array(json.dumps({
-        "generator": "course/oracle/L7.1/rmsnorm_hf.py", "torch": torch.__version__,
-        "transformers": transformers.__version__, "numpy": np.__version__, "seed": SEED,
-        "cases": {"llama": {"eps": 1e-5, "offset": 0.0}, "gemma": {"eps": 1e-6, "offset": 1.0},
-                  "llama-small": {"eps": 1e-5, "offset": 0.0}},
-    }))
+    case(
+        "llama",
+        LlamaRMSNorm(D, eps=1e-5),
+        rng.normal(size=(2, 3, D)).astype(np.float32),
+        out,
+    )
+    case(
+        "gemma",
+        GemmaRMSNorm(D, eps=1e-6),
+        rng.normal(size=(2, 3, D)).astype(np.float32),
+        out,
+    )
+    case(
+        "llama-small",
+        LlamaRMSNorm(D, eps=1e-5),
+        (1e-3 * rng.normal(size=(4, D))).astype(np.float32),
+        out,
+    )
+    out["__meta__"] = np.array(
+        json.dumps(
+            {
+                "generator": "course/oracle/L7.1/rmsnorm_hf.py",
+                "torch": torch.__version__,
+                "transformers": transformers.__version__,
+                "numpy": np.__version__,
+                "seed": SEED,
+                "cases": {
+                    "llama": {"eps": 1e-5, "offset": 0.0},
+                    "gemma": {"eps": 1e-6, "offset": 1.0},
+                    "llama-small": {"eps": 1e-5, "offset": 0.0},
+                },
+            }
+        )
+    )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(OUT, **out)
     data = OUT.read_bytes()
-    print(f"{OUT}\t{hashlib.sha256(data).hexdigest()}\t{len(data)}\tcourse/oracle/L7.1/rmsnorm_hf.py\t"
-          f"torch=={torch.__version__},transformers=={transformers.__version__}\t-\tApache-2.0")
+    print(
+        f"{OUT}\t{hashlib.sha256(data).hexdigest()}\t{len(data)}\tcourse/oracle/L7.1/rmsnorm_hf.py\t"
+        f"torch=={torch.__version__},transformers=={transformers.__version__}\t-\tApache-2.0"
+    )
 
 
 main()

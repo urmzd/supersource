@@ -75,7 +75,9 @@ def test_hand_example():
     assert_close(kl_from_logprobs(np.log(P), np.log(Q)), 0.25 * LN2)
     k3 = kl_k3(np.log(Q), np.log(P))
     assert_close(k3, [0.5 + LN2 - 1.0, 0.0, 1.0 - LN2])
-    assert_close(float(np.dot(P, k3)), 0.25 * LN2)  # the mean of k3 under p is KL(p || q)
+    assert_close(
+        float(np.dot(P, k3)), 0.25 * LN2
+    )  # the mean of k3 under p is KL(p || q)
     assert_close(entropy_from_logits(np.array([LN2, 0.0, 0.0])), 1.5 * LN2)
 
 
@@ -92,9 +94,15 @@ def test_matches_scipy_golden():
     assert len(names) == 4
     for name in names:
         p, q, axis = data[f"{name}/p"], data[f"{name}/q"], int(data[f"{name}/axis"])
-        assert_close(entropy(p, axis=axis), data[f"{name}/entropy"], msg=f"entropy {name}")
+        assert_close(
+            entropy(p, axis=axis), data[f"{name}/entropy"], msg=f"entropy {name}"
+        )
         assert_close(kl(p, q, axis=axis), data[f"{name}/kl"], msg=f"kl {name}")
-        assert_close(cross_entropy(p, q, axis=axis), data[f"{name}/cross_entropy"], msg=f"cross_entropy {name}")
+        assert_close(
+            cross_entropy(p, q, axis=axis),
+            data[f"{name}/cross_entropy"],
+            msg=f"cross_entropy {name}",
+        )
         if f"{name}/js" in data.files:
             assert_close(js(p, q), data[f"{name}/js"], msg=f"js {name}")
 
@@ -129,7 +137,9 @@ def test_cross_entropy_decomposes():
     rng = PCG32(seed=seed())
     p = random_dist(rng, (50, 9), zeros=0.2)
     q = random_dist(rng, (50, 9))
-    assert_close_bounded(cross_entropy(p, q), entropy(p) + kl(p, q), k=9, dtype="float64")
+    assert_close_bounded(
+        cross_entropy(p, q), entropy(p) + kl(p, q), k=9, dtype="float64"
+    )
 
 
 def test_kl_is_not_symmetric():
@@ -173,8 +183,13 @@ def test_rejects_negative_probabilities():
     # CATCHES: s12
     # CHAPTER: M11.1 section 4, The interface
     bad = np.array([0.6, 0.5, -0.1])
-    for fn in (lambda: entropy(bad), lambda: kl(bad, Q), lambda: kl(P, bad),
-               lambda: cross_entropy(P, bad), lambda: js(bad, Q)):
+    for fn in (
+        lambda: entropy(bad),
+        lambda: kl(bad, Q),
+        lambda: kl(P, bad),
+        lambda: cross_entropy(P, bad),
+        lambda: js(bad, Q),
+    ):
         with pytest.raises(ValueError):
             fn()
 
@@ -206,7 +221,10 @@ def test_axis_and_batch_shapes():
     rng = PCG32(seed=seed())
     p = random_dist(rng, (4, 6))
     q = random_dist(rng, (4, 6))
-    for fn in (lambda a, b, ax: kl(a, b, axis=ax), lambda a, b, ax: cross_entropy(a, b, axis=ax)):
+    for fn in (
+        lambda a, b, ax: kl(a, b, axis=ax),
+        lambda a, b, ax: cross_entropy(a, b, axis=ax),
+    ):
         assert fn(p, q, -1).shape == (4,)
         cols = fn(p.T, q.T, 0)
         assert cols.shape == (4,)
@@ -250,7 +268,9 @@ def test_kl_from_logprobs_matches_kl():
     with np.errstate(divide="ignore"):
         lp = np.log(p)
     assert np.isneginf(lp).any()
-    assert_close_bounded(kl_from_logprobs(lp, np.log(q)), kl(p, q), k=8, dtype="float64")
+    assert_close_bounded(
+        kl_from_logprobs(lp, np.log(q)), kl(p, q), k=8, dtype="float64"
+    )
 
 
 def test_kl_from_logprobs_extreme_logits():
@@ -282,7 +302,9 @@ def test_kl_from_logprobs_infinite_cases():
     ninf = -np.inf
     assert_close(kl_from_logprobs(np.array([0.0, ninf]), np.array([0.0, ninf])), 0.0)
     assert kl_from_logprobs(np.array([0.0, -800.0]), np.array([0.0, ninf])) == np.inf
-    assert kl_from_logprobs(np.array([math.log(0.5)] * 2), np.array([0.0, ninf])) == np.inf
+    assert (
+        kl_from_logprobs(np.array([math.log(0.5)] * 2), np.array([0.0, ninf])) == np.inf
+    )
 
 
 # --- the k3 estimator --------------------------------------------------------

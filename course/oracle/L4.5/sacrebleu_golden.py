@@ -114,28 +114,67 @@ HAND = {
 SPECIAL = [
     HAND,
     {"name": "clipping", "hyps": ["the the the the"], "refs": [["the cat"]]},
-    {"name": "two-sentences", "hyps": ["the cat sat on the mat", "a dog ran in the park"],
-     "refs": [["the cat is on the mat"], ["the dog ran in a park"]]},
-    {"name": "short-hyps-no-4grams", "hyps": ["the cat", "a dog ran"], "refs": [["the cat"], ["a dog ran"]]},
+    {
+        "name": "two-sentences",
+        "hyps": ["the cat sat on the mat", "a dog ran in the park"],
+        "refs": [["the cat is on the mat"], ["the dog ran in a park"]],
+    },
+    {
+        "name": "short-hyps-no-4grams",
+        "hyps": ["the cat", "a dog ran"],
+        "refs": [["the cat"], ["a dog ran"]],
+    },
     {"name": "no-match", "hyps": ["xyz qqq"], "refs": [["the cat sat"]]},
-    {"name": "empty-hyp", "hyps": ["", "the cat sat on the mat"], "refs": [["the cat"], ["the cat sat on the mat"]]},
-    {"name": "long-hyp", "hyps": ["the cat sat on the mat and then it slept for a long long time"],
-     "refs": [["the cat sat on the mat"]]},
-    {"name": "closest-ref-tie-to-shorter", "hyps": ["a b c d e f g"],
-     "refs": [["a b c d e f g h i", "a b c d e"]]},
-    {"name": "closest-ref", "hyps": ["a b c d e f g"],
-     "refs": [["a b c d e f g h i j k l", "a b c d e f x y"]]},
-    {"name": "multi-ref-clip", "hyps": ["the the the cat cat"],
-     "refs": [["the cat the", "the the cat on"]]},
-    {"name": "punctuation-13a", "hyps": ["Hello, world. It costs $1,000.50!"],
-     "refs": [["Hello , world . It costs $1,000.50 !"]]},
-    {"name": "entities-and-dashes", "hyps": ["a&amp;b e-mail-\n", "pages 10-12"],
-     "refs": [["a & b e-mail-", "a&b email"], ["pages 10 - 12"]]},
+    {
+        "name": "empty-hyp",
+        "hyps": ["", "the cat sat on the mat"],
+        "refs": [["the cat"], ["the cat sat on the mat"]],
+    },
+    {
+        "name": "long-hyp",
+        "hyps": ["the cat sat on the mat and then it slept for a long long time"],
+        "refs": [["the cat sat on the mat"]],
+    },
+    {
+        "name": "closest-ref-tie-to-shorter",
+        "hyps": ["a b c d e f g"],
+        "refs": [["a b c d e f g h i", "a b c d e"]],
+    },
+    {
+        "name": "closest-ref",
+        "hyps": ["a b c d e f g"],
+        "refs": [["a b c d e f g h i j k l", "a b c d e f x y"]],
+    },
+    {
+        "name": "multi-ref-clip",
+        "hyps": ["the the the cat cat"],
+        "refs": [["the cat the", "the the cat on"]],
+    },
+    {
+        "name": "punctuation-13a",
+        "hyps": ["Hello, world. It costs $1,000.50!"],
+        "refs": [["Hello , world . It costs $1,000.50 !"]],
+    },
+    {
+        "name": "entities-and-dashes",
+        "hyps": ["a&amp;b e-mail-\n", "pages 10-12"],
+        "refs": [["a & b e-mail-", "a&b email"], ["pages 10 - 12"]],
+    },
     {"name": "trailing-space", "hyps": ["the cat sat   "], "refs": [["the cat sat"]]},
-    {"name": "case-matters", "hyps": ["The Cat Sat On The Mat"], "refs": [["the cat sat on the mat"]]},
-    {"name": "variable-refs", "hyps": ["the cat sat", "a dog ran in the park today", "big red fox"],
-     "refs": [["the cat sat down"], ["a dog ran in the park", "the dog ran in a park today", "dogs run"],
-              ["the big red fox", "big red foxes"]]},
+    {
+        "name": "case-matters",
+        "hyps": ["The Cat Sat On The Mat"],
+        "refs": [["the cat sat on the mat"]],
+    },
+    {
+        "name": "variable-refs",
+        "hyps": ["the cat sat", "a dog ran in the park today", "big red fox"],
+        "refs": [
+            ["the cat sat down"],
+            ["a dog ran in the park", "the dog ran in a park today", "dogs run"],
+            ["the big red fox", "big red foxes"],
+        ],
+    },
 ]
 
 CHRF_SPECIAL = [
@@ -144,14 +183,32 @@ CHRF_SPECIAL = [
     {"name": "inflection", "hyps": ["the cats sitting"], "refs": [["the cat sat"]]},
     {"name": "short-ref", "hyps": ["abcdefgh", "abc"], "refs": [["abc"], ["abcdefgh"]]},
     {"name": "empty-hyp", "hyps": ["", "abc"], "refs": [["abc"], ["abc"]]},
-    {"name": "best-ref", "hyps": ["the quick fox"], "refs": [["a slow dog", "the quick fox!"]]},
+    {
+        "name": "best-ref",
+        "hyps": ["the quick fox"],
+        "refs": [["a slow dog", "the quick fox!"]],
+    },
     # "aa" and "acab" give "abca" the same sentence chrF (41.67) with different
     # statistics: the first reference must win, and the pooled score shows it.
-    {"name": "best-ref-tie-first", "hyps": ["abca", "abc"], "refs": [["aa", "acab"], ["ab"]]},
+    {
+        "name": "best-ref-tie-first",
+        "hyps": ["abca", "abc"],
+        "refs": [["aa", "acab"], ["ab"]],
+    },
     {"name": "no-match", "hyps": ["xyz"], "refs": [["abc"]]},
-    {"name": "unicode", "hyps": ["café crème"], "refs": [["cafe creme", "café crèmes"]]},
-    {"name": "variable-refs", "hyps": ["the cat sat", "a dog ran in the park today"],
-     "refs": [["the cat sat down"], ["a dog ran in the park", "the dog ran in a park today", "dogs run"]]},
+    {
+        "name": "unicode",
+        "hyps": ["café crème"],
+        "refs": [["cafe creme", "café crèmes"]],
+    },
+    {
+        "name": "variable-refs",
+        "hyps": ["the cat sat", "a dog ran in the park today"],
+        "refs": [
+            ["the cat sat down"],
+            ["a dog ran in the park", "the dog ran in a park today", "dogs run"],
+        ],
+    },
 ]
 
 
@@ -165,7 +222,12 @@ def bleu_case(case: dict, tokenize: str) -> dict:
     st = streams(case["refs"])
     stats = m._extract_corpus_statistics(case["hyps"], st)
     score = m.corpus_score(case["hyps"], st).score
-    return dict(case, tokenize=tokenize, score=float(score), stats=[[int(v) for v in s] for s in stats])
+    return dict(
+        case,
+        tokenize=tokenize,
+        score=float(score),
+        stats=[[int(v) for v in s] for s in stats],
+    )
 
 
 def chrf_case(case: dict) -> dict:
@@ -180,7 +242,9 @@ def em(hyps, refs) -> float:
     return sum(h.strip() == r.strip() for h, r in zip(hyps, refs)) / len(hyps)
 
 
-def bootstrap(metric: str, hyps, refs, n_boot: int, alpha: float, seed: int) -> list[float]:
+def bootstrap(
+    metric: str, hyps, refs, n_boot: int, alpha: float, seed: int
+) -> list[float]:
     g = pcg.PCG32(seed=seed)
     n = len(hyps)
 
@@ -217,7 +281,10 @@ def main() -> None:
     out["tokenize_13a"] = [[line, tok(line)] for line in LINES_13A]
 
     bleu = [bleu_case(c, "13a") for c in SPECIAL]
-    bleu += [bleu_case(dict(c, name="none-" + c["name"]), "none") for c in SPECIAL[:3] + SPECIAL[10:12]]
+    bleu += [
+        bleu_case(dict(c, name="none-" + c["name"]), "none")
+        for c in SPECIAL[:3] + SPECIAL[10:12]
+    ]
     for i in range(6):
         c = random_corpus(int(data_rng.integers(8, 31)), 3)
         bleu.append(bleu_case(dict(c, name=f"random-{i}"), "13a"))
@@ -239,21 +306,34 @@ def main() -> None:
         ("chrf", corpus["hyps"], corpus["refs"]),
     ]:
         for n_boot, alpha, seed in [(200, 0.05, 0), (150, 0.1, 7)]:
-            ci.append({
-                "metric": metric, "hyps": hyps, "refs": refs, "n_boot": n_boot, "alpha": alpha,
-                "seed": seed, "want": bootstrap(metric, hyps, refs, n_boot, alpha, seed),
-            })
+            ci.append(
+                {
+                    "metric": metric,
+                    "hyps": hyps,
+                    "refs": refs,
+                    "n_boot": n_boot,
+                    "alpha": alpha,
+                    "seed": seed,
+                    "want": bootstrap(metric, hyps, refs, n_boot, alpha, seed),
+                }
+            )
     out["ci"] = ci
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     data = (json.dumps(out, indent=1, ensure_ascii=False) + "\n").encode()
     OUT.write_bytes(data)
     print(
-        "\t".join([
-            str(OUT), hashlib.sha256(data).hexdigest(), str(len(data)),
-            "course/oracle/L4.5/sacrebleu_golden.py",
-            f"sacrebleu=={sacrebleu.__version__} numpy=={np.__version__}", "-", "Apache-2.0",
-        ])
+        "\t".join(
+            [
+                str(OUT),
+                hashlib.sha256(data).hexdigest(),
+                str(len(data)),
+                "course/oracle/L4.5/sacrebleu_golden.py",
+                f"sacrebleu=={sacrebleu.__version__} numpy=={np.__version__}",
+                "-",
+                "Apache-2.0",
+            ]
+        )
     )
 
 

@@ -146,10 +146,20 @@ def test_vjp_matches_numeric_vjp():
     rng = PCG32(seed=seed())
 
     def f_values(x):
-        return [x[0] * x[1] + x[2].tanh(), (x[1] * x[2]).exp() - x[0], x[0] * x[0] * x[2] + 1.0]
+        return [
+            x[0] * x[1] + x[2].tanh(),
+            (x[1] * x[2]).exp() - x[0],
+            x[0] * x[0] * x[2] + 1.0,
+        ]
 
     def f_np(x):
-        return np.array([x[0] * x[1] + np.tanh(x[2]), np.exp(x[1] * x[2]) - x[0], x[0] * x[0] * x[2] + 1.0])
+        return np.array(
+            [
+                x[0] * x[1] + np.tanh(x[2]),
+                np.exp(x[1] * x[2]) - x[0],
+                x[0] * x[0] * x[2] + 1.0,
+            ]
+        )
 
     for _ in range(5):
         x = rng.normal_array(3, scale=0.8)

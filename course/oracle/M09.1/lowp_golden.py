@@ -43,7 +43,11 @@ def f32_value(bits: int) -> Fraction | float:
     s, e, m = bits >> 31, (bits >> 23) & 0xFF, bits & 0x7FFFFF
     if e == 0xFF:
         return float("nan") if m else (float("-inf") if s else float("inf"))
-    v = Fraction(m, 1 << 23) * Fraction(2) ** -126 if e == 0 else (1 + Fraction(m, 1 << 23)) * Fraction(2) ** (e - 127)
+    v = (
+        Fraction(m, 1 << 23) * Fraction(2) ** -126
+        if e == 0
+        else (1 + Fraction(m, 1 << 23)) * Fraction(2) ** (e - 127)
+    )
     return -v if s else v
 
 
@@ -64,7 +68,9 @@ def round_code(bits: int, fmt: str) -> int:
     if isinstance(v, float):
         if v != v:
             return NAN_CODE[fmt]
-        return sign | (((1 << (15 - mbits)) - 1) << mbits)  # infinity: exponent all ones
+        return sign | (
+            ((1 << (15 - mbits)) - 1) << mbits
+        )  # infinity: exponent all ones
     a = abs(v)
     if a == 0:
         return sign
@@ -105,20 +111,51 @@ class Pcg32:
 def inputs() -> list[int]:
     f = lambda x: struct.unpack("<I", struct.pack("<f", x))[0]  # noqa: E731
     out = [
-        0x00000000, 0x80000000, 0x7F800000, 0xFF800000,  # zeros, infinities
-        0x7FC00000, 0xFFC00000, 0x7F800001, 0xFF800001, 0x7FBFFFFF, 0xFFFFFFFF, 0x7FFFFFFF,  # NaNs
-        0x00000001, 0x007FFFFF, 0x00800000, 0x7F7FFFFF, 0xFF7FFFFF,  # subnormal, normal edges
-        0x7F7F7FFF, 0x7F7F8000, 0x7F7F8001, 0x7F7FFFFF,  # bf16 overflow boundary
-        f(1.0), f(-2.5), f(0.1), f(-6.25), f(1 / 3), f(65504.0), f(65519.0), f(65520.0),
-        f(65536.0), f(2.0**-24), f(2.0**-25), f(3 * 2.0**-26), f(2.0**-14), f(5.9604645e-08),
-        f(1.00390625), f(1.01171875),
+        0x00000000,
+        0x80000000,
+        0x7F800000,
+        0xFF800000,  # zeros, infinities
+        0x7FC00000,
+        0xFFC00000,
+        0x7F800001,
+        0xFF800001,
+        0x7FBFFFFF,
+        0xFFFFFFFF,
+        0x7FFFFFFF,  # NaNs
+        0x00000001,
+        0x007FFFFF,
+        0x00800000,
+        0x7F7FFFFF,
+        0xFF7FFFFF,  # subnormal, normal edges
+        0x7F7F7FFF,
+        0x7F7F8000,
+        0x7F7F8001,
+        0x7F7FFFFF,  # bf16 overflow boundary
+        f(1.0),
+        f(-2.5),
+        f(0.1),
+        f(-6.25),
+        f(1 / 3),
+        f(65504.0),
+        f(65519.0),
+        f(65520.0),
+        f(65536.0),
+        f(2.0**-24),
+        f(2.0**-25),
+        f(3 * 2.0**-26),
+        f(2.0**-14),
+        f(5.9604645e-08),
+        f(1.00390625),
+        f(1.01171875),
     ]
     for e in range(1, 255):  # bf16 ties and neighbours in every binade
         for hi in (0x00, 0x01, 0x7E, 0x7F):
             base = (e << 23) | (hi << 16)
             for low in (0x7FFF, 0x8000, 0x8001):
                 out += [base | low, (base | low) | 0x80000000]
-    for e in range(127 - 26, 127 + 17):  # f16 ties and neighbours, subnormal to overflow
+    for e in range(
+        127 - 26, 127 + 17
+    ):  # f16 ties and neighbours, subnormal to overflow
         for hi in (0x000, 0x001, 0x3FE, 0x3FF):
             base = (e << 23) | (hi << 13)
             for low in (0x0FFF, 0x1000, 0x1001):

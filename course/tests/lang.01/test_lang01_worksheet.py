@@ -46,7 +46,9 @@ def test_broadcast_shape_is_your_own_rule(monkeypatch):
     # CHAPTER: lang.01 section 4
 
     def refuse(*args, **kwargs):
-        raise AssertionError("broadcast_shape called numpy's broadcasting; apply the rule yourself")
+        raise AssertionError(
+            "broadcast_shape called numpy's broadcasting; apply the rule yourself"
+        )
 
     for name in ("broadcast_shapes", "broadcast", "broadcast_arrays", "broadcast_to"):
         monkeypatch.setattr(np, name, refuse)

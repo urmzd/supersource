@@ -47,14 +47,26 @@ def main() -> None:
         torch.autograd.functional.hvp(f, torch.tensor(W), torch.tensor(v))[1].numpy()
         for v in V
     ]
-    d.update({"ce/X": X, "ce/t": t.astype(np.int64), "ce/W": W, "ce/V": V, "ce/HV": np.stack(hv)})
+    d.update(
+        {
+            "ce/X": X,
+            "ce/t": t.astype(np.int64),
+            "ce/W": W,
+            "ce/V": V,
+            "ce/HV": np.stack(hv),
+        }
+    )
     # A dense Hessian of a smaller case (W [3, 2] flattened row-major: 6 x 6).
     X2 = rng.standard_normal((6, 3))
     t2 = rng.integers(0, 2, size=6)
     W2 = 0.5 * rng.standard_normal((3, 2))
     f2 = loss_of(X2, t2)
-    H = torch.autograd.functional.hessian(lambda w: f2(w.reshape(3, 2)), torch.tensor(W2).reshape(-1))
-    d.update({"hess/X": X2, "hess/t": t2.astype(np.int64), "hess/W": W2, "hess/H": H.numpy()})
+    H = torch.autograd.functional.hessian(
+        lambda w: f2(w.reshape(3, 2)), torch.tensor(W2).reshape(-1)
+    )
+    d.update(
+        {"hess/X": X2, "hess/t": t2.astype(np.int64), "hess/W": W2, "hess/H": H.numpy()}
+    )
     meta = {
         "generator": "course/oracle/M08.4/torch_hvp_golden.py",
         "seed": 804,
@@ -62,7 +74,9 @@ def main() -> None:
         "numpy": np.__version__,
         "dtype": "float64",
     }
-    d["__meta__"] = np.frombuffer(json.dumps(meta, sort_keys=True).encode(), dtype=np.uint8)
+    d["__meta__"] = np.frombuffer(
+        json.dumps(meta, sort_keys=True).encode(), dtype=np.uint8
+    )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     np.savez(OUT, **d)
     data = OUT.read_bytes()

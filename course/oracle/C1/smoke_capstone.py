@@ -54,7 +54,9 @@ VOCAB, CTX, STEPS, BATCH, LR = 512, 128, 200, 16, 3e-3
 MAIN = dict(d=128, layers=4, heads=4, kv=2, ff=344)
 
 torch.set_num_threads(1)
-docs = [json.loads(line)["text"] for line in SRC.read_text().splitlines() if line.strip()]
+docs = [
+    json.loads(line)["text"] for line in SRC.read_text().splitlines() if line.strip()
+]
 train_docs, val_docs = docs[:130], docs[130:]
 train_text = "\n".join(train_docs)
 
@@ -64,11 +66,18 @@ def make_tokenizer(kind: str) -> Tokenizer:
     alphabet = pre_tokenizers.ByteLevel.alphabet()
     if kind == "bpe":
         tok = Tokenizer(models.BPE())
-        trainer = trainers.BpeTrainer(vocab_size=VOCAB, initial_alphabet=alphabet, show_progress=False)
+        trainer = trainers.BpeTrainer(
+            vocab_size=VOCAB, initial_alphabet=alphabet, show_progress=False
+        )
     else:
         tok = Tokenizer(models.Unigram())
-        trainer = trainers.UnigramTrainer(vocab_size=VOCAB, initial_alphabet=alphabet, show_progress=False,
-                                          special_tokens=[], max_piece_length=12)
+        trainer = trainers.UnigramTrainer(
+            vocab_size=VOCAB,
+            initial_alphabet=alphabet,
+            show_progress=False,
+            special_tokens=[],
+            max_piece_length=12,
+        )
     tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
     tok.decoder = decoders.ByteLevel()
     tok.train_from_iterator(train_docs, trainer)
@@ -128,7 +137,12 @@ class Llama(torch.nn.Module):
                 for e in range(E):
                     w(p + f"e{e}_gate", c["ff"], d)
                     w(p + f"e{e}_up", c["ff"], d)
-                    w(p + f"e{e}_down", d, c["ff"], std=0.02 / math.sqrt(2 * c["layers"]))
+                    w(
+                        p + f"e{e}_down",
+                        d,
+                        c["ff"],
+                        std=0.02 / math.sqrt(2 * c["layers"]),
+                    )
             else:
                 w(p + "gate", c["ff"], d)
                 w(p + "up", c["ff"], d)
@@ -154,10 +168,15 @@ class Llama(torch.nn.Module):
         q = (h @ P[p + "wq"].T).view(B, T, H, dn + dr).transpose(1, 2)
         q_nope, q_rope = q[..., :dn], rope(q[..., dn:])
         a = h @ P[p + "w_kv_a"].T
-        ckv, k_rope = rmsnorm(a[..., :r], P[p + "g_kv"]), rope(a[..., r:].unsqueeze(1))  # k_rope shared by heads
+        ckv, k_rope = (
+            rmsnorm(a[..., :r], P[p + "g_kv"]),
+            rope(a[..., r:].unsqueeze(1)),
+        )  # k_rope shared by heads
         kv = (ckv @ P[p + "w_kv_b"].T).view(B, T, H, dn + dv).transpose(1, 2)
         k_nope, v = kv[..., :dn], kv[..., dn:]
-        s = (q_nope @ k_nope.transpose(-1, -2) + q_rope @ k_rope.transpose(-1, -2)) / math.sqrt(dn + dr)
+        s = (
+            q_nope @ k_nope.transpose(-1, -2) + q_rope @ k_rope.transpose(-1, -2)
+        ) / math.sqrt(dn + dr)
         att = torch.softmax(s + mask, -1)
         return (att @ v).transpose(1, 2).reshape(B, T, H * dv) @ P[p + "wo"].T
 
@@ -165,7 +184,9 @@ class Llama(torch.nn.Module):
         P = self.P
 
         def swiglu(q):
-            return (torch.nn.functional.silu(h @ P[q + "gate"].T) * (h @ P[q + "up"].T)) @ P[q + "down"].T
+            return (
+                torch.nn.functional.silu(h @ P[q + "gate"].T) * (h @ P[q + "up"].T)
+            ) @ P[q + "down"].T
 
         E = self.c.get("experts", 0)
         if not E:
@@ -198,14 +219,28 @@ class GPT(torch.nn.Module):
         super().__init__()
         torch.manual_seed(SEED)
         self.wte, self.wpe = torch.nn.Embedding(V, d), torch.nn.Embedding(CTX, d)
-        layer = torch.nn.TransformerEncoderLayer(d, heads, 4 * d, dropout=0.0, activation="gelu", batch_first=True, norm_first=True)
-        self.blocks = torch.nn.TransformerEncoder(layer, layers, enable_nested_tensor=False)
+        layer = torch.nn.TransformerEncoderLayer(
+            d,
+            heads,
+            4 * d,
+            dropout=0.0,
+            activation="gelu",
+            batch_first=True,
+            norm_first=True,
+        )
+        self.blocks = torch.nn.TransformerEncoder(
+            layer, layers, enable_nested_tensor=False
+        )
         self.ln = torch.nn.LayerNorm(d)
 
     def forward(self, ids):
         T = ids.shape[1]
         x = self.wte(ids) + self.wpe(torch.arange(T))
-        x = self.blocks(x, mask=torch.nn.Transformer.generate_square_subsequent_mask(T), is_causal=True)
+        x = self.blocks(
+            x,
+            mask=torch.nn.Transformer.generate_square_subsequent_mask(T),
+            is_causal=True,
+        )
         return self.ln(x) @ self.wte.weight.T, 0.0
 
 
@@ -213,7 +248,11 @@ class LSTMLM(torch.nn.Module):
     def __init__(self, V, d=128, hidden=256):
         super().__init__()
         torch.manual_seed(SEED)
-        self.emb, self.rnn, self.out = torch.nn.Embedding(V, d), torch.nn.LSTM(d, hidden, batch_first=True), torch.nn.Linear(hidden, V)
+        self.emb, self.rnn, self.out = (
+            torch.nn.Embedding(V, d),
+            torch.nn.LSTM(d, hidden, batch_first=True),
+            torch.nn.Linear(hidden, V),
+        )
 
     def forward(self, ids):
         return self.out(self.rnn(self.emb(ids))[0]), 0.0
@@ -223,7 +262,10 @@ class NPLM(torch.nn.Module):
     def __init__(self, V, n=4, d=64, hidden=256):
         super().__init__()
         torch.manual_seed(SEED)
-        self.n, self.emb = n, torch.nn.Embedding(V + 1, d)  # V: padding before the start
+        self.n, self.emb = (
+            n,
+            torch.nn.Embedding(V + 1, d),
+        )  # V: padding before the start
         self.h, self.out = torch.nn.Linear(n * d, hidden), torch.nn.Linear(hidden, V)
         self.V = V
 
@@ -231,7 +273,9 @@ class NPLM(torch.nn.Module):
         B, T = ids.shape
         pad = torch.full((B, self.n - 1), self.V, dtype=ids.dtype)
         x = torch.cat([pad, ids], 1)
-        ctx = torch.stack([x[:, i : i + T] for i in range(self.n)], -1)  # the last n tokens up to t
+        ctx = torch.stack(
+            [x[:, i : i + T] for i in range(self.n)], -1
+        )  # the last n tokens up to t
         e = self.emb(ctx).reshape(B, T, -1)
         return self.out(torch.tanh(self.h(e))), 0.0
 
@@ -265,7 +309,9 @@ def stream(tok: Tokenizer) -> torch.Tensor:
 
 
 def train(model: torch.nn.Module, data: torch.Tensor, steps: int = STEPS) -> dict:
-    opt = torch.optim.AdamW(model.parameters(), lr=LR, betas=(0.9, 0.95), weight_decay=0.1)
+    opt = torch.optim.AdamW(
+        model.parameters(), lr=LR, betas=(0.9, 0.95), weight_decay=0.1
+    )
     gen = torch.Generator().manual_seed(SEED)
     warm, decay_from = 20, int(steps * 0.8)
     t0, last = time.time(), []
@@ -279,14 +325,20 @@ def train(model: torch.nn.Module, data: torch.Tensor, steps: int = STEPS) -> dic
         x = torch.stack([data[i : i + CTX] for i in ix])
         y = torch.stack([data[i + 1 : i + CTX + 1] for i in ix])
         logits, aux = model(x)
-        loss = torch.nn.functional.cross_entropy(logits.reshape(-1, logits.shape[-1]), y.reshape(-1))
+        loss = torch.nn.functional.cross_entropy(
+            logits.reshape(-1, logits.shape[-1]), y.reshape(-1)
+        )
         opt.zero_grad()
         (loss + 0.01 * aux).backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
         last.append(loss.item())
-    return {"steps": steps, "tokens": steps * BATCH * CTX, "final_train_loss": float(np.mean(last[-20:])),
-            "wall_s": round(time.time() - t0, 1)}
+    return {
+        "steps": steps,
+        "tokens": steps * BATCH * CTX,
+        "final_train_loss": float(np.mean(last[-20:])),
+        "wall_s": round(time.time() - t0, 1),
+    }
 
 
 def tok_bytes(tok: Tokenizer, i: int) -> int:
@@ -308,7 +360,9 @@ def doc_bits(model, tok: Tokenizer) -> list[tuple[float, int, int]]:
             if len(chunk) < 2:
                 continue
             lp = torch.log_softmax(model(torch.tensor([chunk]))[0][0], -1)
-            bits += -sum(lp[t, chunk[t + 1]].item() for t in range(len(chunk) - 1)) / math.log(2)
+            bits += -sum(
+                lp[t, chunk[t + 1]].item() for t in range(len(chunk) - 1)
+            ) / math.log(2)
             nbytes += sum(tok_bytes(tok, i) for i in chunk[1:])
             n += len(chunk) - 1
         out.append((bits, nbytes, n))
@@ -320,7 +374,9 @@ def pooled(rows) -> float:
     return sum(r[0] for r in rows) / sum(r[1] for r in rows)
 
 
-def bootstrap_ci(values: np.ndarray, seed: int = SEED, n_boot: int = 2000) -> tuple[float, float]:
+def bootstrap_ci(
+    values: np.ndarray, seed: int = SEED, n_boot: int = 2000
+) -> tuple[float, float]:
     rng = np.random.default_rng(seed)
     idx = rng.integers(0, len(values), size=(n_boot, len(values)))
     means = values[idx].mean(1)
@@ -337,16 +393,40 @@ def pooled_ci(rows, seed: int = SEED, n_boot: int = 2000) -> tuple[float, float]
 
 
 def hf_config(c: dict) -> dict:
-    out = {"tl_arch": "llama", "tl_tokenizer": "file", "vocab_size": c["vocab"], "hidden_size": c["d"],
-           "intermediate_size": c["ff"], "num_hidden_layers": c["layers"], "num_attention_heads": c["heads"],
-           "num_key_value_heads": c["kv"], "max_position_embeddings": CTX, "rms_norm_eps": 1e-05,
-           "rope_theta": 10000.0, "tie_word_embeddings": True, "tl_format": 1}
+    out = {
+        "tl_arch": "llama",
+        "tl_tokenizer": "file",
+        "vocab_size": c["vocab"],
+        "hidden_size": c["d"],
+        "intermediate_size": c["ff"],
+        "num_hidden_layers": c["layers"],
+        "num_attention_heads": c["heads"],
+        "num_key_value_heads": c["kv"],
+        "max_position_embeddings": CTX,
+        "rms_norm_eps": 1e-05,
+        "rope_theta": 10000.0,
+        "tie_word_embeddings": True,
+        "tl_format": 1,
+    }
     if c.get("attention", "gqa") == "mla":
-        out.update({"tl_attention": "mla", "tl_mla_rank": c["rank"], "qk_rope_head_dim": c["rope_dim"],
-                    "qk_nope_head_dim": c["nope_dim"], "v_head_dim": c["v_dim"]})
+        out.update(
+            {
+                "tl_attention": "mla",
+                "tl_mla_rank": c["rank"],
+                "qk_rope_head_dim": c["rope_dim"],
+                "qk_nope_head_dim": c["nope_dim"],
+                "v_head_dim": c["v_dim"],
+            }
+        )
     if c.get("experts", 0):
-        out.update({"tl_num_experts": c["experts"], "tl_top_k_experts": c.get("top_k", 1),
-                    "moe_intermediate_size": c["ff"], "norm_topk_prob": False})
+        out.update(
+            {
+                "tl_num_experts": c["experts"],
+                "tl_top_k_experts": c.get("top_k", 1),
+                "moe_intermediate_size": c["ff"],
+                "norm_topk_prob": False,
+            }
+        )
     return out
 
 
@@ -358,25 +438,41 @@ def run_llama(c: dict, tok: Tokenizer, data: torch.Tensor) -> tuple[Llama, dict,
     return m, info, doc_bits(m, tok)
 
 
-def ablation(aid, question, a_name, a_cfg, a_rows, b_name, b_cfg, b_rows, extra) -> dict:
+def ablation(
+    aid, question, a_name, a_cfg, a_rows, b_name, b_cfg, b_rows, extra
+) -> dict:
     da = np.array([r[0] / r[1] for r in a_rows])
     db = np.array([r[0] / r[1] for r in b_rows])
     diff = db - da
     lo, hi = bootstrap_ci(diff)
     winner = "b" if hi < 0 else "a" if lo > 0 else "tie"
-    return {"id": aid, "question": question, "metric": "bpb", "unit": "held-out document", "n": int(len(diff)),
-            "seed": SEED, "a": {"name": a_name, "config": a_cfg, "value": round(pooled(a_rows), 6)},
-            "b": {"name": b_name, "config": b_cfg, "value": round(pooled(b_rows), 6)},
-            "mean_diff": round(float(diff.mean()), 6), "ci95": [round(lo, 6), round(hi, 6)], "winner": winner, **extra}
+    return {
+        "id": aid,
+        "question": question,
+        "metric": "bpb",
+        "unit": "held-out document",
+        "n": int(len(diff)),
+        "seed": SEED,
+        "a": {"name": a_name, "config": a_cfg, "value": round(pooled(a_rows), 6)},
+        "b": {"name": b_name, "config": b_cfg, "value": round(pooled(b_rows), 6)},
+        "mean_diff": round(float(diff.mean()), 6),
+        "ci95": [round(lo, 6), round(hi, 6)],
+        "winner": winner,
+        **extra,
+    }
 
 
-def kn4_rows(tok: Tokenizer, n: int = 4, D: float = 0.75) -> list[tuple[float, int, int]]:
+def kn4_rows(
+    tok: Tokenizer, n: int = 4, D: float = 0.75
+) -> list[tuple[float, int, int]]:
     """Interpolated Kneser-Ney (absolute discount D) over BPE ids of the
     training stream: raw counts at the order in use, continuation counts
     (distinct left contexts) below it, the uniform distribution at order 0."""
     data = tok.encode("\n".join(train_docs)).ids
     V = tok.get_vocab_size()
-    raw = [defaultdict(lambda: defaultdict(int)) for _ in range(n + 1)]  # raw[k][ctx (k-1 ids)][w]
+    raw = [
+        defaultdict(lambda: defaultdict(int)) for _ in range(n + 1)
+    ]  # raw[k][ctx (k-1 ids)][w]
     for i in range(len(data)):
         for k in range(1, min(n, i + 1) + 1):
             raw[k][tuple(data[i - k + 1 : i])][data[i]] += 1
@@ -385,7 +481,10 @@ def kn4_rows(tok: Tokenizer, n: int = 4, D: float = 0.75) -> list[tuple[float, i
         for ctx, ws in raw[k].items():
             for w in ws:
                 left[k - 1][ctx[1:]][w].add(ctx[0])
-    cont = [{c: {w: len(v) for w, v in ws.items()} for c, ws in left[k].items()} for k in range(n + 1)]
+    cont = [
+        {c: {w: len(v) for w, v in ws.items()} for c, ws in left[k].items()}
+        for k in range(n + 1)
+    ]
 
     def prob(ctx: tuple, w: int, k: int, top: bool) -> float:
         if k == 0:
@@ -401,16 +500,28 @@ def kn4_rows(tok: Tokenizer, n: int = 4, D: float = 0.75) -> list[tuple[float, i
     out = []
     for doc in val_docs:
         ids = tok.encode(doc).ids
-        bits = sum(-math.log2(prob(tuple(ids[max(0, t - n + 1) : t]), ids[t], min(n, t + 1), True)) for t in range(1, len(ids)))
+        bits = sum(
+            -math.log2(
+                prob(tuple(ids[max(0, t - n + 1) : t]), ids[t], min(n, t + 1), True)
+            )
+            for t in range(1, len(ids))
+        )
         out.append((bits, sum(tok_bytes(tok, i) for i in ids[1:]), len(ids) - 1))
     return out
 
 
 def zoo_row(model: str, arch: str | None, rows, params: int | None) -> dict:
     lo, hi = pooled_ci(rows)
-    r = {"model": model, "task": "ts-val", "metric": "bpb", "higher_is_better": False,
-         "value": round(pooled(rows), 6), "ci95": [round(lo, 6), round(hi, 6)],
-         "n": int(sum(x[2] for x in rows)), "status": "ok"}
+    r = {
+        "model": model,
+        "task": "ts-val",
+        "metric": "bpb",
+        "higher_is_better": False,
+        "value": round(pooled(rows), 6),
+        "ci95": [round(lo, 6), round(hi, 6)],
+        "n": int(sum(x[2] for x in rows)),
+        "status": "ok",
+    }
     if arch:
         r["tl_arch"] = arch
     if params is not None:
@@ -436,38 +547,92 @@ def main() -> None:
     moe = dict(base, experts=4, top_k=1)
     _, _, moe_rows = run_llama(moe, bpe, data)
     ablations = [
-        ablation("tokenizer", "BPE or Unigram at vocab 512, same sample, same model", "bpe",
-                 {"tokenizer": "bpe", "vocab_size": VOCAB}, main_rows, "unigram",
-                 {"tokenizer": "unigram", "vocab_size": VOCAB}, uni_rows, {}),
-        ablation("attention", "GQA or MLA at equal KV bytes per token", "gqa", hf_config(base), main_rows,
-                 "mla", hf_config(mla), mla_rows, {"kv_bytes_per_token": {"a": kv_bytes(base), "b": kv_bytes(mla)}}),
-        ablation("mlp", "dense SwiGLU or a top-1 MoE of 4 experts at equal active parameters", "dense",
-                 hf_config(base), main_rows, "moe", hf_config(moe), moe_rows,
-                 {"active_params": {"a": n_params(base)[1], "b": n_params(moe)[1]}}),
+        ablation(
+            "tokenizer",
+            "BPE or Unigram at vocab 512, same sample, same model",
+            "bpe",
+            {"tokenizer": "bpe", "vocab_size": VOCAB},
+            main_rows,
+            "unigram",
+            {"tokenizer": "unigram", "vocab_size": VOCAB},
+            uni_rows,
+            {},
+        ),
+        ablation(
+            "attention",
+            "GQA or MLA at equal KV bytes per token",
+            "gqa",
+            hf_config(base),
+            main_rows,
+            "mla",
+            hf_config(mla),
+            mla_rows,
+            {"kv_bytes_per_token": {"a": kv_bytes(base), "b": kv_bytes(mla)}},
+        ),
+        ablation(
+            "mlp",
+            "dense SwiGLU or a top-1 MoE of 4 experts at equal active parameters",
+            "dense",
+            hf_config(base),
+            main_rows,
+            "moe",
+            hf_config(moe),
+            moe_rows,
+            {"active_params": {"a": n_params(base)[1], "b": n_params(moe)[1]}},
+        ),
     ]
 
     # scaling: three sizes of the smoke family
-    sizes = [dict(d=64, layers=2, heads=4, kv=2, ff=172, vocab=VOCAB), dict(d=96, layers=3, heads=4, kv=2, ff=256, vocab=VOCAB), base]
+    sizes = [
+        dict(d=64, layers=2, heads=4, kv=2, ff=172, vocab=VOCAB),
+        dict(d=96, layers=3, heads=4, kv=2, ff=256, vocab=VOCAB),
+        base,
+    ]
     points = []
     for c in sizes:
         rows = main_rows if c is base else run_llama(c, bpe, data)[2]
         points.append({"params": n_params(c)[0], "bpb": round(pooled(rows), 6)})
     X = np.c_[np.ones(3), np.log([p["params"] for p in points])]
     coef, *_ = np.linalg.lstsq(X, np.log([p["bpb"] for p in points]), rcond=None)
-    scaling = {"law": "bpb = a * params^-alpha", "points": points,
-               "fit": {"a": round(float(math.exp(coef[0])), 6), "alpha": round(float(-coef[1]), 6)}}
+    scaling = {
+        "law": "bpb = a * params^-alpha",
+        "points": points,
+        "fit": {
+            "a": round(float(math.exp(coef[0])), 6),
+            "alpha": round(float(-coef[1]), 6),
+        },
+    }
 
     # zoo baselines on the same held-out documents
     V = bpe.get_vocab_size()
     zoo = [zoo_row("kn-4", None, kn4_rows(bpe), None)]
-    for name, arch, m in (("nplm", "nplm", NPLM(V)), ("lstm", "rnnlm", LSTMLM(V)), ("gpt", "gpt", GPT(V))):
+    for name, arch, m in (
+        ("nplm", "nplm", NPLM(V)),
+        ("lstm", "rnnlm", LSTMLM(V)),
+        ("gpt", "gpt", GPT(V)),
+    ):
         train(m, data)
-        zoo.append(zoo_row(name, arch, doc_bits(m, bpe), sum(p.numel() for p in m.parameters())))
+        zoo.append(
+            zoo_row(
+                name, arch, doc_bits(m, bpe), sum(p.numel() for p in m.parameters())
+            )
+        )
     zoo.append(zoo_row("c1-llama", "llama", main_rows, n_params(base)[0]))
-    for model, task, metric, why in (("seq2seq", "dates", "em", "seq2seq EM"), ("classifier", "sst2-2k", "accuracy", "classification"),
-                                     ("word2vec", "word-sim", "spearman", "word similarity")):
-        zoo.append({"model": model, "task": task, "metric": metric, "value": None, "status": "skipped",
-                    "reason": f"smoke tier: {why} rows come from the L6.7 zoo suite on the full capstone run"})
+    for model, task, metric, why in (
+        ("seq2seq", "dates", "em", "seq2seq EM"),
+        ("classifier", "sst2-2k", "accuracy", "classification"),
+        ("word2vec", "word-sim", "spearman", "word similarity"),
+    ):
+        zoo.append(
+            {
+                "model": model,
+                "task": task,
+                "metric": metric,
+                "value": None,
+                "status": "skipped",
+                "reason": f"smoke tier: {why} rows come from the L6.7 zoo suite on the full capstone run",
+            }
+        )
 
     # 20 seeded samples of the main model
     samples = []
@@ -478,27 +643,83 @@ def main() -> None:
             ids = bpe.encode("Once upon a time").ids
             n0 = len(ids)
             for _ in range(64):
-                p = torch.softmax(main_model(torch.tensor([ids[-CTX:]]))[0][0, -1] / 0.8, -1)
+                p = torch.softmax(
+                    main_model(torch.tensor([ids[-CTX:]]))[0][0, -1] / 0.8, -1
+                )
                 ids.append(int(torch.multinomial(p, 1, generator=g)))
-            samples.append({"seed": s, "prompt": "Once upon a time", "temperature": 0.8, "tokens": 64,
-                            "text": bpe.decode(ids[n0:])})
+            samples.append(
+                {
+                    "seed": s,
+                    "prompt": "Once upon a time",
+                    "temperature": 0.8,
+                    "tokens": 64,
+                    "text": bpe.decode(ids[n0:]),
+                }
+            )
 
-    spec = {"name": "c1-smoke", "model": hf_config(base), "tokenizer": {"id": "c1-bpe-512", "path": "tokenizers/c1-bpe-512/tokenizer.json"},
-            "data": {"train": ["tokens/c1-bpe-512/stories/_MANIFEST.json"], "val": ["tokens/c1-bpe-512/stories-val.bin"]},
-            "optimizer": {"name": "adamw", "lr": LR, "betas": [0.9, 0.95], "weight_decay": 0.1},
-            "schedule": {"name": "wsd", "warmup_steps": 20, "decay_frac": 0.2, "min_lr_ratio": 0.1},
-            "precision": {"dtype": "fp32"}, "batch": {"micro_batch": BATCH, "accum": 1, "seq_len": CTX},
-            "steps": STEPS, "ckpt_every": 100, "seed": SEED}
+    spec = {
+        "name": "c1-smoke",
+        "model": hf_config(base),
+        "tokenizer": {
+            "id": "c1-bpe-512",
+            "path": "tokenizers/c1-bpe-512/tokenizer.json",
+        },
+        "data": {
+            "train": ["tokens/c1-bpe-512/stories/_MANIFEST.json"],
+            "val": ["tokens/c1-bpe-512/stories-val.bin"],
+        },
+        "optimizer": {
+            "name": "adamw",
+            "lr": LR,
+            "betas": [0.9, 0.95],
+            "weight_decay": 0.1,
+        },
+        "schedule": {
+            "name": "wsd",
+            "warmup_steps": 20,
+            "decay_frac": 0.2,
+            "min_lr_ratio": 0.1,
+        },
+        "precision": {"dtype": "fp32"},
+        "batch": {"micro_batch": BATCH, "accum": 1, "seq_len": CTX},
+        "steps": STEPS,
+        "ckpt_every": 100,
+        "seed": SEED,
+    }
     report = {
-        "format": "tl.capstone-report.v1", "tier": "smoke", "spec": "specs/c1/smoke.json",
-        "data": {"corpus": "course synthetic stories (MS-corpus fixture)", "train_docs": len(train_docs), "val_docs": len(val_docs)},
-        "tokenizer": {"kind": "bpe", "vocab_size": VOCAB, "sample_bytes": len(train_text.encode())},
+        "format": "tl.capstone-report.v1",
+        "tier": "smoke",
+        "spec": "specs/c1/smoke.json",
+        "data": {
+            "corpus": "course synthetic stories (MS-corpus fixture)",
+            "train_docs": len(train_docs),
+            "val_docs": len(val_docs),
+        },
+        "tokenizer": {
+            "kind": "bpe",
+            "vocab_size": VOCAB,
+            "sample_bytes": len(train_text.encode()),
+        },
         "model": {"config": hf_config(base), "params": n_params(base)[0]},
-        "train": {**main_info, "seed": SEED, "precision": "fp32", "micro_batch": BATCH, "accum": 1},
-        "eval": {"val_bpb": round(pooled(main_rows), 6), "ci95": [round(lo, 6), round(hi, 6)], "n": len(main_rows),
-                 "val_loss": round(val_loss, 6)},
-        "ablations": ablations, "scaling": scaling, "long_context": None,
-        "zoo": "docs/capstone/c1/zoo.json", "samples": "docs/capstone/c1/samples.jsonl", "release": "specs/c1/release.json",
+        "train": {
+            **main_info,
+            "seed": SEED,
+            "precision": "fp32",
+            "micro_batch": BATCH,
+            "accum": 1,
+        },
+        "eval": {
+            "val_bpb": round(pooled(main_rows), 6),
+            "ci95": [round(lo, 6), round(hi, 6)],
+            "n": len(main_rows),
+            "val_loss": round(val_loss, 6),
+        },
+        "ablations": ablations,
+        "scaling": scaling,
+        "long_context": None,
+        "zoo": "docs/capstone/c1/zoo.json",
+        "samples": "docs/capstone/c1/samples.jsonl",
+        "release": "specs/c1/release.json",
         "generator": "course/oracle/C1/smoke_capstone.py",
         "versions": {"torch": torch.__version__.split("+")[0], "numpy": np.__version__},
     }
@@ -506,12 +727,36 @@ def main() -> None:
     DOC_OUT.mkdir(parents=True, exist_ok=True)
     (SPEC_OUT / "smoke.json").write_text(json.dumps(spec, indent=1) + "\n")
     (DOC_OUT / "report.json").write_text(json.dumps(report, indent=1) + "\n")
-    (DOC_OUT / "zoo.json").write_text(json.dumps({"format": "tl.eval-results.v1", "suite": "zoo", "seed": SEED,
-                                                  "created": "2026-10-09T00:00:00Z", "rows": zoo}, indent=1) + "\n")
-    (DOC_OUT / "samples.jsonl").write_text("".join(json.dumps(s) + "\n" for s in samples))
-    print(json.dumps({"val_bpb": report["eval"], "ablations": [(a["id"], a["mean_diff"], a["ci95"], a["winner"]) for a in ablations],
-                      "scaling": scaling["fit"], "zoo": [(r["model"], r.get("value")) for r in zoo],
-                      "wall_s": round(time.time() - t_start)}, indent=1))
+    (DOC_OUT / "zoo.json").write_text(
+        json.dumps(
+            {
+                "format": "tl.eval-results.v1",
+                "suite": "zoo",
+                "seed": SEED,
+                "created": "2026-10-09T00:00:00Z",
+                "rows": zoo,
+            },
+            indent=1,
+        )
+        + "\n"
+    )
+    (DOC_OUT / "samples.jsonl").write_text(
+        "".join(json.dumps(s) + "\n" for s in samples)
+    )
+    print(
+        json.dumps(
+            {
+                "val_bpb": report["eval"],
+                "ablations": [
+                    (a["id"], a["mean_diff"], a["ci95"], a["winner"]) for a in ablations
+                ],
+                "scaling": scaling["fit"],
+                "zoo": [(r["model"], r.get("value")) for r in zoo],
+                "wall_s": round(time.time() - t_start),
+            },
+            indent=1,
+        )
+    )
 
 
 if __name__ == "__main__":

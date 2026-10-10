@@ -61,7 +61,9 @@ def main() -> int:
         spec = json.load(f)
     work = os.path.dirname(os.path.abspath(progress_path))
     attempt = os.environ.get("TL_ATTEMPT", "1")
-    actions = spec.get("attempts", {}).get(attempt) or spec.get("attempts", {}).get("*") or []
+    actions = (
+        spec.get("attempts", {}).get(attempt) or spec.get("attempts", {}).get("*") or []
+    )
     on_term = spec.get("on_term", "exit130")
     termed = {"flag": False}
     prog = open(progress_path, "a")
@@ -108,8 +110,13 @@ def main() -> int:
             while not termed["flag"] and time.monotonic() < deadline:
                 time.sleep(0.01)
         elif "record" in a:
-            rec = {"argv": sys.argv, "env": dict(os.environ), "cwd": os.getcwd(),
-                   "pid": os.getpid(), "pgid": os.getpgid(0)}
+            rec = {
+                "argv": sys.argv,
+                "env": dict(os.environ),
+                "cwd": os.getcwd(),
+                "pid": os.getpid(),
+                "pgid": os.getpgid(0),
+            }
             publish(a["record"] + ".json", json.dumps(rec).encode())
         elif "done" in a:
             publish("DONE.json", json.dumps({"outputs": a["done"]}).encode())

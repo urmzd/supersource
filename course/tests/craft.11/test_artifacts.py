@@ -1,5 +1,7 @@
 """Why this exists: ensure the craft.11 learner evidence is present before the check can pass."""
+
 from pathlib import Path
+
 
 def test_artifact_paths_are_declared():
     # KIND: unit

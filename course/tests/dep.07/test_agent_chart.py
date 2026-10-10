@@ -1,4 +1,5 @@
 """Agent deployment artifact checks. The tests explain the policy they protect."""
+
 import json
 import os
 import tomllib
@@ -20,7 +21,9 @@ def test_agent_image_policy():
 def test_agent_chart_schema():
     """The values schema is the published chart contract."""
     schema = json.loads((CHART / "values.schema.json").read_text())
-    reference = json.loads((COURSE / "contracts/helm/agent.values.schema.json").read_text())
+    reference = json.loads(
+        (COURSE / "contracts/helm/agent.values.schema.json").read_text()
+    )
     assert schema == reference
 
 

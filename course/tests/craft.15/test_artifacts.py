@@ -1,8 +1,13 @@
-"""Why this exists: ensure the craft.15 learner evidence is present before the check can pass."""
+"""Reference evidence for the dependency-upgrade review practice."""
+
 from pathlib import Path
 
+
+# WHY: a usable upgrade review needs reproducible graph, security, performance, and rollback evidence.
+# KIND: unit
 def test_artifact_paths_are_declared():
-    # KIND: unit
-    # WHY: course verification needs annotated tests for the declared learner evidence.
-    card = Path("course/modules/craft.15.toml").read_text()
-    assert 'artifacts =' in card
+    root = Path(__file__).resolve().parents[3]
+    artifact = (root / "course/ref/docs/maintenance/dependency-upgrades.md").read_text()
+    for required in ("Resolved graph", "govulncheck", "p95", "Rollback", "Owner"):
+        assert required.lower() in artifact.lower()
+    assert "semver range as proof" in artifact

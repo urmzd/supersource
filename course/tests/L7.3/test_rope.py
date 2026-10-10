@@ -59,8 +59,14 @@ def test_hand_example():
     assert cos.dtype == np.float32 and cos.shape == (1, 2)
     x = Tensor([[1.0, 0.0, 0.0, 1.0]])
     c1, s1, c2, s2 = np.cos(1.0), np.sin(1.0), np.cos(0.01), np.sin(0.01)
-    assert_close(apply_rope(x, cos, sin, "half").data, [[c1, -s2, s1, c2]], dtype="float32")
-    assert_close(apply_rope(x, cos, sin, "interleaved").data, [[c1, s1, -s2, c2]], dtype="float32")
+    assert_close(
+        apply_rope(x, cos, sin, "half").data, [[c1, -s2, s1, c2]], dtype="float32"
+    )
+    assert_close(
+        apply_rope(x, cos, sin, "interleaved").data,
+        [[c1, s1, -s2, c2]],
+        dtype="float32",
+    )
 
 
 # --- against Hugging Face and Meta --------------------------------------------------------------
@@ -155,8 +161,12 @@ def test_scores_depend_only_on_relative_position(layout):
         q, k = g.normal_array((16,)), g.normal_array((16,))
         m, n, s = g.below(40), g.below(40), g.below(40)
         cos, sin = rope_cos_sin(np.array([m, n, m + s, n + s]), inv)
-        qs = apply_rope(Tensor(np.stack([q, q]), dtype=np.float64), cos[[0, 2]], sin[[0, 2]], layout).data
-        ks = apply_rope(Tensor(np.stack([k, k]), dtype=np.float64), cos[[1, 3]], sin[[1, 3]], layout).data
+        qs = apply_rope(
+            Tensor(np.stack([q, q]), dtype=np.float64), cos[[0, 2]], sin[[0, 2]], layout
+        ).data
+        ks = apply_rope(
+            Tensor(np.stack([k, k]), dtype=np.float64), cos[[1, 3]], sin[[1, 3]], layout
+        ).data
         assert_close(qs[0] @ ks[0], qs[1] @ ks[1], rtol=1e-5, atol=1e-5)
 
 
@@ -172,10 +182,17 @@ def test_rotation_preserves_length_and_position_zero_is_identity():
     cos, sin = rope_cos_sin(np.arange(0, 70000, 10000), ladder(12))
     for layout in ("half", "interleaved"):
         y = apply_rope(Tensor(x, dtype=np.float64), cos, sin, layout).data
-        assert_close(np.linalg.norm(y, axis=-1), np.linalg.norm(x, axis=-1), rtol=1e-6, atol=1e-6)
+        assert_close(
+            np.linalg.norm(y, axis=-1), np.linalg.norm(x, axis=-1), rtol=1e-6, atol=1e-6
+        )
         assert_close(y[:, 0], x[:, 0], rtol=1e-12, atol=1e-12)
     c8, s8 = rope_cos_sin(np.zeros(7, dtype=np.int64), ladder(8))
-    assert_close(apply_rope(Tensor(x, dtype=np.float64), c8, s8, "half", 8).data, x, rtol=1e-12, atol=1e-12)
+    assert_close(
+        apply_rope(Tensor(x, dtype=np.float64), c8, s8, "half", 8).data,
+        x,
+        rtol=1e-12,
+        atol=1e-12,
+    )
 
 
 def test_layouts_are_a_permutation_of_each_other():
@@ -189,7 +206,9 @@ def test_layouts_are_a_permutation_of_each_other():
     x = PCG32(seed=3).normal_array((2, 5, 8))
     cos, sin = rope_cos_sin(np.arange(5), ladder(8))
     inter = apply_rope(Tensor(x, dtype=np.float64), cos, sin, "interleaved").data
-    half = apply_rope(Tensor(half_from_interleaved(x), dtype=np.float64), cos, sin, "half").data
+    half = apply_rope(
+        Tensor(half_from_interleaved(x), dtype=np.float64), cos, sin, "half"
+    ).data
     assert_close(half_from_interleaved(inter), half, rtol=1e-12, atol=1e-12)
 
 
@@ -222,7 +241,12 @@ def test_gradcheck_both_layouts_and_partial():
         cos, sin = rope_cos_sin(np.array([0, 3, 11]), ladder(r))
 
         def f(x):
-            return float(np.sum(apply_rope(Tensor(x, dtype=np.float64), cos, sin, layout, r).data * gy))
+            return float(
+                np.sum(
+                    apply_rope(Tensor(x, dtype=np.float64), cos, sin, layout, r).data
+                    * gy
+                )
+            )
 
         x = Tensor(x0, requires_grad=True, dtype=np.float64)
         F.sum(apply_rope(x, cos, sin, layout, r) * gy).backward()
@@ -253,8 +277,12 @@ def test_rope_spec_fields():
     # KIND: unit
     # CATCHES: s03
     # CHAPTER: L7.3 section 4, The interface
-    spec = RopeSpec(inv_freq=ladder(4), attention_scaling=1.0, layout="half", rotary_dim=4)
-    assert spec.rotary_dim == 4 and spec.layout == "half" and spec.attention_scaling == 1.0
+    spec = RopeSpec(
+        inv_freq=ladder(4), attention_scaling=1.0, layout="half", rotary_dim=4
+    )
+    assert (
+        spec.rotary_dim == 4 and spec.layout == "half" and spec.attention_scaling == 1.0
+    )
     cos, sin = rope_cos_sin(np.arange(3), spec.inv_freq, spec.attention_scaling)
     x = PCG32(seed=7).normal_array((3, 6))
     y = apply_rope(Tensor(x), cos, sin, spec.layout, spec.rotary_dim).data
@@ -270,7 +298,12 @@ def test_validation():
     # CHAPTER: L7.3 section 4, The interface
     x = Tensor(np.ones((3, 8)))
     cos, sin = rope_cos_sin(np.arange(3), ladder(8))
-    for kw in ({"rotary_dim": 7}, {"rotary_dim": 10}, {"rotary_dim": 0}, {"layout": "neox"}):
+    for kw in (
+        {"rotary_dim": 7},
+        {"rotary_dim": 10},
+        {"rotary_dim": 0},
+        {"layout": "neox"},
+    ):
         with pytest.raises(ValueError):
             apply_rope(x, cos, sin, **kw)
     with pytest.raises(ValueError):

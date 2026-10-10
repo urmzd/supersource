@@ -44,75 +44,135 @@ DIM = 16
 INDEX_ID = "docs"
 
 DOCS = [
-    ("docs/kv-cache.md", "file", [
-        "The KV cache keeps the keys and values of every past token so decoding does not recompute attention over the prompt.",
-        "Eviction frees KV blocks when the pool is full: the least recently used block whose reference count is zero goes first.",
-        "A prefix cache reuses KV blocks across requests that share a prompt prefix; block hashes chain FNV-1a over token ids.",
-    ]),
-    ("docs/gateway.md", "file", [
-        "The gateway checks the API key, applies rate limits per tenant, and proxies server-sent events without buffering.",
-        "Routing uses consistent hashing with bounded loads so one engine replica never takes more than its share of requests.",
-        "A 429 answer carries Retry-After; clients back off instead of hammering the gateway.",
-    ]),
-    ("docs/durable.md", "file", [
-        "The durable engine records every workflow step in a write-ahead log and replays the history after a crash.",
-        "Activities are retried with backoff; an idempotency key makes a retried write happen exactly once.",
-        "Timers live in a min-heap; a restarted server fires each due timer exactly once, in order.",
-    ]),
-    ("docs/tokenizer.md", "file", [
-        "Byte-pair encoding merges the most frequent adjacent pair until the vocabulary reaches its target size.",
-        "The Rust tokenizer must produce the same ids as the Python one; tl_tok_encode is checked against golden ids.",
-    ]),
-    ("docs/sampling.md", "file", [
-        "Sampling applies penalties, temperature, top-k, top-p, and min-p, then one uniform draw picks a token by inverse CDF.",
-        "Temperature zero is greedy decoding; ties go to the lowest token id so Python and Rust agree.",
-    ]),
-    ("docs/kernels.md", "file", [
-        "The matmul kernel tiles the loops so each tile fits in cache; a cache miss costs far more than a multiply.",
-        "Flash attention computes softmax online, one block of keys at a time, and never materializes the score matrix.",
-        "Int4 quantization stores two weights per byte with one fp16 scale per group of 32 columns.",
-    ]),
-    ("docs/eval.md", "file", [
-        "An eval suite runs every case against a subject and scores the output; an errored scorer is counted, never averaged as zero.",
-        "Bootstrap confidence intervals resample cases with replacement; a paired design compares two subjects on the same cases.",
-    ]),
-    ("docs/agent.md", "file", [
-        "The agent loop calls the model, runs the tool calls it asks for, and stops at a final answer or the iteration limit.",
-        "Tool arguments are validated against the JSON Schema before the tool runs; invalid arguments go back to the model as an error.",
-        "A gate decides before dispatch whether a tool call may run; writes need approval.",
-    ]),
-    ("docs/retrieval.md", "file", [
-        "BM25 scores lexical matches with saturating term frequency and length normalization; k1 and b are its two knobs.",
-        "Dense retrieval embeds the query and returns the nearest chunks by cosine similarity.",
-        "Reciprocal rank fusion adds 1 / (k + rank) over the lists, so it needs ranks, not comparable scores.",
-        "Maximal marginal relevance trades relevance against redundancy when it picks the final chunks.",
-    ]),
-    ("web/ivf.html", "web", [
-        "An IVF index clusters the vectors with k-means and scans only the nprobe nearest lists at query time.",
-        "k-means++ seeding picks each new centroid with probability proportional to its squared distance from the nearest one already picked.",
-        "Recall at 10 measures how many of the exact top 10 neighbours the approximate search returned.",
-    ]),
-    ("web/caching.html", "web", [
-        "A response cache keyed by the request hash returns a stored completion; the eviction policy is LRU with a size cap.",
-        "Café-style write-back caches defer writes; überall in distributed systems, a cache is a replica with weaker guarantees.",
-    ]),
-    ("web/observability.html", "web", [
-        "Traces connect the gateway span to the engine span through the traceparent header.",
-        "SLO burn rate alerts fire when the error budget is consumed faster than the window allows.",
-        "Time to first token, TTFT, and inter-token latency, ITL, are the two latencies users feel.",
-    ]),
-    ("docs/release.md", "file", [
-        "ModelRelease gates a model on its eval thresholds, rolls out a canary, and rolls back when the burn rate is too high.",
-        "A model card states intended use, evaluation results with confidence intervals, and known limitations.",
-    ]),
-    ("docs/data.md", "file", [
-        "The corpus pipeline fetches, filters, deduplicates with MinHash, removes PII, and tokenizes into token streams.",
-        "Decontamination drops documents that share a long n-gram with a protected eval set.",
-    ]),
-    ("docs/numbers.md", "file", [
-        "Port 30080 serves the gateway in kind; port 9464 exposes /metrics; block_tokens is 16 by default.",
-        "cache cache cache: a chunk that repeats a term saturates, it does not win by repetition alone.",
-    ]),
+    (
+        "docs/kv-cache.md",
+        "file",
+        [
+            "The KV cache keeps the keys and values of every past token so decoding does not recompute attention over the prompt.",
+            "Eviction frees KV blocks when the pool is full: the least recently used block whose reference count is zero goes first.",
+            "A prefix cache reuses KV blocks across requests that share a prompt prefix; block hashes chain FNV-1a over token ids.",
+        ],
+    ),
+    (
+        "docs/gateway.md",
+        "file",
+        [
+            "The gateway checks the API key, applies rate limits per tenant, and proxies server-sent events without buffering.",
+            "Routing uses consistent hashing with bounded loads so one engine replica never takes more than its share of requests.",
+            "A 429 answer carries Retry-After; clients back off instead of hammering the gateway.",
+        ],
+    ),
+    (
+        "docs/durable.md",
+        "file",
+        [
+            "The durable engine records every workflow step in a write-ahead log and replays the history after a crash.",
+            "Activities are retried with backoff; an idempotency key makes a retried write happen exactly once.",
+            "Timers live in a min-heap; a restarted server fires each due timer exactly once, in order.",
+        ],
+    ),
+    (
+        "docs/tokenizer.md",
+        "file",
+        [
+            "Byte-pair encoding merges the most frequent adjacent pair until the vocabulary reaches its target size.",
+            "The Rust tokenizer must produce the same ids as the Python one; tl_tok_encode is checked against golden ids.",
+        ],
+    ),
+    (
+        "docs/sampling.md",
+        "file",
+        [
+            "Sampling applies penalties, temperature, top-k, top-p, and min-p, then one uniform draw picks a token by inverse CDF.",
+            "Temperature zero is greedy decoding; ties go to the lowest token id so Python and Rust agree.",
+        ],
+    ),
+    (
+        "docs/kernels.md",
+        "file",
+        [
+            "The matmul kernel tiles the loops so each tile fits in cache; a cache miss costs far more than a multiply.",
+            "Flash attention computes softmax online, one block of keys at a time, and never materializes the score matrix.",
+            "Int4 quantization stores two weights per byte with one fp16 scale per group of 32 columns.",
+        ],
+    ),
+    (
+        "docs/eval.md",
+        "file",
+        [
+            "An eval suite runs every case against a subject and scores the output; an errored scorer is counted, never averaged as zero.",
+            "Bootstrap confidence intervals resample cases with replacement; a paired design compares two subjects on the same cases.",
+        ],
+    ),
+    (
+        "docs/agent.md",
+        "file",
+        [
+            "The agent loop calls the model, runs the tool calls it asks for, and stops at a final answer or the iteration limit.",
+            "Tool arguments are validated against the JSON Schema before the tool runs; invalid arguments go back to the model as an error.",
+            "A gate decides before dispatch whether a tool call may run; writes need approval.",
+        ],
+    ),
+    (
+        "docs/retrieval.md",
+        "file",
+        [
+            "BM25 scores lexical matches with saturating term frequency and length normalization; k1 and b are its two knobs.",
+            "Dense retrieval embeds the query and returns the nearest chunks by cosine similarity.",
+            "Reciprocal rank fusion adds 1 / (k + rank) over the lists, so it needs ranks, not comparable scores.",
+            "Maximal marginal relevance trades relevance against redundancy when it picks the final chunks.",
+        ],
+    ),
+    (
+        "web/ivf.html",
+        "web",
+        [
+            "An IVF index clusters the vectors with k-means and scans only the nprobe nearest lists at query time.",
+            "k-means++ seeding picks each new centroid with probability proportional to its squared distance from the nearest one already picked.",
+            "Recall at 10 measures how many of the exact top 10 neighbours the approximate search returned.",
+        ],
+    ),
+    (
+        "web/caching.html",
+        "web",
+        [
+            "A response cache keyed by the request hash returns a stored completion; the eviction policy is LRU with a size cap.",
+            "Café-style write-back caches defer writes; überall in distributed systems, a cache is a replica with weaker guarantees.",
+        ],
+    ),
+    (
+        "web/observability.html",
+        "web",
+        [
+            "Traces connect the gateway span to the engine span through the traceparent header.",
+            "SLO burn rate alerts fire when the error budget is consumed faster than the window allows.",
+            "Time to first token, TTFT, and inter-token latency, ITL, are the two latencies users feel.",
+        ],
+    ),
+    (
+        "docs/release.md",
+        "file",
+        [
+            "ModelRelease gates a model on its eval thresholds, rolls out a canary, and rolls back when the burn rate is too high.",
+            "A model card states intended use, evaluation results with confidence intervals, and known limitations.",
+        ],
+    ),
+    (
+        "docs/data.md",
+        "file",
+        [
+            "The corpus pipeline fetches, filters, deduplicates with MinHash, removes PII, and tokenizes into token streams.",
+            "Decontamination drops documents that share a long n-gram with a protected eval set.",
+        ],
+    ),
+    (
+        "docs/numbers.md",
+        "file",
+        [
+            "Port 30080 serves the gateway in kind; port 9464 exposes /metrics; block_tokens is 16 by default.",
+            "cache cache cache: a chunk that repeats a term saturates, it does not win by repetition alone.",
+        ],
+    ),
 ]
 
 QUERIES = [
@@ -260,7 +320,12 @@ class BM25:
                 post += uvarint(d - prev) + uvarint(tf)
                 prev = d
             tb = t.encode()
-            b += struct.pack("<H", len(tb)) + tb + struct.pack("<II", len(pl), len(post)) + post
+            b += (
+                struct.pack("<H", len(tb))
+                + tb
+                + struct.pack("<II", len(pl), len(post))
+                + post
+            )
         return bytes(b)
 
 
@@ -337,7 +402,9 @@ def main() -> None:
                     "uri": doc_id,
                     "text": text,
                     "n_tokens": len(text.encode()) // 4,
-                    "fingerprint": __import__("hashlib").sha256(text.encode()).hexdigest(),
+                    "fingerprint": __import__("hashlib")
+                    .sha256(text.encode())
+                    .hexdigest(),
                 }
             )
     texts = [c["text"] for c in chunks]
@@ -361,7 +428,9 @@ def main() -> None:
     (idx / "docs.jsonl").write_text(
         "".join(json.dumps(c, ensure_ascii=False) + "\n" for c in chunks)
     )
-    (idx / "vectors.f32").write_bytes(b"".join(struct.pack(f"<{DIM}f", *v) for v in vecs))
+    (idx / "vectors.f32").write_bytes(
+        b"".join(struct.pack(f"<{DIM}f", *v) for v in vecs)
+    )
     (idx / "bm25.idx").write_bytes(bm.to_bytes())
 
     queries = []
@@ -396,7 +465,11 @@ def main() -> None:
         "n_terms": len(bm.post),
         "queries": queries,
         "kmeanspp": [
-            {"seed": fnv1a64(INDEX_ID.encode()), "k": 4, "picks": kmeanspp(vecs, 4, PCG32(fnv1a64(INDEX_ID.encode())))},
+            {
+                "seed": fnv1a64(INDEX_ID.encode()),
+                "k": 4,
+                "picks": kmeanspp(vecs, 4, PCG32(fnv1a64(INDEX_ID.encode()))),
+            },
             {"seed": 7, "k": 6, "picks": kmeanspp(vecs, 6, PCG32(7))},
         ],
     }

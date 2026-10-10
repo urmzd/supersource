@@ -83,7 +83,9 @@ def params_of(model):
 
 def w_hand(comm, stage):
     m = Vec(10)
-    zo = ZeroOptimizer(AdamW, list(m.parameters()), comm, stage, lr=0.5, weight_decay=0.0)
+    zo = ZeroOptimizer(
+        AdamW, list(m.parameters()), comm, stage, lr=0.5, weight_decay=0.0
+    )
     zo.gather()
     d = m.w - float(comm.rank)
     sum_loss((d * d * 0.5)[None, :]).backward()
@@ -112,7 +114,9 @@ def w_ddp(comm, s, steps, scramble):
 
 def w_zero(comm, s, stage, steps):
     model = MLP(s)
-    zo = ZeroOptimizer(AdamW, list(model.parameters()), comm, stage, lr=0.05, weight_decay=0.01)
+    zo = ZeroOptimizer(
+        AdamW, list(model.parameters()), comm, stage, lr=0.05, weight_decay=0.01
+    )
     x, y = batch(s)
     rows = slice(comm.rank * B // comm.world, (comm.rank + 1) * B // comm.world)
     released = []
@@ -171,9 +175,18 @@ def test_hand_example_memory_by_stage():
     # CATCHES: s04, s07, s08
     # CHAPTER: L11.3 section 3, Worked example by hand
     want = {
-        1: [{"params": 80, "grads": 104, "optimizer": 72}, {"params": 80, "grads": 96, "optimizer": 48}],
-        2: [{"params": 80, "grads": 24, "optimizer": 72}, {"params": 80, "grads": 16, "optimizer": 48}],
-        3: [{"params": 24, "grads": 24, "optimizer": 48}, {"params": 16, "grads": 16, "optimizer": 32}],
+        1: [
+            {"params": 80, "grads": 104, "optimizer": 72},
+            {"params": 80, "grads": 96, "optimizer": 48},
+        ],
+        2: [
+            {"params": 80, "grads": 24, "optimizer": 72},
+            {"params": 80, "grads": 16, "optimizer": 48},
+        ],
+        3: [
+            {"params": 24, "grads": 24, "optimizer": 48},
+            {"params": 16, "grads": 16, "optimizer": 32},
+        ],
     }
     for stage in (1, 2, 3):
         out = spawn(w_hand, 4, stage, timeout=T)

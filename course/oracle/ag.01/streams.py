@@ -32,7 +32,9 @@ OUT = Path(__file__).resolve().parents[2] / "fixtures" / "ag.01" / "streams.json
 
 
 def ev(obj) -> str:
-    return "data: " + json.dumps(obj, separators=(",", ":"), ensure_ascii=False) + "\n\n"
+    return (
+        "data: " + json.dumps(obj, separators=(",", ":"), ensure_ascii=False) + "\n\n"
+    )
 
 
 def chunk(delta: dict, finish=None, cid="chatcmpl-1") -> str:
@@ -55,12 +57,18 @@ def usage(p: int, c: int, cid="chatcmpl-1") -> str:
             "created": 0,
             "model": "m",
             "choices": [],
-            "usage": {"prompt_tokens": p, "completion_tokens": c, "total_tokens": p + c},
+            "usage": {
+                "prompt_tokens": p,
+                "completion_tokens": c,
+                "total_tokens": p + c,
+            },
         }
     )
 
 
-def frag(index: int, args: str, cid: str | None = None, name: str | None = None) -> dict:
+def frag(
+    index: int, args: str, cid: str | None = None, name: str | None = None
+) -> dict:
     f: dict = {"index": index, "function": {"arguments": args}}
     if cid is not None:
         f["id"] = cid
@@ -114,8 +122,20 @@ STREAMS.append(
             {"type": "args", "index": 0, "fragment": '{"city":'},
             {"type": "args", "index": 1, "fragment": ':"UTC"}'},
             {"type": "args", "index": 0, "fragment": '"Paris"}'},
-            {"type": "end", "index": 0, "id": "call_a", "name": "get_weather", "args": '{"city":"Paris"}'},
-            {"type": "end", "index": 1, "id": "call_b", "name": "get_time", "args": '{"tz":"UTC"}'},
+            {
+                "type": "end",
+                "index": 0,
+                "id": "call_a",
+                "name": "get_weather",
+                "args": '{"city":"Paris"}',
+            },
+            {
+                "type": "end",
+                "index": 1,
+                "id": "call_b",
+                "name": "get_time",
+                "args": '{"tz":"UTC"}',
+            },
             {"type": "usage", "in": 12, "out": 9},
             {"type": "done", "finish": "tool_calls"},
         ],
@@ -126,7 +146,10 @@ STREAMS.append(
 #    one event whose JSON is split over two data lines (joined with "\n").
 crlf = (
     ": ping\r\n\r\n"
-    + (chunk({"role": "assistant", "content": ""}) + chunk({"content": "Let me check."})).replace("\n", "\r\n")
+    + (
+        chunk({"role": "assistant", "content": ""})
+        + chunk({"content": "Let me check."})
+    ).replace("\n", "\r\n")
     + ": ping\n\n"
     + 'data: {"id":"chatcmpl-1","object":"chat.completion.chunk","created":0,\n'
     + 'data: "model":"m","choices":[{"index":0,"delta":'
@@ -142,7 +165,13 @@ STREAMS.append(
         "deltas": [
             {"type": "text", "text": "Let me check."},
             {"type": "start", "index": 0, "id": "call_c", "name": "list_models"},
-            {"type": "end", "index": 0, "id": "call_c", "name": "list_models", "args": "{}"},
+            {
+                "type": "end",
+                "index": 0,
+                "id": "call_c",
+                "name": "list_models",
+                "args": "{}",
+            },
             {"type": "done", "finish": "tool_calls"},
         ],
     }
@@ -154,7 +183,16 @@ STREAMS.append(
         "name": "error_event",
         "sse": chunk({"role": "assistant", "content": ""})
         + chunk({"content": "Hi"})
-        + ev({"error": {"message": "engine lost", "type": "server_error", "param": None, "code": None}}),
+        + ev(
+            {
+                "error": {
+                    "message": "engine lost",
+                    "type": "server_error",
+                    "param": None,
+                    "code": None,
+                }
+            }
+        ),
         "deltas": [
             {"type": "text", "text": "Hi"},
             {"type": "error", "kind": "stream_error"},
@@ -166,7 +204,9 @@ STREAMS.append(
 STREAMS.append(
     {
         "name": "no_done",
-        "sse": chunk({"role": "assistant", "content": ""}) + chunk({"content": "Hi"}) + chunk({}, "stop"),
+        "sse": chunk({"role": "assistant", "content": ""})
+        + chunk({"content": "Hi"})
+        + chunk({}, "stop"),
         "deltas": [
             {"type": "text", "text": "Hi"},
             {"type": "error", "kind": "no_done"},
@@ -182,7 +222,13 @@ STREAMS.append(
         "deltas": [
             {"type": "start", "index": 0, "id": "call_d", "name": "search_docs"},
             {"type": "args", "index": 0, "fragment": '{"q":"x"}'},
-            {"type": "end", "index": 0, "id": "call_d", "name": "search_docs", "args": '{"q":"x"}'},
+            {
+                "type": "end",
+                "index": 0,
+                "id": "call_d",
+                "name": "search_docs",
+                "args": '{"q":"x"}',
+            },
             {"type": "done", "finish": ""},
         ],
     }
@@ -194,7 +240,9 @@ for s in STREAMS:
 
 def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"streams": STREAMS}, indent=1, ensure_ascii=False) + "\n")
+    OUT.write_text(
+        json.dumps({"streams": STREAMS}, indent=1, ensure_ascii=False) + "\n"
+    )
     print(f"wrote {OUT} ({len(STREAMS)} streams)")
 
 

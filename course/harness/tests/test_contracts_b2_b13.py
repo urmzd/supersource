@@ -120,17 +120,28 @@ def test_umbrella_holds_every_abi_v1_unit_but_kv_v2():
 
 @pytest.mark.skipif(shutil.which("cc") is None, reason="no C compiler")
 def test_every_header_compiles_alone_twice_as_c11(tmp_path):
-    for h in ["tinyllm.h"] + sorted(p.relative_to(INC).as_posix() for p in (INC / "tinyllm").glob("*.h")):
+    for h in ["tinyllm.h"] + sorted(
+        p.relative_to(INC).as_posix() for p in (INC / "tinyllm").glob("*.h")
+    ):
         src = tmp_path / "one.c"
         src.write_text(f'#include "{h}"\n#include "{h}"\n')
-        for flags in (["-std=c11", "-Wall", "-Werror"], ["-std=c11", "-pedantic", "-Wall", "-Wextra", "-Werror"]):
-            r = subprocess.run(["cc", *flags, f"-I{INC}", "-fsyntax-only", str(src)], capture_output=True, text=True)
+        for flags in (
+            ["-std=c11", "-Wall", "-Werror"],
+            ["-std=c11", "-pedantic", "-Wall", "-Wextra", "-Werror"],
+        ):
+            r = subprocess.run(
+                ["cc", *flags, f"-I{INC}", "-fsyntax-only", str(src)],
+                capture_output=True,
+                text=True,
+            )
             assert r.returncode == 0, f"{h} {flags}:\n{r.stderr}"
 
 
 @pytest.mark.skipif(shutil.which("cc") is None, reason="no C compiler")
 def test_struct_layouts_match_abi_md(tmp_path):
-    rows = re.findall(r"^\| `(tl_\w+)` \| (\d+) \| (.+) \|$", (C / "c/ABI.md").read_text(), re.M)
+    rows = re.findall(
+        r"^\| `(tl_\w+)` \| (\d+) \| (.+) \|$", (C / "c/ABI.md").read_text(), re.M
+    )
     assert len(rows) == 9
     lines = []
     for name, size, fields in rows:
@@ -144,9 +155,18 @@ def test_struct_layouts_match_abi_md(tmp_path):
         + "\n  return 0;\n}\n"
     )
     exe = tmp_path / "layout"
-    r = subprocess.run(["cc", "-std=c11", "-Wall", "-Werror", f"-I{INC}", str(src), "-o", str(exe)], capture_output=True, text=True)
+    r = subprocess.run(
+        ["cc", "-std=c11", "-Wall", "-Werror", f"-I{INC}", str(src), "-o", str(exe)],
+        capture_output=True,
+        text=True,
+    )
     assert r.returncode == 0, r.stderr
-    got = dict(line.split() for line in subprocess.run([str(exe)], capture_output=True, text=True, check=True).stdout.splitlines())
+    got = dict(
+        line.split()
+        for line in subprocess.run(
+            [str(exe)], capture_output=True, text=True, check=True
+        ).stdout.splitlines()
+    )
     for name, size, fields in rows:
         assert got[name] == size, name
         for f, off in re.findall(r"`(\w+)` (\d+)", fields):
@@ -191,10 +211,23 @@ int main(void) {
 """
     )
     exe = tmp_path / "x"
-    r = subprocess.run(["cc", "-std=c11", "-Wall", "-Werror", f"-I{INC}", str(src), "-o", str(exe)], capture_output=True, text=True)
+    r = subprocess.run(
+        ["cc", "-std=c11", "-Wall", "-Werror", f"-I{INC}", str(src), "-o", str(exe)],
+        capture_output=True,
+        text=True,
+    )
     assert r.returncode == 0, r.stderr
-    out = subprocess.run([str(exe)], capture_output=True, text=True, check=True).stdout.splitlines()
-    assert out[0].split() == ["a15c02b7", "7b47f409", "ba1d3330", "83d2f293", "bfa4784b", "cbed606e"]
+    out = subprocess.run(
+        [str(exe)], capture_output=True, text=True, check=True
+    ).stdout.splitlines()
+    assert out[0].split() == [
+        "a15c02b7",
+        "7b47f409",
+        "ba1d3330",
+        "83d2f293",
+        "bfa4784b",
+        "cbed606e",
+    ]
     assert out[1] == "TLKV"
     for line, s in zip(out[2:5], ["0", "1", str(1 << 63)]):
         assert [int(x) for x in line.split()] == vec["next_u32"][s]
@@ -205,7 +238,9 @@ int main(void) {
 
 def test_pcg32_vectors_are_current_and_match_the_frozen_helper():
     gen = COURSE / "oracle/contracts/pcg32_vectors.py"
-    r = subprocess.run([sys.executable, str(gen), "--check"], capture_output=True, text=True)
+    r = subprocess.run(
+        [sys.executable, str(gen), "--check"], capture_output=True, text=True
+    )
     assert r.returncode == 0, "spec/pcg32.vectors.json is stale: rerun the generator"
     sys.path.insert(0, str(COURSE / "tests"))
     try:
@@ -224,9 +259,15 @@ def test_pcg32_vectors_are_current_and_match_the_frozen_helper():
         # data only, D35); it equals the spec's first normal.
         assert math.isclose(PCG32(int(s)).normal(), vec["normal"][s][0], rel_tol=1e-12)
         for p, pid in vec["purposes"].items():
-            assert vec["child_seed"][s][p] == mix64((int(s) + pid * 0x9E3779B97F4A7C15) & M64)
+            assert vec["child_seed"][s][p] == mix64(
+                (int(s) + pid * 0x9E3779B97F4A7C15) & M64
+            )
     md = (C / "spec/pcg32.md").read_text()
-    assert vec["next_u32"]["0"][0] == 0x47C28B93 and "0x47C28B93" in md and "0x9AE4F7499BA72696" in md
+    assert (
+        vec["next_u32"]["0"][0] == 0x47C28B93
+        and "0x47C28B93" in md
+        and "0x9AE4F7499BA72696" in md
+    )
 
 
 # -- spec/sampling --------------------------------------------------------------
@@ -235,13 +276,17 @@ def test_pcg32_vectors_are_current_and_match_the_frozen_helper():
 def _oracle_rng():
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("pcg32_vectors", COURSE / "oracle/contracts/pcg32_vectors.py")
+    spec = importlib.util.spec_from_file_location(
+        "pcg32_vectors", COURSE / "oracle/contracts/pcg32_vectors.py"
+    )
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
 
 
-def _sample(x, *, T, top_k, top_p, min_p, seed, prompt=(), out=(), r=1.0, a_p=0.0, a_f=0.0):
+def _sample(
+    x, *, T, top_k, top_p, min_p, seed, prompt=(), out=(), r=1.0, a_p=0.0, a_f=0.0
+):
     """spec/sampling.md, transcribed step by step."""
     m = _oracle_rng()
     V = len(x)
@@ -293,7 +338,9 @@ def _sample(x, *, T, top_k, top_p, min_p, seed, prompt=(), out=(), r=1.0, a_p=0.
 
 
 def test_sampling_worked_example():
-    tok, lp = _sample([1.0, 3.0, 2.0, 3.0, -1.0], T=1, top_k=3, top_p=0.8, min_p=0, seed=0)
+    tok, lp = _sample(
+        [1.0, 3.0, 2.0, 3.0, -1.0], T=1, top_k=3, top_p=0.8, min_p=0, seed=0
+    )
     assert tok == 3 and round(lp, 5) == -0.92487
     md = (C / "spec/sampling.md").read_text()
     assert "**id 3**" in md and "-0.92487" in md and "0xF88BB8A8724C81EC" in md
@@ -310,13 +357,23 @@ def test_kv_block_hash_and_envelope_example():
     assert fnv1a64(b"a") == 0xAF63DC4C8601EC8C and crc32c(b"123456789") == 0xE3069283
 
     def H(parent, toks):
-        return fnv1a64(struct.pack("<Q", parent) + b"".join(struct.pack("<I", t) for t in toks)) or 1
+        return (
+            fnv1a64(
+                struct.pack("<Q", parent) + b"".join(struct.pack("<I", t) for t in toks)
+            )
+            or 1
+        )
 
     h0 = H(0, [1, 2])
     h1 = H(h0, [3, 4])
     assert f"0x{h0:016X}" in md and f"0x{h1:016X}" in md
     payload = b"".join(struct.pack("<e", v) for v in [1, 2, 3, 4, 0.5, -1, 0, 0.25])
-    body = b"TLKV" + struct.pack("<HHIIIII", 1, 1, 1, 2, 1, 1, 2) + struct.pack("<QI", h0, 2) + payload
+    body = (
+        b"TLKV"
+        + struct.pack("<HHIIIII", 1, 1, 1, 2, 1, 1, 2)
+        + struct.pack("<QI", h0, 2)
+        + payload
+    )
     env = body + struct.pack("<I", crc32c(body))
     assert len(env) == 28 + (12 + 16) + 4 == 60
     assert _hexblock(md, "### Worked example (v1)") == env
@@ -335,7 +392,11 @@ def test_bloom_example():
         h2 = mix64(h1) | 1
         return [((h1 + i * h2) & M64) % m for i in range(k)]
 
-    assert bits(b"cat") == [11, 14, 17] and bits(b"dog") == [13, 0, 3] and bits(b"bird") == [14, 7, 16]
+    assert (
+        bits(b"cat") == [11, 14, 17]
+        and bits(b"dog") == [13, 0, 3]
+        and bits(b"bird") == [14, 7, 16]
+    )
     arr = bytearray((m + 7) // 8)
     for it in (b"cat", b"dog"):
         for g in bits(it):
@@ -441,7 +502,13 @@ def test_system_schema_allows_per_instance_env():
     sch = _json("config/system.schema.json")
     sysm = {
         "system": {"name": "forge", "version": "0.4.0", "course_version": "0.2.0"},
-        "services": {"decode": {"entry": "engine", "section": "engine", "env": {"TL_ENGINE__ROLE": "decode"}}},
+        "services": {
+            "decode": {
+                "entry": "engine",
+                "section": "engine",
+                "env": {"TL_ENGINE__ROLE": "decode"},
+            }
+        },
     }
     assert schema.validate(sysm, sch) == []
     sysm["services"]["decode"]["env"] = {"TL_ENGINE__ROLE": 1}
@@ -450,12 +517,23 @@ def test_system_schema_allows_per_instance_env():
 
 def test_schema_rejections():
     pol = _json("formats/policy.v1.schema.json")
-    assert schema.validate({"version": 1, "rules": [{"id": "x", "match": {}, "action": "block", "reason": "r"}]}, pol)
+    assert schema.validate(
+        {
+            "version": 1,
+            "rules": [{"id": "x", "match": {}, "action": "block", "reason": "r"}],
+        },
+        pol,
+    )
     head = _json("formats/linear-head.schema.json")
     assert schema.validate({**head["examples"][0], "classes": ["only"]}, head)
     prog = _json("formats/progress.schema.json")
-    assert schema.validate({"ts": 1, "kind": "ckpt", "step": 5}, prog), "ckpt needs a path"
-    assert schema.validate({"ts": 1, "kind": "metric", "name": "x", "value": 1.0}, prog) == []
+    assert schema.validate({"ts": 1, "kind": "ckpt", "step": 5}, prog), (
+        "ckpt needs a path"
+    )
+    assert (
+        schema.validate({"ts": 1, "kind": "metric", "name": "x", "value": 1.0}, prog)
+        == []
+    )
     ts = _json("formats/trainer-state.schema.json")
     ex = ts["examples"][0]
     assert schema.validate({**ex, "rng": {"pcg_state": 1, "pcg_inc": "00"}}, ts)
@@ -470,16 +548,56 @@ def test_schema_rejections():
     ex["slos"]["ttft"]["objective"] = 0.9
     assert schema.validate(ex, slo), "looser than the course default"
     res = _json("formats/eval-result.schema.json")
-    summ = {"suite": "s", "run_id": "r", "subjects": ["a", "b"], "n_boot": 1000, "seed": 0,
-            "metrics": {"a": {"em": {"mean": 0.5, "ci_low": 0.4, "ci_high": 0.6, "n": 100, "errored": 0}}},
-            "ab": {"base": "a", "exp": "b", "metrics": {"em": {"delta": 0.1, "ci_low": 0.0, "ci_high": 0.2, "p_value": 0.04, "n_pairs": 100}}}}
+    summ = {
+        "suite": "s",
+        "run_id": "r",
+        "subjects": ["a", "b"],
+        "n_boot": 1000,
+        "seed": 0,
+        "metrics": {
+            "a": {
+                "em": {
+                    "mean": 0.5,
+                    "ci_low": 0.4,
+                    "ci_high": 0.6,
+                    "n": 100,
+                    "errored": 0,
+                }
+            }
+        },
+        "ab": {
+            "base": "a",
+            "exp": "b",
+            "metrics": {
+                "em": {
+                    "delta": 0.1,
+                    "ci_low": 0.0,
+                    "ci_high": 0.2,
+                    "p_value": 0.04,
+                    "n_pairs": 100,
+                }
+            },
+        },
+    }
     assert schema.validate(summ, res["$defs"]["summary"], res) == []
 
 
 TOKENIZERS = [
-    *sorted(Path.home().glob(".cache/huggingface/hub/models--HuggingFaceTB--SmolLM2-*/snapshots/*/tokenizer.json")),
-    *sorted(Path.home().glob(".cache/huggingface/hub/models--openai-community--gpt2/snapshots/*/tokenizer.json")),
-    *sorted(Path.home().glob(".cache/huggingface/hub/models--*bert*/snapshots/*/tokenizer.json")),
+    *sorted(
+        Path.home().glob(
+            ".cache/huggingface/hub/models--HuggingFaceTB--SmolLM2-*/snapshots/*/tokenizer.json"
+        )
+    ),
+    *sorted(
+        Path.home().glob(
+            ".cache/huggingface/hub/models--openai-community--gpt2/snapshots/*/tokenizer.json"
+        )
+    ),
+    *sorted(
+        Path.home().glob(
+            ".cache/huggingface/hub/models--*bert*/snapshots/*/tokenizer.json"
+        )
+    ),
 ]
 
 
@@ -487,7 +605,9 @@ def test_tokenizer_subset_schema():
     sch = _json("formats/tokenizer-json.schema.json")
     ex = sch["examples"][0]
     assert schema.validate({**ex, "model": {**ex["model"], "byte_fallback": True}}, sch)
-    assert schema.validate({**ex, "pre_tokenizer": {"type": "Split", "pattern": " "}}, sch)
+    assert schema.validate(
+        {**ex, "pre_tokenizer": {"type": "Split", "pattern": " "}}, sch
+    )
     assert schema.validate({**ex, "model": {"type": "WordLevel", "vocab": {}}}, sch)
     for p in TOKENIZERS:  # real files when a local HF cache has them; never downloaded
         assert schema.validate(json.loads(p.read_text()), sch) == [], p
@@ -506,86 +626,255 @@ def test_openapi_files_parse_and_refs_resolve():
         assert spec["openapi"].startswith("3.1"), f
         for ref in _refs(spec, []):
             assert schema.resolve_ref(ref, spec) is not None, (f, ref)
-        ops = [op["operationId"] for path in spec["paths"].values() for k, op in path.items() if isinstance(op, dict) and "operationId" in op]
+        ops = [
+            op["operationId"]
+            for path in spec["paths"].values()
+            for k, op in path.items()
+            if isinstance(op, dict) and "operationId" in op
+        ]
         assert len(ops) == len(set(ops)), f
 
 
 def test_openapi_v1_surface_matches_design():
     spec = _yaml("openapi/openai-subset.v1.yaml")
-    assert set(spec["paths"]) == {"/healthz", "/readyz", "/metrics", "/v1/chat/completions", "/v1/completions",
-                                  "/v1/embeddings", "/v1/models", "/v1/models/{model}", "/v1/tokenize"}
+    assert set(spec["paths"]) == {
+        "/healthz",
+        "/readyz",
+        "/metrics",
+        "/v1/chat/completions",
+        "/v1/completions",
+        "/v1/embeddings",
+        "/v1/models",
+        "/v1/models/{model}",
+        "/v1/tokenize",
+    }
     chat = spec["paths"]["/v1/chat/completions"]["post"]["responses"]
     assert {"200", "400", "401", "403", "404", "422", "429", "451", "503"} <= set(chat)
-    fields = set(spec["components"]["schemas"]["ChatCompletionRequest"]["allOf"][1]["properties"]) | set(
-        spec["components"]["schemas"]["SamplingFields"]["properties"])
-    for f in ["model", "messages", "max_tokens", "max_completion_tokens", "temperature", "top_p", "top_k", "min_p",
-              "repetition_penalty", "presence_penalty", "frequency_penalty", "seed", "stop", "stream", "stream_options",
-              "logprobs", "top_logprobs", "tools", "tool_choice", "response_format", "user"]:
+    fields = set(
+        spec["components"]["schemas"]["ChatCompletionRequest"]["allOf"][1]["properties"]
+    ) | set(spec["components"]["schemas"]["SamplingFields"]["properties"])
+    for f in [
+        "model",
+        "messages",
+        "max_tokens",
+        "max_completion_tokens",
+        "temperature",
+        "top_p",
+        "top_k",
+        "min_p",
+        "repetition_penalty",
+        "presence_penalty",
+        "frequency_penalty",
+        "seed",
+        "stop",
+        "stream",
+        "stream_options",
+        "logprobs",
+        "top_logprobs",
+        "tools",
+        "tool_choice",
+        "response_format",
+        "user",
+    ]:
         assert f in fields, f
-    codes = spec["components"]["schemas"]["Error"]["properties"]["error"]["properties"]["code"]["enum"]
-    for c in ["invalid_api_key", "insufficient_scope", "model_not_found", "unsupported_parameter",
-              "rate_limit_exceeded", "usage_policy", "no_capacity"]:
+    codes = spec["components"]["schemas"]["Error"]["properties"]["error"]["properties"][
+        "code"
+    ]["enum"]
+    for c in [
+        "invalid_api_key",
+        "insufficient_scope",
+        "model_not_found",
+        "unsupported_parameter",
+        "rate_limit_exceeded",
+        "usage_policy",
+        "no_capacity",
+    ]:
         assert c in codes
 
 
 def test_openapi_v1_bodies():
     spec = _yaml("openapi/openai-subset.v1.yaml")
-    req = {"model": "smol", "messages": [{"role": "system", "content": "be brief"}, {"role": "user", "content": "hi"},
-           {"role": "assistant", "content": None, "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "f", "arguments": "{}"}}]},
-           {"role": "tool", "content": "42", "tool_call_id": "c1"}],
-           "temperature": 0, "stop": ["\n"], "stream": True, "stream_options": {"include_usage": True},
-           "tools": [{"type": "function", "function": {"name": "f", "parameters": {"type": "object"}}}], "tool_choice": "auto"}
+    req = {
+        "model": "smol",
+        "messages": [
+            {"role": "system", "content": "be brief"},
+            {"role": "user", "content": "hi"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "c1",
+                        "type": "function",
+                        "function": {"name": "f", "arguments": "{}"},
+                    }
+                ],
+            },
+            {"role": "tool", "content": "42", "tool_call_id": "c1"},
+        ],
+        "temperature": 0,
+        "stop": ["\n"],
+        "stream": True,
+        "stream_options": {"include_usage": True},
+        "tools": [
+            {
+                "type": "function",
+                "function": {"name": "f", "parameters": {"type": "object"}},
+            }
+        ],
+        "tool_choice": "auto",
+    }
     assert _ok(req, spec, "ChatCompletionRequest") == []
     assert _ok({**req, "temperature": -1}, spec, "ChatCompletionRequest")
-    assert _ok({**req, "messages": [{"role": "tool", "content": "x"}]}, spec, "ChatCompletionRequest")
+    assert _ok(
+        {**req, "messages": [{"role": "tool", "content": "x"}]},
+        spec,
+        "ChatCompletionRequest",
+    )
     usage = {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
-    done = {"id": "c", "object": "chat.completion", "created": 1, "model": "smol",
-            "choices": [{"index": 0, "message": {"role": "assistant", "content": "hi"}, "finish_reason": "stop", "logprobs": None}], "usage": usage}
+    done = {
+        "id": "c",
+        "object": "chat.completion",
+        "created": 1,
+        "model": "smol",
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": "hi"},
+                "finish_reason": "stop",
+                "logprobs": None,
+            }
+        ],
+        "usage": usage,
+    }
     assert _ok(done, spec, "ChatCompletion") == []
-    first = {"id": "c", "object": "chat.completion.chunk", "created": 1, "model": "smol",
-             "choices": [{"index": 0, "delta": {"role": "assistant", "content": ""}, "finish_reason": None}]}
-    frag = {**first, "choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "function": {"arguments": "{\"a\""}}]}, "finish_reason": None}]}
-    last = {**first, "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]}
+    first = {
+        "id": "c",
+        "object": "chat.completion.chunk",
+        "created": 1,
+        "model": "smol",
+        "choices": [
+            {
+                "index": 0,
+                "delta": {"role": "assistant", "content": ""},
+                "finish_reason": None,
+            }
+        ],
+    }
+    frag = {
+        **first,
+        "choices": [
+            {
+                "index": 0,
+                "delta": {
+                    "tool_calls": [{"index": 0, "function": {"arguments": '{"a"'}}]
+                },
+                "finish_reason": None,
+            }
+        ],
+    }
+    last = {
+        **first,
+        "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}],
+    }
     usage_chunk = {**first, "choices": [], "usage": usage}
     for ch in (first, frag, last, usage_chunk):
         assert _ok(ch, spec, "ChatCompletionChunk") == [], ch
-    assert _ok({**last, "choices": [{"index": 0, "delta": {}, "finish_reason": "eos"}]}, spec, "ChatCompletionChunk")
-    emb = {"object": "list", "model": "smol", "data": [{"object": "embedding", "index": 0, "embedding": [0.6, 0.8]}],
-           "usage": {"prompt_tokens": 2, "total_tokens": 2}}
+    assert _ok(
+        {**last, "choices": [{"index": 0, "delta": {}, "finish_reason": "eos"}]},
+        spec,
+        "ChatCompletionChunk",
+    )
+    emb = {
+        "object": "list",
+        "model": "smol",
+        "data": [{"object": "embedding", "index": 0, "embedding": [0.6, 0.8]}],
+        "usage": {"prompt_tokens": 2, "total_tokens": 2},
+    }
     assert _ok(emb, spec, "EmbeddingList") == []
-    err = {"error": {"message": "x", "type": "policy_error", "param": None, "code": "usage_policy"}}
+    err = {
+        "error": {
+            "message": "x",
+            "type": "policy_error",
+            "param": None,
+            "code": "usage_policy",
+        }
+    }
     assert _ok(err, spec, "Error") == []
-    assert _ok({"error": {"message": "x", "type": "policy_error", "param": None, "code": "nope"}}, spec, "Error")
+    assert _ok(
+        {
+            "error": {
+                "message": "x",
+                "type": "policy_error",
+                "param": None,
+                "code": "nope",
+            }
+        },
+        spec,
+        "Error",
+    )
 
 
 def test_openapi_v2_differs_from_v1_exactly_as_designed():
-    v1, v2 = _yaml("openapi/openai-subset.v1.yaml"), _yaml("openapi/openai-subset.v2.yaml")
+    v1, v2 = (
+        _yaml("openapi/openai-subset.v1.yaml"),
+        _yaml("openapi/openai-subset.v2.yaml"),
+    )
     assert set(v1["paths"]) == set(v2["paths"])
     usage = {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
     assert _ok(usage, v1, "Usage") == [] and _ok(usage, v2, "Usage")
-    assert _ok({**usage, "prompt_tokens_details": {"cached_tokens": 2}}, v2, "Usage") == []
+    assert (
+        _ok({**usage, "prompt_tokens_details": {"cached_tokens": 2}}, v2, "Usage") == []
+    )
     comp = v2["paths"]["/v1/completions"]["post"]
     assert comp["deprecated"] is True
     hdrs = comp["responses"]["200"]["headers"]
     assert hdrs["Deprecation"]["required"] and hdrs["Sunset"]["required"]
-    codes2 = v2["components"]["schemas"]["Error"]["properties"]["error"]["properties"]["code"]["enum"]
+    codes2 = v2["components"]["schemas"]["Error"]["properties"]["error"]["properties"][
+        "code"
+    ]["enum"]
     assert "rate_limit_exceeded" not in codes2
-    assert {"requests_limit_exceeded", "tokens_limit_exceeded", "queue_full", "model_draining"} <= set(codes2)
+    assert {
+        "requests_limit_exceeded",
+        "tokens_limit_exceeded",
+        "queue_full",
+        "model_draining",
+    } <= set(codes2)
     names = {p["name"] for p in v2["components"]["parameters"].values()}
     assert "X-TL-API-Version" in names
 
 
 def test_admin_surface_matches_design():
     spec = _yaml("openapi/admin.v1.yaml")
-    want = {("/admin/v1/keys", "post"), ("/admin/v1/keys", "get"), ("/admin/v1/keys/{key_id}", "delete"),
-            ("/admin/v1/workers", "get"), ("/admin/v1/routes", "get"), ("/admin/v1/routes", "put"),
-            ("/admin/v1/models/{model}:drain", "post"), ("/admin/v1/usage", "get"),
-            ("/admin/v1/policy", "get"), ("/admin/v1/policy", "put"), ("/admin/v1/cache:purge", "post")}
+    want = {
+        ("/admin/v1/keys", "post"),
+        ("/admin/v1/keys", "get"),
+        ("/admin/v1/keys/{key_id}", "delete"),
+        ("/admin/v1/workers", "get"),
+        ("/admin/v1/routes", "get"),
+        ("/admin/v1/routes", "put"),
+        ("/admin/v1/models/{model}:drain", "post"),
+        ("/admin/v1/usage", "get"),
+        ("/admin/v1/policy", "get"),
+        ("/admin/v1/policy", "put"),
+        ("/admin/v1/cache:purge", "post"),
+    }
     have = {(p, m) for p, ops in spec["paths"].items() for m in ops}
     assert want == have
-    created = {"key_id": "abcdefghijkl", "tenant": "acme", "name": "n", "scopes": ["infer"], "rpm": 60, "tpm": 1000,
-               "priority": 0, "models": [], "created_at": "2026-10-09T00:00:00Z", "expires_at": None, "revoked": False,
-               "key": "tl_abcdefghijkl_" + "A" * 32}
+    created = {
+        "key_id": "abcdefghijkl",
+        "tenant": "acme",
+        "name": "n",
+        "scopes": ["infer"],
+        "rpm": 60,
+        "tpm": 1000,
+        "priority": 0,
+        "models": [],
+        "created_at": "2026-10-09T00:00:00Z",
+        "expires_at": None,
+        "revoked": False,
+        "key": "tl_abcdefghijkl_" + "A" * 32,
+    }
     assert _ok(created, spec, "KeyCreated") == []
     assert _ok({**created, "key": "sk-123"}, spec, "KeyCreated")
     pol = _json("formats/policy.v1.schema.json")["examples"][0]
@@ -604,43 +893,81 @@ def _messages(text: str) -> list[str]:
 
 def test_protos_match_design_and_generated_code():
     assert [p.relative_to(C / "proto").as_posix() for p in PROTOS] == [
-        "tl/control/v1/control.proto", "tl/durable/v1/durable.proto", "tl/engine/v1/engine.proto",
-        "tl/kv/v1/kv.proto", "tl/raft/v1/raft.proto"]
+        "tl/control/v1/control.proto",
+        "tl/durable/v1/durable.proto",
+        "tl/engine/v1/engine.proto",
+        "tl/kv/v1/kv.proto",
+        "tl/raft/v1/raft.proto",
+    ]
     rpcs = {
         "engine": {"Prefill", "Info", "Cancel", "Drain"},
         "kv": {"HasBlocks", "PushKv", "Release"},
         "control": {"Heartbeat"},
-        "durable": {"StartWorkflow", "SignalWorkflow", "CancelWorkflow", "DescribeWorkflow", "GetHistory", "ListWorkflows",
-                    "ListDeadLetters", "RedriveDeadLetter", "PollWorkflowTask", "CompleteWorkflowTask", "PollActivityTask",
-                    "RecordHeartbeat", "CompleteActivityTask", "FailActivityTask"},
+        "durable": {
+            "StartWorkflow",
+            "SignalWorkflow",
+            "CancelWorkflow",
+            "DescribeWorkflow",
+            "GetHistory",
+            "ListWorkflows",
+            "ListDeadLetters",
+            "RedriveDeadLetter",
+            "PollWorkflowTask",
+            "CompleteWorkflowTask",
+            "PollActivityTask",
+            "RecordHeartbeat",
+            "CompleteActivityTask",
+            "FailActivityTask",
+        },
         "raft": {"RequestVote", "AppendEntries", "InstallSnapshot"},
     }
     for p in PROTOS:
         text = p.read_text()
         pkg = p.parent.parent.name
         assert f"package tl.{pkg}.v1;" in text
-        assert f'option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/{pkg}/v1;{pkg}v1";' in text
+        assert (
+            f'option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/{pkg}/v1;{pkg}v1";'
+            in text
+        )
         assert set(re.findall(r"rpc (\w+)\(", text)) == rpcs[pkg], pkg
         go = (C / f"go/gen/tl/{pkg}/v1/{pkg}.pb.go").read_text()
         rs = (C / f"rust/tl-proto/src/gen/tl.{pkg}.v1.rs").read_text()
         for msg in _messages(text):
             assert re.search(rf"^type \w*{msg} struct", go, re.M), (pkg, msg)
-            assert re.search(rf"pub struct {msg} \{{", rs) or f"pub struct {msg} {{" in rs, (pkg, msg)
+            assert (
+                re.search(rf"pub struct {msg} \{{", rs) or f"pub struct {msg} {{" in rs
+            ), (pkg, msg)
         assert (C / f"go/gen/tl/{pkg}/v1/{pkg}_grpc.pb.go").is_file()
     # the design's fixed field numbers survive (2.7)
     eng = (C / "proto/tl/engine/v1/engine.proto").read_text()
-    for frag in ["uint32 rng_draws_consumed = 8;", "repeated uint64 block_hashes = 4;", "int32 priority = 7;"]:
+    for frag in [
+        "uint32 rng_draws_consumed = 8;",
+        "repeated uint64 block_hashes = 4;",
+        "int32 priority = 7;",
+    ]:
         assert frag in eng
     dur = (C / "proto/tl/durable/v1/durable.proto").read_text()
-    for frag in ["ActivityDeadLettered dead_lettered = 27;", "uint64 lease_token = 10;", "string idempotency_key = 7;",
-                 "ContinueAsNew continue_as_new = 6;", "message WalRecord {"]:
+    for frag in [
+        "ActivityDeadLettered dead_lettered = 27;",
+        "uint64 lease_token = 10;",
+        "string idempotency_key = 7;",
+        "ContinueAsNew continue_as_new = 6;",
+        "message WalRecord {",
+    ]:
         assert frag in dur
 
 
 @pytest.mark.skipif(shutil.which("go") is None, reason="no go toolchain")
 def test_contracts_go_module_builds(tmp_path):
     env = {**os.environ, "GOWORK": "off", "GOFLAGS": "-mod=mod"}
-    r = subprocess.run(["go", "build", "./..."], cwd=C / "go", capture_output=True, text=True, env=env, timeout=120)
+    r = subprocess.run(
+        ["go", "build", "./..."],
+        cwd=C / "go",
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=120,
+    )
     if r.returncode != 0 and ("dial tcp" in r.stderr or "proxy.golang.org" in r.stderr):
         pytest.skip("go module cache cold and no network")
     assert r.returncode == 0, r.stderr
@@ -653,19 +980,42 @@ def test_metrics_yaml_covers_design_and_names_translate():
     d = _yaml("otel/metrics.yaml")
     inst = {i["name"]: i for i in d["instruments"]}
     assert len(inst) == len(d["instruments"])
-    for name in ["gen_ai.server.time_to_first_token", "gen_ai.server.time_per_output_token", "gen_ai.server.request.duration",
-                 "gen_ai.client.token.usage", "http.server.request.duration", "tl.engine.kv.blocks", "tl.engine.queue.depth",
-                 "tl.engine.batch.tokens", "tl.engine.active_sequences", "tl.engine.prefix_cache.hit_ratio",
-                 "tl.gateway.requests", "tl.gateway.ratelimit.rejections", "tl.gateway.cache.hits",
-                 "tl.durable.task_queue.depth", "tl.durable.dlq.size", "tl.durable.redeliveries",
-                 "tl.durable.task.schedule_to_start", "tl.train.loss", "tl.train.tokens_per_second", "tl.train.grad_norm",
-                 "tl.engine.spec_accept_rate"]:
+    for name in [
+        "gen_ai.server.time_to_first_token",
+        "gen_ai.server.time_per_output_token",
+        "gen_ai.server.request.duration",
+        "gen_ai.client.token.usage",
+        "http.server.request.duration",
+        "tl.engine.kv.blocks",
+        "tl.engine.queue.depth",
+        "tl.engine.batch.tokens",
+        "tl.engine.active_sequences",
+        "tl.engine.prefix_cache.hit_ratio",
+        "tl.gateway.requests",
+        "tl.gateway.ratelimit.rejections",
+        "tl.gateway.cache.hits",
+        "tl.durable.task_queue.depth",
+        "tl.durable.dlq.size",
+        "tl.durable.redeliveries",
+        "tl.durable.task.schedule_to_start",
+        "tl.train.loss",
+        "tl.train.tokens_per_second",
+        "tl.train.grad_norm",
+        "tl.engine.spec_accept_rate",
+    ]:
         assert name in inst, name
-    assert inst["gen_ai.server.time_to_first_token"]["prometheus"] == "gen_ai_server_time_to_first_token_seconds"
+    assert (
+        inst["gen_ai.server.time_to_first_token"]["prometheus"]
+        == "gen_ai_server_time_to_first_token_seconds"
+    )
     for i in d["instruments"]:
         base = i["name"].replace(".", "_")
         suffix = {"s": "_seconds", "By": "_bytes"}.get(i["unit"], "")
-        want = base + ("" if base.endswith(suffix) else suffix) + ("_total" if i["type"] == "counter" else "")
+        want = (
+            base
+            + ("" if base.endswith(suffix) else suffix)
+            + ("_total" if i["type"] == "counter" else "")
+        )
         assert i["prometheus"] == want, i["name"]
         if i["type"] == "histogram":
             assert i["buckets"] == sorted(set(i["buckets"])), i["name"]
@@ -674,11 +1024,31 @@ def test_metrics_yaml_covers_design_and_names_translate():
 
 def test_semconv_lists_every_design_span():
     md = (C / "otel/semconv.md").read_text()
-    for span in ["POST /v1/chat/completions", "gateway.auth", "gateway.ratelimit", "gateway.policy", "gateway.cache",
-                 "gateway.route", "gateway.proxy", "tl.engine.v1.EngineControl/Prefill", "engine.queue", "engine.prefill",
-                 "engine.decode", "kv.transfer", "workflow <type>", "activity <type>", "train.run", "train.step",
-                 "train.checkpoint", "corpus.stage <stage>", "agent.run", "agent.llm_call", "agent.tool <name>",
-                 "rag.retrieve", "eval.case"]:
+    for span in [
+        "POST /v1/chat/completions",
+        "gateway.auth",
+        "gateway.ratelimit",
+        "gateway.policy",
+        "gateway.cache",
+        "gateway.route",
+        "gateway.proxy",
+        "tl.engine.v1.EngineControl/Prefill",
+        "engine.queue",
+        "engine.prefill",
+        "engine.decode",
+        "kv.transfer",
+        "workflow <type>",
+        "activity <type>",
+        "train.run",
+        "train.step",
+        "train.checkpoint",
+        "corpus.stage <stage>",
+        "agent.run",
+        "agent.llm_call",
+        "agent.tool <name>",
+        "rag.retrieve",
+        "eval.case",
+    ]:
         assert f"`{span}`" in md, span
 
 
@@ -688,17 +1058,47 @@ def test_semconv_lists_every_design_span():
 def _values(chart: str) -> dict:
     common = {
         "image": {"repository": f"localhost:5001/forge-{chart}", "tag": "0.4.0"},
-        "resources": {"requests": {"cpu": "100m", "memory": "128Mi"}, "limits": {"cpu": "1", "memory": "256Mi"}},
-        "securityContext": {"runAsNonRoot": True, "runAsUser": 10001, "allowPrivilegeEscalation": False},
+        "resources": {
+            "requests": {"cpu": "100m", "memory": "128Mi"},
+            "limits": {"cpu": "1", "memory": "256Mi"},
+        },
+        "securityContext": {
+            "runAsNonRoot": True,
+            "runAsUser": 10001,
+            "allowPrivilegeEscalation": False,
+        },
         "probes": {"liveness": {"path": "/healthz"}, "readiness": {"path": "/readyz"}},
         "pdb": {"enabled": True, "maxUnavailable": 1},
     }
     extra = {
-        "gateway": {"replicaCount": 1, "service": {"type": "NodePort", "nodePort": 30080}, "pepper": {"name": "gw", "key": "pepper"}},
-        "engine": {"role": "decode", "model": {"dir": "/artifacts/models/smol-135m/v3"}},
-        "durable": {"replicaCount": 1, "persistence": {"enabled": True, "size": "5Gi"}, "walMaxBytes": 2147483648},
-        "worker": {"taskQueues": ["train"], "durableAddress": "forge-durable:7233", "autoscaling": {"enabled": True, "minReplicas": 1, "maxReplicas": 4}},
-        "agent": {"replicaCount": 1, "durableAddress": "forge-durable:7233", "provider": {"baseUrl": "http://forge-gateway:8080/v1", "model": "smol", "apiKey": {"name": "agent", "key": "k"}}},
+        "gateway": {
+            "replicaCount": 1,
+            "service": {"type": "NodePort", "nodePort": 30080},
+            "pepper": {"name": "gw", "key": "pepper"},
+        },
+        "engine": {
+            "role": "decode",
+            "model": {"dir": "/artifacts/models/smol-135m/v3"},
+        },
+        "durable": {
+            "replicaCount": 1,
+            "persistence": {"enabled": True, "size": "5Gi"},
+            "walMaxBytes": 2147483648,
+        },
+        "worker": {
+            "taskQueues": ["train"],
+            "durableAddress": "forge-durable:7233",
+            "autoscaling": {"enabled": True, "minReplicas": 1, "maxReplicas": 4},
+        },
+        "agent": {
+            "replicaCount": 1,
+            "durableAddress": "forge-durable:7233",
+            "provider": {
+                "baseUrl": "http://forge-gateway:8080/v1",
+                "model": "smol",
+                "apiKey": {"name": "agent", "key": "k"},
+            },
+        },
     }[chart]
     return {**common, **extra}
 
@@ -716,17 +1116,39 @@ def test_helm_values_schema_policy(chart, tmp_path):
         {**good, "resources": {"requests": good["resources"]["requests"]}},
     ):
         assert schema.validate(bad, sch), bad
-    ok_env = {**good, "env": [{"name": "TL_API_KEY", "valueFrom": {"secretKeyRef": {"name": "s", "key": "k"}}},
-                              {"name": "TL_ENGINE__ROLE", "value": "decode"}]}
+    ok_env = {
+        **good,
+        "env": [
+            {
+                "name": "TL_API_KEY",
+                "valueFrom": {"secretKeyRef": {"name": "s", "key": "k"}},
+            },
+            {"name": "TL_ENGINE__ROLE", "value": "decode"},
+        ],
+    }
     assert schema.validate(ok_env, sch) == []
     if shutil.which("helm"):
         (tmp_path / "c/templates").mkdir(parents=True)
-        (tmp_path / "c/Chart.yaml").write_text(f"apiVersion: v2\nname: forge-{chart}\nversion: 0.1.0\n")
-        (tmp_path / "c/values.schema.json").write_text((C / f"helm/{chart}.values.schema.json").read_text())
+        (tmp_path / "c/Chart.yaml").write_text(
+            f"apiVersion: v2\nname: forge-{chart}\nversion: 0.1.0\n"
+        )
+        (tmp_path / "c/values.schema.json").write_text(
+            (C / f"helm/{chart}.values.schema.json").read_text()
+        )
         (tmp_path / "c/values.yaml").write_text(json.dumps(good))
-        r = subprocess.run(["helm", "lint", str(tmp_path / "c")], capture_output=True, text=True, timeout=60)
+        r = subprocess.run(
+            ["helm", "lint", str(tmp_path / "c")],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
         assert r.returncode == 0, r.stdout + r.stderr
-        r = subprocess.run(["helm", "template", str(tmp_path / "c"), "--set", "image.tag=latest"], capture_output=True, text=True, timeout=60)
+        r = subprocess.run(
+            ["helm", "template", str(tmp_path / "c"), "--set", "image.tag=latest"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
         assert r.returncode != 0
 
 
@@ -735,7 +1157,11 @@ def test_helm_values_schema_policy(chart, tmp_path):
 
 def test_tinyllm_rs_stub_matches_design():
     tree = ast.parse((C / "py/tinyllm_rs.pyi").read_text())
-    classes = {n.name: {f.name for f in n.body if isinstance(f, ast.FunctionDef)} for n in tree.body if isinstance(n, ast.ClassDef)}
+    classes = {
+        n.name: {f.name for f in n.body if isinstance(f, ast.FunctionDef)}
+        for n in tree.body
+        if isinstance(n, ast.ClassDef)
+    }
     assert classes == {
         "Bpe": {"from_hf_json", "encode", "encode_batch", "decode", "vocab_size"},
         "Bloom": {"with_rate", "insert", "contains", "union", "to_bytes", "from_bytes"},
@@ -744,11 +1170,18 @@ def test_tinyllm_rs_stub_matches_design():
 
 def test_allowed_deps_parse():
     d = tomllib.loads((C / "allowed-deps.toml").read_text())
-    assert d["rust"]["tl-proto"] == {"prost": "0.14", "tonic": "0.14", "tonic-prost": "0.14"}
+    assert d["rust"]["tl-proto"] == {
+        "prost": "0.14",
+        "tonic": "0.14",
+        "tonic-prost": "0.14",
+    }
     cargo = tomllib.loads((C / "rust/tl-proto/Cargo.toml").read_text())
     assert cargo["dependencies"] == d["rust"]["tl-proto"]
     gomod = (C / "go/go.mod").read_text()
-    assert "google.golang.org/grpc v1." in gomod and "google.golang.org/protobuf v1." in gomod
+    assert (
+        "google.golang.org/grpc v1." in gomod
+        and "google.golang.org/protobuf v1." in gomod
+    )
     assert {"pyarrow", "zstandard"} <= set(d["python"]["corpus"])
 
 

@@ -2,6 +2,13 @@
 set -euo pipefail
 root="$PWD"
 missing=0
-if [ ! -e "$root/SBOM per image" ]; then echo "craft.18: missing SBOM per image" >&2; missing=1; fi
-if [ ! -e "$root/allowed-deps.toml" ]; then echo "craft.18: missing allowed-deps.toml" >&2; missing=1; fi
+for sbom in docs/sbom/engine.spdx.json docs/sbom/gateway.spdx.json; do
+  artifact="$root/$sbom"
+  if [ ! -s "$artifact" ]; then echo "craft.18: missing $sbom" >&2; missing=1
+  else
+    for evidence in SPDX-2.3 packages relationships NOASSERTION; do
+      if ! grep -q "$evidence" "$artifact"; then echo "craft.18: $sbom lacks '$evidence'" >&2; missing=1; fi
+    done
+  fi
+done
 exit "$missing"

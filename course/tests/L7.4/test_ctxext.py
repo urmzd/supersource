@@ -32,7 +32,9 @@ import pytest
 from _lib.close import assert_close
 from tinyllm.modern.ctxext import rope_inv_freq_scaled
 
-FIX = os.path.join(os.environ.get("TINYLLM_FIXTURES", ""), "L7.4", "rope_scaling_hf.json")
+FIX = os.path.join(
+    os.environ.get("TINYLLM_FIXTURES", ""), "L7.4", "rope_scaling_hf.json"
+)
 
 
 def theta(r: int, base: float) -> np.ndarray:
@@ -86,9 +88,13 @@ def test_hand_example_llama3():
     # KIND: unit
     # CATCHES: s05
     # CHAPTER: L7.4 section 3, Worked example by hand
-    inv, s = rope_inv_freq_scaled(8, 1e4, "llama3", 8.0, 1024, low_freq_factor=1, high_freq_factor=4)
+    inv, s = rope_inv_freq_scaled(
+        8, 1e4, "llama3", 8.0, 1024, low_freq_factor=1, high_freq_factor=4
+    )
     sm = (1024 / (2 * math.pi / 0.01) - 1) / 3
-    assert_close(inv, [1.0, 0.1, 0.01 * ((1 - sm) / 8 + sm), 0.001 / 8], rtol=1e-12, atol=0)
+    assert_close(
+        inv, [1.0, 0.1, 0.01 * ((1 - sm) / 8 + sm), 0.001 / 8], rtol=1e-12, atol=0
+    )
     assert s == 1.0
 
 
@@ -141,7 +147,11 @@ def test_ntk_keeps_fastest_divides_slowest(r, factor):
     assert_close(inv[0], 1.0, rtol=1e-12, atol=0)
     assert_close(inv[-1], base[-1] / factor, rtol=1e-10, atol=0)
     ratio = base / inv
-    assert np.all(np.diff(ratio) > 0) and np.all(ratio >= 1 - 1e-12) and np.all(ratio <= factor * (1 + 1e-10))
+    assert (
+        np.all(np.diff(ratio) > 0)
+        and np.all(ratio >= 1 - 1e-12)
+        and np.all(ratio <= factor * (1 + 1e-10))
+    )
 
 
 def test_yarn_bands():
@@ -195,7 +205,15 @@ def test_validation():
         dict(d_rot=64, base=1.0, kind="default"),
         dict(d_rot=64, base=1e4, kind="linear", factor=0.5),
         dict(d_rot=64, base=1e4, kind="yarn", factor=4.0),
-        dict(d_rot=64, base=1e4, kind="llama3", factor=8.0, original_max_pos=8192, low_freq_factor=4, high_freq_factor=1),
+        dict(
+            d_rot=64,
+            base=1e4,
+            kind="llama3",
+            factor=8.0,
+            original_max_pos=8192,
+            low_freq_factor=4,
+            high_freq_factor=1,
+        ),
     ]
     for kw in bad:
         with pytest.raises(ValueError):

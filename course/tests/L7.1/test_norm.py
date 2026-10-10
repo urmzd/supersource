@@ -54,9 +54,13 @@ def test_hand_example():
     # CATCHES: s02, s05, s07
     # CHAPTER: L7.1 section 3, Worked example by hand
     n = RMSNorm(4, eps=0.0)
-    assert_close(n(Tensor([[3.0, 4.0, 0.0, 0.0]])).data, [[1.2, 1.6, 0.0, 0.0]], dtype="float32")
+    assert_close(
+        n(Tensor([[3.0, 4.0, 0.0, 0.0]])).data, [[1.2, 1.6, 0.0, 0.0]], dtype="float32"
+    )
     n.load_state_dict({"weight": [1.0, 0.5, 2.0, 2.0]})
-    assert_close(n(Tensor([[3.0, 4.0, 0.0, 0.0]])).data, [[1.2, 0.8, 0.0, 0.0]], dtype="float32")
+    assert_close(
+        n(Tensor([[3.0, 4.0, 0.0, 0.0]])).data, [[1.2, 0.8, 0.0, 0.0]], dtype="float32"
+    )
 
 
 # --- against Hugging Face ------------------------------------------------------------------
@@ -72,7 +76,9 @@ def test_golden_hf_llama():
     f, n, x, y = golden("llama", 1e-5, 0.0)
     assert_close(y.data, f["llama.y"], rtol=1e-5, atol=1e-6)
     assert_close(x.grad, f["llama.grad.x"], rtol=1e-4, atol=1e-6, msg="x")
-    assert_close(n.weight.grad, f["llama.grad.weight"], rtol=1e-4, atol=1e-6, msg="weight")
+    assert_close(
+        n.weight.grad, f["llama.grad.weight"], rtol=1e-4, atol=1e-6, msg="weight"
+    )
 
 
 def test_golden_hf_gemma_offset():
@@ -84,7 +90,9 @@ def test_golden_hf_gemma_offset():
     f, n, x, y = golden("gemma", 1e-6, 1.0)
     assert_close(y.data, f["gemma.y"], rtol=1e-5, atol=1e-6)
     assert_close(x.grad, f["gemma.grad.x"], rtol=1e-4, atol=1e-6, msg="x")
-    assert_close(n.weight.grad, f["gemma.grad.weight"], rtol=1e-4, atol=1e-6, msg="weight")
+    assert_close(
+        n.weight.grad, f["gemma.grad.weight"], rtol=1e-4, atol=1e-6, msg="weight"
+    )
 
 
 def test_eps_inside_the_root():
@@ -120,7 +128,12 @@ def test_gradcheck_x_and_gain():
         n.weight.data = w0.astype(np.float64)
         x = Tensor(x0, requires_grad=True, dtype=np.float64)
         F.sum(n(x) * gy).backward()
-        gradcheck(f, [x0, w0], [x.grad, n.weight.grad], names=["x", f"weight (offset {offset})"])
+        gradcheck(
+            f,
+            [x0, w0],
+            [x.grad, n.weight.grad],
+            names=["x", f"weight (offset {offset})"],
+        )
 
 
 # --- properties ------------------------------------------------------------------------------
@@ -136,7 +149,9 @@ def test_unit_rms_and_scale_invariance():
     x = PCG32(seed=4).normal_array((2, 3, 8))
     n = RMSNorm(8, eps=0.0)
     y = n(Tensor(x, dtype=np.float64)).data
-    assert_close(np.sqrt(np.mean(y**2, axis=-1)), np.ones((2, 3)), rtol=1e-12, atol=1e-12)
+    assert_close(
+        np.sqrt(np.mean(y**2, axis=-1)), np.ones((2, 3)), rtol=1e-12, atol=1e-12
+    )
     for c in (1e-3, 7.0, 1e4):
         assert_close(n(Tensor(c * x, dtype=np.float64)).data, y, rtol=1e-10, atol=1e-12)
 
@@ -166,7 +181,11 @@ def test_parameter_names_and_init():
         assert np.all(n.weight.data == init)
         assert n.eps == 1e-6 and n.offset == offset
     x = PCG32(seed=5).normal_array((4, 5))
-    assert_close(RMSNorm(5, eps=0.0, offset=1.0)(Tensor(x)).data, RMSNorm(5, eps=0.0)(Tensor(x)).data, dtype="float32")
+    assert_close(
+        RMSNorm(5, eps=0.0, offset=1.0)(Tensor(x)).data,
+        RMSNorm(5, eps=0.0)(Tensor(x)).data,
+        dtype="float32",
+    )
 
 
 def test_pre_norm_residual_identity_path():
@@ -221,7 +240,11 @@ def test_normalizes_each_vector_on_its_own(shape):
     flat_x, flat_y = x.reshape(-1, 5), y.reshape(-1, 5)
     for row_x, row_y in zip(flat_x, flat_y):
         assert_close(n(Tensor(row_x[None])).data[0], row_y, dtype="float32")
-    want = x / np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + 1e-6) * np.linspace(0.5, 1.5, 5)
+    want = (
+        x
+        / np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + 1e-6)
+        * np.linspace(0.5, 1.5, 5)
+    )
     assert_close(y, want, rtol=1e-5, atol=1e-6)
 
 

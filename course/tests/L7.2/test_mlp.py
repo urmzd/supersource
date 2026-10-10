@@ -55,7 +55,13 @@ class Rng:
 
 def hand(act: str) -> GatedMLP:
     m = GatedMLP(1, 1, act=act, rng=Rng(0))
-    m.load_state_dict({"gate_proj.weight": [[1.0]], "up_proj.weight": [[2.0]], "down_proj.weight": [[3.0]]})
+    m.load_state_dict(
+        {
+            "gate_proj.weight": [[1.0]],
+            "up_proj.weight": [[2.0]],
+            "down_proj.weight": [[3.0]],
+        }
+    )
     return m
 
 
@@ -63,7 +69,7 @@ def golden(name: str, act: str, bias: bool):
     f = np.load(FIX)
     m = GatedMLP(8, 12, act=act, bias=bias, rng=Rng(1))
     p = f"{name}.param."
-    m.load_state_dict({k[len(p):]: f[k] for k in f.files if k.startswith(p)})
+    m.load_state_dict({k[len(p) :]: f[k] for k in f.files if k.startswith(p)})
     x = Tensor(f[f"{name}.x"], requires_grad=True)
     y = m(x)
     F.sum(y * Tensor(f[f"{name}.g"])).backward()
@@ -87,7 +93,9 @@ def test_hand_example():
     silu1 = 1.0 / (1.0 + math.exp(-1.0))
     gelu1 = 0.5 * (1.0 + math.tanh(math.sqrt(2.0 / math.pi) * (1.0 + 0.044715)))
     assert_close(hand("silu")(Tensor([[1.0]])).data, [[6.0 * silu1]], dtype="float32")
-    assert_close(hand("gelu_tanh")(Tensor([[1.0]])).data, [[6.0 * gelu1]], dtype="float32")
+    assert_close(
+        hand("gelu_tanh")(Tensor([[1.0]])).data, [[6.0 * gelu1]], dtype="float32"
+    )
 
 
 # --- against Hugging Face ------------------------------------------------------------------
@@ -145,8 +153,12 @@ def test_gradcheck_every_parameter():
 
         x = Tensor(x0, requires_grad=True, dtype=np.float64)
         F.sum(m(x) * gy).backward()
-        gradcheck(f, [x0] + start, [x.grad] + [p.grad for p in params],
-                  names=["x"] + [n for n, _ in m.named_parameters()])
+        gradcheck(
+            f,
+            [x0] + start,
+            [x.grad] + [p.grad for p in params],
+            names=["x"] + [n for n, _ in m.named_parameters()],
+        )
 
 
 # --- structure -------------------------------------------------------------------------------
@@ -161,11 +173,20 @@ def test_parameter_names_order_and_shapes():
     # CHAPTER: L7.2 section 4, The interface
     m = GatedMLP(6, 10, rng=Rng(4))
     assert [(n, p.data.shape) for n, p in m.named_parameters()] == [
-        ("gate_proj.weight", (10, 6)), ("up_proj.weight", (10, 6)), ("down_proj.weight", (6, 10))]
+        ("gate_proj.weight", (10, 6)),
+        ("up_proj.weight", (10, 6)),
+        ("down_proj.weight", (6, 10)),
+    ]
     assert all(p.data.dtype == np.float32 for p in m.parameters())
     mb = GatedMLP(6, 10, bias=True, rng=Rng(4))
     assert [n for n, _ in mb.named_parameters()] == [
-        "gate_proj.weight", "gate_proj.bias", "up_proj.weight", "up_proj.bias", "down_proj.weight", "down_proj.bias"]
+        "gate_proj.weight",
+        "gate_proj.bias",
+        "up_proj.weight",
+        "up_proj.bias",
+        "down_proj.weight",
+        "down_proj.bias",
+    ]
     assert m.act == "silu" and GatedMLP(2, 3, act="gelu_tanh").act == "gelu_tanh"
 
 
@@ -178,10 +199,16 @@ def test_rng_draw_order():
     # CHAPTER: L7.2 section 4, The interface
     m = GatedMLP(4, 5, rng=Rng(5))
     r = Rng(5)
-    want = [Linear(4, 5, bias=False, rng=r), Linear(4, 5, bias=False, rng=r), Linear(5, 4, bias=False, rng=r)]
+    want = [
+        Linear(4, 5, bias=False, rng=r),
+        Linear(4, 5, bias=False, rng=r),
+        Linear(5, 4, bias=False, rng=r),
+    ]
     for (n, p), lin in zip(m.named_parameters(), want):
         assert np.array_equal(p.data, lin.weight.data), n
-    assert np.array_equal(GatedMLP(4, 5).gate_proj.weight.data, GatedMLP(4, 5).gate_proj.weight.data)
+    assert np.array_equal(
+        GatedMLP(4, 5).gate_proj.weight.data, GatedMLP(4, 5).gate_proj.weight.data
+    )
 
 
 def test_closed_gate_blocks_the_unit():

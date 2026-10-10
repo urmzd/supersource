@@ -46,7 +46,9 @@ def rosenbrock(x):
 
 
 def rosenbrock_grad(x):
-    return np.array([-2 * (1 - x[0]) - 400 * x[0] * (x[1] - x[0] ** 2), 200 * (x[1] - x[0] ** 2)])
+    return np.array(
+        [-2 * (1 - x[0]) - 400 * x[0] * (x[1] - x[0] ** 2), 200 * (x[1] - x[0] ** 2)]
+    )
 
 
 # --- gradient descent ----------------------------------------------------------
@@ -66,7 +68,9 @@ def test_hand_example():
     assert len(xs) == 3
     assert_close(np.array(xs), [[10.0, 1.0], [9.0, 0.0], [8.1, 0.0]])
     assert_close([f(x) for x in xs], [55.0, 40.5, 32.805])
-    alpha = armijo_step(lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-2.0]))
+    alpha = armijo_step(
+        lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-2.0])
+    )
     assert alpha == 0.5
 
 
@@ -87,7 +91,9 @@ def test_returns_every_iterate_as_copies():
     xs[0][0] = 99.0
     assert x0[0] == 1.0
     one = gradient_descent(f, g, [3, 4], lr=0.1, steps=0)
-    assert len(one) == 1 and one[0].dtype == np.float64 and one[0].tolist() == [3.0, 4.0]
+    assert (
+        len(one) == 1 and one[0].dtype == np.float64 and one[0].tolist() == [3.0, 4.0]
+    )
 
 
 def test_rate_on_quadratics():
@@ -106,7 +112,9 @@ def test_rate_on_quadratics():
         xs = gradient_descent(f, g, x0, lr=1.0 / kappa, steps=60)
         gap0 = f(x0)
         for t, x in enumerate(xs):
-            assert f(x) <= (1 - 1 / kappa) ** t * gap0 * (1 + 1e-9) + 1e-15, f"kappa {kappa}, step {t}"
+            assert f(x) <= (1 - 1 / kappa) ** t * gap0 * (1 + 1e-9) + 1e-15, (
+                f"kappa {kappa}, step {t}"
+            )
 
 
 def test_exact_rational_trajectory():
@@ -191,9 +199,17 @@ def test_armijo_accepts_alpha0():
     # KIND: unit
     # CATCHES: s09, m04
     # CHAPTER: M10.1 section 2, Principles (the Armijo condition)
-    a = armijo_step(lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-0.5]))
+    a = armijo_step(
+        lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-0.5])
+    )
     assert a == 1.0
-    a = armijo_step(lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-2.0]), alpha0=0.75)
+    a = armijo_step(
+        lambda x: float(x[0] ** 2),
+        lambda x: 2 * x,
+        np.array([1.0]),
+        np.array([-2.0]),
+        alpha0=0.75,
+    )
     assert a == 0.75
 
 
@@ -206,7 +222,9 @@ def test_armijo_keeps_halving():
     # KIND: unit
     # CATCHES: s12
     # CHAPTER: M10.1 section 5, Pitfalls, item 10
-    a = armijo_step(lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-4.0]))
+    a = armijo_step(
+        lambda x: float(x[0] ** 2), lambda x: 2 * x, np.array([1.0]), np.array([-4.0])
+    )
     assert a == 0.25
 
 
@@ -238,7 +256,13 @@ def test_armijo_needs_a_descent_direction():
     for d in (np.array([1.0, 0.0]), np.array([0.0, 1.0])):
         with pytest.raises(ValueError):
             armijo_step(f, g, x, d)
-    for kw in (dict(c=0.0), dict(c=1.0), dict(rho=1.0), dict(rho=0.0), dict(alpha0=0.0)):
+    for kw in (
+        dict(c=0.0),
+        dict(c=1.0),
+        dict(rho=1.0),
+        dict(rho=0.0),
+        dict(alpha0=0.0),
+    ):
         with pytest.raises(ValueError):
             armijo_step(f, g, x, -x, **kw)
 
@@ -253,12 +277,19 @@ def test_armijo_gives_up():
     # CATCHES: s10, s12, m03
     # CHAPTER: M10.1 section 4, The interface
     with pytest.raises(RuntimeError):
-        armijo_step(lambda x: float(x[0]), lambda x: np.array([-1.0]), np.array([0.0]), np.array([1.0]))
+        armijo_step(
+            lambda x: float(x[0]),
+            lambda x: np.array([-1.0]),
+            np.array([0.0]),
+            np.array([1.0]),
+        )
 
     def tiny_only(x):
         return float(-x[0]) if x[0] <= 2.0**-60 else float(x[0])
 
-    a = armijo_step(tiny_only, lambda x: np.array([-1.0]), np.array([0.0]), np.array([1.0]))
+    a = armijo_step(
+        tiny_only, lambda x: np.array([-1.0]), np.array([0.0]), np.array([1.0])
+    )
     assert a == 2.0**-60
 
 

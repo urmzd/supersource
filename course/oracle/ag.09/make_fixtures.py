@@ -75,28 +75,78 @@ def main() -> None:
     r = PCG32(2026, 54)
     cases = []
     binary = [[1.0 if r.uniform() < 0.7 else 0.0] for _ in range(20)]
-    cases.append({"name": "binary-20", "groups": binary, "n_boot": 2000, "alpha": 0.05, "seed": 0})
+    cases.append(
+        {
+            "name": "binary-20",
+            "groups": binary,
+            "n_boot": 2000,
+            "alpha": 0.05,
+            "seed": 0,
+        }
+    )
     grouped = [[round(r.uniform(), 3) for _ in range(3)] for _ in range(10)]
-    cases.append({"name": "grouped-10x3", "groups": grouped, "n_boot": 1000, "alpha": 0.05, "seed": 7})
+    cases.append(
+        {
+            "name": "grouped-10x3",
+            "groups": grouped,
+            "n_boot": 1000,
+            "alpha": 0.05,
+            "seed": 7,
+        }
+    )
     cont = [[round(r.normal(), 4)] for _ in range(30)]
-    cases.append({"name": "normal-30-alpha10", "groups": cont, "n_boot": 500, "alpha": 0.1, "seed": 123456789})
+    cases.append(
+        {
+            "name": "normal-30-alpha10",
+            "groups": cont,
+            "n_boot": 500,
+            "alpha": 0.1,
+            "seed": 123456789,
+        }
+    )
     for c in cases:
-        c["mean"], c["lo"], c["hi"] = bootstrap(c["groups"], c["n_boot"], c["alpha"], c["seed"])
+        c["mean"], c["lo"], c["hi"] = bootstrap(
+            c["groups"], c["n_boot"], c["alpha"], c["seed"]
+        )
     (OUT / "bootstrap.json").write_text(json.dumps({"cases": cases}, indent=1) + "\n")
 
     suite = [
-        {"case_id": "docsqa-001", "input": "Which hash names a KV block?",
-         "ground_truth": {"answer": "chained FNV-1a 64", "chunks": ["docs/kv-cache.md#2"]},
-         "tags": ["rag"], "scorer_args": {"regex": {"pattern": "FNV-1a"}}},
-        {"case_id": "docsqa-002", "input": "What does a 429 from the gateway carry?",
-         "ground_truth": {"answer": "Retry-After", "chunks": ["docs/gateway.md#2"]},
-         "tags": ["rag"], "scorer_args": {"regex": {"pattern": "Retry-After"}}},
-        {"case_id": "chat-003", "input": {"messages": [
-            {"role": "system", "content": "Answer in one word."},
-            {"role": "user", "content": "Is temperature zero greedy?"}]},
-         "ground_truth": "yes", "tags": ["chat"], "scorer_args": {}},
-        {"case_id": "tool-004", "input": "How many requests did acme make today?",
-         "ground_truth": {"tool": "query_usage"}, "tags": ["tools"], "scorer_args": {"tool_called": {"name": "query_usage"}}},
+        {
+            "case_id": "docsqa-001",
+            "input": "Which hash names a KV block?",
+            "ground_truth": {
+                "answer": "chained FNV-1a 64",
+                "chunks": ["docs/kv-cache.md#2"],
+            },
+            "tags": ["rag"],
+            "scorer_args": {"regex": {"pattern": "FNV-1a"}},
+        },
+        {
+            "case_id": "docsqa-002",
+            "input": "What does a 429 from the gateway carry?",
+            "ground_truth": {"answer": "Retry-After", "chunks": ["docs/gateway.md#2"]},
+            "tags": ["rag"],
+            "scorer_args": {"regex": {"pattern": "Retry-After"}},
+        },
+        {
+            "case_id": "chat-003",
+            "input": {
+                "messages": [
+                    {"role": "system", "content": "Answer in one word."},
+                    {"role": "user", "content": "Is temperature zero greedy?"},
+                ]
+            },
+            "ground_truth": "yes",
+            "tags": ["chat"],
+            "scorer_args": {},
+        },
+        {
+            "case_id": "tool-004",
+            "input": "How many requests did acme make today?",
+            "ground_truth": {"tool": "query_usage"},
+            "tags": ["tools"],
+            "scorer_args": {"tool_called": {"name": "query_usage"}},
+        },
         {"case_id": "plain-005", "input": "Say hello.", "tags": [], "scorer_args": {}},
     ]
     (OUT / "suite.jsonl").write_text("".join(json.dumps(c) + "\n" for c in suite))

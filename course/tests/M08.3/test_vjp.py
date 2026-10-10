@@ -88,12 +88,26 @@ def test_hand_example():
 
     y = np.array([0.25, 0.75])
     assert_close(softmax_vjp(np.array([1.0, 0.0]), y), [3 / 16, -3 / 16])
-    assert_close(cross_entropy_vjp(np.array([[0.0, math.log(3)]]), np.array([1])), [[0.25, -0.25]])
+    assert_close(
+        cross_entropy_vjp(np.array([[0.0, math.log(3)]]), np.array([1])),
+        [[0.25, -0.25]],
+    )
 
     x = np.array([[1.0, 2.0, 6.0]])
     _, xhat, rstd = layernorm_np(x, 1.0, 0.0, 0.0)
-    dx, dgamma, dbeta = layernorm_vjp(np.array([[1.0, 0.0, 0.0]]), xhat, rstd, np.ones(3))
-    assert_close(dx, [[8 / 21 * math.sqrt(3 / 14), -10 / 21 * math.sqrt(3 / 14), 2 / 21 * math.sqrt(3 / 14)]])
+    dx, dgamma, dbeta = layernorm_vjp(
+        np.array([[1.0, 0.0, 0.0]]), xhat, rstd, np.ones(3)
+    )
+    assert_close(
+        dx,
+        [
+            [
+                8 / 21 * math.sqrt(3 / 14),
+                -10 / 21 * math.sqrt(3 / 14),
+                2 / 21 * math.sqrt(3 / 14),
+            ]
+        ],
+    )
     assert_close(dgamma, [-2 * math.sqrt(3 / 14), 0.0, 0.0])
     assert_close(dbeta, [1.0, 0.0, 0.0])
 
@@ -120,16 +134,31 @@ def test_matches_torch_golden():
         assert_close(dB, d[f"{name}/dB"], msg=f"{name} dB")
     for name in ("softmax_last", "softmax_axis0"):
         axis, g = int(d[f"{name}/axis"]), d[f"{name}/g"]
-        assert_close(softmax_vjp(g, d[f"{name}/softmax/y"], axis=axis), d[f"{name}/softmax/dx"], msg=name)
-        assert_close(log_softmax_vjp(g, d[f"{name}/log_softmax/y"], axis=axis), d[f"{name}/log_softmax/dx"], msg=name)
-    dx, dgamma, dbeta = layernorm_vjp(d["layernorm/g"], d["layernorm/xhat"], d["layernorm/rstd"], d["layernorm/gamma"])
+        assert_close(
+            softmax_vjp(g, d[f"{name}/softmax/y"], axis=axis),
+            d[f"{name}/softmax/dx"],
+            msg=name,
+        )
+        assert_close(
+            log_softmax_vjp(g, d[f"{name}/log_softmax/y"], axis=axis),
+            d[f"{name}/log_softmax/dx"],
+            msg=name,
+        )
+    dx, dgamma, dbeta = layernorm_vjp(
+        d["layernorm/g"], d["layernorm/xhat"], d["layernorm/rstd"], d["layernorm/gamma"]
+    )
     assert_close(dx, d["layernorm/dx"], msg="layernorm dx")
     assert_close(dgamma, d["layernorm/dgamma"], msg="layernorm dgamma")
     assert_close(dbeta, d["layernorm/dbeta"], msg="layernorm dbeta")
-    dx, dw = rmsnorm_vjp(d["rmsnorm/g"], d["rmsnorm/x"], d["rmsnorm/rstd"], d["rmsnorm/w"])
+    dx, dw = rmsnorm_vjp(
+        d["rmsnorm/g"], d["rmsnorm/x"], d["rmsnorm/rstd"], d["rmsnorm/w"]
+    )
     assert_close(dx, d["rmsnorm/dx"], msg="rmsnorm dx")
     assert_close(dw, d["rmsnorm/dw"], msg="rmsnorm dw")
-    assert_close(cross_entropy_vjp(d["cross_entropy/logits"], d["cross_entropy/targets"]), d["cross_entropy/dlogits"])
+    assert_close(
+        cross_entropy_vjp(d["cross_entropy/logits"], d["cross_entropy/targets"]),
+        d["cross_entropy/dlogits"],
+    )
 
 
 # --- one gradcheck per rule ----------------------------------------------------
@@ -181,11 +210,19 @@ def test_matmul_vjp_gradcheck():
     # CATCHES: s01, s02, s03
     # CHAPTER: M08.3 section 2, Principles (the trace trick)
     rng = PCG32(seed=seed())
-    for sa, sb in (((3, 4), (4, 4)), ((3, 4), (4, 2)), ((2, 3, 4), (4, 2)), ((3, 4), (2, 4, 2)), ((2, 1, 2, 3), (4, 3, 2))):
+    for sa, sb in (
+        ((3, 4), (4, 4)),
+        ((3, 4), (4, 2)),
+        ((2, 3, 4), (4, 2)),
+        ((3, 4), (2, 4, 2)),
+        ((2, 1, 2, 3), (4, 3, 2)),
+    ):
         A, B = rng.normal_array(sa), rng.normal_array(sb)
         G = rng.normal_array(np.matmul(A, B).shape)
         dA, dB = matmul_vjp(G, A, B)
-        gradcheck(lambda a, b: float(np.sum(G * (a @ b))), [A, B], [dA, dB], names=["A", "B"])
+        gradcheck(
+            lambda a, b: float(np.sum(G * (a @ b))), [A, B], [dA, dB], names=["A", "B"]
+        )
 
 
 def test_matmul_vjp_rejects_vectors():
@@ -209,9 +246,17 @@ def test_softmax_vjps_gradcheck():
     for shape, axis in (((3, 5), -1), ((4, 3), 0)):
         x, g = rng.normal_array(shape, scale=2.0), rng.normal_array(shape)
         y = softmax_np(x, axis)
-        gradcheck(lambda a: float(np.sum(g * softmax_np(a, axis))), [x], [softmax_vjp(g, y, axis=axis)])
+        gradcheck(
+            lambda a: float(np.sum(g * softmax_np(a, axis))),
+            [x],
+            [softmax_vjp(g, y, axis=axis)],
+        )
         ly = log_softmax_np(x, axis)
-        gradcheck(lambda a: float(np.sum(g * log_softmax_np(a, axis))), [x], [log_softmax_vjp(g, ly, axis=axis)])
+        gradcheck(
+            lambda a: float(np.sum(g * log_softmax_np(a, axis))),
+            [x],
+            [log_softmax_vjp(g, ly, axis=axis)],
+        )
 
 
 def test_softmax_vjp_matches_numeric_vjp():
@@ -225,7 +270,12 @@ def test_softmax_vjp_matches_numeric_vjp():
 
     rng = PCG32(seed=seed())
     x, u = rng.normal_array(6), rng.normal_array(6)
-    assert_close(softmax_vjp(u, softmax_np(x)), vjp_numeric(softmax_np, x, u), rtol=1e-6, atol=1e-8)
+    assert_close(
+        softmax_vjp(u, softmax_np(x)),
+        vjp_numeric(softmax_np, x, u),
+        rtol=1e-6,
+        atol=1e-8,
+    )
 
 
 def test_layernorm_vjp_gradcheck():
@@ -238,7 +288,11 @@ def test_layernorm_vjp_gradcheck():
     # CHAPTER: M08.3 section 2, Principles (LayerNorm)
     rng = PCG32(seed=seed())
     x = rng.normal_array((2, 3, 8), scale=1.5)
-    gamma, beta, g = rng.normal_array(8), rng.normal_array(8), rng.normal_array((2, 3, 8))
+    gamma, beta, g = (
+        rng.normal_array(8),
+        rng.normal_array(8),
+        rng.normal_array((2, 3, 8)),
+    )
     eps = 1e-5
     _, xhat, rstd = layernorm_np(x, gamma, beta, eps)
     for r in (rstd, rstd[..., 0]):
@@ -259,12 +313,21 @@ def test_rmsnorm_vjp_gradcheck():
     # CATCHES: s09, s10, m02
     # CHAPTER: M08.3 section 2, Principles (RMSNorm)
     rng = PCG32(seed=seed())
-    x, w, g = rng.normal_array((5, 6), scale=1.5), rng.normal_array(6), rng.normal_array((5, 6))
+    x, w, g = (
+        rng.normal_array((5, 6), scale=1.5),
+        rng.normal_array(6),
+        rng.normal_array((5, 6)),
+    )
     eps = 1e-6
     _, rstd = rmsnorm_np(x, w, eps)
     for r in (rstd, rstd[..., 0]):
         dx, dw = rmsnorm_vjp(g, x, r, w)
-        gradcheck(lambda a, ww: float(np.sum(g * rmsnorm_np(a, ww, eps)[0])), [x, w], [dx, dw], names=["x", "w"])
+        gradcheck(
+            lambda a, ww: float(np.sum(g * rmsnorm_np(a, ww, eps)[0])),
+            [x, w],
+            [dx, dw],
+            names=["x", "w"],
+        )
 
 
 # --- cross-entropy -------------------------------------------------------------
@@ -289,7 +352,10 @@ def test_cross_entropy_vjp_gradcheck():
     onehot[np.nonzero(valid)[0], t[valid]] = 1.0
 
     def loss(a):
-        return float(np.sum(cross_entropy(onehot[valid], softmax_np(a)[valid], axis=-1)) / valid.sum())
+        return float(
+            np.sum(cross_entropy(onehot[valid], softmax_np(a)[valid], axis=-1))
+            / valid.sum()
+        )
 
     gradcheck(loss, [z], [cross_entropy_vjp(z, t)])
 
@@ -308,8 +374,13 @@ def test_cross_entropy_ignore_index():
     assert out[1].tolist() == [0.0, 0.0]
     assert_close(out[0], [0.125, -0.125])
     assert_close(out[2], [-0.25, 0.25])
-    assert cross_entropy_vjp(z, np.array([-100, -100, -100])).tolist() == [[0.0, 0.0]] * 3
-    assert cross_entropy_vjp(z, np.array([7, 7, 7]), ignore_index=7).tolist() == [[0.0, 0.0]] * 3
+    assert (
+        cross_entropy_vjp(z, np.array([-100, -100, -100])).tolist() == [[0.0, 0.0]] * 3
+    )
+    assert (
+        cross_entropy_vjp(z, np.array([7, 7, 7]), ignore_index=7).tolist()
+        == [[0.0, 0.0]] * 3
+    )
     for bad in ([1, 2, 0], [1, -1, 0]):
         with pytest.raises(ValueError):
             cross_entropy_vjp(z, np.array(bad))

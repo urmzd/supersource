@@ -41,7 +41,18 @@ FAULTS = COURSE / "mutants" / "craft.22"
 BENIGN = Path(__file__).resolve().parent / "benign"
 UNIT = "primers/craft.22/tinymodel.py"
 THRESHOLD = 0.80
-ALLOWED = {"evals", "tinymodel", "numpy", "pytest", "json", "os", "pathlib", "math", "itertools", "functools"}
+ALLOWED = {
+    "evals",
+    "tinymodel",
+    "numpy",
+    "pytest",
+    "json",
+    "os",
+    "pathlib",
+    "math",
+    "itertools",
+    "functools",
+}
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
 from sscourse import markers  # noqa: E402
@@ -82,10 +93,26 @@ def run_suite(model: str, timeout: float = 120) -> tuple[int, str]:
         Path(d, "tinymodel.py").write_text(model)
         for f in ("test_model_evals.py", "evals.py", "baseline.json"):
             Path(d, f).write_text((PRIMER / f).read_text())
-        env = dict(os.environ, PYTHONPATH=d, TINYLLM_FIXTURES=str(FIXTURES), PYTHONDONTWRITEBYTECODE="1")
+        env = dict(
+            os.environ,
+            PYTHONPATH=d,
+            TINYLLM_FIXTURES=str(FIXTURES),
+            PYTHONDONTWRITEBYTECODE="1",
+        )
         p = subprocess.Popen(
-            [sys.executable, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", "-p", "no:randomly",
-             f"--rootdir={d}", "test_model_evals.py"],
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-q",
+                "-x",
+                "-p",
+                "no:cacheprovider",
+                "-p",
+                "no:randomly",
+                f"--rootdir={d}",
+                "test_model_evals.py",
+            ],
             cwd=d,
             env=env,
             stdout=subprocess.PIPE,
@@ -118,7 +145,9 @@ def faults() -> list[tuple[str, bool, str]]:
 
 @pytest.fixture(scope="module")
 def theirs():
-    assert (PRIMER / "evals.py").is_file(), f"no {PRIMER / 'evals.py'}: run ss start craft.22"
+    assert (PRIMER / "evals.py").is_file(), (
+        f"no {PRIMER / 'evals.py'}: run ss start craft.22"
+    )
     sys.path.insert(0, str(REF))  # their evals may import tinymodel
     try:
         return load_module(PRIMER / "evals.py", "craft22_your_evals")
@@ -129,7 +158,9 @@ def theirs():
 @pytest.fixture(scope="module")
 def ref():
     with tempfile.TemporaryDirectory() as d:
-        Path(d, "evals.py").write_text(markers.drop_markers((REF / "evals.py").read_text()))
+        Path(d, "evals.py").write_text(
+            markers.drop_markers((REF / "evals.py").read_text())
+        )
         return load_module(Path(d, "evals.py"), "craft22_ref_evals")
 
 
@@ -155,7 +186,9 @@ def test_hand_example_five_seeds(theirs):
     base = [1.0] * 5
     assert theirs.regressed(base, [1.03] * 5, 0.02) is True
     assert theirs.regressed(base, [1.03, 1.03, 1.03, 1.03, 0.99], 0.02) is False
-    assert theirs.regressed(base, [1.01] * 5, 0.02) is False  # significant, but under the margin
+    assert (
+        theirs.regressed(base, [1.01] * 5, 0.02) is False
+    )  # significant, but under the margin
     assert theirs.regressed([0.9] * 5, [0.85] * 5, 0.02, higher_is_better=True) is True
 
 
@@ -168,15 +201,21 @@ def test_your_evals_match_the_reference(theirs, ref, world):
     # CHAPTER: craft.22 section 2, Principles
     model, text, vocab = world
     for seed in (0, 3):
-        assert theirs.heldout_bpb(model, text, seed) == pytest.approx(ref.heldout_bpb(model, text, seed), abs=1e-9)
+        assert theirs.heldout_bpb(model, text, seed) == pytest.approx(
+            ref.heldout_bpb(model, text, seed), abs=1e-9
+        )
     ws = "the cat sat on the mat the cat sat on the mat".split()
     for n in (2, 4):
-        assert theirs.repeat_ngram_rate(ws, n) == pytest.approx(ref.repeat_ngram_rate(ws, n))
+        assert theirs.repeat_ngram_rate(ws, n) == pytest.approx(
+            ref.repeat_ngram_rate(ws, n)
+        )
     assert theirs.repeat_ngram_rate(["a", "b"], 4) == 0.0
     assert theirs.words("Mia's DOG, ran!") == ["mia", "s", "dog", "ran"]
     assert theirs.valid_word_rate("Mia zzq ran", {"mia", "ran"}) == pytest.approx(2 / 3)
     assert theirs.valid_word_rate("123 !", vocab) == 0.0
-    assert theirs.quality_score(model, vocab, 1) == pytest.approx(ref.quality_score(model, vocab, 1), abs=1e-12)
+    assert theirs.quality_score(model, vocab, 1) == pytest.approx(
+        ref.quality_score(model, vocab, 1), abs=1e-12
+    )
 
 
 def test_your_suite_is_an_eval_suite():
@@ -190,21 +229,33 @@ def test_your_suite_is_an_eval_suite():
     assert TESTS.is_file(), f"write your eval suite in {TESTS} (chapter section 4)"
     text = TESTS.read_text()
     tree = ast.parse(text, str(TESTS))
-    tests = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")]
-    assert len(tests) >= 2, f"{len(tests)} test functions; write at least 2 (held-out loss and sample quality)"
+    tests = [
+        n
+        for n in tree.body
+        if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")
+    ]
+    assert len(tests) >= 2, (
+        f"{len(tests)} test functions; write at least 2 (held-out loss and sample quality)"
+    )
     assert "TINYLLM_FIXTURES" in text, "read the fixtures through TINYLLM_FIXTURES"
     imported = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom)):
-            for name in [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""]:
+            for name in (
+                [a.name for a in node.names]
+                if isinstance(node, ast.Import)
+                else [node.module or ""]
+            ):
                 top = name.split(".")[0]
                 imported.add(top)
-                assert top in ALLOWED, f"import {name!r}: your suite uses evals, tinymodel, numpy, pytest, the stdlib"
+                assert top in ALLOWED, (
+                    f"import {name!r}: your suite uses evals, tinymodel, numpy, pytest, the stdlib"
+                )
     assert {"evals", "tinymodel"} <= imported, "import evals and tinymodel"
     b = json.loads((PRIMER / "baseline.json").read_text())
-    assert len(b.get("seeds", [])) >= 5 and len(b["bpb"]) == len(b["quality"]) == len(b["seeds"]), (
-        "baseline.json needs seeds (at least 5), bpb, and quality, one value per seed"
-    )
+    assert len(b.get("seeds", [])) >= 5 and len(b["bpb"]) == len(b["quality"]) == len(
+        b["seeds"]
+    ), "baseline.json needs seeds (at least 5), bpb, and quality, one value per seed"
 
 
 def test_your_baseline_is_the_good_model(ref, world):
@@ -217,7 +268,9 @@ def test_your_baseline_is_the_good_model(ref, world):
     model, text, vocab = world
     b = json.loads((PRIMER / "baseline.json").read_text())
     want = ref.measure(model, text, vocab, b["seeds"])
-    assert b["bpb"] == pytest.approx(want["bpb"], abs=1e-6) and b["quality"] == pytest.approx(want["quality"], abs=1e-9), (
+    assert b["bpb"] == pytest.approx(want["bpb"], abs=1e-6) and b[
+        "quality"
+    ] == pytest.approx(want["quality"], abs=1e-9), (
         "baseline.json does not match the course model: record it again"
     )
 
@@ -269,5 +322,6 @@ def test_model_mutants_are_flagged():
     score = killed / len(rows)
     print(f"craft.22 mutation score: {killed}/{len(rows)} = {score:.2f}")
     assert score >= THRESHOLD and not any("(required)" in s for s in survivors), (
-        f"score {score:.2f} (bar {THRESHOLD:.2f}); model mutants your suite misses:\n  " + "\n  ".join(survivors)
+        f"score {score:.2f} (bar {THRESHOLD:.2f}); model mutants your suite misses:\n  "
+        + "\n  ".join(survivors)
     )

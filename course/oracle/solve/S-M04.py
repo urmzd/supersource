@@ -31,7 +31,13 @@ def vec(v) -> str:
 
 
 def mat(m) -> str:
-    return "[" + ", ".join("[" + ", ".join(str(v) for v in m.row(i)) + "]" for i in range(m.rows)) + "]"
+    return (
+        "["
+        + ", ".join(
+            "[" + ", ".join(str(v) for v in m.row(i)) + "]" for i in range(m.rows)
+        )
+        + "]"
+    )
 
 
 def grad(f, vs):
@@ -100,9 +106,13 @@ def main() -> int:
     sig = 1 / (1 + sp.exp(-w * x))
     k["q23"] = str(sp.simplify(sp.diff((sig - 1) ** 2, w).subs({w: 0, x: 2})))
     rp = sp.Symbol("r", positive=True)
-    k["q24"] = str(sp.diff(sp.simplify((rp * sp.cos(th)) ** 2 + (rp * sp.sin(th)) ** 2), rp))
+    k["q24"] = str(
+        sp.diff(sp.simplify((rp * sp.cos(th)) ** 2 + (rp * sp.sin(th)) ** 2), rp)
+    )
     k["q25"] = mat(M([x + y, x * y]).jacobian([x, y]).subs({x: 1, y: 2}))
-    k["q26"] = str(sp.simplify(M([rp * sp.cos(th), rp * sp.sin(th)]).jacobian([rp, th]).det()))
+    k["q26"] = str(
+        sp.simplify(M([rp * sp.cos(th), rp * sp.sin(th)]).jacobian([rp, th]).det())
+    )
     k["q27"] = str(sp.diff(((3 * x + 1) ** 2 - 4) ** 2, x).subs(x, 0))
     J = M([[1, 2], [3, 4]]) * X
     k["q28"] = vec((M([[1, 1]]) * J.jacobian([x, y])).T)
@@ -132,7 +142,9 @@ def main() -> int:
     f40 = x**3 - 3 * x + y**2
     assert grad(f40, (x, y)).subs({x: 1, y: 0}) == M([0, 0])
     k["q40"] = classify(f40, {x: 1, y: 0})
-    k["q41"] = str(sp.hessian(x**2 + 3 * x * y + 2 * y**2, (x, y)).is_positive_definite).lower()
+    k["q41"] = str(
+        sp.hessian(x**2 + 3 * x * y + 2 * y**2, (x, y)).is_positive_definite
+    ).lower()
     H42 = sp.hessian((x**2 + 100 * y**2) / 2, (x, y))
     ev42 = list(H42.eigenvals())
     k["q42"] = str(max(ev42) / min(ev42))
@@ -141,10 +153,18 @@ def main() -> int:
     k["q43"] = str(sp.integrate(x * y, (y, 0, 2), (x, 0, 1)))
     k["q44"] = str(sp.integrate(1, (y, 0, x), (x, 0, 1)))
     k["q45"] = str(sp.integrate(rp, (rp, 0, 1), (th, 0, 2 * sp.pi)))
-    k["q46"] = str(sp.integrate(sp.exp(-(rp**2)) * rp, (rp, 0, sp.oo), (th, 0, 2 * sp.pi)))
+    k["q46"] = str(
+        sp.integrate(sp.exp(-(rp**2)) * rp, (rp, 0, sp.oo), (th, 0, 2 * sp.pi))
+    )
     k["q47"] = str(sp.integrate(2 * y, (y, 0, x), (x, 0, 1)))
     k["q48"] = str(sp.integrate((1 - rp**2) * rp, (rp, 0, 1), (th, 0, 2 * sp.pi)))
-    k["q49"] = str(sp.integrate(sp.exp(-(x**2 + y**2) / 2) / (2 * sp.pi), (x, -sp.oo, sp.oo), (y, -sp.oo, sp.oo)))
+    k["q49"] = str(
+        sp.integrate(
+            sp.exp(-(x**2 + y**2) / 2) / (2 * sp.pi),
+            (x, -sp.oo, sp.oo),
+            (y, -sp.oo, sp.oo),
+        )
+    )
     jac = M([x + y, x - y]).jacobian([x, y]).det()
     k["q50"] = str(sp.integrate(1 / sp.Abs(jac), (s, -1, 1), (t, -1, 1)))
 

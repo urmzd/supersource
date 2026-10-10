@@ -139,7 +139,9 @@ def test_quadratic_hvp_is_exact():
         A, b = normals(rng, (n, n)), normals(rng, (n,))
         x, v = normals(rng, (n,)), 3.0 * normals(rng, (n,))
         got = hvp_fd(lambda z: 0.5 * (A + A.T) @ z + b, x, v, eps=eps)
-        assert_close(got, 0.5 * (A + A.T) @ v, rtol=1e-8, atol=1e-9, msg=f"n={n} eps={eps}")
+        assert_close(
+            got, 0.5 * (A + A.T) @ v, rtol=1e-8, atol=1e-9, msg=f"n={n} eps={eps}"
+        )
 
 
 def test_error_shrinks_as_eps_squared():
@@ -155,7 +157,9 @@ def test_error_shrinks_as_eps_squared():
     exact = x * x / 2 * v
     e1 = np.abs(hvp_fd(quartic_grad, x, v, eps=0.02) - exact).max()
     e2 = np.abs(hvp_fd(quartic_grad, x, v, eps=0.01) - exact).max()
-    assert 3.9 < e1 / e2 < 4.1, f"halving eps divided the error by {e1 / e2:.2f}, expected 4"
+    assert 3.9 < e1 / e2 < 4.1, (
+        f"halving eps divided the error by {e1 / e2:.2f}, expected 4"
+    )
 
 
 def test_matches_torch_hvp():
@@ -255,7 +259,9 @@ def test_hvp_rejects_bad_inputs():
     with pytest.raises(ValueError):
         hvp_fd(lambda z: z[:2], x, np.ones(3))
     # the default step is 1e-4: accurate to 1e-8 on the quartic
-    assert_close(hvp_fd(quartic_grad, x, np.ones(3)), np.full(3, 0.5), rtol=1e-8, atol=1e-9)
+    assert_close(
+        hvp_fd(quartic_grad, x, np.ones(3)), np.full(3, 0.5), rtol=1e-8, atol=1e-9
+    )
 
 
 # --- checkpoint schedules ---------------------------------------------------------------
@@ -290,7 +296,19 @@ def test_min_memory_is_triangular():
     # KIND: unit
     # CATCHES: s07, m02
     # CHAPTER: M08.4 section 2, Principles
-    assert [min_checkpoint_memory(n) for n in range(1, 12)] == [1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5]
+    assert [min_checkpoint_memory(n) for n in range(1, 12)] == [
+        1,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        5,
+    ]
     for n in (100, 10**6, 10**12, 10**12 + 1, 2**61 - 1):
         p = min_checkpoint_memory(n)
         assert p * (p + 1) // 2 >= n > (p - 1) * p // 2, n
@@ -312,7 +330,9 @@ def test_schedule_is_optimal():
             s = checkpoint_schedule(n, budget)
             peak, rec = checkpoint_cost(n, s)
             assert peak <= budget, f"n={n} budget={budget}: {s} peaks at {peak}"
-            assert rec == brute_force(n, budget), f"n={n} budget={budget}: {s} recomputes {rec}"
+            assert rec == brute_force(n, budget), (
+                f"n={n} budget={budget}: {s} recomputes {rec}"
+            )
 
 
 def test_schedule_ties_go_to_the_largest_first_segment():

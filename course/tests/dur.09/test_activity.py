@@ -63,20 +63,42 @@ def make_ckpt(art: Path, rel: str, complete: bool = True) -> Path:
     for name in ("model.safetensors", "optimizer.safetensors", "trainer_state.json"):
         data = name.encode() * 3
         (d / name).write_bytes(data)
-        files.append({"name": name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
+        files.append(
+            {
+                "name": name,
+                "bytes": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            }
+        )
     if complete:
         man = {"format": 1, "kind": "checkpoint", "files": files}
         (d / "MANIFEST.json").write_text(json.dumps(man))
     return d
 
 
-def setup(tmp_path: Path, key: str = "train-1/3", attempt: int = 1, extra: list[str] | None = None):
+def setup(
+    tmp_path: Path,
+    key: str = "train-1/3",
+    attempt: int = 1,
+    extra: list[str] | None = None,
+):
     art = tmp_path / "art"
     work = art / "activities" / key
     work.mkdir(parents=True)
     (work / "spec.json").write_text(json.dumps({"steps": 1000}))
-    argv = ["train", "--spec", str(work / "spec.json"), "--progress", str(work / "progress.jsonl"), *(extra or [])]
-    env = {"TL_ARTIFACTS": str(art), "TL_IDEMPOTENCY_KEY": key, "TL_ATTEMPT": str(attempt)}
+    argv = [
+        "train",
+        "--spec",
+        str(work / "spec.json"),
+        "--progress",
+        str(work / "progress.jsonl"),
+        *(extra or []),
+    ]
+    env = {
+        "TL_ARTIFACTS": str(art),
+        "TL_IDEMPOTENCY_KEY": key,
+        "TL_ATTEMPT": str(attempt),
+    }
     return art, work, argv, env
 
 
@@ -116,7 +138,9 @@ def finish(p: subprocess.Popen, timeout: float = PATIENCE) -> tuple[int, str]:
     except subprocess.TimeoutExpired:
         os.killpg(p.pid, signal.SIGKILL)
         _, err = p.communicate()
-        raise AssertionError(f"child did not exit within {timeout} s: {err[-2000:]}") from None
+        raise AssertionError(
+            f"child did not exit within {timeout} s: {err[-2000:]}"
+        ) from None
     return p.returncode, err
 
 
@@ -128,12 +152,21 @@ def test_hand_example_progress_lines(tmp_path):
     # KIND: unit
     # CATCHES: s18, s21
     # CHAPTER: dur.09 section 3, worked example
-    art, work, argv, env = setup(tmp_path, attempt=2, extra=["--resume", "runs/train-1/ckpt/step-000500"])
+    art, work, argv, env = setup(
+        tmp_path, attempt=2, extra=["--resume", "runs/train-1/ckpt/step-000500"]
+    )
     make_ckpt(art, "runs/train-1/ckpt/step-001000")
     act = Activity(argv, env, clock=clock)
-    assert (act.key, act.attempt, act.resume) == ("train-1/3", 2, "runs/train-1/ckpt/step-000500")
+    assert (act.key, act.attempt, act.resume) == (
+        "train-1/3",
+        2,
+        "runs/train-1/ckpt/step-000500",
+    )
     act.step(600, 2.25, 0.0009, 9830400)
-    assert act.checkpoint(1000, str(art / "runs/train-1/ckpt/step-001000")) == "runs/train-1/ckpt/step-001000"
+    assert (
+        act.checkpoint(1000, str(art / "runs/train-1/ckpt/step-001000"))
+        == "runs/train-1/ckpt/step-001000"
+    )
     result = act.done(["runs/train-1/ckpt/step-001000"])
     act.close()
     assert (work / "progress.jsonl").read_text() == (
@@ -141,7 +174,11 @@ def test_hand_example_progress_lines(tmp_path):
         '{"ts":1760000000.0,"kind":"ckpt","step":1000,"ckpt":"runs/train-1/ckpt/step-001000"}\n'
         '{"ts":1760000000.0,"kind":"done","outputs":["runs/train-1/ckpt/step-001000"]}\n'
     )
-    assert (work / "DONE.json").read_bytes() == b'{"outputs":["runs/train-1/ckpt/step-001000"]}' == result
+    assert (
+        (work / "DONE.json").read_bytes()
+        == b'{"outputs":["runs/train-1/ckpt/step-001000"]}'
+        == result
+    )
 
 
 def test_flags_and_environment(tmp_path):
@@ -152,13 +189,27 @@ def test_flags_and_environment(tmp_path):
     # KIND: unit
     # CHAPTER: dur.09 section 4, The interface
     art, work, argv, env = setup(tmp_path)
-    act = Activity(["train", "--spec=" + str(work / "spec.json"), "--progress", str(work / "progress.jsonl"), "--lr", "3"], env)
+    act = Activity(
+        [
+            "train",
+            "--spec=" + str(work / "spec.json"),
+            "--progress",
+            str(work / "progress.jsonl"),
+            "--lr",
+            "3",
+        ],
+        env,
+    )
     assert act.resume is None and act.attempt == 1 and act.key == "train-1/3"
     assert act.work_dir == str(work) and act.artifacts == str(art)
     assert act.load_spec() == {"steps": 1000}
     defaults = Activity(argv, {})
     assert (defaults.attempt, defaults.key, defaults.artifacts) == (1, "", "/artifacts")
-    for bad in (["train", "--progress", "p"], ["train", "--spec", "s"], ["train", "--spec"]):
+    for bad in (
+        ["train", "--progress", "p"],
+        ["train", "--spec", "s"],
+        ["train", "--spec"],
+    ):
         with pytest.raises(SpecError):
             Activity(bad, env)
 
@@ -176,9 +227,16 @@ def test_each_event_is_one_flushed_line(tmp_path):
     for i in range(3):
         act.step(i, 1.0, 0.1, 64)
         raw = (work / "progress.jsonl").read_text()
-        assert raw.endswith("\n") and raw.count("\n") == i + 1, f"after event {i}: {raw!r}"
+        assert raw.endswith("\n") and raw.count("\n") == i + 1, (
+            f"after event {i}: {raw!r}"
+        )
     act.metric("val_loss", 2.40)
-    assert lines(work)[-1] == {"ts": TS, "kind": "metric", "name": "val_loss", "value": 2.40}
+    assert lines(work)[-1] == {
+        "ts": TS,
+        "kind": "metric",
+        "name": "val_loss",
+        "value": 2.40,
+    }
     act.close()
 
 
@@ -217,7 +275,10 @@ def test_checkpoint_only_when_complete(tmp_path):
     assert lines(work) == [], "no event for an incomplete checkpoint"
     make_ckpt(art, "runs/r/ckpt/step-000200")
     assert act.checkpoint(200, "runs/r/ckpt/step-000200") == "runs/r/ckpt/step-000200"
-    assert act.checkpoint(200, str(art / "runs/r/ckpt/step-000200")) == "runs/r/ckpt/step-000200"
+    assert (
+        act.checkpoint(200, str(art / "runs/r/ckpt/step-000200"))
+        == "runs/r/ckpt/step-000200"
+    )
     for outside in ("/etc", str(tmp_path / "elsewhere"), "../x"):
         with pytest.raises(ValueError):
             act.checkpoint(1, outside)
@@ -287,7 +348,9 @@ def test_run_exit_codes(tmp_path):
     for i, (main, code) in enumerate(cases):
         art, work, argv, env = setup(tmp_path / str(i))
         assert run(main, argv, env) == code, f"case {i}"
-        assert (work / "DONE.json").exists() == (code == EXIT_OK), f"case {i}: DONE.json only on success"
+        assert (work / "DONE.json").exists() == (code == EXIT_OK), (
+            f"case {i}: DONE.json only on success"
+        )
     assert json.loads((work / "DONE.json").read_text()) == {"outputs": ["out/a"]}
     assert run(lambda act: [], ["train"], {}) == EXIT_DATAERR, "no --spec: exit 65"
 
@@ -384,7 +447,9 @@ def test_sigterm_checkpoints_and_exits_130(tmp_path):
     assert code == EXIT_CANCELED, f"exit {code}, stderr: {err[-1500:]}"
     assert time.monotonic() - t0 < 5.0
     ev = lines(work)
-    assert ev[-1]["kind"] == "ckpt", f"the last event must be the checkpoint written on SIGTERM: {ev[-3:]}"
+    assert ev[-1]["kind"] == "ckpt", (
+        f"the last event must be the checkpoint written on SIGTERM: {ev[-3:]}"
+    )
     assert (art / ev[-1]["ckpt"] / "MANIFEST.json").exists()
     assert not (work / "DONE.json").exists()
 
@@ -422,7 +487,9 @@ def test_second_attempt_is_locked_out(tmp_path):
     finally:
         os.killpg(p.pid, signal.SIGTERM)
         finish(p)
-    assert run(lambda act: ["ok"], argv, dict(env, TL_ATTEMPT="3")) == EXIT_OK, "the lock is released at exit"
+    assert run(lambda act: ["ok"], argv, dict(env, TL_ATTEMPT="3")) == EXIT_OK, (
+        "the lock is released at exit"
+    )
 
 
 ORPHAN = """
@@ -463,11 +530,15 @@ def test_orphaned_child_stops(tmp_path):
     # CATCHES: s29
     # CHAPTER: dur.09 section 5, Pitfalls
     art, work, argv, env = setup(tmp_path)
-    p = spawn(ORPHAN, env, [str(work / "started"), textwrap.dedent(ORPHAN_CHILD), *argv[1:]])
+    p = spawn(
+        ORPHAN, env, [str(work / "started"), textwrap.dedent(ORPHAN_CHILD), *argv[1:]]
+    )
     out, _ = p.communicate(timeout=PATIENCE)
     pid = int(out.split()[0])
     try:
-        wait_for(lambda: (work / "noticed").exists(), "the orphan to notice its parent died")
+        wait_for(
+            lambda: (work / "noticed").exists(), "the orphan to notice its parent died"
+        )
         assert (work / "noticed").read_text() == "True"
     finally:
         try:

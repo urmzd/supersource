@@ -30,7 +30,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -105,7 +104,9 @@ def runtime_toml(c: Ctx, docs: list, where: str) -> dict:
 
 
 def mount_of(ctr: dict, volume: str) -> dict | None:
-    return next((m for m in ctr.get("volumeMounts") or [] if m.get("name") == volume), None)
+    return next(
+        (m for m in ctr.get("volumeMounts") or [] if m.get("name") == volume), None
+    )
 
 
 # -- static: images -----------------------------------------------------------
@@ -146,21 +147,34 @@ def test_dockerfiles_follow_the_image_rules(c: Ctx) -> None:
         stages = dockerfile_stages(text)
         names = {s["as"] for s in stages if s["as"]}
         for s in stages:
-            if s["from"] not in names and s["from"] != "scratch" and not DIGEST.search(s["from"]):
-                errs.append(f"{rel}: FROM {s['from']} is not pinned by digest (@sha256:...)")
+            if (
+                s["from"] not in names
+                and s["from"] != "scratch"
+                and not DIGEST.search(s["from"])
+            ):
+                errs.append(
+                    f"{rel}: FROM {s['from']} is not pinned by digest (@sha256:...)"
+                )
         final = "\n".join(stages[-1]["lines"]) if stages else ""
         hc = re.search(r"^HEALTHCHECK\b.*?\bCMD\s+(\S)", final, re.M | re.S)
         if not hc or hc.group(1) != "[":
-            errs.append(f"{rel}: the final stage needs HEALTHCHECK ... CMD [\"...\"] (exec form)")
+            errs.append(
+                f'{rel}: the final stage needs HEALTHCHECK ... CMD ["..."] (exec form)'
+            )
         for label in LABELS:
             if label not in final:
                 errs.append(f"{rel}: the final stage has no LABEL {label}")
     worker = c.require_file("deploy/docker/worker.Dockerfile").read_text()
     if not re.search(r"^COPY\s+(--\S+\s+)*python/", worker, re.M):
-        errs.append("deploy/docker/worker.Dockerfile: the image must carry python/ (the subprocess activities exec it)")
+        errs.append(
+            "deploy/docker/worker.Dockerfile: the image must carry python/ (the subprocess activities exec it)"
+        )
     if "./cmd/worker" not in worker:
         errs.append("deploy/docker/worker.Dockerfile: no build of ./cmd/worker")
-    if "./cmd/durable" not in c.require_file("deploy/docker/durable.Dockerfile").read_text():
+    if (
+        "./cmd/durable"
+        not in c.require_file("deploy/docker/durable.Dockerfile").read_text()
+    ):
         errs.append("deploy/docker/durable.Dockerfile: no build of ./cmd/durable")
     if errs:
         raise Fail("\n".join(errs))
@@ -177,13 +191,21 @@ def test_values_schemas_are_the_contract(c: Ctx) -> None:
     # CHAPTER: dep.06 section 2.2
     errs = []
     for part in PARTS:
-        want = json.loads(contract_path(c, f"helm/{part}.values.schema.json").read_text())
+        want = json.loads(
+            contract_path(c, f"helm/{part}.values.schema.json").read_text()
+        )
         try:
-            got = json.loads(c.require_file(f"{chart(c, part)}/values.schema.json").read_text())
+            got = json.loads(
+                c.require_file(f"{chart(c, part)}/values.schema.json").read_text()
+            )
         except json.JSONDecodeError as e:
-            raise Fail(f"{chart(c, part)}/values.schema.json is not JSON: {e}") from None
+            raise Fail(
+                f"{chart(c, part)}/values.schema.json is not JSON: {e}"
+            ) from None
         if got != want:
-            errs.append(f"{chart(c, part)}/values.schema.json differs from contracts/helm/{part}.values.schema.json: copy it unchanged")
+            errs.append(
+                f"{chart(c, part)}/values.schema.json differs from contracts/helm/{part}.values.schema.json: copy it unchanged"
+            )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -207,20 +229,34 @@ def test_schema_rejects_unsafe_values(c: Ctx) -> None:
     cases = [
         ("durable", ["--set", "image.tag=latest"], "image.tag=latest"),
         ("durable", ["--set", "testClock=true"], "testClock=true"),
-        ("durable", ["--set", "persistence.enabled=false"], "persistence.enabled=false"),
+        (
+            "durable",
+            ["--set", "persistence.enabled=false"],
+            "persistence.enabled=false",
+        ),
         ("durable", ["--set", "walMaxBytes=0"], "walMaxBytes=0"),
         ("durable", ["--set", "replicaCount=2"], "two replicas"),
         ("worker", ["--set", "image.tag=latest"], "image.tag=latest"),
         ("worker", ["--set", "taskQueues=null"], "no task queues"),
-        ("worker", ["--set-string", "durableAddress=forge-durable"], "a durable address without a port"),
+        (
+            "worker",
+            ["--set-string", "durableAddress=forge-durable"],
+            "a durable address without a port",
+        ),
     ]
     render(c, "durable")
     render(c, "worker")
     errs = []
     for part, args, what in cases:
-        r = c.sh(["helm", "template", f"{n}-{part}", chart(c, part), *args], timeout=60, check=False)
+        r = c.sh(
+            ["helm", "template", f"{n}-{part}", chart(c, part), *args],
+            timeout=60,
+            check=False,
+        )
         if r.returncode == 0:
-            errs.append(f"{chart(c, part)} renders with {what}: values.schema.json is not enforced")
+            errs.append(
+                f"{chart(c, part)} renders with {what}: values.schema.json is not enforced"
+            )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -243,7 +279,9 @@ def test_policy_over_rendered_charts(c: Ctx) -> None:
             where = f"{chart(c, part)}: {w['kind']} {w['metadata'].get('name')}"
             ps = pod_spec(w)
             psc = ps.get("securityContext") or {}
-            labels = ((w["spec"].get("template") or {}).get("metadata") or {}).get("labels") or {}
+            labels = ((w["spec"].get("template") or {}).get("metadata") or {}).get(
+                "labels"
+            ) or {}
             for ctr in containers(w):
                 sc = ctr.get("securityContext") or {}
                 for probe in ("livenessProbe", "readinessProbe"):
@@ -252,25 +290,36 @@ def test_policy_over_rendered_charts(c: Ctx) -> None:
                 res = ctr.get("resources") or {}
                 for kind in ("requests", "limits"):
                     if not {"cpu", "memory"} <= set(res.get(kind) or {}):
-                        errs.append(f"{where}: container {ctr['name']} lacks resources.{kind}.cpu and .memory")
+                        errs.append(
+                            f"{where}: container {ctr['name']} lacks resources.{kind}.cpu and .memory"
+                        )
                 if not sc.get("runAsNonRoot", psc.get("runAsNonRoot")):
                     errs.append(f"{where}: runAsNonRoot is not true")
                 uid = sc.get("runAsUser", psc.get("runAsUser"))
                 if not isinstance(uid, int) or uid <= 0:
-                    errs.append(f"{where}: runAsUser is {uid!r}; want a numeric uid above 0")
+                    errs.append(
+                        f"{where}: runAsUser is {uid!r}; want a numeric uid above 0"
+                    )
                 if sc.get("allowPrivilegeEscalation") is not False:
                     errs.append(f"{where}: allowPrivilegeEscalation is not false")
                 why = image_tag_problem(str(ctr.get("image", "")))
                 if why:
                     errs.append(f"{where}: {why}")
-            if not any(labels_match((p.get("spec") or {}).get("selector"), labels) for p in pdbs):
+            if not any(
+                labels_match((p.get("spec") or {}).get("selector"), labels)
+                for p in pdbs
+            ):
                 errs.append(f"{where}: no PodDisruptionBudget selects its pods")
             for e in [e for ctr in containers(w) for e in ctr.get("env") or []]:
                 if SECRETISH.search(e.get("name", "")) and "value" in e:
-                    errs.append(f"{where}: env {e['name']} has a literal value; use valueFrom.secretKeyRef")
+                    errs.append(
+                        f"{where}: env {e['name']} has a literal value; use valueFrom.secretKeyRef"
+                    )
         for s in objects(docs, "Secret"):
             if s.get("data") or s.get("stringData"):
-                errs.append(f"{chart(c, part)}: renders Secret {s['metadata'].get('name')} with values")
+                errs.append(
+                    f"{chart(c, part)}: renders Secret {s['metadata'].get('name')} with values"
+                )
     if errs:
         raise Fail("\n".join(dict.fromkeys(errs)))
 
@@ -286,33 +335,52 @@ def test_durable_is_a_statefulset_with_a_wal_volume(c: Ctx) -> None:
     # CHAPTER: dep.06 section 2.3
     docs = render(c, "durable")
     if objects(docs, "Deployment"):
-        raise Fail(f"{chart(c, 'durable')} renders a Deployment: the server must be a StatefulSet")
+        raise Fail(
+            f"{chart(c, 'durable')} renders a Deployment: the server must be a StatefulSet"
+        )
     ss = one(docs, "StatefulSet", chart(c, "durable"))
     errs = []
     if ss["spec"].get("replicas") != 1:
-        errs.append(f"the StatefulSet has {ss['spec'].get('replicas')} replicas; want 1 (3 only with Raft, dur.10)")
+        errs.append(
+            f"the StatefulSet has {ss['spec'].get('replicas')} replicas; want 1 (3 only with Raft, dur.10)"
+        )
     vcts = ss["spec"].get("volumeClaimTemplates") or []
     if not vcts:
         errs.append("no volumeClaimTemplates: the WAL has no PersistentVolumeClaim")
     ctr = containers(ss)[0]
-    wal_dir = str((runtime_toml(c, docs, chart(c, "durable")).get("durable") or {}).get("wal_dir", ""))
+    wal_dir = str(
+        (runtime_toml(c, docs, chart(c, "durable")).get("durable") or {}).get(
+            "wal_dir", ""
+        )
+    )
     covered = False
     for v in vcts:
         name = (v.get("metadata") or {}).get("name")
-        size = (((v.get("spec") or {}).get("resources") or {}).get("requests") or {}).get("storage")
+        size = (
+            ((v.get("spec") or {}).get("resources") or {}).get("requests") or {}
+        ).get("storage")
         if not size:
             errs.append(f"volumeClaimTemplate {name} requests no storage")
         m = mount_of(ctr, name)
         if m is None:
             errs.append(f"volumeClaimTemplate {name} is not mounted in the container")
-        elif wal_dir and (wal_dir == m["mountPath"] or wal_dir.startswith(m["mountPath"].rstrip("/") + "/")):
+        elif wal_dir and (
+            wal_dir == m["mountPath"]
+            or wal_dir.startswith(m["mountPath"].rstrip("/") + "/")
+        ):
             covered = True
     if not wal_dir:
-        errs.append("runtime.toml has no [durable].wal_dir: the server would write its WAL somewhere unmounted")
+        errs.append(
+            "runtime.toml has no [durable].wal_dir: the server would write its WAL somewhere unmounted"
+        )
     elif not covered:
-        errs.append(f"[durable].wal_dir {wal_dir} is not on the claim's mount: the WAL would land on the read-only root filesystem")
+        errs.append(
+            f"[durable].wal_dir {wal_dir} is not on the claim's mount: the WAL would land on the read-only root filesystem"
+        )
     if not (pod_spec(ss).get("securityContext") or {}).get("fsGroup"):
-        errs.append("the pod sets no securityContext.fsGroup: a non-root server cannot write a freshly provisioned volume")
+        errs.append(
+            "the pod sets no securityContext.fsGroup: a non-root server cannot write a freshly provisioned volume"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -330,27 +398,47 @@ def test_wal_quota_is_rendered(c: Ctx) -> None:
         if value is None:
             docs = render(c, "durable")
         else:
-            out = c.sh(["helm", "template", f"{n}-durable", chart(c, "durable"), "--set", f"walMaxBytes={value}"], timeout=60).stdout
+            out = c.sh(
+                [
+                    "helm",
+                    "template",
+                    f"{n}-durable",
+                    chart(c, "durable"),
+                    "--set",
+                    f"walMaxBytes={value}",
+                ],
+                timeout=60,
+            ).stdout
             docs = c.yaml_docs(out, "helm template --set walMaxBytes")
-        got = (runtime_toml(c, docs, chart(c, "durable")).get("durable") or {}).get("wal_max_bytes")
+        got = (runtime_toml(c, docs, chart(c, "durable")).get("durable") or {}).get(
+            "wal_max_bytes"
+        )
         want = value
         if want is None:
             vals = c.yaml_file(f"{chart(c, 'durable')}/values.yaml")[0] or {}
             want = vals.get("walMaxBytes")
         if not isinstance(got, int) or isinstance(got, bool):
-            errs.append(f"wal_max_bytes is {got!r}: runtime.schema.json wants an integer (Helm reads YAML numbers as floats; cast with int64)")
+            errs.append(
+                f"wal_max_bytes is {got!r}: runtime.schema.json wants an integer (Helm reads YAML numbers as floats; cast with int64)"
+            )
         elif got != want:
-            errs.append(f"with walMaxBytes={want} the runtime.toml says wal_max_bytes = {got}")
+            errs.append(
+                f"with walMaxBytes={want} the runtime.toml says wal_max_bytes = {got}"
+            )
     docs = render(c, "durable")
     ss = one(docs, "StatefulSet", chart(c, "durable"))
     size = None
     for v in ss["spec"].get("volumeClaimTemplates") or []:
-        size = (((v.get("spec") or {}).get("resources") or {}).get("requests") or {}).get("storage")
+        size = (
+            ((v.get("spec") or {}).get("resources") or {}).get("requests") or {}
+        ).get("storage")
     mult = {"Mi": 2**20, "Gi": 2**30, "Ti": 2**40}
     m = re.fullmatch(r"([0-9]+)(Mi|Gi|Ti)", str(size or ""))
     quota = (runtime_toml(c, docs, "").get("durable") or {}).get("wal_max_bytes")
     if m and isinstance(quota, int) and quota >= int(m.group(1)) * mult[m.group(2)]:
-        errs.append(f"wal_max_bytes {quota} is not below the claim's {size}: the disk fills before the quota trips")
+        errs.append(
+            f"wal_max_bytes {quota} is not below the claim's {size}: the disk fills before the quota trips"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -364,17 +452,28 @@ def test_durable_service_ports(c: Ctx) -> None:
     # CHAPTER: dep.06 section 2.3
     n = c.system_name()
     docs = render(c, "durable")
-    svc = next((s for s in objects(docs, "Service") if s["metadata"].get("name") == f"{n}-durable"), None)
+    svc = next(
+        (
+            s
+            for s in objects(docs, "Service")
+            if s["metadata"].get("name") == f"{n}-durable"
+        ),
+        None,
+    )
     if svc is None:
         raise Fail(f"no Service named {n}-durable")
     ports = {p.get("port"): p for p in (svc.get("spec") or {}).get("ports") or []}
     errs = []
     if 7233 not in ports:
         errs.append("Service port 7233 (gRPC) is missing")
-    elif (svc["spec"].get("type") == "NodePort") and ports[7233].get("nodePort") != 30733:
+    elif (svc["spec"].get("type") == "NodePort") and ports[7233].get(
+        "nodePort"
+    ) != 30733:
         errs.append(f"gRPC nodePort is {ports[7233].get('nodePort')}; want 30733")
     elif svc["spec"].get("type") != "NodePort":
-        errs.append("the Service is not a NodePort: a worker on the host cannot reach it")
+        errs.append(
+            "the Service is not a NodePort: a worker on the host cannot reach it"
+        )
     if 9464 not in ports:
         errs.append("Service port 9464 (health and /metrics) is missing")
     if errs:
@@ -393,7 +492,9 @@ def test_worker_drains_before_it_is_killed(c: Ctx) -> None:
     dep = one(render(c, "worker"), "Deployment", chart(c, "worker"))
     g = pod_spec(dep).get("terminationGracePeriodSeconds", 30)
     if not isinstance(g, int) or g < 60:
-        raise Fail(f"terminationGracePeriodSeconds is {g}; want at least 60 (drain plus the child's SIGTERM grace)")
+        raise Fail(
+            f"terminationGracePeriodSeconds is {g}; want at least 60 (drain plus the child's SIGTERM grace)"
+        )
 
 
 def test_worker_writes_artifacts(c: Ctx) -> None:
@@ -406,17 +507,30 @@ def test_worker_writes_artifacts(c: Ctx) -> None:
     dep = one(render(c, "worker"), "Deployment", chart(c, "worker"))
     ctr = containers(dep)[0]
     vols = {v["name"]: v for v in pod_spec(dep).get("volumes") or []}
-    art = next((m for m in ctr.get("volumeMounts") or [] if m.get("mountPath") == "/artifacts"), None)
+    art = next(
+        (
+            m
+            for m in ctr.get("volumeMounts") or []
+            if m.get("mountPath") == "/artifacts"
+        ),
+        None,
+    )
     errs = []
     if art is None:
         errs.append("the worker does not mount /artifacts")
     elif art.get("readOnly"):
-        errs.append("/artifacts is mounted read-only: no activity can write its outputs")
+        errs.append(
+            "/artifacts is mounted read-only: no activity can write its outputs"
+        )
     elif "emptyDir" in vols.get(art["name"], {}):
-        errs.append("/artifacts is an emptyDir: outputs die with the pod and the engine never sees them")
+        errs.append(
+            "/artifacts is an emptyDir: outputs die with the pod and the engine never sees them"
+        )
     sc = ctr.get("securityContext") or {}
     if sc.get("readOnlyRootFilesystem") is not True:
-        errs.append("the worker's root filesystem is writable: set readOnlyRootFilesystem and give it an emptyDir for /tmp")
+        errs.append(
+            "the worker's root filesystem is writable: set readOnlyRootFilesystem and give it an emptyDir for /tmp"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -439,13 +553,20 @@ def test_keda_scales_on_queue_depth(c: Ctx) -> None:
     spec = so.get("spec") or {}
     errs = []
     if not str(so.get("apiVersion", "")).startswith("keda.sh/"):
-        errs.append(f"ScaledObject apiVersion is {so.get('apiVersion')}; want keda.sh/v1alpha1")
+        errs.append(
+            f"ScaledObject apiVersion is {so.get('apiVersion')}; want keda.sh/v1alpha1"
+        )
     tgt = spec.get("scaleTargetRef") or {}
-    if tgt.get("name") != f"{n}-worker" or tgt.get("kind", "Deployment") != "Deployment":
+    if (
+        tgt.get("name") != f"{n}-worker"
+        or tgt.get("kind", "Deployment") != "Deployment"
+    ):
         errs.append(f"scaleTargetRef is {tgt}; want the Deployment {n}-worker")
     lo, hi = spec.get("minReplicaCount", 0), spec.get("maxReplicaCount", 100)
     if not (isinstance(lo, int) and isinstance(hi, int) and hi > lo >= 1):
-        errs.append(f"minReplicaCount {lo}, maxReplicaCount {hi}: want 1 <= min < max (min 0 parks the queue until KEDA's activation)")
+        errs.append(
+            f"minReplicaCount {lo}, maxReplicaCount {hi}: want 1 <= min < max (min 0 parks the queue until KEDA's activation)"
+        )
     trig = [t for t in spec.get("triggers") or [] if t.get("type") == "prometheus"]
     if not trig:
         errs.append("no prometheus trigger")
@@ -455,19 +576,27 @@ def test_keda_scales_on_queue_depth(c: Ctx) -> None:
         if QUEUE_METRIC not in q:
             errs.append(f"the trigger query {q!r} does not read {QUEUE_METRIC}")
         if queue and f'"{queue}"' not in q:
-            errs.append(f"the trigger query {q!r} does not select queue \"{queue}\" (autoscaling.queue)")
+            errs.append(
+                f'the trigger query {q!r} does not select queue "{queue}" (autoscaling.queue)'
+            )
         try:
             if float(md.get("threshold", "0")) <= 0:
                 raise ValueError
         except ValueError:
-            errs.append(f"threshold {md.get('threshold')!r} must be a positive number (tasks per worker)")
+            errs.append(
+                f"threshold {md.get('threshold')!r} must be a positive number (tasks per worker)"
+            )
         if not str(md.get("serverAddress", "")).startswith("http"):
             errs.append("the trigger has no Prometheus serverAddress")
     dep = one(docs, "Deployment", chart(c, "worker"))
     if "replicas" in dep["spec"]:
-        errs.append("the Deployment sets spec.replicas while KEDA scales it: every helm upgrade resets the count")
+        errs.append(
+            "the Deployment sets spec.replicas while KEDA scales it: every helm upgrade resets the count"
+        )
     if objects(docs, "HorizontalPodAutoscaler"):
-        errs.append("the chart also renders an HPA: two controllers would fight over the replica count")
+        errs.append(
+            "the chart also renders an HPA: two controllers would fight over the replica count"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -497,11 +626,17 @@ def test_keda_is_pinned(c: Ctx) -> None:
     if d is None:
         errs.append("deploy/keda/Chart.yaml has no dependency keda")
     elif str(d.get("version")) != ver or d.get("repository") != repo:
-        errs.append(f"keda: Chart.yaml has {d.get('version')} from {d.get('repository')}; the pin is {ver} from {repo}")
+        errs.append(
+            f"keda: Chart.yaml has {d.get('version')} from {d.get('repository')}; the pin is {ver} from {repo}"
+        )
     if lk is None or str(lk.get("version")) != ver or lk.get("repository") != repo:
-        errs.append(f"keda: Chart.lock does not record {ver} from {repo}: run helm dependency update deploy/keda")
+        errs.append(
+            f"keda: Chart.lock does not record {ver} from {repo}: run helm dependency update deploy/keda"
+        )
     if not str(lock.get("digest", "")).startswith("sha256:"):
-        errs.append("deploy/keda/Chart.lock has no digest: it was not written by helm dependency update")
+        errs.append(
+            "deploy/keda/Chart.lock has no digest: it was not written by helm dependency update"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -515,12 +650,29 @@ def images(c: Ctx) -> dict[str, str]:
         c.cache["images"] = None
         for cmd in ("go/cmd/durable", "go/cmd/worker"):
             if not c.path(cmd).is_dir():
-                raise Fail(f"{cmd} is missing: the images build your entry points (dur.02 server, dur.04 worker)")
+                raise Fail(
+                    f"{cmd} is missing: the images build your entry points (dur.02 server, dur.04 worker)"
+                )
         out = {}
         for part in PARTS:
             tag = f"ss-check/{c.system_name()}-{part}:dep06"
-            c.sh(["docker", "build", "-q", "-f", f"deploy/docker/{part}.Dockerfile",
-                  "--build-arg", f"VERSION={VERSION}", "--build-arg", "REVISION=check", "-t", tag, "."], timeout=1800)
+            c.sh(
+                [
+                    "docker",
+                    "build",
+                    "-q",
+                    "-f",
+                    f"deploy/docker/{part}.Dockerfile",
+                    "--build-arg",
+                    f"VERSION={VERSION}",
+                    "--build-arg",
+                    "REVISION=check",
+                    "-t",
+                    tag,
+                    ".",
+                ],
+                timeout=1800,
+            )
             out[part] = tag
         c.cache["images"] = out
     if c.cache["images"] is None:
@@ -543,7 +695,9 @@ def test_images_run_as_numeric_non_root(c: Ctx) -> None:
     # CHAPTER: dep.06 section 2.1
     errs = []
     for part, tag in images(c).items():
-        user = json.loads(c.sh(["docker", "image", "inspect", tag]).stdout)[0]["Config"].get("User", "")
+        user = json.loads(c.sh(["docker", "image", "inspect", tag]).stdout)[0][
+            "Config"
+        ].get("User", "")
         uid = user.split(":")[0]
         if not uid.isdigit() or uid == "0":
             errs.append(f"{part}: image USER is {user!r}; want a numeric uid above 0")
@@ -559,9 +713,16 @@ def test_worker_image_has_the_python_units(c: Ctx) -> None:
     # CHAPTER: dep.06 section 2.1
     tag = images(c)["worker"]
     code = "import numpy, sys; sys.path.insert(0, '/app/python'); import tinyllm.io.activity, tinyllm.io.telemetry"
-    r = c.sh(["docker", "run", "--rm", "--entrypoint", "python", tag, "-c", code], timeout=120, check=False)
+    r = c.sh(
+        ["docker", "run", "--rm", "--entrypoint", "python", tag, "-c", code],
+        timeout=120,
+        check=False,
+    )
     if r.returncode != 0:
-        raise Fail("the worker image cannot import its Python units:\n" + (r.stdout + r.stderr)[-1500:])
+        raise Fail(
+            "the worker image cannot import its Python units:\n"
+            + (r.stdout + r.stderr)[-1500:]
+        )
 
 
 # -- cluster ----------------------------------------------------------------------
@@ -580,11 +741,22 @@ def test_keda_installed(c: Ctx) -> None:
     # KIND: conformance
     # CHAPTER: dep.06 section 4, The artifact and its check
     ctx, _ = context(c)
-    r = c.sh(["kubectl", "--context", ctx, "get", "crd", "scaledobjects.keda.sh"], check=False)
+    r = c.sh(
+        ["kubectl", "--context", ctx, "get", "crd", "scaledobjects.keda.sh"],
+        check=False,
+    )
     if r.returncode != 0:
-        raise Fail("CRD scaledobjects.keda.sh is missing: helm upgrade --install keda deploy/keda -n keda --create-namespace")
-    r = c.sh(["helm", "--kube-context", ctx, "-n", "keda", "status", "keda", "-o", "json"], check=False)
-    if r.returncode != 0 or (json.loads(r.stdout).get("info") or {}).get("status") != "deployed":
+        raise Fail(
+            "CRD scaledobjects.keda.sh is missing: helm upgrade --install keda deploy/keda -n keda --create-namespace"
+        )
+    r = c.sh(
+        ["helm", "--kube-context", ctx, "-n", "keda", "status", "keda", "-o", "json"],
+        check=False,
+    )
+    if (
+        r.returncode != 0
+        or (json.loads(r.stdout).get("info") or {}).get("status") != "deployed"
+    ):
         raise Fail("helm release keda (namespace keda) is not deployed")
 
 
@@ -597,8 +769,24 @@ def test_server_side_dry_run(c: Ctx) -> None:
     ctx, ns = context(c)
     n = c.system_name()
     for part in PARTS:
-        out = c.sh(["helm", "template", f"{n}-{part}", chart(c, part), "-n", ns], timeout=60).stdout
-        c.sh(["kubectl", "--context", ctx, "-n", ns, "apply", "--dry-run=server", "-f", "-"], timeout=60, input=out)
+        out = c.sh(
+            ["helm", "template", f"{n}-{part}", chart(c, part), "-n", ns], timeout=60
+        ).stdout
+        c.sh(
+            [
+                "kubectl",
+                "--context",
+                ctx,
+                "-n",
+                ns,
+                "apply",
+                "--dry-run=server",
+                "-f",
+                "-",
+            ],
+            timeout=60,
+            input=out,
+        )
 
 
 def test_releases_ready(c: Ctx) -> None:
@@ -610,19 +798,76 @@ def test_releases_ready(c: Ctx) -> None:
     ctx, ns = context(c)
     n = c.system_name()
     errs = []
-    r = c.sh(["kubectl", "--context", ctx, "-n", ns, "get", "statefulset", f"{n}-durable", "-o", "json"], check=False)
-    if r.returncode != 0 or int((json.loads(r.stdout).get("status") or {}).get("readyReplicas") or 0) < 1:
+    r = c.sh(
+        [
+            "kubectl",
+            "--context",
+            ctx,
+            "-n",
+            ns,
+            "get",
+            "statefulset",
+            f"{n}-durable",
+            "-o",
+            "json",
+        ],
+        check=False,
+    )
+    if (
+        r.returncode != 0
+        or int((json.loads(r.stdout).get("status") or {}).get("readyReplicas") or 0) < 1
+    ):
         errs.append(f"statefulset/{n}-durable has no ready replica")
-    r = c.sh(["kubectl", "--context", ctx, "-n", ns, "get", "pvc", "-o", "json"], check=False)
+    r = c.sh(
+        ["kubectl", "--context", ctx, "-n", ns, "get", "pvc", "-o", "json"], check=False
+    )
     claims = json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
-    if not any(p["metadata"]["name"].startswith(f"wal-{n}-durable-") and (p.get("status") or {}).get("phase") == "Bound" for p in claims):
+    if not any(
+        p["metadata"]["name"].startswith(f"wal-{n}-durable-")
+        and (p.get("status") or {}).get("phase") == "Bound"
+        for p in claims
+    ):
         errs.append(f"no bound claim wal-{n}-durable-0")
-    r = c.sh(["kubectl", "--context", ctx, "-n", ns, "get", "deploy", f"{n}-worker", "-o", "json"], check=False)
-    if r.returncode != 0 or int((json.loads(r.stdout).get("status") or {}).get("availableReplicas") or 0) < 1:
+    r = c.sh(
+        [
+            "kubectl",
+            "--context",
+            ctx,
+            "-n",
+            ns,
+            "get",
+            "deploy",
+            f"{n}-worker",
+            "-o",
+            "json",
+        ],
+        check=False,
+    )
+    if (
+        r.returncode != 0
+        or int((json.loads(r.stdout).get("status") or {}).get("availableReplicas") or 0)
+        < 1
+    ):
         errs.append(f"deploy/{n}-worker is not available")
-    r = c.sh(["kubectl", "--context", ctx, "-n", ns, "get", "hpa", f"keda-hpa-{n}-worker", "-o", "json"], check=False)
+    r = c.sh(
+        [
+            "kubectl",
+            "--context",
+            ctx,
+            "-n",
+            ns,
+            "get",
+            "hpa",
+            f"keda-hpa-{n}-worker",
+            "-o",
+            "json",
+        ],
+        check=False,
+    )
     if r.returncode != 0:
-        errs.append(f"KEDA made no HPA keda-hpa-{n}-worker: is the ScaledObject Ready? (kubectl describe scaledobject {n}-worker)")
+        errs.append(
+            f"KEDA made no HPA keda-hpa-{n}-worker: is the ScaledObject Ready? (kubectl describe scaledobject {n}-worker)"
+        )
     if errs:
         raise Fail("\n".join(errs))
 

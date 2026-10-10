@@ -46,27 +46,86 @@ def case(name: str, mod, out: dict) -> None:
     tx = torch.tensor(x, requires_grad=True)
     y = mod(tx)
     (y * torch.tensor(g)).sum().backward()
-    out.update({f"{name}.x": x, f"{name}.g": g, f"{name}.y": y.detach().numpy(), f"{name}.grad.x": tx.grad.numpy()})
+    out.update(
+        {
+            f"{name}.x": x,
+            f"{name}.g": g,
+            f"{name}.y": y.detach().numpy(),
+            f"{name}.grad.x": tx.grad.numpy(),
+        }
+    )
     for pname, p in mod.named_parameters():
         out[f"{name}.grad.{pname}"] = p.grad.numpy()
 
 
 def main() -> None:
     out: dict = {}
-    case("swiglu", LlamaMLP(LlamaConfig(hidden_size=D, intermediate_size=FF, hidden_act="silu", num_attention_heads=2, num_key_value_heads=2)), out)
-    case("swiglu-bias", LlamaMLP(LlamaConfig(hidden_size=D, intermediate_size=FF, hidden_act="silu", mlp_bias=True, num_attention_heads=2, num_key_value_heads=2)), out)
-    case("geglu", GemmaMLP(GemmaConfig(hidden_size=D, intermediate_size=FF, hidden_act="gelu_pytorch_tanh", num_attention_heads=2, num_key_value_heads=2, head_dim=4)), out)
-    out["__meta__"] = np.array(json.dumps({
-        "generator": "course/oracle/L7.2/gated_mlp_hf.py", "torch": torch.__version__,
-        "transformers": transformers.__version__, "numpy": np.__version__, "seed": SEED,
-        "cases": {"swiglu": {"act": "silu", "bias": False}, "swiglu-bias": {"act": "silu", "bias": True},
-                  "geglu": {"act": "gelu_tanh", "bias": False}}, "d": D, "d_ff": FF,
-    }))
+    case(
+        "swiglu",
+        LlamaMLP(
+            LlamaConfig(
+                hidden_size=D,
+                intermediate_size=FF,
+                hidden_act="silu",
+                num_attention_heads=2,
+                num_key_value_heads=2,
+            )
+        ),
+        out,
+    )
+    case(
+        "swiglu-bias",
+        LlamaMLP(
+            LlamaConfig(
+                hidden_size=D,
+                intermediate_size=FF,
+                hidden_act="silu",
+                mlp_bias=True,
+                num_attention_heads=2,
+                num_key_value_heads=2,
+            )
+        ),
+        out,
+    )
+    case(
+        "geglu",
+        GemmaMLP(
+            GemmaConfig(
+                hidden_size=D,
+                intermediate_size=FF,
+                hidden_act="gelu_pytorch_tanh",
+                num_attention_heads=2,
+                num_key_value_heads=2,
+                head_dim=4,
+            )
+        ),
+        out,
+    )
+    out["__meta__"] = np.array(
+        json.dumps(
+            {
+                "generator": "course/oracle/L7.2/gated_mlp_hf.py",
+                "torch": torch.__version__,
+                "transformers": transformers.__version__,
+                "numpy": np.__version__,
+                "seed": SEED,
+                "cases": {
+                    "swiglu": {"act": "silu", "bias": False},
+                    "swiglu-bias": {"act": "silu", "bias": True},
+                    "geglu": {"act": "gelu_tanh", "bias": False},
+                },
+                "d": D,
+                "d_ff": FF,
+            }
+        )
+    )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(OUT, **out)
     data = OUT.read_bytes()
-    print(f"{OUT}\t{hashlib.sha256(data).hexdigest()}\t{len(data)}\tcourse/oracle/L7.2/gated_mlp_hf.py\t"
-          f"torch=={torch.__version__},transformers=={transformers.__version__}\t-\tApache-2.0")
+    print(
+        f"{OUT}\t{hashlib.sha256(data).hexdigest()}\t{len(data)}\tcourse/oracle/L7.2/gated_mlp_hf.py\t"
+        f"torch=={torch.__version__},transformers=={transformers.__version__}\t-\tApache-2.0"
+    )
 
 
 main()

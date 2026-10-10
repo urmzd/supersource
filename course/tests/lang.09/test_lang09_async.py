@@ -58,7 +58,9 @@ def launch():
     m = re.match(r"listening on 127\.0\.0\.1:(\d+)\s*$", first)
     if not m:
         proc.kill()
-        pytest.fail(f"ticker --port 0 must print `listening on 127.0.0.1:<port>` first; got {first!r}")
+        pytest.fail(
+            f"ticker --port 0 must print `listening on 127.0.0.1:<port>` first; got {first!r}"
+        )
     return proc, ("127.0.0.1", int(m.group(1)))
 
 
@@ -116,7 +118,9 @@ def exchange(addr, raw: bytes) -> Reply:
 
 
 def get(addr, path: str) -> Reply:
-    return exchange(addr, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n".encode())
+    return exchange(
+        addr, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n".encode()
+    )
 
 
 def post(addr, path: str, body: bytes) -> Reply:
@@ -134,7 +138,9 @@ def test_crate_builds(build):
     # KIND: conformance
     # CHAPTER: lang.09 section 4
     assert build.returncode == 0, f"cargo build failed:\n{tail(build.stderr)}"
-    assert (TARGET / "debug" / "ticker").is_file(), "the package must build a binary named ticker"
+    assert (TARGET / "debug" / "ticker").is_file(), (
+        "the package must build a binary named ticker"
+    )
 
 
 def test_your_cargo_tests_pass(build):
@@ -143,7 +149,9 @@ def test_your_cargo_tests_pass(build):
     # KIND: unit
     # CHAPTER: lang.09 section 2
     r = cargo("test", "-q")
-    assert r.returncode == 0, f"cargo test failed:\n{tail(r.stdout)}\n{tail(r.stderr, 12)}"
+    assert r.returncode == 0, (
+        f"cargo test failed:\n{tail(r.stdout)}\n{tail(r.stderr, 12)}"
+    )
 
 
 def test_hand_example_ticks(server):
@@ -154,7 +162,9 @@ def test_hand_example_ticks(server):
     r = get(server, "/ticks?n=3&interval_ms=10")
     assert r.status == 200, r.raw[:300]
     assert r.headers.get("content-type") == "text/event-stream"
-    assert r.body == b'data: {"i":0}\n\ndata: {"i":1}\n\ndata: {"i":2}\n\ndata: [DONE]\n\n'
+    assert (
+        r.body == b'data: {"i":0}\n\ndata: {"i":1}\n\ndata: {"i":2}\n\ndata: [DONE]\n\n'
+    )
 
 
 def test_health(server):
@@ -172,7 +182,9 @@ def test_events_leave_as_produced(server):
     # KIND: unit
     # CHAPTER: lang.09 section 2
     s = socket.create_connection(server, timeout=TIMEOUT)
-    s.sendall(b"GET /ticks?n=5&interval_ms=150 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+    s.sendall(
+        b"GET /ticks?n=5&interval_ms=150 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+    )
     t0 = time.monotonic()
     times, data = [], b""
     while True:
@@ -184,7 +196,9 @@ def test_events_leave_as_produced(server):
             times.append(time.monotonic() - t0)
     s.close()
     assert len(times) == 6, data
-    assert times[0] < 0.4, f"the first event took {times[0]:.2f} s: is the whole stream buffered?"
+    assert times[0] < 0.4, (
+        f"the first event took {times[0]:.2f} s: is the whole stream buffered?"
+    )
     assert times[-1] - times[0] > 0.5, f"events arrived together ({times})"
 
 
@@ -196,7 +210,9 @@ def test_disconnect_cancels_the_producer(server):
     # CHAPTER: lang.09 section 5, pitfalls
     before = stats(server)["cancelled"]
     s = socket.create_connection(server, timeout=TIMEOUT)
-    s.sendall(b"GET /ticks?n=1000&interval_ms=20 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+    s.sendall(
+        b"GET /ticks?n=1000&interval_ms=20 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+    )
     data = b""
     while data.count(b"data: ") < 2:
         data += s.recv(65536)
@@ -206,7 +222,9 @@ def test_disconnect_cancels_the_producer(server):
         st = stats(server)
         if st["cancelled"] == before + 1 and st["active"] == 0:
             break
-        assert time.monotonic() < deadline, f"producer still running after the client left: {st}"
+        assert time.monotonic() < deadline, (
+            f"producer still running after the client left: {st}"
+        )
         time.sleep(0.05)
 
 
@@ -219,10 +237,14 @@ def test_slow_reader_bounds_the_producer(server):
     # CHAPTER: lang.09 section 2
     s = socket.create_connection(server, timeout=TIMEOUT)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
-    s.sendall(b"GET /ticks?n=200000&interval_ms=0 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+    s.sendall(
+        b"GET /ticks?n=200000&interval_ms=0 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+    )
     time.sleep(0.5)
     st = stats(server)
-    assert st["active"] >= 1, f"the producer finished 200000 events without a reader: {st}"
+    assert st["active"] >= 1, (
+        f"the producer finished 200000 events without a reader: {st}"
+    )
     s.close()
 
 
@@ -249,7 +271,9 @@ def test_bounded_admission_answers_429(server):
     for t in threads:
         t.join()
     assert sorted(r.status for r in results) == [200, 200]
-    assert post(server, "/jobs", b'{"ms": 1}').status == 200, "slots come back when jobs end"
+    assert post(server, "/jobs", b'{"ms": 1}').status == 200, (
+        "slots come back when jobs end"
+    )
 
 
 def test_sigterm_drains_and_exits_zero(build):
@@ -261,7 +285,9 @@ def test_sigterm_drains_and_exits_zero(build):
     proc, addr = launch()
     try:
         out = []
-        t = threading.Thread(target=lambda: out.append(post(addr, "/jobs", b'{"ms": 400}')))
+        t = threading.Thread(
+            target=lambda: out.append(post(addr, "/jobs", b'{"ms": 400}'))
+        )
         t.start()
         time.sleep(0.15)
         proc.send_signal(signal.SIGTERM)

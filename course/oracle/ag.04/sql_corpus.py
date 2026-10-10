@@ -21,7 +21,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 OUT = ROOT / "course" / "fixtures" / "ag.04" / "sql_corpus.json"
 
-spec = importlib.util.spec_from_file_location("safety_gate", ROOT / "case-studies" / "02-grounded-sql-agent" / "safety_gate.py")
+spec = importlib.util.spec_from_file_location(
+    "safety_gate", ROOT / "case-studies" / "02-grounded-sql-agent" / "safety_gate.py"
+)
 gate = importlib.util.module_from_spec(spec)
 sys.modules["safety_gate"] = gate  # dataclasses look the module up by name
 spec.loader.exec_module(gate)
@@ -58,10 +60,19 @@ def main() -> None:
     cases = []
     for q in queries:
         r = gate.classify(q, max_rows=100)
-        cases.append({"sql": q, "allowed": r.allowed, "op": r.operation.value, "cleared": r.sql if r.allowed else None})
+        cases.append(
+            {
+                "sql": q,
+                "allowed": r.allowed,
+                "op": r.operation.value,
+                "cleared": r.sql if r.allowed else None,
+            }
+        )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"max_rows": 100, "cases": cases}, indent=1) + "\n")
-    print(f"wrote {OUT}: {sum(c['allowed'] for c in cases)} allowed, {sum(not c['allowed'] for c in cases)} blocked")
+    print(
+        f"wrote {OUT}: {sum(c['allowed'] for c in cases)} allowed, {sum(not c['allowed'] for c in cases)} blocked"
+    )
 
 
 if __name__ == "__main__":

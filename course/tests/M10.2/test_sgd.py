@@ -64,7 +64,9 @@ def test_hand_example():
     # CATCHES: s01, s02, s03, s12
     # CHAPTER: M10.2 section 3, Worked example by hand
     assert_close(run_on_half_square(dict(lr=0.1, momentum=0.9), 3), [0.9, 0.72, 0.486])
-    assert_close(run_on_half_square(dict(lr=0.1, momentum=0.9, nesterov=True), 2), [0.81, 0.5751])
+    assert_close(
+        run_on_half_square(dict(lr=0.1, momentum=0.9, nesterov=True), 2), [0.81, 0.5751]
+    )
     assert_close(run_on_half_square(dict(lr=0.1, weight_decay=0.1), 1), [0.89])
 
 
@@ -255,7 +257,12 @@ def test_rejects_bad_hyperparameters():
     # KIND: boundary
     # CATCHES: m01
     # CHAPTER: M10.2 section 4, The interface
-    for kw in (dict(lr=-0.1), dict(lr=0.1, momentum=-0.5), dict(lr=0.1, weight_decay=-1.0), dict(lr=0.1, nesterov=True)):
+    for kw in (
+        dict(lr=-0.1),
+        dict(lr=0.1, momentum=-0.5),
+        dict(lr=0.1, weight_decay=-1.0),
+        dict(lr=0.1, nesterov=True),
+    ):
         with pytest.raises(ValueError):
             SGD([P([1.0])], **kw)
     SGD([P([1.0])], lr=0.0)
@@ -284,7 +291,9 @@ def test_momentum_beats_plain_on_ill_conditioned():
 
     plain = gap_after(lr=1 / L)
     k = L / mu
-    heavy = gap_after(lr=4 / (L**0.5 + mu**0.5) ** 2, momentum=((k**0.5 - 1) / (k**0.5 + 1)) ** 2)
+    heavy = gap_after(
+        lr=4 / (L**0.5 + mu**0.5) ** 2, momentum=((k**0.5 - 1) / (k**0.5 + 1)) ** 2
+    )
     assert plain > 0.02
     assert heavy < 1e-8
 

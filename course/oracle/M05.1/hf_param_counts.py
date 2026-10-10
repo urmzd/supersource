@@ -51,7 +51,9 @@ SMOL_SNAPSHOT = os.path.expanduser(
     "~/.cache/huggingface/hub/models--HuggingFaceTB--SmolLM2-135M-Instruct/snapshots/"
     "12fd25f77366fa6b3b4b768ec3050bf629380bac"
 )
-SMOL_CONFIG_SHA = "8eb740e8bbe4cff95ea7b4588d17a2432deb16e8075bc5828ff7ba9be94d982a"  # ASSETS.tsv
+SMOL_CONFIG_SHA = (
+    "8eb740e8bbe4cff95ea7b4588d17a2432deb16e8075bc5828ff7ba9be94d982a"  # ASSETS.tsv
+)
 
 
 def component(name: str) -> str:
@@ -59,7 +61,9 @@ def component(name: str) -> str:
         return "embed"
     if name.startswith("lm_head"):
         return "lm_head"
-    if "norm" in name:  # input_layernorm, post_attention_layernorm, model.norm, q_a/kv_a_layernorm
+    if (
+        "norm" in name
+    ):  # input_layernorm, post_attention_layernorm, model.norm, q_a/kv_a_layernorm
         return "norm"
     if ".self_attn." in name:
         return "attn"
@@ -97,23 +101,72 @@ def fields(cfg, keys) -> dict:
     return {k: getattr(cfg, k, None) for k in keys}
 
 
-LLAMA_KEYS = ["vocab_size", "hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads",
-              "num_key_value_heads", "head_dim", "tie_word_embeddings", "attention_bias", "mlp_bias"]
-MIXTRAL_KEYS = ["vocab_size", "hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads",
-                "num_key_value_heads", "head_dim", "tie_word_embeddings", "num_local_experts", "num_experts_per_tok"]
-DS_KEYS = ["vocab_size", "hidden_size", "intermediate_size", "moe_intermediate_size", "num_hidden_layers",
-           "num_attention_heads", "num_key_value_heads", "n_shared_experts", "n_routed_experts",
-           "num_experts_per_tok", "first_k_dense_replace", "kv_lora_rank", "q_lora_rank", "qk_rope_head_dim",
-           "qk_nope_head_dim", "v_head_dim", "tie_word_embeddings", "attention_bias"]
+LLAMA_KEYS = [
+    "vocab_size",
+    "hidden_size",
+    "intermediate_size",
+    "num_hidden_layers",
+    "num_attention_heads",
+    "num_key_value_heads",
+    "head_dim",
+    "tie_word_embeddings",
+    "attention_bias",
+    "mlp_bias",
+]
+MIXTRAL_KEYS = [
+    "vocab_size",
+    "hidden_size",
+    "intermediate_size",
+    "num_hidden_layers",
+    "num_attention_heads",
+    "num_key_value_heads",
+    "head_dim",
+    "tie_word_embeddings",
+    "num_local_experts",
+    "num_experts_per_tok",
+]
+DS_KEYS = [
+    "vocab_size",
+    "hidden_size",
+    "intermediate_size",
+    "moe_intermediate_size",
+    "num_hidden_layers",
+    "num_attention_heads",
+    "num_key_value_heads",
+    "n_shared_experts",
+    "n_routed_experts",
+    "num_experts_per_tok",
+    "first_k_dense_replace",
+    "kv_lora_rank",
+    "q_lora_rank",
+    "qk_rope_head_dim",
+    "qk_nope_head_dim",
+    "v_head_dim",
+    "tie_word_embeddings",
+    "attention_bias",
+]
 
 
 def main() -> None:
     cases = []
 
     raw = Path(SMOL_SNAPSHOT, "config.json").read_bytes()
-    assert hashlib.sha256(raw).hexdigest() == SMOL_CONFIG_SHA, "config.json is not the pinned revision"
-    smol = LlamaConfig(**{k: v for k, v in json.loads(raw).items() if k not in ("transformers.js_config",)})
-    c = {"name": "smollm2-135m", "model_type": "llama", "config": fields(smol, LLAMA_KEYS), "hf": count(smol)}
+    assert hashlib.sha256(raw).hexdigest() == SMOL_CONFIG_SHA, (
+        "config.json is not the pinned revision"
+    )
+    smol = LlamaConfig(
+        **{
+            k: v
+            for k, v in json.loads(raw).items()
+            if k not in ("transformers.js_config",)
+        }
+    )
+    c = {
+        "name": "smollm2-135m",
+        "model_type": "llama",
+        "config": fields(smol, LLAMA_KEYS),
+        "hf": count(smol),
+    }
     st = glob.glob(os.path.join(SMOL_SNAPSHOT, "model.safetensors"))
     if st:
         c["safetensors_total"] = safetensors_total(st[0])
@@ -121,37 +174,146 @@ def main() -> None:
     cases.append(c)
 
     l2 = LlamaConfig()
-    cases.append({"name": "llama-2-7b", "model_type": "llama", "config": fields(l2, LLAMA_KEYS), "hf": count(l2)})
+    cases.append(
+        {
+            "name": "llama-2-7b",
+            "model_type": "llama",
+            "config": fields(l2, LLAMA_KEYS),
+            "hf": count(l2),
+        }
+    )
     mx = MixtralConfig()
-    cases.append({"name": "mixtral-8x7b", "model_type": "mixtral", "config": fields(mx, MIXTRAL_KEYS), "hf": count(mx)})
+    cases.append(
+        {
+            "name": "mixtral-8x7b",
+            "model_type": "mixtral",
+            "config": fields(mx, MIXTRAL_KEYS),
+            "hf": count(mx),
+        }
+    )
     ds = DeepseekV3Config()
-    cases.append({"name": "deepseek-v3", "model_type": "deepseek_v3", "config": fields(ds, DS_KEYS), "hf": count(ds)})
+    cases.append(
+        {
+            "name": "deepseek-v3",
+            "model_type": "deepseek_v3",
+            "config": fields(ds, DS_KEYS),
+            "hf": count(ds),
+        }
+    )
 
-    tq = Qwen2Config(vocab_size=101, hidden_size=48, intermediate_size=96, num_hidden_layers=3,
-                     num_attention_heads=6, num_key_value_heads=2, tie_word_embeddings=False)
+    tq = Qwen2Config(
+        vocab_size=101,
+        hidden_size=48,
+        intermediate_size=96,
+        num_hidden_layers=3,
+        num_attention_heads=6,
+        num_key_value_heads=2,
+        tie_word_embeddings=False,
+    )
     qkeys = [k for k in LLAMA_KEYS if k not in ("attention_bias", "mlp_bias")]
-    cases.append({"name": "tiny-qwen2-bias", "model_type": "qwen2", "config": fields(tq, qkeys), "hf": count(tq)})
-    tl = LlamaConfig(vocab_size=97, hidden_size=40, intermediate_size=112, num_hidden_layers=2,
-                     num_attention_heads=5, num_key_value_heads=5, head_dim=12, tie_word_embeddings=False)
-    cases.append({"name": "tiny-llama-mha-headdim", "model_type": "llama", "config": fields(tl, LLAMA_KEYS), "hf": count(tl)})
-    tm = MixtralConfig(vocab_size=64, hidden_size=32, intermediate_size=48, num_hidden_layers=2,
-                       num_attention_heads=4, num_key_value_heads=1, num_local_experts=4,
-                       num_experts_per_tok=2, tie_word_embeddings=True)
-    cases.append({"name": "tiny-mixtral-mqa-tied", "model_type": "mixtral", "config": fields(tm, MIXTRAL_KEYS), "hf": count(tm)})
-    td = DeepseekV3Config(vocab_size=80, hidden_size=32, intermediate_size=64, moe_intermediate_size=16,
-                          num_hidden_layers=3, num_attention_heads=4, num_key_value_heads=4,
-                          n_shared_experts=2, n_routed_experts=6, num_experts_per_tok=2,
-                          first_k_dense_replace=1, kv_lora_rank=12, q_lora_rank=None,
-                          qk_rope_head_dim=4, qk_nope_head_dim=8, v_head_dim=6, n_group=1, topk_group=1,
-                          tie_word_embeddings=False)
-    cases.append({"name": "tiny-deepseek-mla-moe", "model_type": "deepseek_v3", "config": fields(td, DS_KEYS), "hf": count(td)})
-    td2 = DeepseekV3Config(vocab_size=50, hidden_size=24, intermediate_size=40, moe_intermediate_size=8,
-                           num_hidden_layers=2, num_attention_heads=3, num_key_value_heads=3,
-                           n_shared_experts=1, n_routed_experts=4, num_experts_per_tok=1,
-                           first_k_dense_replace=0, kv_lora_rank=10, q_lora_rank=6,
-                           qk_rope_head_dim=2, qk_nope_head_dim=4, v_head_dim=4, n_group=1, topk_group=1,
-                           tie_word_embeddings=True)
-    cases.append({"name": "tiny-deepseek-qlora-tied", "model_type": "deepseek_v3", "config": fields(td2, DS_KEYS), "hf": count(td2)})
+    cases.append(
+        {
+            "name": "tiny-qwen2-bias",
+            "model_type": "qwen2",
+            "config": fields(tq, qkeys),
+            "hf": count(tq),
+        }
+    )
+    tl = LlamaConfig(
+        vocab_size=97,
+        hidden_size=40,
+        intermediate_size=112,
+        num_hidden_layers=2,
+        num_attention_heads=5,
+        num_key_value_heads=5,
+        head_dim=12,
+        tie_word_embeddings=False,
+    )
+    cases.append(
+        {
+            "name": "tiny-llama-mha-headdim",
+            "model_type": "llama",
+            "config": fields(tl, LLAMA_KEYS),
+            "hf": count(tl),
+        }
+    )
+    tm = MixtralConfig(
+        vocab_size=64,
+        hidden_size=32,
+        intermediate_size=48,
+        num_hidden_layers=2,
+        num_attention_heads=4,
+        num_key_value_heads=1,
+        num_local_experts=4,
+        num_experts_per_tok=2,
+        tie_word_embeddings=True,
+    )
+    cases.append(
+        {
+            "name": "tiny-mixtral-mqa-tied",
+            "model_type": "mixtral",
+            "config": fields(tm, MIXTRAL_KEYS),
+            "hf": count(tm),
+        }
+    )
+    td = DeepseekV3Config(
+        vocab_size=80,
+        hidden_size=32,
+        intermediate_size=64,
+        moe_intermediate_size=16,
+        num_hidden_layers=3,
+        num_attention_heads=4,
+        num_key_value_heads=4,
+        n_shared_experts=2,
+        n_routed_experts=6,
+        num_experts_per_tok=2,
+        first_k_dense_replace=1,
+        kv_lora_rank=12,
+        q_lora_rank=None,
+        qk_rope_head_dim=4,
+        qk_nope_head_dim=8,
+        v_head_dim=6,
+        n_group=1,
+        topk_group=1,
+        tie_word_embeddings=False,
+    )
+    cases.append(
+        {
+            "name": "tiny-deepseek-mla-moe",
+            "model_type": "deepseek_v3",
+            "config": fields(td, DS_KEYS),
+            "hf": count(td),
+        }
+    )
+    td2 = DeepseekV3Config(
+        vocab_size=50,
+        hidden_size=24,
+        intermediate_size=40,
+        moe_intermediate_size=8,
+        num_hidden_layers=2,
+        num_attention_heads=3,
+        num_key_value_heads=3,
+        n_shared_experts=1,
+        n_routed_experts=4,
+        num_experts_per_tok=1,
+        first_k_dense_replace=0,
+        kv_lora_rank=10,
+        q_lora_rank=6,
+        qk_rope_head_dim=2,
+        qk_nope_head_dim=4,
+        v_head_dim=4,
+        n_group=1,
+        topk_group=1,
+        tie_word_embeddings=True,
+    )
+    cases.append(
+        {
+            "name": "tiny-deepseek-qlora-tied",
+            "model_type": "deepseek_v3",
+            "config": fields(td2, DS_KEYS),
+            "hf": count(td2),
+        }
+    )
 
     doc = {
         "generator": "course/oracle/M05.1/hf_param_counts.py",

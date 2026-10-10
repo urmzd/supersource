@@ -24,7 +24,9 @@ xp = sp.Symbol("x", positive=True)
 
 
 def lim(expr, var, at, dirn="+-"):
-    return str(sp.limit(expr, var, at, dirn) if dirn != "+-" else sp.limit(expr, var, at))
+    return str(
+        sp.limit(expr, var, at, dirn) if dirn != "+-" else sp.limit(expr, var, at)
+    )
 
 
 def d(expr, var=x, n=1) -> str:
@@ -75,7 +77,11 @@ def main() -> int:
     rdot = sp.solve(sp.Eq(dV, 100), sp.Derivative(r, t))[0]
     c_["q30"] = str(rdot.subs(r, 5))
     yy = sp.Function("yy")(xp)
-    c_["q31"] = str(sp.solve(sp.diff(sp.exp(yy) - xp, xp), sp.Derivative(yy, xp))[0].subs(yy, sp.log(xp)))
+    c_["q31"] = str(
+        sp.solve(sp.diff(sp.exp(yy) - xp, xp), sp.Derivative(yy, xp))[0].subs(
+            yy, sp.log(xp)
+        )
+    )
 
     # ---- optimization
     f = x**2 - 6 * x + 11
@@ -85,14 +91,24 @@ def main() -> int:
     w = sp.Symbol("w", positive=True)
     area = w * (10 - w)
     c_["q34"] = str(max(area.subs(w, v) for v in sp.solve(sp.diff(area, w), w)))
-    c_["q35"] = "{" + ", ".join(str(v) for v in sp.solve(sp.diff(x**3 - 3 * x, x), x)) + "}"
+    c_["q35"] = (
+        "{" + ", ".join(str(v) for v in sp.solve(sp.diff(x**3 - 3 * x, x), x)) + "}"
+    )
     g = x * sp.exp(-x)
-    cands = [g.subs(x, v) for v in sp.solve(sp.diff(g, x), x)] + [g.subs(x, 0), sp.limit(g, x, sp.oo)]
+    cands = [g.subs(x, v) for v in sp.solve(sp.diff(g, x), x)] + [
+        g.subs(x, 0),
+        sp.limit(g, x, sp.oo),
+    ]
     c_["q36"] = str(max(cands, key=lambda e: float(e)))
     L = (c - 1) ** 2 + (c - 2) ** 2 + (c - 6) ** 2
     c_["q37"] = str(sp.solve(sp.diff(L, c), c)[0])
     V = s * (12 - 2 * s) ** 2
-    c_["q38"] = str(max((v for v in sp.solve(sp.diff(V, s), s) if 0 < v < 6), key=lambda v: V.subs(s, v)))
+    c_["q38"] = str(
+        max(
+            (v for v in sp.solve(sp.diff(V, s), s) if 0 < v < 6),
+            key=lambda v: V.subs(s, v),
+        )
+    )
     D2 = x**2 + (x**2 - 2) ** 2
     crit = sp.solve(sp.diff(D2, x), x)
     c_["q39"] = str(sp.sqrt(min((D2.subs(x, v) for v in crit), key=lambda e: float(e))))

@@ -31,7 +31,9 @@ STEPS = 20
 def case(name, opt, dtype, shapes, lr, betas, eps, wd, grad_scale, seed):
     rng = np.random.default_rng(seed)
     init = [rng.standard_normal(s) for s in shapes]
-    grads = [[grad_scale * rng.standard_normal(s) for s in shapes] for _ in range(STEPS)]
+    grads = [
+        [grad_scale * rng.standard_normal(s) for s in shapes] for _ in range(STEPS)
+    ]
     lrs = lr if isinstance(lr, list) else [lr] * STEPS
     tdt = torch.float64 if dtype == "float64" else torch.float32
     params = [torch.tensor(x, dtype=tdt) for x in init]
@@ -56,22 +58,66 @@ def case(name, opt, dtype, shapes, lr, betas, eps, wd, grad_scale, seed):
         "weight_decay": wd,
         # inputs are cast to dtype exactly as torch.tensor(x, dtype) does
         "init": [np.asarray(x, dtype=dtype).astype(np.float64).tolist() for x in init],
-        "grads": [[np.asarray(g, dtype=dtype).astype(np.float64).tolist() for g in step] for step in grads],
+        "grads": [
+            [np.asarray(g, dtype=dtype).astype(np.float64).tolist() for g in step]
+            for step in grads
+        ],
         "trajectory": traj,
         "final_exp_avg": [s["exp_avg"].numpy().astype(np.float64).tolist() for s in st],
-        "final_exp_avg_sq": [s["exp_avg_sq"].numpy().astype(np.float64).tolist() for s in st],
+        "final_exp_avg_sq": [
+            s["exp_avg_sq"].numpy().astype(np.float64).tolist() for s in st
+        ],
     }
 
 
 def main() -> None:
     shapes = [(3,), (2, 3)]
-    sched = [1e-2 * (0.5 + 0.5 * np.cos(np.pi * t / STEPS)) + 1e-4 for t in range(STEPS)]
+    sched = [
+        1e-2 * (0.5 + 0.5 * np.cos(np.pi * t / STEPS)) + 1e-4 for t in range(STEPS)
+    ]
     cases = [
-        case("adamw", "AdamW", "float64", shapes, 1e-2, (0.9, 0.999), 1e-8, 0.1, 1.0, 1),
-        case("adam_l2", "Adam", "float64", shapes, 1e-2, (0.9, 0.999), 1e-8, 0.1, 1.0, 2),
-        case("adamw_lr_per_step", "AdamW", "float64", shapes, [float(x) for x in sched], (0.9, 0.95), 1e-8, 0.1, 1.0, 3),
-        case("adamw_tiny_grads", "AdamW", "float64", shapes, 1e-3, (0.9, 0.999), 1e-6, 0.0, 1e-6, 4),
-        case("adamw_float32", "AdamW", "float32", shapes, 3e-3, (0.8, 0.99), 1e-8, 0.01, 1.0, 5),
+        case(
+            "adamw", "AdamW", "float64", shapes, 1e-2, (0.9, 0.999), 1e-8, 0.1, 1.0, 1
+        ),
+        case(
+            "adam_l2", "Adam", "float64", shapes, 1e-2, (0.9, 0.999), 1e-8, 0.1, 1.0, 2
+        ),
+        case(
+            "adamw_lr_per_step",
+            "AdamW",
+            "float64",
+            shapes,
+            [float(x) for x in sched],
+            (0.9, 0.95),
+            1e-8,
+            0.1,
+            1.0,
+            3,
+        ),
+        case(
+            "adamw_tiny_grads",
+            "AdamW",
+            "float64",
+            shapes,
+            1e-3,
+            (0.9, 0.999),
+            1e-6,
+            0.0,
+            1e-6,
+            4,
+        ),
+        case(
+            "adamw_float32",
+            "AdamW",
+            "float32",
+            shapes,
+            3e-3,
+            (0.8, 0.99),
+            1e-8,
+            0.01,
+            1.0,
+            5,
+        ),
     ]
     doc = {
         "generator": "course/oracle/M10.3/adamw_golden.py",

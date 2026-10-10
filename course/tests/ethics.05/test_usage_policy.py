@@ -1,4 +1,5 @@
 """Artifact checks for ethics.05. Each test says why the check exists."""
+
 import json
 import os
 from pathlib import Path
@@ -12,10 +13,16 @@ COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[
 def test_policy_schema_and_order():
     """The ordered config must conform to policy.v1 before deployment."""
     policy = yaml.safe_load((ROOT / "deploy/policy.v1.yaml").read_text())
-    schema = json.loads((COURSE / "contracts/formats/policy.v1.schema.json").read_text())
+    schema = json.loads(
+        (COURSE / "contracts/formats/policy.v1.schema.json").read_text()
+    )
     assert policy["version"] == 1 and policy["rules"]
     assert all(rule["id"] and rule["reason"] for rule in policy["rules"])
-    assert [rule["id"] for rule in policy["rules"]] == ["restricted-model", "free-token-cap", "unsafe-prompt"]
+    assert [rule["id"] for rule in policy["rules"]] == [
+        "restricted-model",
+        "free-token-cap",
+        "unsafe-prompt",
+    ]
     assert schema["properties"]["rules"]["type"] == "array"
 
 

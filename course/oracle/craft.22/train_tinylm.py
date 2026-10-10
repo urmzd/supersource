@@ -50,7 +50,9 @@ STEPS, BATCH, LR = 2500, 32, 3e-3
 
 torch.manual_seed(SEED)
 torch.set_num_threads(1)
-docs = [json.loads(line)["text"] for line in SRC.read_text().splitlines() if line.strip()]
+docs = [
+    json.loads(line)["text"] for line in SRC.read_text().splitlines() if line.strip()
+]
 train_docs, val_docs = docs[:146], docs[146:]
 train_text = "\n".join(train_docs)
 val_text = "\n".join(val_docs)
@@ -82,7 +84,10 @@ def encode(text: str) -> list[int]:
     ids = [cid[c] for c in text]
     rank = {p: r for r, p in enumerate(merges)}
     while len(ids) > 1:
-        best = min(((rank.get(p, 1 << 30), i) for i, p in enumerate(zip(ids, ids[1:]))), default=(1 << 30, -1))
+        best = min(
+            ((rank.get(p, 1 << 30), i) for i, p in enumerate(zip(ids, ids[1:]))),
+            default=(1 << 30, -1),
+        )
         if best[0] == 1 << 30:
             break
         a, b = merges[best[0]]
@@ -152,7 +157,14 @@ def forward(ids):  # ids [B, T] -> logits [B, T, V]
         o = (att @ v).transpose(1, 2).reshape(B, T, D)
         x = x + o @ P[f"l{l}.wo"].T
         h = rmsnorm(x, P[f"l{l}.g_mlp"])
-        x = x + (torch.nn.functional.silu(h @ P[f"l{l}.w_gate"].T) * (h @ P[f"l{l}.w_up"].T)) @ P[f"l{l}.w_down"].T
+        x = (
+            x
+            + (
+                torch.nn.functional.silu(h @ P[f"l{l}.w_gate"].T)
+                * (h @ P[f"l{l}.w_up"].T)
+            )
+            @ P[f"l{l}.w_down"].T
+        )
     return rmsnorm(x, P["g_final"]) @ P["embed"].T
 
 
@@ -177,12 +189,28 @@ for step in range(STEPS):
 # -- write
 OUT.mkdir(parents=True, exist_ok=True)
 arrays = {k: v.detach().numpy().astype(np.float16) for k, v in P.items()}
-meta = {"generator": "course/oracle/craft.22/train_tinylm.py", "seed": SEED, "d": D, "heads": H,
-        "layers": LAYERS, "ff": FF, "theta": THETA, "eps": EPS, "steps": STEPS, "batch": BATCH, "ctx": CTX,
-        "source": str(SRC), "train_docs": 146, "val_docs": len(val_docs), "torch": torch.__version__}
+meta = {
+    "generator": "course/oracle/craft.22/train_tinylm.py",
+    "seed": SEED,
+    "d": D,
+    "heads": H,
+    "layers": LAYERS,
+    "ff": FF,
+    "theta": THETA,
+    "eps": EPS,
+    "steps": STEPS,
+    "batch": BATCH,
+    "ctx": CTX,
+    "source": str(SRC),
+    "train_docs": 146,
+    "val_docs": len(val_docs),
+    "torch": torch.__version__,
+}
 arrays["chars"] = np.array([ord(c) for c in chars], dtype=np.uint32)
 arrays["merges"] = np.array(merges, dtype=np.int32)
-arrays["__meta__"] = np.frombuffer(json.dumps(meta, sort_keys=True).encode(), dtype=np.uint8)
+arrays["__meta__"] = np.frombuffer(
+    json.dumps(meta, sort_keys=True).encode(), dtype=np.uint8
+)
 np.savez_compressed(OUT / "tinylm.npz", **arrays)
 (OUT / "val.txt").write_text(val_text + "\n")
 words = sorted(set(re.findall(r"[a-z]+", train_text.lower())))
@@ -206,5 +234,7 @@ assert err < 1e-4, err
 for f in ("tinylm.npz", "val.txt", "words.txt"):
     p = OUT / f
     h = hashlib.sha256(p.read_bytes()).hexdigest()
-    print(f"course/fixtures/craft.22/{f}\t{h}\t{p.stat().st_size}\tcourse/oracle/craft.22/train_tinylm.py\t"
-          f"torch=={torch.__version__.split('+')[0]}\t-\tApache-2.0")
+    print(
+        f"course/fixtures/craft.22/{f}\t{h}\t{p.stat().st_size}\tcourse/oracle/craft.22/train_tinylm.py\t"
+        f"torch=={torch.__version__.split('+')[0]}\t-\tApache-2.0"
+    )

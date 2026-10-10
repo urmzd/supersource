@@ -40,7 +40,11 @@ def seed() -> int:
 
 
 def fixture() -> dict:
-    root = Path(os.environ.get("TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures"))
+    root = Path(
+        os.environ.get(
+            "TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures"
+        )
+    )
     return json.loads((root / "M07.3" / "init_torch.json").read_text())
 
 
@@ -62,9 +66,13 @@ def check_variance(x: np.ndarray, var: float, mu4_over_var2: float, what: str) -
     n = x.size
     se_mean = math.sqrt(var / n)
     se_var = math.sqrt((mu4_over_var2 - 1.0) * var * var / n)
-    assert abs(x.mean()) <= 4 * se_mean, f"{what}: mean {x.mean():.4g} is not 0 (4 se = {4 * se_mean:.3g})"
+    assert abs(x.mean()) <= 4 * se_mean, (
+        f"{what}: mean {x.mean():.4g} is not 0 (4 se = {4 * se_mean:.3g})"
+    )
     v = float(((x - x.mean()) ** 2).sum() / (n - 1))
-    assert abs(v - var) <= 4 * se_var, f"{what}: variance {v:.6g}, want {var:.6g} +- {4 * se_var:.3g}"
+    assert abs(v - var) <= 4 * se_var, (
+        f"{what}: variance {v:.6g}, want {var:.6g} +- {4 * se_var:.3g}"
+    )
 
 
 # --- the worked example -------------------------------------------------------
@@ -83,7 +91,9 @@ def test_hand_example_linear_4x3():
     assert_close(scaled_residual_std(0.02, 12), 0.02 / math.sqrt(24.0), dtype="float64")
     rng, ref = PCG32(seed=seed()), PCG32(seed=seed())
     w = kaiming_normal((4, 3), "fan_in", "relu", rng)
-    assert_close(w, math.sqrt(2.0 / 3.0) * spec_normals(ref, 12).reshape(4, 3), dtype="float32")
+    assert_close(
+        w, math.sqrt(2.0 / 3.0) * spec_normals(ref, 12).reshape(4, 3), dtype="float32"
+    )
     rng, ref = PCG32(seed=seed()), PCG32(seed=seed())
     w = xavier_uniform((4, 3), 1.0, rng)
     a = math.sqrt(6.0 / 7.0)
@@ -100,7 +110,12 @@ def test_fans_and_gains_match_torch():
     # CHAPTER: M07.3 section 2.3, Fans and gains
     doc = fixture()
     for g in doc["gains"]:
-        assert_close(calculate_gain(g["nonlinearity"], g["param"]), g["gain"], dtype="float64", msg=g["nonlinearity"])
+        assert_close(
+            calculate_gain(g["nonlinearity"], g["param"]),
+            g["gain"],
+            dtype="float64",
+            msg=g["nonlinearity"],
+        )
     for f in doc["fans"]:
         assert fans(tuple(f["shape"])) == (f["fan_in"], f["fan_out"]), f["shape"]
 
@@ -121,8 +136,16 @@ def test_normal_inits_draw_spec_normals_in_c_order():
         fi, fo = fans(shape)
         for name, make, std in (
             ("normal_init", lambda r: normal_init(shape, 0.02, r), 0.02),
-            ("xavier_normal", lambda r: xavier_normal(shape, 2.0, r), 2.0 * math.sqrt(2.0 / (fi + fo))),
-            ("kaiming_normal", lambda r: kaiming_normal(shape, "fan_out", "tanh", r), (5 / 3) / math.sqrt(fo)),
+            (
+                "xavier_normal",
+                lambda r: xavier_normal(shape, 2.0, r),
+                2.0 * math.sqrt(2.0 / (fi + fo)),
+            ),
+            (
+                "kaiming_normal",
+                lambda r: kaiming_normal(shape, "fan_out", "tanh", r),
+                (5 / 3) / math.sqrt(fo),
+            ),
         ):
             got = make(PCG32(seed=seed() + 7))
             want = std * spec_normals(PCG32(seed=seed() + 7), n).reshape(shape)
@@ -142,7 +165,9 @@ def test_uniform_uses_one_draw_per_element():
     a = 0.5 * math.sqrt(6.0 / 12.0)
     u = np.array([ref.uniform() for _ in range(35)])
     assert_close(w, (-a + 2 * a * u).reshape(5, 7), dtype="float32")
-    assert rng.state == ref.state, "the generator advanced by a different number of draws"
+    assert rng.state == ref.state, (
+        "the generator advanced by a different number of draws"
+    )
 
 
 def test_same_seed_same_weights():
@@ -175,10 +200,18 @@ def test_empirical_variance_matches_the_formula():
     rng = PCG32(seed=seed() + 3)
     shape = (128, 256)
     fi, fo = 256, 128
-    check_variance(xavier_uniform(shape, 1.5, rng), 1.5**2 * 2 / (fi + fo), 9 / 5, "xavier_uniform")
-    check_variance(xavier_normal(shape, 1.5, rng), 1.5**2 * 2 / (fi + fo), 3.0, "xavier_normal")
-    check_variance(kaiming_normal(shape, "fan_in", "relu", rng), 2.0 / fi, 3.0, "kaiming fan_in")
-    check_variance(kaiming_normal(shape, "fan_out", "relu", rng), 2.0 / fo, 3.0, "kaiming fan_out")
+    check_variance(
+        xavier_uniform(shape, 1.5, rng), 1.5**2 * 2 / (fi + fo), 9 / 5, "xavier_uniform"
+    )
+    check_variance(
+        xavier_normal(shape, 1.5, rng), 1.5**2 * 2 / (fi + fo), 3.0, "xavier_normal"
+    )
+    check_variance(
+        kaiming_normal(shape, "fan_in", "relu", rng), 2.0 / fi, 3.0, "kaiming fan_in"
+    )
+    check_variance(
+        kaiming_normal(shape, "fan_out", "relu", rng), 2.0 / fo, 3.0, "kaiming fan_out"
+    )
 
 
 def test_relu_signal_survives_20_layers():
@@ -202,9 +235,13 @@ def test_relu_signal_survives_20_layers():
         return ms
 
     kaiming = run(lambda: kaiming_normal((128, 128), "fan_in", "relu", rng))
-    assert 1 / 16 < kaiming[-1] / kaiming[0] < 16, f"Kaiming: mean square went {kaiming[0]:.3g} -> {kaiming[-1]:.3g}"
+    assert 1 / 16 < kaiming[-1] / kaiming[0] < 16, (
+        f"Kaiming: mean square went {kaiming[0]:.3g} -> {kaiming[-1]:.3g}"
+    )
     xavier = run(lambda: xavier_normal((128, 128), 1.0, rng))
-    assert xavier[-1] / xavier[0] < 1e-4, f"Xavier on ReLU: {xavier[0]:.3g} -> {xavier[-1]:.3g}"
+    assert xavier[-1] / xavier[0] < 1e-4, (
+        f"Xavier on ReLU: {xavier[0]:.3g} -> {xavier[-1]:.3g}"
+    )
 
 
 def test_tanh_signal_survives_with_xavier():

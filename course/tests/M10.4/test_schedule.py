@@ -37,7 +37,11 @@ def seed() -> int:
 
 
 def fixture() -> dict:
-    root = Path(os.environ.get("TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures"))
+    root = Path(
+        os.environ.get(
+            "TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures"
+        )
+    )
     return json.loads((root / "M10.4" / "schedule_hf.json").read_text())
 
 
@@ -52,8 +56,20 @@ def test_hand_example_cosine():
     # CATCHES: s01, s02, s03, m01
     # CHAPTER: M10.4 section 3, Worked example by hand
     c = math.cos(math.pi / 4)
-    want = [0.0, 0.5, 1.0, 0.1 + 0.9 * (1 + c) / 2, 0.55, 0.1 + 0.9 * (1 - c) / 2, 0.1, 0.1]
-    got = [cosine_with_warmup(t, warmup=2, total=6, lr_max=1.0, lr_min=0.1) for t in range(8)]
+    want = [
+        0.0,
+        0.5,
+        1.0,
+        0.1 + 0.9 * (1 + c) / 2,
+        0.55,
+        0.1 + 0.9 * (1 - c) / 2,
+        0.1,
+        0.1,
+    ]
+    got = [
+        cosine_with_warmup(t, warmup=2, total=6, lr_max=1.0, lr_min=0.1)
+        for t in range(8)
+    ]
     assert_close(got, want, dtype="float64")
 
 
@@ -63,8 +79,12 @@ def test_hand_example_wsd():
     # KIND: unit
     # CATCHES: s05, s06, s07, m02
     # CHAPTER: M10.4 section 3, Worked example by hand
-    got = [wsd(t, warmup=2, stable=2, decay=4, lr_max=1.0, lr_min=0.2) for t in range(10)]
-    assert_close(got, [0.0, 0.5, 1.0, 1.0, 1.0, 0.8, 0.6, 0.4, 0.2, 0.2], dtype="float64")
+    got = [
+        wsd(t, warmup=2, stable=2, decay=4, lr_max=1.0, lr_min=0.2) for t in range(10)
+    ]
+    assert_close(
+        got, [0.0, 0.5, 1.0, 1.0, 1.0, 0.8, 0.6, 0.4, 0.2, 0.2], dtype="float64"
+    )
 
 
 def test_hand_example_noam():
@@ -101,7 +121,9 @@ def check_schedule(name: str, fn) -> None:
     for t, want in enumerate(case["lr"]):
         if t < case["compare_from"]:
             continue
-        assert_close(fn(t, **case["args"]), want, dtype="float64", msg=f"{name}: step {t}")
+        assert_close(
+            fn(t, **case["args"]), want, dtype="float64", msg=f"{name}: step {t}"
+        )
 
 
 def test_cosine_matches_hf():
@@ -172,7 +194,9 @@ def test_schedules_hit_their_corners():
                 assert_close(f(warm), lr_max, dtype="float64", msg=name)
             assert max(lrs) <= lr_max * (1 + 1e-12), name
             assert all(x >= lr_min * (1 - 1e-12) for x in lrs[warm:]), name
-            assert all(b <= a * (1 + 1e-12) for a, b in zip(lrs[warm:], lrs[warm + 1 :])), name
+            assert all(
+                b <= a * (1 + 1e-12) for a, b in zip(lrs[warm:], lrs[warm + 1 :])
+            ), name
             assert all(x == lr_min for x in lrs[total:]), name
 
 
@@ -184,7 +208,10 @@ def test_cosine_after_total_stays_at_floor():
     # CATCHES: s04
     # CHAPTER: M10.4 section 5, Pitfalls
     for t in (100, 101, 150, 199, 1000):
-        assert cosine_with_warmup(t, warmup=10, total=100, lr_max=3e-4, lr_min=3e-5) == 3e-5
+        assert (
+            cosine_with_warmup(t, warmup=10, total=100, lr_max=3e-4, lr_min=3e-5)
+            == 3e-5
+        )
 
 
 def test_noam_peak_and_inverse_sqrt_decay():
@@ -238,11 +265,17 @@ def test_clip_is_global_and_in_place():
     # CHAPTER: M10.4 section 2.5, Clipping by the global norm
     rng = PCG32(seed=seed() + 2)
     for _ in range(10):
-        gs = [rng.normal_array((4,)), 30.0 * rng.normal_array((3, 3)), 0.1 * rng.normal_array((2,))]
+        gs = [
+            rng.normal_array((4,)),
+            30.0 * rng.normal_array((3, 3)),
+            0.1 * rng.normal_array((2,)),
+        ]
         ps = [P(g.copy()) for g in gs]
         held = [p.grad for p in ps]
         total = clip_grad_norm_(ps, max_norm=1.0)
-        assert_close(total, math.sqrt(sum(float((g * g).sum()) for g in gs)), dtype="float64")
+        assert_close(
+            total, math.sqrt(sum(float((g * g).sum()) for g in gs)), dtype="float64"
+        )
         after = math.sqrt(sum(float((p.grad * p.grad).sum()) for p in ps))
         assert_close(after, 1.0, rtol=1e-5, atol=0.0)
         ratio = ps[0].grad[0] / gs[0][0]
@@ -284,10 +317,20 @@ def test_rejects_bad_arguments():
     # KIND: boundary
     # CATCHES: m05
     # CHAPTER: M10.4 section 4, The interface
-    for args in ((-1, 0, 10, 1.0, 0.0), (0, 11, 10, 1.0, 0.0), (0, 0, 0, 1.0, 0.0), (0, 0, 10, 1.0, 2.0), (0, 0, 10, 1.0, -0.1)):
+    for args in (
+        (-1, 0, 10, 1.0, 0.0),
+        (0, 11, 10, 1.0, 0.0),
+        (0, 0, 0, 1.0, 0.0),
+        (0, 0, 10, 1.0, 2.0),
+        (0, 0, 10, 1.0, -0.1),
+    ):
         with pytest.raises(ValueError):
             cosine_with_warmup(*args)
-    for args in ((-1, 0, 0, 1, 1.0, 0.0), (0, 0, 0, 0, 1.0, 0.0), (0, 1, 1, 1, 0.5, 1.0)):
+    for args in (
+        (-1, 0, 0, 1, 1.0, 0.0),
+        (0, 0, 0, 0, 1.0, 0.0),
+        (0, 1, 1, 1, 0.5, 1.0),
+    ):
         with pytest.raises(ValueError):
             wsd(*args)
     for args in ((-1, 512, 4000), (1, 0, 4000), (1, 512, 0)):

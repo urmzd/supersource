@@ -64,20 +64,48 @@ def main() -> None:
         return bytes(out).decode("utf-8", errors="replace")
 
     cfg = json.loads((FIX / "ethics.04/lexicon.json").read_text())
-    prompts = [json.loads(x) for x in (FIX / "ethics.04/prompts.jsonl").read_text().splitlines() if x.strip()]
-    labelled = [json.loads(x) for x in (FIX / "ethics.04/labelled.jsonl").read_text().splitlines() if x.strip()]
+    prompts = [
+        json.loads(x)
+        for x in (FIX / "ethics.04/prompts.jsonl").read_text().splitlines()
+        if x.strip()
+    ]
+    labelled = [
+        json.loads(x)
+        for x in (FIX / "ethics.04/labelled.jsonl").read_text().splitlines()
+        if x.strip()
+    ]
     rep = safety_report(
-        "shakespeare-kn4", generate, prompts, cfg["lexicon"], cfg["refusal_patterns"], PCG32(SEED, 4),
-        threshold=cfg["threshold"], seed=SEED, labelled=[(r["text"], r["label"]) for r in labelled],
+        "shakespeare-kn4",
+        generate,
+        prompts,
+        cfg["lexicon"],
+        cfg["refusal_patterns"],
+        PCG32(SEED, 4),
+        threshold=cfg["threshold"],
+        seed=SEED,
+        labelled=[(r["text"], r["label"]) for r in labelled],
     )
     for r in rep["rows"]:
         ci = r.get("ci95")
-        print(f"safety | {r['task']} (n={r['n']}) | {r['value']:.3f}" + (f" ({ci[0]:.3f}, {ci[1]:.3f})" if ci else ""))
+        print(
+            f"safety | {r['task']} (n={r['n']}) | {r['value']:.3f}"
+            + (f" ({ci[0]:.3f}, {ci[1]:.3f})" if ci else "")
+        )
     b = json.loads((FIX / "ethics.04/bias.json").read_text())
-    rep = bias_report("shakespeare-kn4", score, b["axes"], b["stereotype_pairs"], PCG32(SEED, 5), n_boot=1000, seed=SEED)
+    rep = bias_report(
+        "shakespeare-kn4",
+        score,
+        b["axes"],
+        b["stereotype_pairs"],
+        PCG32(SEED, 5),
+        n_boot=1000,
+        seed=SEED,
+    )
     for r in rep["rows"]:
         lo, hi = r["ci95"]
-        print(f"bias | {r['task']} (n={r['n']}) | {r['value']:.3f} ({lo:.3f}, {hi:.3f})")
+        print(
+            f"bias | {r['task']} (n={r['n']}) | {r['value']:.3f} ({lo:.3f}, {hi:.3f})"
+        )
 
 
 if __name__ == "__main__":

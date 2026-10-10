@@ -33,17 +33,36 @@ from tinyllm.accounting import (
     param_count,
 )
 
-FIX = os.path.join(os.environ.get("TINYLLM_FIXTURES", ""), "M05.1", "hf_param_counts.json")
+FIX = os.path.join(
+    os.environ.get("TINYLLM_FIXTURES", ""), "M05.1", "hf_param_counts.json"
+)
 KEYS = ("embed", "attn", "mlp", "norm", "lm_head", "total")
 
 
 def hand() -> ModelConfig:
-    return ModelConfig(vocab=10, d_model=4, n_layers=2, n_heads=2, n_kv_heads=1, d_head=2, d_ff=6, tie_embeddings=False)
+    return ModelConfig(
+        vocab=10,
+        d_model=4,
+        n_layers=2,
+        n_heads=2,
+        n_kv_heads=1,
+        d_head=2,
+        d_ff=6,
+        tie_embeddings=False,
+    )
 
 
 def smollm2() -> ModelConfig:
-    return ModelConfig(vocab=49152, d_model=576, n_layers=30, n_heads=9, n_kv_heads=3, d_head=64, d_ff=1536,
-                       tie_embeddings=True)
+    return ModelConfig(
+        vocab=49152,
+        d_model=576,
+        n_layers=30,
+        n_heads=9,
+        n_kv_heads=3,
+        d_head=64,
+        d_ff=1536,
+        tie_embeddings=True,
+    )
 
 
 def from_hf(case: dict) -> ModelConfig:
@@ -52,19 +71,40 @@ def from_hf(case: dict) -> ModelConfig:
     H = h["num_attention_heads"]
     if t == "deepseek_v3":
         return ModelConfig(
-            vocab=h["vocab_size"], d_model=h["hidden_size"], n_layers=h["num_hidden_layers"], n_heads=H,
-            n_kv_heads=h["num_key_value_heads"], d_head=h["qk_nope_head_dim"], d_ff=h["intermediate_size"],
-            tie_embeddings=h["tie_word_embeddings"], attn="mla", kv_lora_rank=h["kv_lora_rank"],
-            qk_rope_dim=h["qk_rope_head_dim"], n_experts=h["n_routed_experts"], top_k=h["num_experts_per_tok"],
-            n_shared=h["n_shared_experts"], q_lora_rank=h["q_lora_rank"] or 0, v_head_dim=h["v_head_dim"],
-            d_ff_expert=h["moe_intermediate_size"], n_dense_layers=h["first_k_dense_replace"])
+            vocab=h["vocab_size"],
+            d_model=h["hidden_size"],
+            n_layers=h["num_hidden_layers"],
+            n_heads=H,
+            n_kv_heads=h["num_key_value_heads"],
+            d_head=h["qk_nope_head_dim"],
+            d_ff=h["intermediate_size"],
+            tie_embeddings=h["tie_word_embeddings"],
+            attn="mla",
+            kv_lora_rank=h["kv_lora_rank"],
+            qk_rope_dim=h["qk_rope_head_dim"],
+            n_experts=h["n_routed_experts"],
+            top_k=h["num_experts_per_tok"],
+            n_shared=h["n_shared_experts"],
+            q_lora_rank=h["q_lora_rank"] or 0,
+            v_head_dim=h["v_head_dim"],
+            d_ff_expert=h["moe_intermediate_size"],
+            n_dense_layers=h["first_k_dense_replace"],
+        )
     kv = h["num_key_value_heads"]
     return ModelConfig(
-        vocab=h["vocab_size"], d_model=h["hidden_size"], n_layers=h["num_hidden_layers"], n_heads=H, n_kv_heads=kv,
-        d_head=h.get("head_dim") or h["hidden_size"] // H, d_ff=h["intermediate_size"],
-        tie_embeddings=h["tie_word_embeddings"], attn="mha" if kv == H else "gqa",
-        n_experts=h.get("num_local_experts") or 0, top_k=h.get("num_experts_per_tok") or 0,
-        qkv_bias=(t == "qwen2"))
+        vocab=h["vocab_size"],
+        d_model=h["hidden_size"],
+        n_layers=h["num_hidden_layers"],
+        n_heads=H,
+        n_kv_heads=kv,
+        d_head=h.get("head_dim") or h["hidden_size"] // H,
+        d_ff=h["intermediate_size"],
+        tie_embeddings=h["tie_word_embeddings"],
+        attn="mha" if kv == H else "gqa",
+        n_experts=h.get("num_local_experts") or 0,
+        top_k=h.get("num_experts_per_tok") or 0,
+        qkv_bias=(t == "qwen2"),
+    )
 
 
 def cases() -> dict:
@@ -84,7 +124,14 @@ def test_hand_example_params():
     # CATCHES: s02, s10, m01
     # CHAPTER: M05.1 section 3, Worked example by hand
     p = param_count(hand())
-    assert {k: p[k] for k in KEYS} == {"embed": 40, "attn": 96, "mlp": 144, "norm": 20, "lm_head": 40, "total": 340}
+    assert {k: p[k] for k in KEYS} == {
+        "embed": 40,
+        "attn": 96,
+        "mlp": 144,
+        "norm": 20,
+        "lm_head": 40,
+        "total": 340,
+    }
     assert p["active"] == 340
 
 
@@ -114,7 +161,14 @@ def test_hand_example_memory_plan():
     # CATCHES: s08, s12
     # CHAPTER: M05.1 section 3, Worked example by hand
     m = memory_plan(hand(), 1, 3, 4, "adamw")
-    assert m == {"weights": 1360, "grads": 1360, "master": 0, "optimizer": 2720, "activations": 1512, "total": 6952}
+    assert m == {
+        "weights": 1360,
+        "grads": 1360,
+        "master": 0,
+        "optimizer": 2720,
+        "activations": 1512,
+        "total": 6952,
+    }
 
 
 # --- against Hugging Face ---------------------------------------------------------------
@@ -122,8 +176,17 @@ def test_hand_example_memory_plan():
 
 @pytest.mark.parametrize(
     "name",
-    ["smollm2-135m", "llama-2-7b", "mixtral-8x7b", "deepseek-v3", "tiny-qwen2-bias", "tiny-llama-mha-headdim",
-     "tiny-mixtral-mqa-tied", "tiny-deepseek-mla-moe", "tiny-deepseek-qlora-tied"],
+    [
+        "smollm2-135m",
+        "llama-2-7b",
+        "mixtral-8x7b",
+        "deepseek-v3",
+        "tiny-qwen2-bias",
+        "tiny-llama-mha-headdim",
+        "tiny-mixtral-mqa-tied",
+        "tiny-deepseek-mla-moe",
+        "tiny-deepseek-qlora-tied",
+    ],
 )
 def test_golden_hf_param_counts(name):
     # WHY: `{tinyllm} info` must report the parameter count Hugging Face
@@ -185,7 +248,11 @@ def test_kv_bytes_scale_with_kv_heads_not_query_heads():
     assert kv_bytes_per_token(s, 2) == 23040
     mha = replace(s, n_kv_heads=9, attn="mha")
     mqa = replace(s, n_kv_heads=1)
-    assert kv_bytes_per_token(mha, 2) == 3 * kv_bytes_per_token(s, 2) == 9 * kv_bytes_per_token(mqa, 2)
+    assert (
+        kv_bytes_per_token(mha, 2)
+        == 3 * kv_bytes_per_token(s, 2)
+        == 9 * kv_bytes_per_token(mqa, 2)
+    )
     assert kv_bytes_per_token(replace(s, n_heads=27, d_ff=1536), 2) == 23040
     assert kv_bytes_per_token(s, 4) == 2 * kv_bytes_per_token(s, 2)
 
@@ -237,7 +304,10 @@ def test_flops_attention_term_is_linear_in_context():
     # KIND: property
     # CATCHES: s07
     # CHAPTER: M05.1 section 2.5, FLOPs per token
-    for c, step in ((smollm2(), 2 * 30 * 9 * 128), (from_hf(cases()["tiny-deepseek-mla-moe"]), 2 * 3 * 4 * (12 + 6))):
+    for c, step in (
+        (smollm2(), 2 * 30 * 9 * 128),
+        (from_hf(cases()["tiny-deepseek-mla-moe"]), 2 * 3 * 4 * (12 + 6)),
+    ):
         f = [flops_per_token(c, t, False) for t in (1, 2, 3, 100)]
         assert f[1] - f[0] == f[2] - f[1] == step
         assert f[3] - f[0] == 99 * step
@@ -295,9 +365,17 @@ def test_validation():
     # CATCHES: m04, m05
     # CHAPTER: M05.1 section 4, The interface
     s = smollm2()
-    bad = [replace(s, n_kv_heads=2), replace(s, attn="mha"), replace(s, attn="mla"), replace(s, d_model=0),
-           replace(s, n_experts=4, top_k=5), replace(s, n_experts=4, top_k=0), replace(s, top_k=2),
-           replace(s, n_dense_layers=31), replace(s, attn="sparse")]
+    bad = [
+        replace(s, n_kv_heads=2),
+        replace(s, attn="mha"),
+        replace(s, attn="mla"),
+        replace(s, d_model=0),
+        replace(s, n_experts=4, top_k=5),
+        replace(s, n_experts=4, top_k=0),
+        replace(s, top_k=2),
+        replace(s, n_dense_layers=31),
+        replace(s, attn="sparse"),
+    ]
     for c in bad:
         with pytest.raises(ValueError):
             param_count(c)

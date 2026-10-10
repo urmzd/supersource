@@ -47,7 +47,14 @@ def main() -> None:
     C = rng.uniform(0.5, 4.0, size=(2, 2))
     D = rng.normal(size=(2, 2))
     p1_0, p2_0 = rng.normal(size=3), rng.normal(size=(2, 2))
-    data: dict[str, np.ndarray] = {"H": H, "b": b, "C": C, "D": D, "p1_0": p1_0, "p2_0": p2_0}
+    data: dict[str, np.ndarray] = {
+        "H": H,
+        "b": b,
+        "C": C,
+        "D": D,
+        "p1_0": p1_0,
+        "p2_0": p2_0,
+    }
     tH, tb, tC, tD = (torch.tensor(a, dtype=torch.float64) for a in (H, b, C, D))
     for name, cfg in CONFIGS.items():
         p1 = torch.tensor(p1_0, dtype=torch.float64, requires_grad=True)
@@ -75,8 +82,19 @@ def main() -> None:
     with OUT.open("wb") as f:
         np.savez(f, **data)
     raw = OUT.read_bytes()
-    print("\t".join([str(OUT), hashlib.sha256(raw).hexdigest(), str(len(raw)),
-                     "course/oracle/M10.2/torch_sgd_golden.py", meta["oracle_versions"], "-", "Apache-2.0"]))
+    print(
+        "\t".join(
+            [
+                str(OUT),
+                hashlib.sha256(raw).hexdigest(),
+                str(len(raw)),
+                "course/oracle/M10.2/torch_sgd_golden.py",
+                meta["oracle_versions"],
+                "-",
+                "Apache-2.0",
+            ]
+        )
+    )
 
 
 if __name__ == "__main__":

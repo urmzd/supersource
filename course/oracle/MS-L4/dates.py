@@ -35,15 +35,29 @@ import numpy as np
 SEED = 20261009
 OUT = Path("course/fixtures/small-corpora")
 N_TRAIN, N_TEST = 8000, 600
-MONTHS = ["January", "February", "March", "April", "May", "June", "July",
-          "August", "September", "October", "November", "December"]
+MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+]
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 START = dt.date(1950, 1, 1)
 SPAN = (dt.date(2049, 12, 31) - START).days + 1
 
 
 def ordinal(d: int) -> str:
-    suffix = "th" if 10 <= d % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(d % 10, "th")
+    suffix = (
+        "th" if 10 <= d % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(d % 10, "th")
+    )
     return f"{d}{suffix}"
 
 
@@ -51,15 +65,15 @@ def render(day: dt.date, fmt: int) -> str:
     d, m, y = day.day, day.month, day.year
     mon, wd = MONTHS[m - 1], DAYS[day.weekday()]
     return [
-        f"{d} {mon} {y}",                 # 3 May 2021
-        f"{mon} {d}, {y}",                # May 3, 2021
-        f"{d}.{m}.{y}",                   # 3.5.2021
-        f"{y}/{m:02d}/{d:02d}",           # 2021/05/03
-        f"{wd}, {mon} {d}, {y}",          # Monday, May 3, 2021
-        f"the {ordinal(d)} of {mon} {y}", # the 3rd of May 2021
-        f"{wd[:3]} {d} {mon[:3]} {y}",    # Mon 3 May 2021
-        f"{mon.upper()} {d} {y}",         # MAY 3 2021
-        f"{d:02d}-{mon[:3]}-{y}",         # 03-May-2021
+        f"{d} {mon} {y}",  # 3 May 2021
+        f"{mon} {d}, {y}",  # May 3, 2021
+        f"{d}.{m}.{y}",  # 3.5.2021
+        f"{y}/{m:02d}/{d:02d}",  # 2021/05/03
+        f"{wd}, {mon} {d}, {y}",  # Monday, May 3, 2021
+        f"the {ordinal(d)} of {mon} {y}",  # the 3rd of May 2021
+        f"{wd[:3]} {d} {mon[:3]} {y}",  # Mon 3 May 2021
+        f"{mon.upper()} {d} {y}",  # MAY 3 2021
+        f"{d:02d}-{mon[:3]}-{y}",  # 03-May-2021
         f"{wd} the {ordinal(d)} of {mon}, {y}",  # Monday the 3rd of May, 2021
     ][fmt]
 
@@ -80,8 +94,19 @@ def main() -> None:
     for name, lines in (("dates.tsv", train), ("dates-test.txt", test)):
         data = ("\n".join(lines) + "\n").encode()
         (OUT / name).write_bytes(data)
-        print("\t".join([str(OUT / name), hashlib.sha256(data).hexdigest(), str(len(data)),
-                         "course/oracle/MS-L4/dates.py", f"numpy=={np.__version__}", "-", "Apache-2.0"]))
+        print(
+            "\t".join(
+                [
+                    str(OUT / name),
+                    hashlib.sha256(data).hexdigest(),
+                    str(len(data)),
+                    "course/oracle/MS-L4/dates.py",
+                    f"numpy=={np.__version__}",
+                    "-",
+                    "Apache-2.0",
+                ]
+            )
+        )
     long = sum(len(r.split("\t")[0]) >= 20 for r in test)
     print(f"# test: {len(test)} pairs, {long} in the long bucket (source >= 20 chars)")
 

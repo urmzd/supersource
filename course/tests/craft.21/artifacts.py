@@ -49,9 +49,18 @@ def course_tree() -> Path:
 
 def sh(argv: list[str], cwd: Path, timeout: float = 120) -> tuple[int, str]:
     """Run argv in its own process group; kill the group on timeout (exit 124)."""
-    env = dict(os.environ, GOWORK="off", GOTOOLCHAIN="local", GOFLAGS="-count=1", GOPROXY="off")
-    p = subprocess.Popen(argv, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                         text=True, start_new_session=True)
+    env = dict(
+        os.environ, GOWORK="off", GOTOOLCHAIN="local", GOFLAGS="-count=1", GOPROXY="off"
+    )
+    p = subprocess.Popen(
+        argv,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,
+    )
     try:
         out, _ = p.communicate(timeout=timeout)
         return p.returncode, out
@@ -78,7 +87,19 @@ def faulty(mid: str) -> str:
         dst = Path(d) / UNIT
         dst.parent.mkdir(parents=True)
         dst.write_text(reference_kata())
-        rc, out = sh(["patch", "-s", "-p1", "-d", d, "-i", str(course_tree() / "mutants" / "craft.21" / f"{mid}.patch")], Path(d), 30)
+        rc, out = sh(
+            [
+                "patch",
+                "-s",
+                "-p1",
+                "-d",
+                d,
+                "-i",
+                str(course_tree() / "mutants" / "craft.21" / f"{mid}.patch"),
+            ],
+            Path(d),
+            30,
+        )
         if rc != 0:
             raise Fail(f"fault {mid} does not apply: {out}")
         return dst.read_text()
@@ -86,7 +107,11 @@ def faulty(mid: str) -> str:
 
 def faults() -> list[tuple[str, bool, str, str]]:
     rows = []
-    for line in (course_tree() / "mutants" / "craft.21" / "manifest.tsv").read_text().splitlines():
+    for line in (
+        (course_tree() / "mutants" / "craft.21" / "manifest.tsv")
+        .read_text()
+        .splitlines()
+    ):
         if line.strip() and not line.startswith("#"):
             c = line.split("\t")
             rows.append((c[0], c[5] == "y", c[6], c[2]))
@@ -106,7 +131,9 @@ def module(c: Ctx, kata: str, tests: str) -> Path:
         for f in sorted(c.path(DIR).glob("*_test.go")):
             shutil.copy(f, d / f.name)
     else:
-        for f in sorted((course_tree() / "tests" / "go" / "craft_21").glob("*_test.go")):
+        for f in sorted(
+            (course_tree() / "tests" / "go" / "craft_21").glob("*_test.go")
+        ):
             shutil.copy(f, d / f.name)
     return d
 
@@ -136,10 +163,14 @@ def test_files_present(c: Ctx) -> None:
     if not (d / "faults" / "faults.go").exists():
         (d / "faults").mkdir(exist_ok=True)
         shutil.copy(HERE / "faults" / "faults.go", d / "faults" / "faults.go")
-        print("       wrote primers/craft.21/faults/faults.go (the course's kit; the check uses its own copy)")
+        print(
+            "       wrote primers/craft.21/faults/faults.go (the course's kit; the check uses its own copy)"
+        )
     missing = [p for p in (UNIT, TESTS) if not c.path(p).is_file()]
     if missing:
-        raise Fail(f"missing: {', '.join(missing)} (run `ss start craft.21` for the kata; section 4 for the tests)")
+        raise Fail(
+            f"missing: {', '.join(missing)} (run `ss start craft.21` for the kata; section 4 for the tests)"
+        )
 
 
 def test_your_tests_inject_faults(c: Ctx) -> None:
@@ -193,7 +224,9 @@ def test_your_tests_pass_on_the_course_kata(c: Ctx) -> None:
     for i in (1, 2):
         rc, out = go_test(module(c, reference_kata(), "learner"))
         if rc != 0:
-            raise Fail(f"run {i}: your tests reject the course's correct queue:\n" + tail(out))
+            raise Fail(
+                f"run {i}: your tests reject the course's correct queue:\n" + tail(out)
+            )
     c.cache["baseline"] = True
 
 
@@ -214,14 +247,18 @@ def test_your_tests_catch_the_planted_faults(c: Ctx) -> None:
         if rc != 0:
             killed += 1
         else:
-            shown = public if tier == "resilience" or not required else "a planted pitfall"
+            shown = (
+                public if tier == "resilience" or not required else "a planted pitfall"
+            )
             survived.append(f"{mid} ({shown})")
             if required:
                 required_missed.append(mid)
     score = killed / len(rows)
     print(f"       mutation score {killed}/{len(rows)} = {score:.2f}")
     if score < THRESHOLD or required_missed:
-        raise Fail(f"score {score:.2f} (threshold {THRESHOLD}); survivors: {', '.join(survived)}")
+        raise Fail(
+            f"score {score:.2f} (threshold {THRESHOLD}); survivors: {', '.join(survived)}"
+        )
 
 
 if __name__ == "__main__":

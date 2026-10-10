@@ -35,8 +35,19 @@ def main() -> None:
         raise SystemExit(f"{URL}: sha256 {got}, want {SHA256}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(data)
-    print("\t".join([str(OUT), got, str(len(data)), "course/oracle/MS-L3/tinyshakespeare.py", "-",
-                     f"github:karpathy/char-rnn@{COMMIT}:data/tinyshakespeare/input.txt", "public-domain"]))
+    print(
+        "\t".join(
+            [
+                str(OUT),
+                got,
+                str(len(data)),
+                "course/oracle/MS-L3/tinyshakespeare.py",
+                "-",
+                f"github:karpathy/char-rnn@{COMMIT}:data/tinyshakespeare/input.txt",
+                "public-domain",
+            ]
+        )
+    )
 
 
 if __name__ == "__main__":

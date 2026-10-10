@@ -35,7 +35,11 @@ def seed() -> int:
 
 
 def fixture() -> dict:
-    root = Path(os.environ.get("TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures"))
+    root = Path(
+        os.environ.get(
+            "TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures"
+        )
+    )
     return json.loads((root / "M10.3" / "adam_torch.json").read_text())
 
 
@@ -67,12 +71,25 @@ def check_case(name: str) -> None:
     traj, opt = replay(case)
     for t, (got, want) in enumerate(zip(traj, case["trajectory"])):
         for i, (g, w) in enumerate(zip(got, want)):
-            assert g.dtype == np.dtype(case["dtype"]), f"parameter {i} changed dtype to {g.dtype}"
-            assert_close(g, np.array(w), dtype=case["dtype"], msg=f"{name}: step {t + 1}, parameter {i}")
+            assert g.dtype == np.dtype(case["dtype"]), (
+                f"parameter {i} changed dtype to {g.dtype}"
+            )
+            assert_close(
+                g,
+                np.array(w),
+                dtype=case["dtype"],
+                msg=f"{name}: step {t + 1}, parameter {i}",
+            )
     sd = opt.state_dict()
     for i in range(len(case["init"])):
-        assert_close(sd["exp_avg"][i], np.array(case["final_exp_avg"][i]), dtype=case["dtype"])
-        assert_close(sd["exp_avg_sq"][i], np.array(case["final_exp_avg_sq"][i]), dtype=case["dtype"])
+        assert_close(
+            sd["exp_avg"][i], np.array(case["final_exp_avg"][i]), dtype=case["dtype"]
+        )
+        assert_close(
+            sd["exp_avg_sq"][i],
+            np.array(case["final_exp_avg_sq"][i]),
+            dtype=case["dtype"],
+        )
 
 
 def scalar_run(cls, grads, x0=1.0, **kw) -> list[float]:
@@ -112,13 +129,21 @@ def test_hand_example_adamw_and_adam_l2_differ():
     # CATCHES: s04, s05, s06, s11, s12
     # CHAPTER: M10.3 section 3, Worked example by hand
     upd2 = 0.1 * (8 / 19) / math.sqrt(4996 / 1999)
-    xw = scalar_run(AdamW, [2.0, -1.0], lr=0.1, betas=(0.9, 0.999), eps=0.0, weight_decay=0.1)
+    xw = scalar_run(
+        AdamW, [2.0, -1.0], lr=0.1, betas=(0.9, 0.999), eps=0.0, weight_decay=0.1
+    )
     assert_close(xw, [0.89, 0.89 * 0.99 - upd2], dtype="float64")
-    xa = scalar_run(Adam, [2.0, -1.0], lr=0.1, betas=(0.9, 0.999), eps=0.0, weight_decay=0.1)
+    xa = scalar_run(
+        Adam, [2.0, -1.0], lr=0.1, betas=(0.9, 0.999), eps=0.0, weight_decay=0.1
+    )
     g1, g2 = 2.0 + 0.1 * 1.0, -1.0 + 0.1 * 0.9
     m2 = 0.9 * 0.1 * g1 + 0.1 * g2
     v2 = 0.999 * 0.001 * g1 * g1 + 0.001 * g2 * g2
-    assert_close(xa, [0.9, 0.9 - 0.1 * (m2 / 0.19) / math.sqrt(v2 / (1 - 0.999**2))], dtype="float64")
+    assert_close(
+        xa,
+        [0.9, 0.9 - 0.1 * (m2 / 0.19) / math.sqrt(v2 / (1 - 0.999**2))],
+        dtype="float64",
+    )
 
 
 # --- torch trajectories ------------------------------------------------------------
@@ -230,8 +255,16 @@ def test_decoupled_decay_with_zero_gradient():
     # KIND: unit
     # CATCHES: s05, s06
     # CHAPTER: M10.3 section 2.4, Decoupled weight decay
-    assert_close(scalar_run(AdamW, [0.0], x0=4.0, lr=0.1, weight_decay=0.5), [3.8], dtype="float64")
-    assert_close(scalar_run(Adam, [0.0], x0=4.0, lr=0.1, eps=0.0, weight_decay=0.5), [3.9], dtype="float64")
+    assert_close(
+        scalar_run(AdamW, [0.0], x0=4.0, lr=0.1, weight_decay=0.5),
+        [3.8],
+        dtype="float64",
+    )
+    assert_close(
+        scalar_run(Adam, [0.0], x0=4.0, lr=0.1, eps=0.0, weight_decay=0.5),
+        [3.9],
+        dtype="float64",
+    )
 
 
 def test_parameter_without_grad_is_untouched():
@@ -345,7 +378,15 @@ def test_state_dict_layout():
     ps = [P(np.zeros(3)), P(np.zeros((2, 2)))]
     opt = AdamW(ps, lr=0.02, betas=(0.9, 0.95), eps=1e-6, weight_decay=0.1)
     sd = opt.state_dict()
-    assert {"step", "lr", "betas", "eps", "weight_decay", "exp_avg", "exp_avg_sq"} <= set(sd)
+    assert {
+        "step",
+        "lr",
+        "betas",
+        "eps",
+        "weight_decay",
+        "exp_avg",
+        "exp_avg_sq",
+    } <= set(sd)
     assert sd["step"] == 0 and sd["lr"] == 0.02 and list(sd["betas"]) == [0.9, 0.95]
     assert sd["eps"] == 1e-6 and sd["weight_decay"] == 0.1
     assert [m.shape for m in sd["exp_avg"]] == [(3,), (2, 2)]

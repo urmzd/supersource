@@ -28,7 +28,17 @@ UNIT = "python/tinyllm/eval/seqmetrics.py"
 STATS = "python/tinyllm/prob/stats.py"
 SURVIVORS = COURSE / "mutants" / "craft.07"
 L45 = COURSE / "mutants" / "L4.5"
-ALLOWED = {"tinyllm.eval.seqmetrics", "pytest", "math", "json", "itertools", "collections", "numpy", "pathlib", "os"}
+ALLOWED = {
+    "tinyllm.eval.seqmetrics",
+    "pytest",
+    "math",
+    "json",
+    "itertools",
+    "collections",
+    "numpy",
+    "pathlib",
+    "os",
+}
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
 from sscourse import markers  # noqa: E402
@@ -62,7 +72,9 @@ def patched(patch: Path) -> str | None:
         return dst.read_text() if p.returncode == 0 else None
 
 
-def run(unit_text: str, target: list[str], course_tests: bool = False, timeout: float = 90) -> tuple[int, str]:
+def run(
+    unit_text: str, target: list[str], course_tests: bool = False, timeout: float = 90
+) -> tuple[int, str]:
     """pytest over `target` with tinyllm/eval/seqmetrics.py = unit_text (and
     the reference M07.4 stats.py beside it), in its own process group."""
     with tempfile.TemporaryDirectory(prefix="ss-craft07-") as d:
@@ -73,7 +85,12 @@ def run(unit_text: str, target: list[str], course_tests: bool = False, timeout: 
         paths = [str(Path(d) / "python")]
         if course_tests:
             paths.append(str(COURSE / "tests"))
-            root = ["--rootdir", str(COURSE / "tests"), "--confcutdir", str(COURSE / "tests")]
+            root = [
+                "--rootdir",
+                str(COURSE / "tests"),
+                "--confcutdir",
+                str(COURSE / "tests"),
+            ]
             args = [str(COURSE / "tests" / "L4.5")]
             cwd = d
         else:
@@ -88,8 +105,28 @@ def run(unit_text: str, target: list[str], course_tests: bool = False, timeout: 
             TINYLLM_FIXTURES=str(COURSE / "fixtures"),
             PYTHONDONTWRITEBYTECODE="1",
         )
-        cmd = [sys.executable, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", "-p", "no:randomly", *root, *args]
-        proc = subprocess.Popen(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+        cmd = [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-x",
+            "-p",
+            "no:cacheprovider",
+            "-p",
+            "no:randomly",
+            *root,
+            *args,
+        ]
+        proc = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+        )
         try:
             out, _ = proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -110,7 +147,11 @@ def triage() -> dict:
 
 def suite_tests() -> set[str]:
     tree = ast.parse(SUITE.read_text())
-    return {n.name for n in tree.body if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")}
+    return {
+        n.name
+        for n in tree.body
+        if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")
+    }
 
 
 def test_artifacts_are_complete():
@@ -121,25 +162,45 @@ def test_artifacts_are_complete():
     #      patches, each starting with a `# pitfall:` line.
     # KIND: unit
     # CHAPTER: craft.07 section 4
-    assert SUITE.is_file(), f"write your deepened L4.5 suite at {SUITE} (chapter section 4)"
+    assert SUITE.is_file(), (
+        f"write your deepened L4.5 suite at {SUITE} (chapter section 4)"
+    )
     tree = ast.parse(SUITE.read_text(), str(SUITE))
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
-            assert node.module in ALLOWED, f"test_seqmetrics.py imports {node.module}: only the contract and the standard helpers"
+            assert node.module in ALLOWED, (
+                f"test_seqmetrics.py imports {node.module}: only the contract and the standard helpers"
+            )
         elif isinstance(node, ast.Import):
             for a in node.names:
-                assert a.name in ALLOWED, f"test_seqmetrics.py imports {a.name}: only the contract and the standard helpers"
-    assert len(suite_tests()) >= 12, f"{len(suite_tests())} tests; a deep suite has at least 12"
+                assert a.name in ALLOWED, (
+                    f"test_seqmetrics.py imports {a.name}: only the contract and the standard helpers"
+                )
+    assert len(suite_tests()) >= 12, (
+        f"{len(suite_tests())} tests; a deep suite has at least 12"
+    )
     t = triage()
     for row in manifest(SURVIVORS):
         mid = row[0]
         assert mid in t, f"triage.toml has no [{mid}]"
-        assert t[mid].get("verdict") in ("equivalent", "killable"), f"[{mid}] verdict must be equivalent or killable"
-        assert len(str(t[mid].get("reason", "")).strip()) >= 20, f"[{mid}] needs a reason (why it is equivalent, or the input that kills it)"
-    pats = sorted((PRIMER / "mutants").glob("*.patch")) if (PRIMER / "mutants").is_dir() else []
-    assert len(pats) >= 2, "write at least two mutants as primers/craft.07/mutants/*.patch (chapter section 4)"
+        assert t[mid].get("verdict") in ("equivalent", "killable"), (
+            f"[{mid}] verdict must be equivalent or killable"
+        )
+        assert len(str(t[mid].get("reason", "")).strip()) >= 20, (
+            f"[{mid}] needs a reason (why it is equivalent, or the input that kills it)"
+        )
+    pats = (
+        sorted((PRIMER / "mutants").glob("*.patch"))
+        if (PRIMER / "mutants").is_dir()
+        else []
+    )
+    assert len(pats) >= 2, (
+        "write at least two mutants as primers/craft.07/mutants/*.patch (chapter section 4)"
+    )
     for p in pats:
-        assert p.read_text().startswith("# pitfall:"), f"{p.name}: the first line names the pitfall (`# pitfall: ...`)"
+        assert p.read_text().startswith("# pitfall:"), (
+            f"{p.name}: the first line names the pitfall (`# pitfall: ...`)"
+        )
 
 
 def test_suite_accepts_the_reference():
@@ -160,7 +221,9 @@ def test_suite_accepts_your_l45():
     # KIND: unit
     # CHAPTER: craft.07 section 4
     mine = LEARNER / UNIT
-    assert mine.is_file(), f"{UNIT} is missing: craft.07 deepens your L4.5 suite, so do L4.5 first"
+    assert mine.is_file(), (
+        f"{UNIT} is missing: craft.07 deepens your L4.5 suite, so do L4.5 first"
+    )
     rc, out = run(mine.read_text(), ["test_seqmetrics.py"])
     assert rc == 0, "your suite fails on your own L4.5:\n" + tail(out)
 
@@ -178,7 +241,9 @@ def test_suite_kills_every_l45_mutant():
         assert text is not None, f"L4.5 mutant {row[0]} does not apply to the reference"
         rc, _ = run(text, ["test_seqmetrics.py"])
         if rc == 0:
-            survivors.append(f"{row[0]}: {row[6] if row[6] != '(hidden until pass)' else 'a planted bug from ' + row[3]}")
+            survivors.append(
+                f"{row[0]}: {row[6] if row[6] != '(hidden until pass)' else 'a planted bug from ' + row[3]}"
+            )
     assert not survivors, "L4.5 mutants your suite misses:\n  " + "\n  ".join(survivors)
 
 
@@ -194,7 +259,9 @@ def test_triage_matches_the_survivors():
     for row in manifest(SURVIVORS):
         want = "equivalent" if row[3] == "equivalent" else "killable"
         if t.get(row[0], {}).get("verdict") != want:
-            wrong.append(f"{row[0]}: not {t.get(row[0], {}).get('verdict')!r} ({row[6]})")
+            wrong.append(
+                f"{row[0]}: not {t.get(row[0], {}).get('verdict')!r} ({row[6]})"
+            )
     assert not wrong, "verdicts to revisit:\n  " + "\n  ".join(wrong)
 
 
@@ -216,9 +283,13 @@ def test_killable_survivors_die_by_the_named_test():
             bad.append(f"{row[0]}: test {name!r} is not in test_seqmetrics.py")
             continue
         rc_ref, _ = run(ref(UNIT), [f"test_seqmetrics.py::{name}"])
-        rc_mut, _ = run(patched(SURVIVORS / f"{row[0]}.patch"), [f"test_seqmetrics.py::{name}"])
+        rc_mut, _ = run(
+            patched(SURVIVORS / f"{row[0]}.patch"), [f"test_seqmetrics.py::{name}"]
+        )
         if rc_ref != 0 or rc_mut == 0:
-            bad.append(f"{row[0]}: {name} {'fails on the reference' if rc_ref else 'passes on the survivor'}")
+            bad.append(
+                f"{row[0]}: {name} {'fails on the reference' if rc_ref else 'passes on the survivor'}"
+            )
     assert not bad, "\n  ".join(["killable survivors not killed by their test:"] + bad)
 
 
@@ -229,17 +300,29 @@ def test_your_mutants_are_real_and_new():
     #      mutant produces the same file).
     # KIND: fault
     # CHAPTER: craft.07 section 2.3
-    pats = sorted((PRIMER / "mutants").glob("*.patch")) if (PRIMER / "mutants").is_dir() else []
+    pats = (
+        sorted((PRIMER / "mutants").glob("*.patch"))
+        if (PRIMER / "mutants").is_dir()
+        else []
+    )
     assert pats, "no primers/craft.07/mutants/*.patch yet"
-    known = {patched(d / f"{r[0]}.patch") for d in (L45, SURVIVORS) for r in manifest(d)}
+    known = {
+        patched(d / f"{r[0]}.patch") for d in (L45, SURVIVORS) for r in manifest(d)
+    }
     base = ref(UNIT)
     for p in pats:
         text = patched(p)
-        assert text is not None, f"{p.name} does not apply to tinyllm/eval/seqmetrics.py (a unified diff, paths a/{UNIT} and b/{UNIT})"
+        assert text is not None, (
+            f"{p.name} does not apply to tinyllm/eval/seqmetrics.py (a unified diff, paths a/{UNIT} and b/{UNIT})"
+        )
         assert text != base, f"{p.name} changes nothing"
-        assert text not in known, f"{p.name} repeats a committed mutant: plant a pitfall of your own"
+        assert text not in known, (
+            f"{p.name} repeats a committed mutant: plant a pitfall of your own"
+        )
         rc, out = run(text, [], course_tests=True)
-        assert rc != 0, f"{p.name} passes the course's L4.5 tests: it is equivalent, or the bug is outside what L4.5 defines"
+        assert rc != 0, (
+            f"{p.name} passes the course's L4.5 tests: it is equivalent, or the bug is outside what L4.5 defines"
+        )
 
 
 def test_your_suite_kills_your_mutants():
@@ -247,7 +330,11 @@ def test_your_suite_kills_your_mutants():
     #      must kill each of them, the same bar it meets for the course's.
     # KIND: fault
     # CHAPTER: craft.07 section 2.3
-    pats = sorted((PRIMER / "mutants").glob("*.patch")) if (PRIMER / "mutants").is_dir() else []
+    pats = (
+        sorted((PRIMER / "mutants").glob("*.patch"))
+        if (PRIMER / "mutants").is_dir()
+        else []
+    )
     assert pats, "no primers/craft.07/mutants/*.patch yet"
     alive = []
     for p in pats:

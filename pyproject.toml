@@ -18,11 +18,11 @@ dev = [
 [tool.ruff]
 # Course reference units are stubbed by marker and patched by committed
 # mutants (course/DESIGN.md 5.2, 5.6): their bytes are pinned, so the
-# formatter leaves them alone. The harness fixture course is pinned the same way.
+# formatter leaves them alone. The harness fixture course is pinned the same way,
+# and course/contracts is pinned by its content hash in contracts/VERSION.
 extend-exclude = [
-    "course/ref/python",
-    "course/ref/primers",
-    "course/ref/history",
+    "course/ref",
+    "course/contracts",
     "course/mutants",
     "practice/bin/tests/fixtures",
 ]

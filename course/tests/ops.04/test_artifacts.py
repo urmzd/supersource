@@ -1,4 +1,5 @@
 """Why this exists: a migration runbook must provide executable safety gates."""
+
 from pathlib import Path
 
 

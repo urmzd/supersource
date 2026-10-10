@@ -74,10 +74,20 @@ class Stream:
 class Block(Module):
     """Linear then tanh (optionally dropout); counts its forward calls."""
 
-    def __init__(self, d_in: int, d_out: int, rng: PCG32, dtype=np.float32, p: float = 0.0, drop_rng=None):
+    def __init__(
+        self,
+        d_in: int,
+        d_out: int,
+        rng: PCG32,
+        dtype=np.float32,
+        p: float = 0.0,
+        drop_rng=None,
+    ):
         super().__init__()
         self.lin = Linear(d_in, d_out)
-        self.lin.weight.data = rng.normal_array((d_out, d_in), scale=1.0 / math.sqrt(d_in)).astype(dtype)
+        self.lin.weight.data = rng.normal_array(
+            (d_out, d_in), scale=1.0 / math.sqrt(d_in)
+        ).astype(dtype)
         self.lin.bias.data = rng.normal_array((d_out,), scale=0.1).astype(dtype)
         self.act = Tanh()
         self.drop = Dropout(p, rng=drop_rng) if p > 0 else None
@@ -107,7 +117,9 @@ def mlp(rng: PCG32, dims, dtype=np.float32, p=0.0, drop_rng=None) -> Stack:
 
 
 def mse_loss(model, batch):
-    return mse(model(Tensor(batch["x"], dtype=model.blocks[0].lin.weight.dtype)), batch["y"])
+    return mse(
+        model(Tensor(batch["x"], dtype=model.blocks[0].lin.weight.dtype)), batch["y"]
+    )
 
 
 def regression_data(rng: PCG32, n: int, d: int, dtype=np.float32):
@@ -149,7 +161,9 @@ def test_hand_example_bf16_matmul():
     y.backward(np.ones((1, 1), dtype=np.float32))
     assert A.grad.tolist() == [[1.0, 2.0**-8]]
     assert B.grad.tolist() == [[1.0], [1.0]]
-    assert (Tensor([[1.0, 1.0]]) @ Tensor([[1.0], [2.0**-8]])).data.tolist() == [[1.00390625]]
+    assert (Tensor([[1.0, 1.0]]) @ Tensor([[1.0], [2.0**-8]])).data.tolist() == [
+        [1.00390625]
+    ]
 
 
 def test_hand_example_accumulation():
@@ -293,11 +307,15 @@ def test_autocast_grads_are_bf16_and_masters_stay_fp32():
     with autocast_bf16():
         mse_loss(model, data).backward()
     for b in model.blocks:
-        assert representable(b.lin.weight.grad, round_to_bf16), "weight gradient is not a bf16 value"
+        assert representable(b.lin.weight.grad, round_to_bf16), (
+            "weight gradient is not a bf16 value"
+        )
     w = Tensor([1.0], requires_grad=True)
     w.grad = np.array([1.0], dtype=np.float32)
     SGD([w], lr=1e-3).step()
-    assert w.dtype == np.float32 and float(w.data[0]) == np.float32(1.0) - np.float32(1e-3)
+    assert w.dtype == np.float32 and float(w.data[0]) == np.float32(1.0) - np.float32(
+        1e-3
+    )
     assert not representable(w.data, round_to_bf16)
 
 
@@ -352,7 +370,9 @@ def test_fp16_underflow_is_rescued_by_loss_scaling():
     with autocast("fp16"):
         grad_accumulate(model, [data], tiny)
     w0 = model.blocks[0].lin.weight.grad
-    assert np.count_nonzero(w0) < 0.1 * w0.size, "without scaling most fp16 gradients should underflow"
+    assert np.count_nonzero(w0) < 0.1 * w0.size, (
+        "without scaling most fp16 gradients should underflow"
+    )
     model.zero_grad()
     sc = DynamicLossScaler(init=2.0**16)
     with autocast("fp16"):
@@ -381,11 +401,15 @@ def test_scaler_skips_inf_steps():
         assert np.array_equal(p.data, b)
         assert p.grad is None
     skipped = 1
-    while train_step_mixed(model, [data], mse_loss, opt, precision="fp16", scaler=sc)["skipped"]:
+    while train_step_mixed(model, [data], mse_loss, opt, precision="fp16", scaler=sc)[
+        "skipped"
+    ]:
         skipped += 1
         assert skipped < 40
     assert sc.loss_scale == 2.0 ** (40 - skipped) and sc.good_steps == 1
-    assert any(not np.array_equal(p.data, b) for p, b in zip(model.parameters(), before))
+    assert any(
+        not np.array_equal(p.data, b) for p, b in zip(model.parameters(), before)
+    )
 
 
 def test_scaler_unscales_before_clipping():
@@ -423,7 +447,13 @@ def test_scaler_state_dict_roundtrip():
         a.step(SGD([p], lr=0.0), [p])
     b = DynamicLossScaler()
     b.load_state_dict(a.state_dict())
-    assert b.state_dict() == {"loss_scale": 4.0, "growth": 3.0, "backoff": 0.25, "interval": 3, "good_steps": 2}
+    assert b.state_dict() == {
+        "loss_scale": 4.0,
+        "growth": 3.0,
+        "backoff": 0.25,
+        "interval": 3,
+        "good_steps": 2,
+    }
     p.grad = np.array([1.0])
     b.step(SGD([p], lr=0.0), [p])
     assert b.loss_scale == 12.0 and b.good_steps == 0
@@ -558,7 +588,9 @@ def test_checkpoint_replays_dropout_rng():
     assert np.array_equal(runs[True][0], runs[False][0])
     for a, b in zip(runs[True][1], runs[False][1]):
         assert np.array_equal(a, b)
-    assert runs[True][2] == runs[False][2], "the generator did not end where the plain run ends"
+    assert runs[True][2] == runs[False][2], (
+        "the generator did not end where the plain run ends"
+    )
 
 
 def test_checkpoint_params_get_grads_from_data_input():
@@ -642,5 +674,9 @@ def test_checkpoint_lowers_peak_memory():
 
     plain = peaks(model)
     ck = peaks(lambda x: checkpoint_sequential(model.blocks, x, 5))
-    assert ck[0] < 0.5 * plain[0], f"forward: checkpointed {ck[0]} bytes vs plain {plain[0]}"
-    assert ck[1] < 0.9 * plain[1], f"overall: checkpointed {ck[1]} bytes vs plain {plain[1]}"
+    assert ck[0] < 0.5 * plain[0], (
+        f"forward: checkpointed {ck[0]} bytes vs plain {plain[0]}"
+    )
+    assert ck[1] < 0.9 * plain[1], (
+        f"overall: checkpointed {ck[1]} bytes vs plain {plain[1]}"
+    )

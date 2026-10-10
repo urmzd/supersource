@@ -99,8 +99,14 @@ def test_matches_scipy_golden():
     for name in names:
         x = data[f"{name}/x"]
         axis = int(data[f"{name}/axis"])
-        for fn, key in ((logsumexp, "logsumexp"), (softmax, "softmax"), (log_softmax, "log_softmax")):
-            assert_close(fn(x, axis=axis), data[f"{name}/{key}"], msg=f"{key} on {name}")
+        for fn, key in (
+            (logsumexp, "logsumexp"),
+            (softmax, "softmax"),
+            (log_softmax, "log_softmax"),
+        ):
+            assert_close(
+                fn(x, axis=axis), data[f"{name}/{key}"], msg=f"{key} on {name}"
+            )
 
 
 def test_shift_invariance():
@@ -134,7 +140,11 @@ def test_no_overflow():
     assert_close(softmax(big), [1.0, 0.0, 0.0])
     assert_close(logsumexp(big), 1e4)
     f32 = np.array([100.0, 99.0], dtype=np.float32)
-    assert_close(softmax(f32), [1 / (1 + math.exp(-1)), math.exp(-1) / (1 + math.exp(-1))], dtype="float32")
+    assert_close(
+        softmax(f32),
+        [1 / (1 + math.exp(-1)), math.exp(-1) / (1 + math.exp(-1))],
+        dtype="float32",
+    )
 
 
 def test_no_underflow_in_log_softmax():
@@ -189,7 +199,9 @@ def test_axis_and_keepdims():
     for axis in (0, 1, 2, -1, -2):
         p = softmax(x, axis=axis)
         assert p.shape == x.shape
-        assert_close_bounded(p.sum(axis=axis), np.ones(np.delete(x.shape, axis)), k=4, dtype="float64")
+        assert_close_bounded(
+            p.sum(axis=axis), np.ones(np.delete(x.shape, axis)), k=4, dtype="float64"
+        )
         lse = logsumexp(x, axis=axis)
         assert lse.shape == tuple(np.delete(x.shape, axis))
         lse_k = logsumexp(x, axis=axis, keepdims=True)
@@ -245,7 +257,9 @@ def test_kahan_error_bound():
     rng = PCG32(seed=seed())
     x = (0.1 + 1e-4 * rng.uniform_array(65536)).astype(np.float32)
     exact = exact_sum(x)
-    bound = 2 * U32 * abs(exact) + 2 * x.size * U32**2 * float(np.abs(x).astype(np.float64).sum())
+    bound = 2 * U32 * abs(exact) + 2 * x.size * U32**2 * float(
+        np.abs(x).astype(np.float64).sum()
+    )
     assert abs(sequential_f32(x) - exact) > 100 * bound
     assert abs(kahan_sum(x) - exact) <= bound
 
@@ -263,7 +277,9 @@ def test_pairwise_error_bound():
     for n in (65536, 50001):
         x = (0.1 + 1e-4 * rng.uniform_array(n)).astype(np.float32)
         exact = exact_sum(x)
-        bound = math.ceil(math.log2(n)) * U32 * float(np.abs(x).astype(np.float64).sum())
+        bound = (
+            math.ceil(math.log2(n)) * U32 * float(np.abs(x).astype(np.float64).sum())
+        )
         assert abs(sequential_f32(x) - exact) > 10 * bound
         assert abs(pairwise_sum(x) - exact) <= bound, f"n = {n}"
 

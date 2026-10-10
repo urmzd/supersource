@@ -1,4 +1,5 @@
 """R9 artifact checks. Each test states why it is part of the release gate."""
+
 import json
 import os
 from pathlib import Path

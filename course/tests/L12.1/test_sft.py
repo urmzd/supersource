@@ -1,16 +1,19 @@
-import numpy as np
 from tinyllm.post.sft import assistant_loss_mask, pack
 
 
 class Tokenizer:
     def render_chat(self, messages):
         return [1, 2, 3, 4]
+
     def assistant_spans(self, messages):
         return [(2, 4)]
 
 
 def test_hand_rendered_chat():
-    ids, mask = assistant_loss_mask([{"role": "user", "content": "hi"}, {"role": "assistant", "content": "ok"}], Tokenizer())
+    ids, mask = assistant_loss_mask(
+        [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "ok"}],
+        Tokenizer(),
+    )
     assert ids == [1, 2, 3, 4]
     assert mask == [False, False, True, True]
 

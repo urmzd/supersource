@@ -35,16 +35,31 @@ import numpy as np
 import torch
 import transformers
 from transformers import GptOssConfig, LlamaConfig, Qwen2Config
-from transformers.models.gpt_oss.modeling_gpt_oss import GptOssAttention, GptOssRotaryEmbedding
-from transformers.models.llama.modeling_llama import LlamaAttention, LlamaRotaryEmbedding
-from transformers.models.qwen2.modeling_qwen2 import Qwen2Attention, Qwen2RotaryEmbedding
+from transformers.models.gpt_oss.modeling_gpt_oss import (
+    GptOssAttention,
+    GptOssRotaryEmbedding,
+)
+from transformers.models.llama.modeling_llama import (
+    LlamaAttention,
+    LlamaRotaryEmbedding,
+)
+from transformers.models.qwen2.modeling_qwen2 import (
+    Qwen2Attention,
+    Qwen2RotaryEmbedding,
+)
 
 OUT = Path("course/fixtures/L7.5/gqa_hf.npz")
 SEED = 20261012
 rng = np.random.default_rng(SEED)
 D, H, HKV, DH, B, T, THETA, WINDOW = 24, 6, 2, 8, 2, 6, 1e4, 3
-COMMON = dict(hidden_size=D, num_attention_heads=H, num_key_value_heads=HKV, head_dim=DH,
-              max_position_embeddings=64, rope_parameters={"rope_type": "default", "rope_theta": THETA})
+COMMON = dict(
+    hidden_size=D,
+    num_attention_heads=H,
+    num_key_value_heads=HKV,
+    head_dim=DH,
+    max_position_embeddings=64,
+    rope_parameters={"rope_type": "default", "rope_theta": THETA},
+)
 
 
 def additive(visible: np.ndarray) -> torch.Tensor:
@@ -60,7 +75,9 @@ def causal(window=None) -> np.ndarray:
     return np.broadcast_to(vis, (B, 1, T, T)).copy()
 
 
-def run(name: str, attn, rotary, positions: np.ndarray, visible: np.ndarray, out: dict) -> None:
+def run(
+    name: str, attn, rotary, positions: np.ndarray, visible: np.ndarray, out: dict
+) -> None:
     attn.config._attn_implementation = "eager"
     with torch.no_grad():
         for pname, p in attn.named_parameters():
@@ -74,9 +91,17 @@ def run(name: str, attn, rotary, positions: np.ndarray, visible: np.ndarray, out
     cos, sin = rotary(tx, pos)
     y, _ = attn(tx, position_embeddings=(cos, sin), attention_mask=additive(visible))
     (y * torch.tensor(g)).sum().backward()
-    out.update({f"{name}.x": x, f"{name}.g": g, f"{name}.y": y.detach().numpy(), f"{name}.grad.x": tx.grad.numpy(),
-                f"{name}.positions": positions, f"{name}.visible": visible,
-                f"{name}.inv_freq": rotary.inv_freq.numpy()})
+    out.update(
+        {
+            f"{name}.x": x,
+            f"{name}.g": g,
+            f"{name}.y": y.detach().numpy(),
+            f"{name}.grad.x": tx.grad.numpy(),
+            f"{name}.positions": positions,
+            f"{name}.visible": visible,
+            f"{name}.inv_freq": rotary.inv_freq.numpy(),
+        }
+    )
     for pname, p in attn.named_parameters():
         out[f"{name}.grad.{pname}"] = p.grad.numpy()
 
@@ -90,22 +115,56 @@ def main() -> None:
     vis[1, :, :, 1] = False
     run("llama-mask", LlamaAttention(lc, 0), LlamaRotaryEmbedding(lc), pos, vis, out)
     qc = Qwen2Config(**COMMON)
-    run("qwen2-bias", Qwen2Attention(qc, 0), Qwen2RotaryEmbedding(qc), pos, causal(), out)
-    gc = GptOssConfig(**COMMON, attention_bias=False, sliding_window=WINDOW, layer_types=["sliding_attention"],
-                      num_hidden_layers=1)
+    run(
+        "qwen2-bias",
+        Qwen2Attention(qc, 0),
+        Qwen2RotaryEmbedding(qc),
+        pos,
+        causal(),
+        out,
+    )
+    gc = GptOssConfig(
+        **COMMON,
+        attention_bias=False,
+        sliding_window=WINDOW,
+        layer_types=["sliding_attention"],
+        num_hidden_layers=1,
+    )
     gpos = np.array([[0, 1, 2, 3, 4, 5], [0, 2, 3, 7, 8, 12]], dtype=np.int64)
-    run("gptoss", GptOssAttention(gc, 0), GptOssRotaryEmbedding(gc), gpos, causal(WINDOW), out)
-    out["__meta__"] = np.array(json.dumps({
-        "generator": "course/oracle/L7.5/gqa_hf.py", "torch": torch.__version__,
-        "transformers": transformers.__version__, "numpy": np.__version__, "seed": SEED,
-        "d": D, "n_heads": H, "n_kv_heads": HKV, "d_head": DH, "B": B, "T": T, "rope_theta": THETA,
-        "window": WINDOW,
-    }))
+    run(
+        "gptoss",
+        GptOssAttention(gc, 0),
+        GptOssRotaryEmbedding(gc),
+        gpos,
+        causal(WINDOW),
+        out,
+    )
+    out["__meta__"] = np.array(
+        json.dumps(
+            {
+                "generator": "course/oracle/L7.5/gqa_hf.py",
+                "torch": torch.__version__,
+                "transformers": transformers.__version__,
+                "numpy": np.__version__,
+                "seed": SEED,
+                "d": D,
+                "n_heads": H,
+                "n_kv_heads": HKV,
+                "d_head": DH,
+                "B": B,
+                "T": T,
+                "rope_theta": THETA,
+                "window": WINDOW,
+            }
+        )
+    )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(OUT, **out)
     data = OUT.read_bytes()
-    print(f"{OUT}\t{hashlib.sha256(data).hexdigest()}\t{len(data)}\tcourse/oracle/L7.5/gqa_hf.py\t"
-          f"torch=={torch.__version__},transformers=={transformers.__version__}\t-\tApache-2.0")
+    print(
+        f"{OUT}\t{hashlib.sha256(data).hexdigest()}\t{len(data)}\tcourse/oracle/L7.5/gqa_hf.py\t"
+        f"torch=={torch.__version__},transformers=={transformers.__version__}\t-\tApache-2.0"
+    )
 
 
 main()

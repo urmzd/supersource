@@ -24,7 +24,9 @@ import pytest
 from _lib.close import assert_close
 from tinyllm.modern.ctxext import alibi_bias
 
-FIX = os.path.join(os.environ.get("TINYLLM_FIXTURES", ""), "L7.4", "rope_scaling_hf.json")
+FIX = os.path.join(
+    os.environ.get("TINYLLM_FIXTURES", ""), "L7.4", "rope_scaling_hf.json"
+)
 
 
 def bias(n: int, tq: int, tk: int) -> np.ndarray:
@@ -66,7 +68,9 @@ def test_golden_bloom_same_softmax():
         bloom = np.asarray(r["bias"], dtype=np.float64)  # [n, 7]
         causal = np.tril(np.ones((7, 7), dtype=bool))
         a = softmax(np.where(causal, ours, -np.inf))
-        b = softmax(np.where(causal, np.broadcast_to(bloom[:, None, :], (n, 7, 7)), -np.inf))
+        b = softmax(
+            np.where(causal, np.broadcast_to(bloom[:, None, :], (n, 7, 7)), -np.inf)
+        )
         assert_close(a, b, rtol=1e-5, atol=1e-6, msg=f"{n} heads")
 
 

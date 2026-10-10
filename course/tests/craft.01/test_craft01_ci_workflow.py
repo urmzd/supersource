@@ -87,7 +87,7 @@ def test_commit_lint_job_fetches_history_and_runs_your_hook(wf):
     # rev-list` over a range (`BASE..HEAD`, written inline or built in a
     # variable; `^BASE HEAD` and `--not` are the same range), looped over the hook.
     assert "git rev-list" in text and re.search(r"\.\.|\^\"?\$|--not\b", text), (
-        "commit-lint must walk a range of commits with `git rev-list \"$BASE..$HEAD\"`, "
+        'commit-lint must walk a range of commits with `git rev-list "$BASE..$HEAD"`, '
         "not lint HEAD alone"
     )
 
@@ -115,7 +115,7 @@ def test_course_check_job_pins_supersource_to_contracts_version(wf):
         )
     assert re.search(r"\bcheckout\b[^\n]*\$\{?SHA\b", text), (
         "course-check must `git checkout` the sha read from contracts/VERSION "
-        "(for example `git -C .ss/supersource checkout --detach \"$SHA\"`)"
+        '(for example `git -C .ss/supersource checkout --detach "$SHA"`)'
     )
     assert "--ref-deps" not in text, (
         "CI never grades with reference code (--ci forbids --ref-deps)"

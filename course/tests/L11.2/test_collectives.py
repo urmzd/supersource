@@ -58,7 +58,12 @@ def w_battery(comm, s, tmpdir):
         rs = comm.reduce_scatter(x)
         sent_rs = comm.bytes_sent - before
         y = comm.all_reduce(x)
-        out["hand"] = (rs.tolist(), sent_rs, y.tolist(), comm.bytes_sent - before - sent_rs)
+        out["hand"] = (
+            rs.tolist(),
+            sent_rs,
+            y.tolist(),
+            comm.bytes_sent - before - sent_rs,
+        )
     for op in ("sum", "mean"):
         x = data(comm.rank, (5, 7), s)
         keep = x.copy()
@@ -67,11 +72,18 @@ def w_battery(comm, s, tmpdir):
     comm.all_reduce(data(comm.rank, (120,), s))
     out["bytes120"] = comm.bytes_sent - before
     sizes = [b - a for a, b in chunk_bounds(11, comm.world)]
-    out["rsag"] = (comm.reduce_scatter(data(comm.rank, (11,), s)), comm.all_gather(np.full(sizes[comm.rank], float(comm.rank))))
+    out["rsag"] = (
+        comm.reduce_scatter(data(comm.rank, (11,), s)),
+        comm.all_gather(np.full(sizes[comm.rank], float(comm.rank))),
+    )
     bc = []
     for src in range(comm.world):
         before = comm.bytes_sent
-        x = np.arange(5, dtype=np.float64) + 100 * src if comm.rank == src else np.zeros(5)
+        x = (
+            np.arange(5, dtype=np.float64) + 100 * src
+            if comm.rank == src
+            else np.zeros(5)
+        )
         bc.append((comm.broadcast(x, src).tolist(), comm.bytes_sent - before))
     # a collective right after: a stray message from broadcast would corrupt it
     bc.append(comm.all_reduce(np.ones(4) * (comm.rank + 1)).tolist())
@@ -119,7 +131,9 @@ def battery(world: int) -> list:
         atexit.register(shutil.rmtree, d, True)
         try:
             _RUNS[world] = ("ok", spawn(w_battery, world, seed(), d, timeout=T))
-        except Exception as e:  # keep the failure: every test reading it fails the same way
+        except (
+            Exception
+        ) as e:  # keep the failure: every test reading it fails the same way
             _RUNS[world] = ("err", e)
     status, value = _RUNS[world]
     if status == "err":
@@ -159,7 +173,9 @@ def test_chunk_bounds():
         for p in range(1, 6):
             want = [len(c) for c in np.array_split(np.arange(n), p)]
             got = chunk_bounds(n, p)
-            assert [b - a for a, b in got] == want and got[0][0] == 0 and got[-1][1] == n
+            assert (
+                [b - a for a, b in got] == want and got[0][0] == 0 and got[-1][1] == n
+            )
     for bad in ((-1, 2), (3, 0)):
         with pytest.raises(ValueError):
             chunk_bounds(*bad)
@@ -195,7 +211,9 @@ def test_bytes_moved_is_2_p_minus_1_over_p():
     # CATCHES: s02, s03, s08, m02
     # CHAPTER: L11.2 section 2, Principles
     for world in (2, 3, 4):
-        assert [r["bytes120"] for r in battery(world)] == [2 * (world - 1) * 120 * 8 // world] * world
+        assert [r["bytes120"] for r in battery(world)] == [
+            2 * (world - 1) * 120 * 8 // world
+        ] * world
 
 
 def test_reduce_scatter_and_all_gather():

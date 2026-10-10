@@ -50,7 +50,9 @@ TP_TRACE, TP_PARENT = "4bf92f3577b34da6a3ce929d0e0e4736", "00f067aa0ba902b7"
 
 def _obs04():
     """obs.04's PromQL helpers (metric_names, substitute, _contract_names)."""
-    spec = importlib.util.spec_from_file_location("obs04_artifacts", HERE.parent / "obs.04" / "artifacts.py")
+    spec = importlib.util.spec_from_file_location(
+        "obs04_artifacts", HERE.parent / "obs.04" / "artifacts.py"
+    )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -69,7 +71,12 @@ def dashboard(c: Ctx) -> dict:
 
 
 def queries(c: Ctx) -> list[tuple[dict, str]]:
-    out = [(p, str(t.get("expr", ""))) for p in O4._panels(dashboard(c)) for t in p.get("targets") or [] if str(t.get("expr", "")).strip()]
+    out = [
+        (p, str(t.get("expr", "")))
+        for p in O4._panels(dashboard(c))
+        for t in p.get("targets") or []
+        if str(t.get("expr", "")).strip()
+    ]
     if not out:
         raise Fail(f"{DASH} has no panel queries")
     return out
@@ -95,14 +102,20 @@ def test_dashboard_is_portable(c: Ctx) -> None:
         errs.append("no uid: Grafana makes a new dashboard on every import")
     if d.get("id") not in (None, 0):
         errs.append(f"id is {d.get('id')}: an instance id; set it to null")
-    names = [v.get("name") for v in (d.get("templating") or {}).get("list") or [] if v.get("type") == "datasource"]
+    names = [
+        v.get("name")
+        for v in (d.get("templating") or {}).get("list") or []
+        if v.get("type") == "datasource"
+    ]
     if not names:
         errs.append("no datasource variable in templating.list")
     for p, _ in queries(c):
         ds = p.get("datasource") or {}
         uid = ds.get("uid") if isinstance(ds, dict) else ds
         if not (isinstance(uid, str) and (uid.startswith("$") or uid == "prometheus")):
-            errs.append(f"panel {p.get('title')!r}: datasource {ds!r} is not the variable or the stack's uid")
+            errs.append(
+                f"panel {p.get('title')!r}: datasource {ds!r} is not the variable or the stack's uid"
+            )
     if errs:
         raise Fail("\n".join(dict.fromkeys(errs)))
 
@@ -118,7 +131,9 @@ def test_queries_name_contract_metrics(c: Ctx) -> None:
     for p, e in queries(c):
         bad = sorted(O4.metric_names(O4.substitute(e)) - allowed)
         if bad:
-            errs.append(f"panel {p.get('title')!r}: {', '.join(bad)} not in contracts/otel/metrics.yaml")
+            errs.append(
+                f"panel {p.get('title')!r}: {', '.join(bad)} not in contracts/otel/metrics.yaml"
+            )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -130,11 +145,25 @@ def test_queries_parse(c: Ctx) -> None:
     # CHAPTER: obs.05 section 4, The artifact and its check
     import yaml
 
-    rules = [{"record": f"cp:query{i}", "expr": O4.substitute(e)} for i, (_, e) in enumerate(queries(c))]
-    r = _promtool.run(c, c.path(".ss/check/obs.05/parse"), ["check", "rules", "queries.yaml"],
-                      {"queries.yaml": yaml.safe_dump({"groups": [{"name": "cp", "rules": rules}]}, sort_keys=False)}, timeout=110)
+    rules = [
+        {"record": f"cp:query{i}", "expr": O4.substitute(e)}
+        for i, (_, e) in enumerate(queries(c))
+    ]
+    r = _promtool.run(
+        c,
+        c.path(".ss/check/obs.05/parse"),
+        ["check", "rules", "queries.yaml"],
+        {
+            "queries.yaml": yaml.safe_dump(
+                {"groups": [{"name": "cp", "rules": rules}]}, sort_keys=False
+            )
+        },
+        timeout=110,
+    )
     if r.returncode != 0:
-        raise Fail("promtool rejects a query:\n" + (r.stdout + r.stderr).strip()[-1500:])
+        raise Fail(
+            "promtool rejects a query:\n" + (r.stdout + r.stderr).strip()[-1500:]
+        )
 
 
 def test_queue_panels(c: Ctx) -> None:
@@ -149,16 +178,27 @@ def test_queue_panels(c: Ctx) -> None:
     depth = panels_with(c, lambda e: "tl_durable_task_queue_depth" in e)
     if not depth:
         errs.append("no panel shows tl_durable_task_queue_depth")
-    elif not any(re.search(r"\bby\s*\([^)]*\bqueue\b", e) or re.search(r"tl_durable_task_queue_depth\s*(\{[^}]*\})?\s*$", e)
-                 for p, e in queries(c) if "tl_durable_task_queue_depth" in e):
-        errs.append("the queue-depth panel sums the queues together: keep `by (queue)` so a stuck queue shows")
+    elif not any(
+        re.search(r"\bby\s*\([^)]*\bqueue\b", e)
+        or re.search(r"tl_durable_task_queue_depth\s*(\{[^}]*\})?\s*$", e)
+        for p, e in queries(c)
+        if "tl_durable_task_queue_depth" in e
+    ):
+        errs.append(
+            "the queue-depth panel sums the queues together: keep `by (queue)` so a stuck queue shows"
+        )
     if not panels_with(c, lambda e: "tl_durable_dlq_size" in e):
         errs.append("no panel shows tl_durable_dlq_size (the dead-letter queue)")
     redel = [e for _, e in queries(c) if "tl_durable_redeliveries_total" in e]
     if not redel:
         errs.append("no panel shows tl_durable_redeliveries_total")
-    elif not all(re.search(r"\b(rate|irate|increase)\s*\(\s*tl_durable_redeliveries_total", e) for e in redel):
-        errs.append("redeliveries are a counter: show rate(...) or increase(...), never the raw total")
+    elif not all(
+        re.search(r"\b(rate|irate|increase)\s*\(\s*tl_durable_redeliveries_total", e)
+        for e in redel
+    ):
+        errs.append(
+            "redeliveries are a counter: show rate(...) or increase(...), never the raw total"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -170,14 +210,30 @@ def test_schedule_to_start_quantile(c: Ctx) -> None:
     #      and a quantile of the raw buckets mixes the whole history.
     # KIND: boundary
     # CHAPTER: obs.05 section 3, Worked example by hand
-    exprs = [e for _, e in queries(c) if "tl_durable_task_schedule_to_start_seconds_bucket" in e]
+    exprs = [
+        e
+        for _, e in queries(c)
+        if "tl_durable_task_schedule_to_start_seconds_bucket" in e
+    ]
     if not exprs:
-        raise Fail("no panel shows tl_durable_task_schedule_to_start_seconds (schedule-to-start)")
-    good = [e for e in exprs if re.search(r"histogram_quantile\s*\(\s*0?\.\d+", e)
-            and re.search(r"\bby\s*\([^)]*\ble\b", e)
-            and re.search(r"\b(rate|increase)\s*\(\s*tl_durable_task_schedule_to_start_seconds_bucket", e)]
+        raise Fail(
+            "no panel shows tl_durable_task_schedule_to_start_seconds (schedule-to-start)"
+        )
+    good = [
+        e
+        for e in exprs
+        if re.search(r"histogram_quantile\s*\(\s*0?\.\d+", e)
+        and re.search(r"\bby\s*\([^)]*\ble\b", e)
+        and re.search(
+            r"\b(rate|increase)\s*\(\s*tl_durable_task_schedule_to_start_seconds_bucket",
+            e,
+        )
+    ]
     if not good:
-        raise Fail("schedule-to-start needs histogram_quantile(q, sum by (le, ...) (rate(..._bucket[...]))): " + "; ".join(exprs))
+        raise Fail(
+            "schedule-to-start needs histogram_quantile(q, sum by (le, ...) (rate(..._bucket[...]))): "
+            + "; ".join(exprs)
+        )
 
 
 def test_storage_and_training_panels(c: Ctx) -> None:
@@ -190,7 +246,9 @@ def test_storage_and_training_panels(c: Ctx) -> None:
     if not panels_with(c, lambda e: "tl_durable_wal_bytes" in e):
         errs.append("no panel shows tl_durable_wal_bytes")
     if not panels_with(c, lambda e: "tl_train_loss" in e):
-        errs.append("no panel shows tl_train_loss (pushed by Python through the collector)")
+        errs.append(
+            "no panel shows tl_train_loss (pushed by Python through the collector)"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -207,22 +265,46 @@ def test_monitors_scrape_the_control_plane(c: Ctx) -> None:
     mons = [d for d in docs if d.get("kind") in ("PodMonitor", "ServiceMonitor")]
     errs = []
     for d in mons:
-        if ((d.get("metadata") or {}).get("labels") or {}).get("release") != "observability":
-            errs.append(f"{d['kind']} {d['metadata'].get('name')}: no label release: observability, so Prometheus ignores it")
+        if ((d.get("metadata") or {}).get("labels") or {}).get(
+            "release"
+        ) != "observability":
+            errs.append(
+                f"{d['kind']} {d['metadata'].get('name')}: no label release: observability, so Prometheus ignores it"
+            )
 
     def selects(component: str) -> bool:
         for d in mons:
             ml = ((d.get("spec") or {}).get("selector") or {}).get("matchLabels") or {}
-            eps = (d.get("spec") or {}).get("podMetricsEndpoints") or (d.get("spec") or {}).get("endpoints") or []
-            if ml.get("app.kubernetes.io/component") == component and any(e.get("port") == "health" for e in eps):
+            eps = (
+                (d.get("spec") or {}).get("podMetricsEndpoints")
+                or (d.get("spec") or {}).get("endpoints")
+                or []
+            )
+            if ml.get("app.kubernetes.io/component") == component and any(
+                e.get("port") == "health" for e in eps
+            ):
                 return True
         return False
 
     for comp in ("durable", "worker"):
         if not selects(comp):
-            errs.append(f"no monitor scrapes the port named health of pods with app.kubernetes.io/component: {comp}")
-    if not any(any(e.get("port") == "prom-exporter" for e in ((d.get("spec") or {}).get("podMetricsEndpoints") or (d.get("spec") or {}).get("endpoints") or [])) for d in mons):
-        errs.append("no monitor scrapes the collector's prom-exporter port: Python's tl_train_* gauges never reach Prometheus")
+            errs.append(
+                f"no monitor scrapes the port named health of pods with app.kubernetes.io/component: {comp}"
+            )
+    if not any(
+        any(
+            e.get("port") == "prom-exporter"
+            for e in (
+                (d.get("spec") or {}).get("podMetricsEndpoints")
+                or (d.get("spec") or {}).get("endpoints")
+                or []
+            )
+        )
+        for d in mons
+    ):
+        errs.append(
+            "no monitor scrapes the collector's prom-exporter port: Python's tl_train_* gauges never reach Prometheus"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -238,16 +320,25 @@ def test_python_exports_over_http(c: Ctx) -> None:
     n = c.system_name()
     docs = c.helm_template(f"deploy/helm/{n}-worker", f"{n}-worker", namespace=n)
     dep = one(docs, "Deployment", f"deploy/helm/{n}-worker")
-    env = {e.get("name"): str(e.get("value", "")) for e in containers(dep)[0].get("env") or []}
+    env = {
+        e.get("name"): str(e.get("value", ""))
+        for e in containers(dep)[0].get("env") or []
+    }
     errs = []
     go_ep = env.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     py_ep = env.get("TL_PYTHON_OTLP_ENDPOINT", "")
     if not go_ep.endswith(":4317"):
-        errs.append(f"OTEL_EXPORTER_OTLP_ENDPOINT is {go_ep!r}; the Go worker exports OTLP/gRPC to the collector's 4317")
+        errs.append(
+            f"OTEL_EXPORTER_OTLP_ENDPOINT is {go_ep!r}; the Go worker exports OTLP/gRPC to the collector's 4317"
+        )
     if not py_ep:
-        errs.append("TL_PYTHON_OTLP_ENDPOINT is not set: the worker cannot tell its Python children where to export")
+        errs.append(
+            "TL_PYTHON_OTLP_ENDPOINT is not set: the worker cannot tell its Python children where to export"
+        )
     elif not (py_ep.startswith("http") and py_ep.rstrip("/").endswith(":4318")):
-        errs.append(f"TL_PYTHON_OTLP_ENDPOINT is {py_ep!r}; Python posts OTLP/HTTP JSON to the collector's 4318")
+        errs.append(
+            f"TL_PYTHON_OTLP_ENDPOINT is {py_ep!r}; Python posts OTLP/HTTP JSON to the collector's 4318"
+        )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -262,7 +353,9 @@ class _Sink:
 
         class H(BaseHTTPRequestHandler):
             def do_POST(self):  # noqa: N802
-                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                body = json.loads(
+                    self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                )
                 if self.path == "/v1/traces":
                     for rs in body.get("resourceSpans", []):
                         for ss in rs.get("scopeSpans", []):
@@ -275,7 +368,9 @@ class _Sink:
 
         self.srv = HTTPServer(("127.0.0.1", 0), H)
         self.url = f"http://127.0.0.1:{self.srv.server_address[1]}"
-        threading.Thread(target=self.srv.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True).start()
+        threading.Thread(
+            target=self.srv.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+        ).start()
 
     def close(self) -> None:
         self.srv.shutdown()
@@ -308,15 +403,24 @@ def test_python_span_tree_from_traceparent(c: Ctx) -> None:
     sink = _Sink()
     c.cleanups.append(sink.close)
     env = dict(os.environ)
-    env.update({
-        "PYTHONPATH": str(c.path("python")),
-        "TRACEPARENT": f"00-{TP_TRACE}-{TP_PARENT}-01",
-        "OTEL_EXPORTER_OTLP_ENDPOINT": sink.url,
-        "OTEL_SERVICE_NAME": f"{c.system_name()}-python",
-    })
+    env.update(
+        {
+            "PYTHONPATH": str(c.path("python")),
+            "TRACEPARENT": f"00-{TP_TRACE}-{TP_PARENT}-01",
+            "OTEL_EXPORTER_OTLP_ENDPOINT": sink.url,
+            "OTEL_SERVICE_NAME": f"{c.system_name()}-python",
+        }
+    )
     with tempfile.TemporaryDirectory() as d:
-        p = subprocess.Popen([sys.executable, "-c", textwrap.dedent(TRAIN)], cwd=d, env=env, stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT, text=True, start_new_session=True)
+        p = subprocess.Popen(
+            [sys.executable, "-c", textwrap.dedent(TRAIN)],
+            cwd=d,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+        )
         try:
             out, _ = p.communicate(timeout=60)
         except subprocess.TimeoutExpired:
@@ -334,13 +438,27 @@ def test_python_span_tree_from_traceparent(c: Ctx) -> None:
     else:
         r = runs[0]
         if r.get("traceId") != TP_TRACE or r.get("parentSpanId") != TP_PARENT:
-            errs.append(f"train.run is in trace {r.get('traceId')} under {r.get('parentSpanId')}; want trace {TP_TRACE} under the activity span {TP_PARENT}")
+            errs.append(
+                f"train.run is in trace {r.get('traceId')} under {r.get('parentSpanId')}; want trace {TP_TRACE} under the activity span {TP_PARENT}"
+            )
         steps = by_name.get("train.step", [])
-        got = sorted(int(a["value"].get("intValue", -1)) for s in steps for a in s.get("attributes", []) if a.get("key") == "tl.train.step")
+        got = sorted(
+            int(a["value"].get("intValue", -1))
+            for s in steps
+            for a in s.get("attributes", [])
+            if a.get("key") == "tl.train.step"
+        )
         if got != [0, 50, 100]:
-            errs.append(f"train.step spans for steps {got}; want [0, 50, 100] (every 50th of 120)")
-        if any(s.get("parentSpanId") != r.get("spanId") or s.get("traceId") != TP_TRACE for s in steps):
-            errs.append("a train.step span is not a child of train.run in the same trace")
+            errs.append(
+                f"train.step spans for steps {got}; want [0, 50, 100] (every 50th of 120)"
+            )
+        if any(
+            s.get("parentSpanId") != r.get("spanId") or s.get("traceId") != TP_TRACE
+            for s in steps
+        ):
+            errs.append(
+                "a train.step span is not a child of train.run in the same trace"
+            )
     if errs:
         raise Fail("\n".join(errs))
 
@@ -356,7 +474,9 @@ def _deploy(c: Ctx, key: str) -> str:
     if not url:
         if smoke_mode():
             c.skipped_cluster = True
-            raise Skip(f"cluster tier skipped under SS_SMOKE=1: system.toml has no [deploy].{key}")
+            raise Skip(
+                f"cluster tier skipped under SS_SMOKE=1: system.toml has no [deploy].{key}"
+            )
         raise Fail(f"system.toml has no [deploy].{key}")
     return url
 
@@ -370,7 +490,11 @@ def test_queries_run_in_prometheus(c: Ctx) -> None:
     prom = _deploy(c, "prometheus")
     errs = []
     for p, e in queries(c):
-        status, _, body = c.http("GET", f"{prom}/api/v1/query?query={urllib.parse.quote(O4.substitute(e), safe='')}", timeout=15)
+        status, _, body = c.http(
+            "GET",
+            f"{prom}/api/v1/query?query={urllib.parse.quote(O4.substitute(e), safe='')}",
+            timeout=15,
+        )
         if status != 200:
             errs.append(f"panel {p.get('title')!r}: HTTP {status}: {body[:200]!r}")
     if errs:
@@ -392,14 +516,18 @@ def test_train_trace_in_tempo(c: Ctx) -> None:
         raise Fail(f"Tempo search: HTTP {status}")
     traces = json.loads(body).get("traces") or []
     if not traces:
-        raise Fail("no trace with a train.step span: run `<system> train --spec specs/tiny.json` on kind first")
+        raise Fail(
+            "no trace with a train.step span: run `<system> train --spec specs/tiny.json` on kind first"
+        )
     need = {"workflow TrainRun", "activity train", "train.run", "train.step"}
     for t in traces:
         status, _, tb = c.http("GET", f"{tempo}/api/traces/{t['traceID']}", timeout=20)
         names = set(re.findall(r'"name"\s*:\s*"([^"]+)"', tb.decode(errors="replace")))
         if need <= names:
             return
-    raise Fail(f"no train.step trace also holds {sorted(need)}: the context is lost between the worker and Python")
+    raise Fail(
+        f"no train.step trace also holds {sorted(need)}: the context is lost between the worker and Python"
+    )
 
 
 if __name__ == "__main__":

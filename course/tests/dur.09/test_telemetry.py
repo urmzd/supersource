@@ -47,7 +47,9 @@ class Sink:
             def do_POST(self):  # noqa: N802
                 n = int(self.headers.get("Content-Length", "0"))
                 body = self.rfile.read(n)
-                sink.got.append((self.path, self.headers.get("Content-Type", ""), json.loads(body)))
+                sink.got.append(
+                    (self.path, self.headers.get("Content-Type", ""), json.loads(body))
+                )
                 self.send_response(status)
                 self.end_headers()
 
@@ -56,7 +58,9 @@ class Sink:
 
         self.srv = HTTPServer(("127.0.0.1", 0), H)
         self.url = f"http://127.0.0.1:{self.srv.server_address[1]}"
-        threading.Thread(target=self.srv.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True).start()
+        threading.Thread(
+            target=self.srv.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True
+        ).start()
 
     def close(self):
         self.srv.shutdown()
@@ -102,7 +106,7 @@ def stepping_clock(start: int = 1760000000000000000, step: int = 1000):
 def attrs(span: dict) -> dict:
     out = {}
     for a in span["attributes"]:
-        (kind, v), = a["value"].items()
+        ((kind, v),) = a["value"].items()
         out[a["key"]] = int(v) if kind == "intValue" else v
     return out
 
@@ -116,25 +120,38 @@ def test_hand_example_span_tree(sink):
     # KIND: conformance
     # CATCHES: s30, s31
     # CHAPTER: dur.09 section 3, worked example (telemetry)
-    tr = Tracer(sink.url, "forge-python", parse_traceparent(TP), {"service.namespace": "forge"},
-                ids=counter_ids(), clock_ns=stepping_clock())
+    tr = Tracer(
+        sink.url,
+        "forge-python",
+        parse_traceparent(TP),
+        {"service.namespace": "forge"},
+        ids=counter_ids(),
+        clock_ns=stepping_clock(),
+    )
     with tr.span("train.run", {"tl.run.id": "train-1"}) as run_span:
         for step in (49, 50):
             if should_sample_step(step):
-                with tr.span("train.step", {"tl.train.step": step, "tl.train.loss": 2.5}):
+                with tr.span(
+                    "train.step", {"tl.train.step": step, "tl.train.loss": 2.5}
+                ):
                     pass
     assert run_span.parent_span_id == PARENT
     assert tr.flush() is True
     path, ctype, body = sink.got[0]
     assert (path, ctype) == ("/v1/traces", "application/json")
-    res = {a["key"]: a["value"] for a in body["resourceSpans"][0]["resource"]["attributes"]}
+    res = {
+        a["key"]: a["value"] for a in body["resourceSpans"][0]["resource"]["attributes"]
+    }
     assert res["service.name"] == {"stringValue": "forge-python"}
     assert res["service.namespace"] == {"stringValue": "forge"}
     step_span, run = sink.spans()
     assert run["name"] == "train.run" and step_span["name"] == "train.step"
     assert run["traceId"] == step_span["traceId"] == TRACE
     assert run["spanId"] == "0000000000000001" and run["parentSpanId"] == PARENT
-    assert step_span["spanId"] == "0000000000000002" and step_span["parentSpanId"] == "0000000000000001"
+    assert (
+        step_span["spanId"] == "0000000000000002"
+        and step_span["parentSpanId"] == "0000000000000001"
+    )
     assert run["kind"] == 1 and step_span["kind"] == 1
     assert run["startTimeUnixNano"] == "1760000000000000000"
     assert int(step_span["endTimeUnixNano"]) >= int(step_span["startTimeUnixNano"])
@@ -146,8 +163,14 @@ def test_hand_example_span_tree(sink):
     "value,want",
     [
         (TP, (TRACE, PARENT, True)),
-        ("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00", (TRACE, PARENT, False)),
-        ("01-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-extra", (TRACE, PARENT, True)),
+        (
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00",
+            (TRACE, PARENT, False),
+        ),
+        (
+            "01-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-extra",
+            (TRACE, PARENT, True),
+        ),
         (None, None),
         ("", None),
         ("garbage", None),
@@ -211,7 +234,9 @@ def test_no_traceparent_starts_a_root(sink):
     #      parent id of zeros.
     # KIND: boundary
     # CHAPTER: dur.09 section 2.6
-    tr = Tracer.from_env({"OTEL_EXPORTER_OTLP_ENDPOINT": sink.url, "TRACEPARENT": "bogus"})
+    tr = Tracer.from_env(
+        {"OTEL_EXPORTER_OTLP_ENDPOINT": sink.url, "TRACEPARENT": "bogus"}
+    )
     assert tr.parent is None and tr.service_name == "tinyllm-python"
     with tr.span("train.run") as s:
         pass
@@ -227,18 +252,31 @@ def test_from_env(sink):
     # KIND: unit
     # CATCHES: s34
     # CHAPTER: dur.09 section 4, The interface
-    tr = Tracer.from_env({
-        "OTEL_EXPORTER_OTLP_ENDPOINT": sink.url,
-        "OTEL_SERVICE_NAME": "forge-python",
-        "OTEL_RESOURCE_ATTRIBUTES": "service.namespace=forge, service.version=0.1.0",
-        "TRACEPARENT": TP,
-    })
-    assert (tr.service_name, tr.parent.trace_id, tr.sampled) == ("forge-python", TRACE, True)
+    tr = Tracer.from_env(
+        {
+            "OTEL_EXPORTER_OTLP_ENDPOINT": sink.url,
+            "OTEL_SERVICE_NAME": "forge-python",
+            "OTEL_RESOURCE_ATTRIBUTES": "service.namespace=forge, service.version=0.1.0",
+            "TRACEPARENT": TP,
+        }
+    )
+    assert (tr.service_name, tr.parent.trace_id, tr.sampled) == (
+        "forge-python",
+        TRACE,
+        True,
+    )
     with tr.span("corpus.stage shard", {"tl.corpus.stage": "shard"}):
         pass
     tr.flush()
-    res = {a["key"]: a["value"]["stringValue"] for a in sink.got[0][2]["resourceSpans"][0]["resource"]["attributes"]}
-    assert res == {"service.name": "forge-python", "service.namespace": "forge", "service.version": "0.1.0"}
+    res = {
+        a["key"]: a["value"]["stringValue"]
+        for a in sink.got[0][2]["resourceSpans"][0]["resource"]["attributes"]
+    }
+    assert res == {
+        "service.name": "forge-python",
+        "service.namespace": "forge",
+        "service.version": "0.1.0",
+    }
 
 
 def test_dead_collector_never_fails_the_work():
@@ -352,6 +390,9 @@ def test_body_shape_without_parent():
     assert "parentSpanId" not in span
     assert body["resourceSpans"][0]["scopeSpans"][0]["scope"] == {"name": "tinyllm"}
     assert {a["key"]: a["value"] for a in span["attributes"]} == {
-        "ok": {"boolValue": True}, "n": {"intValue": "3"}, "f": {"doubleValue": 0.5}, "s": {"stringValue": "x"},
+        "ok": {"boolValue": True},
+        "n": {"intValue": "3"},
+        "f": {"doubleValue": 0.5},
+        "s": {"stringValue": "x"},
     }
     assert tr.flush() is True, "no endpoint: nothing to send is success"

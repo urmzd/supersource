@@ -26,11 +26,21 @@ def main() -> None:
         cases.append(
             {
                 "name": c["name"],
-                "input": {"logits": c["logits"], "params": c["params"], "prompt": c["prompt"], "seed": c["seed"], "n": len(c["ids"])},
+                "input": {
+                    "logits": c["logits"],
+                    "params": c["params"],
+                    "prompt": c["prompt"],
+                    "seed": c["seed"],
+                    "n": len(c["ids"]),
+                },
                 "output": {"ids": c["ids"], "logprobs": c["logprobs"]},
             }
         )
-    doc = {"generator": "course/oracle/parity/sampler_golden.py", "source": "course/fixtures/L8.1/sampler_golden.json", "cases": cases}
+    doc = {
+        "generator": "course/oracle/parity/sampler_golden.py",
+        "source": "course/fixtures/L8.1/sampler_golden.json",
+        "cases": cases,
+    }
     OUT.write_text(json.dumps(doc, separators=(",", ":")) + "\n")
     print(f"wrote {OUT} ({len(cases)} cases)")
 

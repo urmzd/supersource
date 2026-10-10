@@ -93,7 +93,11 @@ def build() -> dict:
     out: dict = {
         "spec": "spec/pcg32.md",
         "seq": 54,
-        "next_u32": {str(s): [g.next_u32() for _ in range(1024)] for s in seeds for g in [Pcg32(s)]},
+        "next_u32": {
+            str(s): [g.next_u32() for _ in range(1024)]
+            for s in seeds
+            for g in [Pcg32(s)]
+        },
     }
     uni, nor, bel = {}, {}, {}
     for s in seeds:
@@ -108,8 +112,17 @@ def build() -> dict:
     out["below_10"] = bel
     out["shuffle_10"] = {str(s): Pcg32(s).shuffle(range(10)) for s in seeds}
     out["purposes"] = PURPOSES
-    out["child_seed"] = {str(s): {p: child_seed(s, i) for p, i in PURPOSES.items()} for s in seeds}
-    out["stream_next_u32"] = {str(s): {p: [g.next_u32() for _ in range(4)] for p in PURPOSES for g in [stream(s, p)]} for s in seeds}
+    out["child_seed"] = {
+        str(s): {p: child_seed(s, i) for p, i in PURPOSES.items()} for s in seeds
+    }
+    out["stream_next_u32"] = {
+        str(s): {
+            p: [g.next_u32() for _ in range(4)]
+            for p in PURPOSES
+            for g in [stream(s, p)]
+        }
+        for s in seeds
+    }
     return out
 
 

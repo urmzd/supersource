@@ -45,11 +45,28 @@ SHEET_SECTIONS = {
     "Uses": 10,
     "Distribution and maintenance": 15,
 }
-THIRD_SECTIONS = {"Provenance": 25, "License": 5, "Intended use": 10, "Evaluation": 10, "Limitations": 15}
-DETAILS = ("Developer", "Architecture", "Training", "Release", "Third-party components", "License")
+THIRD_SECTIONS = {
+    "Provenance": 25,
+    "License": 5,
+    "Intended use": 10,
+    "Evaluation": 10,
+    "Limitations": 15,
+}
+DETAILS = (
+    "Developer",
+    "Architecture",
+    "Training",
+    "Release",
+    "Third-party components",
+    "License",
+)
 PLACEHOLDER = re.compile(r"\b(TODO|TBD|FIXME|XXX)\b|<[a-z][^<>\n]*>")
-INTERVAL = re.compile(r"(-?\d+(?:\.\d+)?)\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)")
-SPDX = re.compile(r"\b(Apache-2\.0|MIT|BSD-[23]-Clause|CC0-1\.0|CC-BY(?:-SA)?-4\.0|ODC-By-1\.0|CDLA-(?:Sharing|Permissive)-[12]\.0|LicenseRef-[A-Za-z0-9.-]+)\b")
+INTERVAL = re.compile(
+    r"(-?\d+(?:\.\d+)?)\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)"
+)
+SPDX = re.compile(
+    r"\b(Apache-2\.0|MIT|BSD-[23]-Clause|CC0-1\.0|CC-BY(?:-SA)?-4\.0|ODC-By-1\.0|CDLA-(?:Sharing|Permissive)-[12]\.0|LicenseRef-[A-Za-z0-9.-]+)\b"
+)
 UPSTREAM = "HuggingFaceTB/SmolLM2-135M-Instruct"
 
 
@@ -80,8 +97,14 @@ def need_sections(path: Path, want: dict[str, int]) -> dict[str, str]:
     sec = sections(path.read_text(encoding="utf-8"))
     name = path.relative_to(REPO)
     missing = [h for h in want if h not in sec]
-    assert not missing, f"{name} has no `## {missing[0]}` section (needs: {', '.join(want)})"
-    thin = [f"{h} ({words(sec[h])} of {n} words)" for h, n in want.items() if words(sec[h]) < n]
+    assert not missing, (
+        f"{name} has no `## {missing[0]}` section (needs: {', '.join(want)})"
+    )
+    thin = [
+        f"{h} ({words(sec[h])} of {n} words)"
+        for h, n in want.items()
+        if words(sec[h]) < n
+    ]
     assert not thin, f"{name}: sections too short to say anything: {', '.join(thin)}"
     return sec
 
@@ -96,7 +119,13 @@ def table(body: str) -> list[list[str]]:
 
 
 def bullet(body: str, label: str) -> str:
-    m = re.search(r"^\s*[-*]\s+\*\*" + re.escape(label) + r":?\*\*:?\s*(.+?)(?=^\s*[-*]\s+\*\*|\Z)", body, re.M | re.S)
+    m = re.search(
+        r"^\s*[-*]\s+\*\*"
+        + re.escape(label)
+        + r":?\*\*:?\s*(.+?)(?=^\s*[-*]\s+\*\*|\Z)",
+        body,
+        re.M | re.S,
+    )
     return " ".join(m.group(1).split()) if m else ""
 
 
@@ -127,7 +156,9 @@ def test_no_template_placeholders():
         text = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.S)
         for i, line in enumerate(text.splitlines(), 1):
             m = PLACEHOLDER.search(line)
-            assert not m, f"{path.relative_to(REPO)}:{i}: template placeholder {m.group(0)!r} left in"
+            assert not m, (
+                f"{path.relative_to(REPO)}:{i}: template placeholder {m.group(0)!r} left in"
+            )
 
 
 def test_model_details_fields():
@@ -137,9 +168,13 @@ def test_model_details_fields():
     # KIND: unit
     body = sections(CARD.read_text(encoding="utf-8"))["Model details"]
     missing = [d for d in DETAILS if not bullet(body, d)]
-    assert not missing, f"Model details needs a `- **{missing[0]}:** ...` bullet (all of: {', '.join(DETAILS)})"
+    assert not missing, (
+        f"Model details needs a `- **{missing[0]}:** ...` bullet (all of: {', '.join(DETAILS)})"
+    )
     lic = bullet(body, "License")
-    assert SPDX.search(lic), f"the License bullet must name an SPDX id (Apache-2.0, MIT, ...), got {lic!r}"
+    assert SPDX.search(lic), (
+        f"the License bullet must name an SPDX id (Apache-2.0, MIT, ...), got {lic!r}"
+    )
 
 
 def test_intended_and_out_of_scope_uses():
@@ -150,7 +185,9 @@ def test_intended_and_out_of_scope_uses():
     body = sections(CARD.read_text(encoding="utf-8"))["Intended use"]
     for label in ("Primary uses", "Out of scope"):
         b = bullet(body, label)
-        assert words(b) >= 8, f"Intended use needs a `- **{label}:**` bullet of at least 8 words, got {b!r}"
+        assert words(b) >= 8, (
+            f"Intended use needs a `- **{label}:**` bullet of at least 8 words, got {b!r}"
+        )
 
 
 def test_evaluation_table_has_intervals():
@@ -161,11 +198,18 @@ def test_evaluation_table_has_intervals():
     # KIND: unit
     body = sections(CARD.read_text(encoding="utf-8"))["Evaluation"]
     rows = table(body)
-    assert rows and [c.lower() for c in rows[0][:4]] == ["suite", "metric", "value (95% ci)", "release threshold"], (
+    assert rows and [c.lower() for c in rows[0][:4]] == [
+        "suite",
+        "metric",
+        "value (95% ci)",
+        "release threshold",
+    ], (
         "Evaluation needs the template's table: | Suite | Metric | Value (95% CI) | Release threshold |"
     )
     data = [r for r in rows[1:] if len(r) >= 4]
-    assert len(data) >= 3, f"Evaluation lists {len(data)} rows; report at least quality, safety, and bias"
+    assert len(data) >= 3, (
+        f"Evaluation lists {len(data)} rows; report at least quality, safety, and bias"
+    )
     suites = {r[0].strip("`").lower() for r in data}
     for s in ("safety", "bias"):
         assert s in suites, f"Evaluation has no `{s}` row (the ethics.04 suites)"
@@ -174,10 +218,16 @@ def test_evaluation_table_has_intervals():
     )
     for r in data:
         m = INTERVAL.search(r[2])
-        assert m, f"row {r[0]} / {r[1]}: write the value as `value (lo, hi)`, got {r[2]!r}"
+        assert m, (
+            f"row {r[0]} / {r[1]}: write the value as `value (lo, hi)`, got {r[2]!r}"
+        )
         v, lo, hi = (float(x) for x in m.groups())
-        assert lo <= v <= hi, f"row {r[0]} / {r[1]}: the interval ({lo}, {hi}) does not contain {v}"
-        assert words(r[3]) >= 1, f"row {r[0]} / {r[1]}: say what threshold the release held it to"
+        assert lo <= v <= hi, (
+            f"row {r[0]} / {r[1]}: the interval ({lo}, {hi}) does not contain {v}"
+        )
+        assert words(r[3]) >= 1, (
+            f"row {r[0]} / {r[1]}: say what threshold the release held it to"
+        )
 
 
 def test_limitations_cite_measurements():
@@ -186,10 +236,16 @@ def test_limitations_cite_measurements():
     #      talk about both bias and safety.
     # KIND: unit
     body = sections(CARD.read_text(encoding="utf-8"))["Bias, risks, and limitations"]
-    assert INTERVAL.search(body), "Bias, risks, and limitations must cite a measured value with its interval: `x (lo, hi)`"
+    assert INTERVAL.search(body), (
+        "Bias, risks, and limitations must cite a measured value with its interval: `x (lo, hi)`"
+    )
     low = body.lower()
-    assert "bias" in low or "gap" in low or "stereotype" in low, "Bias, risks, and limitations says nothing about bias"
-    assert any(w in low for w in ("toxic", "refus", "safety", "harm")), "Bias, risks, and limitations says nothing about safety"
+    assert "bias" in low or "gap" in low or "stereotype" in low, (
+        "Bias, risks, and limitations says nothing about bias"
+    )
+    assert any(w in low for w in ("toxic", "refus", "safety", "harm")), (
+        "Bias, risks, and limitations says nothing about safety"
+    )
 
 
 def test_card_links_the_datasheet():
@@ -198,8 +254,12 @@ def test_card_links_the_datasheet():
     #      model back to its sources.
     # KIND: unit
     body = sections(CARD.read_text(encoding="utf-8"))["Data"]
-    assert re.search(r"\]\((?:\./)?DATASHEET\.md\)", body), "the Data section must link [DATASHEET.md](DATASHEET.md)"
-    assert SPDX.search(body), "the Data section must name the license of the training data (an SPDX id)"
+    assert re.search(r"\]\((?:\./)?DATASHEET\.md\)", body), (
+        "the Data section must link [DATASHEET.md](DATASHEET.md)"
+    )
+    assert SPDX.search(body), (
+        "the Data section must name the license of the training data (an SPDX id)"
+    )
 
 
 # -- the datasheet ------------------------------------------------------------------------------
@@ -211,13 +271,28 @@ def test_datasheet_sections():
     #      it, what it may be used for, and who maintains it.
     # KIND: unit
     sec = need_sections(SHEET, SHEET_SECTIONS)
-    first = next((x for x in SHEET.read_text(encoding="utf-8").splitlines() if x.startswith("# ")), "")
-    assert first.startswith("# Datasheet: "), f"DATASHEET.md's title must be `# Datasheet: <dataset> <version>`, got {first!r}"
+    first = next(
+        (
+            x
+            for x in SHEET.read_text(encoding="utf-8").splitlines()
+            if x.startswith("# ")
+        ),
+        "",
+    )
+    assert first.startswith("# Datasheet: "), (
+        f"DATASHEET.md's title must be `# Datasheet: <dataset> <version>`, got {first!r}"
+    )
     comp = sec["Composition"].lower()
-    assert "personal" in comp or "pii" in comp, "Composition must say what personal data the dataset holds (the PII scrub's findings)"
+    assert "personal" in comp or "pii" in comp, (
+        "Composition must say what personal data the dataset holds (the PII scrub's findings)"
+    )
     pre = sec["Preprocessing"].lower()
-    assert "dedup" in pre or "duplicat" in pre, "Preprocessing must say how duplicates were handled"
-    assert "contamina" in pre, "Preprocessing must say how the eval sets were kept out (decontamination)"
+    assert "dedup" in pre or "duplicat" in pre, (
+        "Preprocessing must say how duplicates were handled"
+    )
+    assert "contamina" in pre, (
+        "Preprocessing must say how the eval sets were kept out (decontamination)"
+    )
 
 
 def test_datasheet_sources_are_allowed():
@@ -225,14 +300,18 @@ def test_datasheet_sources_are_allowed():
     #      allowlist permits for training. A source under a refused or unknown
     #      license is a release blocker (dur.12, data.08), so it is one here.
     # KIND: unit
-    assert ALLOWLIST.is_file(), "docs/data/license-allowlist.toml is missing: finish ethics.01 first"
+    assert ALLOWLIST.is_file(), (
+        "docs/data/license-allowlist.toml is missing: finish ethics.01 first"
+    )
     allow = tomllib.loads(ALLOWLIST.read_text(encoding="utf-8")).get("allow", [])
     ok = {e.get("spdx") for e in allow if "train" in e.get("uses", [])}
     body = sections(SHEET.read_text(encoding="utf-8"))["Collection"]
     found = SPDX.findall(body)
     assert found, "Collection must give each source's license as an SPDX id"
     bad = sorted(set(found) - ok)
-    assert not bad, f"Collection lists {', '.join(bad)}, which your allowlist does not allow for train"
+    assert not bad, (
+        f"Collection lists {', '.join(bad)}, which your allowlist does not allow for train"
+    )
 
 
 # -- the third-party card ------------------------------------------------------------------------
@@ -244,7 +323,9 @@ def pinned_revision() -> str:
         f = line.split("\t")
         if f[0] == "smollm2-135m-instruct" and len(f) >= 7:
             return f[6].split("@", 1)[1]
-    raise AssertionError("smollm2-135m-instruct is not pinned in the course's fixtures/ASSETS.tsv")
+    raise AssertionError(
+        "smollm2-135m-instruct is not pinned in the course's fixtures/ASSETS.tsv"
+    )
 
 
 def test_third_party_model_labelled():
@@ -254,9 +335,17 @@ def test_third_party_model_labelled():
     # KIND: unit
     sec = need_sections(THIRD, THIRD_SECTIONS)
     text = THIRD.read_text(encoding="utf-8")
-    assert UPSTREAM in sec["Provenance"], f"Provenance must name the upstream repository {UPSTREAM}"
+    assert UPSTREAM in sec["Provenance"], (
+        f"Provenance must name the upstream repository {UPSTREAM}"
+    )
     rev = pinned_revision()
-    assert rev in sec["Provenance"], f"Provenance must give the pinned revision {rev} (course fixtures/ASSETS.tsv)"
-    assert "Apache-2.0" in sec["License"], "the License section must say Apache-2.0, the upstream license"
+    assert rev in sec["Provenance"], (
+        f"Provenance must give the pinned revision {rev} (course fixtures/ASSETS.tsv)"
+    )
+    assert "Apache-2.0" in sec["License"], (
+        "the License section must say Apache-2.0, the upstream license"
+    )
     low = text.lower()
-    assert "third-party" in low or "did not train" in low, "say plainly that this is a third-party model you did not train"
+    assert "third-party" in low or "did not train" in low, (
+        "say plainly that this is a third-party model you did not train"
+    )

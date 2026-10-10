@@ -1,8 +1,20 @@
-"""Why this exists: ensure the craft.16 learner evidence is present before the check can pass."""
+"""Reference evidence for the performance-regression bisect practice."""
+
 from pathlib import Path
 
+
+# WHY: a bisect without fixed workload, thresholds, and raw endpoint evidence can blame noise.
+# KIND: unit
 def test_artifact_paths_are_declared():
-    # KIND: unit
-    # WHY: course verification needs annotated tests for the declared learner evidence.
-    card = Path("course/modules/craft.16.toml").read_text()
-    assert 'artifacts =' in card
+    root = Path(__file__).resolve().parents[3]
+    artifact = (root / "course/ref/docs/maintenance/perf-bisect.md").read_text()
+    for required in (
+        "Workload",
+        "warm-up",
+        "median",
+        "git bisect run",
+        "Rollback",
+        "Owner",
+    ):
+        assert required.lower() in artifact.lower()
+    assert "15%" in artifact and "3 ms" in artifact

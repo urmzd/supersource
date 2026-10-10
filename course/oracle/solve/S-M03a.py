@@ -25,7 +25,13 @@ x, y, z, k, c, t = sp.symbols("x y z k c t")
 
 
 def mat(m: sp.Matrix) -> str:
-    return "[" + ", ".join("[" + ", ".join(str(v) for v in m.row(i)) + "]" for i in range(m.rows)) + "]"
+    return (
+        "["
+        + ", ".join(
+            "[" + ", ".join(str(v) for v in m.row(i)) + "]" for i in range(m.rows)
+        )
+        + "]"
+    )
 
 
 def vec(v) -> str:
@@ -61,7 +67,9 @@ def main() -> int:
     # ---- Gauss and LU
     (s1,) = sp.linsolve([x + 2 * y - 5, 3 * x + 4 * y - 6], [x, y])
     a["q1"] = vec(s1)
-    (s2,) = sp.linsolve([x + y + z - 6, 2 * x - y + z - 3, x + 2 * y - z - 2], [x, y, z])
+    (s2,) = sp.linsolve(
+        [x + y + z - 6, 2 * x - y + z - 3, x + 2 * y - z - 2], [x, y, z]
+    )
     a["q2"] = vec(s2)
     a["q3"] = mat(M([[1, 2, 3], [2, 4, 7]]).rref()[0])
     L, U = doolittle(M([[2, 1], [4, 5]]), pivot=False)
@@ -69,8 +77,11 @@ def main() -> int:
     L, U = doolittle(M([[1, 2], [3, 4]]), pivot=True)
     a["q6"], a["q7"] = mat(L), mat(U)
     a["q8"] = str(len(sp.linsolve([x + y - 1, x + y - 2], [x, y])))
-    ks = [kv for kv in sp.solve(sp.Matrix([[1, k], [k, 1]]).det(), k)
-          if sp.linsolve([x + kv * y - 1, kv * x + y - 1], [x, y]).free_symbols]
+    ks = [
+        kv
+        for kv in sp.solve(sp.Matrix([[1, k], [k, 1]]).det(), k)
+        if sp.linsolve([x + kv * y - 1, kv * x + y - 1], [x, y]).free_symbols
+    ]
     a["q9"] = "{" + ", ".join(str(v) for v in ks) + "}"
 
     # ---- span, basis, dimension
@@ -83,7 +94,9 @@ def main() -> int:
     a["q16"] = vec(M([[1, 1], [1, -1]]).solve(M([3, 5])))
     sym_basis = [M([[1, 0], [0, 0]]), M([[0, 0], [0, 1]]), M([[0, 1], [1, 0]])]
     a["q17"] = str(M([list(b) for b in sym_basis]).rank())
-    a["q18"] = "{" + ", ".join(str(v) for v in sp.solve(M([[1, c], [c, 4]]).det(), c)) + "}"
+    a["q18"] = (
+        "{" + ", ".join(str(v) for v in sp.solve(M([[1, c], [c, 4]]).det(), c)) + "}"
+    )
     a["q19"] = str(len(M([[1, 2, 3], [2, 4, 6]]).nullspace()))
 
     # ---- maps and rank-nullity
@@ -103,7 +116,12 @@ def main() -> int:
     assert A57.rank() == 4  # a concrete 5 x 7 matrix of rank 4
     a["q25"] = str(len(A57.nullspace()))
     T1 = lambda v: v + 1  # noqa: E731
-    a["q26"] = str(all(T1(v + w) == T1(v) + T1(w) and T1(3 * v) == 3 * T1(v) for v, w in ((1, 2), (0, 0)))).lower()
+    a["q26"] = str(
+        all(
+            T1(v + w) == T1(v) + T1(w) and T1(3 * v) == 3 * T1(v)
+            for v, w in ((1, 2), (0, 0))
+        )
+    ).lower()
     Tm, Sm = M([[0, 1], [1, 0]]), M([[2, 0], [0, 1]])
     a["q27"] = mat(Sm * Tm)
 
@@ -127,10 +145,14 @@ def main() -> int:
     a["q37"] = vec(next(vs[0] for lam, _, vs in A.eigenvects() if lam == lam_max))
     a["q38"] = str(M([[1, 2], [3, 4]]).charpoly(t).as_expr())
     a["q39"] = evs(M([[0, -1], [1, 0]]))
-    a["q40"] = str(sp.prod(lam**m for lam, m in M([[4, 1], [2, 3]]).eigenvals().items()))
+    a["q40"] = str(
+        sp.prod(lam**m for lam, m in M([[4, 1], [2, 3]]).eigenvals().items())
+    )
     a["q41"] = vec(A**10 * M([1, 1]))
     R = sp.Rational
-    a["q42"] = str(max(abs(v) for v in M([[R(1, 2), R(2, 5)], [R(2, 5), R(1, 2)]]).eigenvals()))
+    a["q42"] = str(
+        max(abs(v) for v in M([[R(1, 2), R(2, 5)], [R(2, 5), R(1, 2)]]).eigenvals())
+    )
     ev = sorted(A.eigenvals(), key=abs)
     a["q43"] = str(abs(ev[0] / ev[-1]))
 
