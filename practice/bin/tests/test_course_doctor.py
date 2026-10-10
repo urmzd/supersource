@@ -26,7 +26,14 @@ def test_pass_zero_needs_only_the_compilers(ss, tmp_path):
     assert "ready for pass 0" in out
     assert "docker" in out and "not installed" in out
     out = ss("doctor", "--pass", "1", rc=5, env={"PATH": path}).out
-    assert "missing for pass 1: docker, kubectl, kind, helm" in out
+    # /usr/bin is on the PATH, and CI runners ship docker and kubectl there:
+    # expect exactly the pass-1 tools this PATH lacks.
+    missing = [
+        t
+        for t in ("docker", "kubectl", "kind", "helm")
+        if not shutil.which(t, path=path)
+    ]
+    assert f"missing for pass 1: {', '.join(missing)}" in out
 
 
 def test_docker_allocation_from_pass_seven(ss, tmp_path):

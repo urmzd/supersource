@@ -140,7 +140,11 @@ def same(a, b) -> bool:
     if isinstance(a, float) or isinstance(b, float):
         return math.isclose(a, b, rel_tol=1e-12, abs_tol=1e-15)
     if isinstance(a, dict):
-        return isinstance(b, dict) and a.keys() == b.keys() and all(same(a[k], b[k]) for k in a)
+        return (
+            isinstance(b, dict)
+            and a.keys() == b.keys()
+            and all(same(a[k], b[k]) for k in a)
+        )
     if isinstance(a, list):
         return isinstance(b, list) and len(a) == len(b) and all(map(same, a, b))
     return a == b
