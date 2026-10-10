@@ -71,7 +71,7 @@ def test_reset_show_diff_tests(ss):
         "NotImplementedError"
         in (ss.learner / "python/tinyllm/demo/scale.py").read_text()
     )
-    assert "return scale(xs, 1.0 / total.value)" in ss("show", "M90.2", rc=0).out
+    assert "return scale(xs, 1.0 / total)" in ss("show", "M90.2", rc=0).out
     assert "spoiled" in (ss.learner / ".ss/verdicts.jsonl").read_text()
 
 

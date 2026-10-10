@@ -68,7 +68,7 @@ def scale(xs: list[float], k: float) -> list[float]: ...
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Forward | `M90.2` | l1 normalize through the c sum |
+| Forward | `M90.2` | l1 normalize |
 | Forward | `M90.3` | scale rejects non-finite factors |
 
 ## Going further

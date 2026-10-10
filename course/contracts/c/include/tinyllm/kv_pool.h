@@ -34,6 +34,9 @@
 #define TL_KV_FORMAT_V1 1u
 #define TL_KV_MAGIC "TLKV"        /* the first 4 bytes of an export envelope */
 #define TL_KV_ENVELOPE_HEADER 28u /* bytes before the first block record */
+/* The chained block hash is FNV-1a 64 (formats/kv-block.md, spec/pcg32.md). */
+#define TL_FNV1A64_OFFSET 0xCBF29CE484222325ull
+#define TL_FNV1A64_PRIME 0x00000100000001B3ull
 
 typedef struct tl_kv_pool tl_kv_pool;
 

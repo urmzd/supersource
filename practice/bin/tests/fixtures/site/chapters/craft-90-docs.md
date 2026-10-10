@@ -55,7 +55,7 @@ docs/demo.md, starting with a `# ` title
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `M90.2` | l1 normalize through the c sum |
+| Back | `M90.2` | l1 normalize |
 | Back | `ds.91` | mean over the compensated sum |
 | Back | `dur.91` | mean with an empty-input error |
 

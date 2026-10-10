@@ -166,8 +166,8 @@ def assemble(
     """A learner repo built from the reference: `ss course init`, `ss start`
     for every started kind (or just `only`), every unit as its current owner's
     reference with markers dropped, course/ref/primers into primers/ and
-    course/ref/docs into docs/ (markers dropped), then course/ref/entry and
-    course/ref/system.toml, committed with a conventional message."""
+    course/ref/docs into docs/ (markers dropped), then course/ref/entry, course/ref/system.toml, and
+    course/ref/solve, committed with a conventional message."""
     rc, out = _ss(env, "course", "init", "--name", "forge")
     if rc != 0:
         return False, "ss course init\n" + out
@@ -200,6 +200,11 @@ def assemble(
         engine_manifest.write_text(manifest)
     if (ref / "system.toml").is_file():
         shutil.copy2(ref / "system.toml", lr / "system.toml")
+    # Reference answers and proofs for solve and proof modules (never
+    # exported, D34), so milestones that require them (S-M07d for MS-P5,
+    # review.01 for MS-prod) see the same passes a learner would record.
+    if (ref / "solve").is_dir():
+        shutil.copytree(ref / "solve", lr / "solve", dirs_exist_ok=True)
     _lock(lr, env)
     rc, out = commit_all(lr, "feat: the reference system")
     if rc != 0:

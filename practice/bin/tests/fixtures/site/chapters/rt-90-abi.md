@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Module** | `rt.90` · build · C · Pass 1 · 20 min |
+| **Module** | `rt.90` · side · C · Pass 1 · 20 min |
 | **You build** | `c/src/runtime/abi.c`: `tl_abi_version`, `tl_status_str`, `tl_set_allocator`, `tl_alloc`, `tl_free` |
 | **Contract** | [`contracts/c/include/tinyllm/abi.h`](../course/contracts/c/include/tinyllm/abi.h) |
 | **Tests** | `course/tests/rt.90/` (what they check: section 4) |

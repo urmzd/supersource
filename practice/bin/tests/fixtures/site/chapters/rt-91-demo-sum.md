@@ -5,12 +5,12 @@
 
 | | |
 |---|---|
-| **Module** | `rt.91` · build · C · Pass 1 · 20 min |
+| **Module** | `rt.91` · side · C · Pass 1 · 20 min |
 | **You build** | `c/src/runtime/demo.c`: `tl_demo_sum_f32` and the `tl_demo_buf` constructor pair |
 | **Contract** | [`contracts/c/include/tinyllm/demo.h`](../course/contracts/c/include/tinyllm/demo.h) |
 | **Tests** | `course/tests/rt.91/` (what they check: section 4) |
 | **Needs** | `rt.90` |
-| **Used by** | `M90.2` |
+| **Used by** | none: a standalone C exercise (D39) |
 | **Optional depth** | none: this is a harness fixture |
 
 ## Key Takeaways
@@ -57,10 +57,10 @@ void tl_demo_buf_destroy(tl_demo_buf *b);
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
-| `hand_example` | unit | the chapter's worked example | M90.2 |
-| `null_out_is_einval` | boundary | a NULL out pointer is a caller bug that must be reported, not a crash | M90.2 |
-| `create_destroy_no_leak` | fault | every block create takes, destroy gives back (the counting allocator checks) | M90.2 |
-| `alloc_failure_is_clean` | fault | when the second allocation fails, the first must be freed | M90.2 |
+| `hand_example` | unit | the chapter's worked example | rt.91 |
+| `null_out_is_einval` | boundary | a NULL out pointer is a caller bug that must be reported, not a crash | rt.91 |
+| `create_destroy_no_leak` | fault | every block create takes, destroy gives back (the counting allocator checks) | rt.91 |
+| `alloc_failure_is_clean` | fault | when the second allocation fails, the first must be freed | rt.91 |
 
 ## 5. Pitfalls
 
@@ -73,7 +73,6 @@ void tl_demo_buf_destroy(tl_demo_buf *b);
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `rt.90` | demo abi: status codes, error slot, allocator hook |
-| Forward | `M90.2` | l1 normalize through the c sum |
 
 ## Going further
 

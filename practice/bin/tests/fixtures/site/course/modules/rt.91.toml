@@ -1,6 +1,6 @@
 id        = "rt.91"
 title     = "Demo float sum and owned buffer"
-kind      = "build"
+kind      = "side"
 lang      = ["c"]
 pass      = 1
 chapter   = "chapters/rt-91-demo-sum.md"

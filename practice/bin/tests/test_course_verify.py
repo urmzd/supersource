@@ -56,8 +56,12 @@ def test_verify_catches_tests_that_pass_on_the_stub(ss):
 
 
 def test_verify_catches_registry_annotation_and_helper_defects(ss):
-    toml = ss.course / "modules/rt.91.toml"
-    toml.write_text(toml.read_text().replace('used_by   = ["M90.2"]', "used_by   = []"))
+    toml = ss.course / "modules/M90.1.toml"
+    toml.write_text(
+        toml.read_text().replace(
+            'used_by   = ["M90.2", "M90.3"]', 'used_by   = ["M90.3"]'
+        )
+    )
     t = ss.course / "tests/M90.2/test_norm.py"
     t.write_text(
         t.read_text()
@@ -66,8 +70,8 @@ def test_verify_catches_registry_annotation_and_helper_defects(ss):
         + "\n\ndef test_extra():\n    # WHY: closeness without the frozen helper\n    # KIND: unit\n"
         "    assert np.allclose([1.0], [1.0])\n"
     )
-    out = ss("verify", "course", "rt.91", "M90.2", rc=1).out
-    assert "rt.91: used_by is missing ['M90.2']" in out
+    out = ss("verify", "course", "M90.1", "M90.2", rc=1).out
+    assert "M90.1: used_by is missing ['M90.2']" in out
     assert "test_all_zero_raises: missing `KIND:`" in out
     assert "asserts closeness without _lib.close (D35: frozen helpers only)" in out
     assert "course test `test_extra` is not named in beat 4" in out
@@ -93,12 +97,12 @@ def test_lint_catches_chapter_defects(ss):
     ch = ss.site / "chapters/m90-2-norm.md"
     text = ch.read_text()
     ch.write_text(
-        text.replace(
-            "| Back | `rt.91` | demo float sum and owned buffer |\n", ""
-        ).replace("## 5. Pitfalls", "## 5. Pitfalls \u2014 traps")
+        text.replace("| Back | `M90.1` | scale a vector |\n", "").replace(
+            "## 5. Pitfalls", "## 5. Pitfalls \u2014 traps"
+        )
     )
     out = ss("lint", rc=1).out
-    assert "beat 6 needs a Back row for rt.91" in out
+    assert "beat 6 needs a Back row for M90.1" in out
     assert "em dash (U+2014)" in out
     ch.write_text(
         text.replace(
@@ -130,14 +134,14 @@ def test_lint_flags_stale_modules_tsv_and_fixes_it(ss):
 
 
 def test_verify_changed_maps_files_to_modules(ss):
-    demo = ss.course / "ref/c/src/runtime/demo.c"
-    demo.write_text(
-        demo.read_text().replace(
-            "/* a float accumulator loses about sqrt(n) ulps */",
-            "/* double accumulator */",
+    abi = ss.course / "ref/c/src/runtime/abi.c"
+    abi.write_text(
+        abi.read_text().replace(
+            "/* c/src/runtime/abi.c (fixture rt.90) */",
+            "/* c/src/runtime/abi.c (fixture rt.90, touched) */",
         )
     )
-    ss.commit_site("touch rt.91 reference")
+    ss.commit_site("touch rt.90 reference")
     out = ss("verify", "course", "--changed", "HEAD~1", rc=0).out
-    assert "changed since HEAD~1: rt.91; dependents (smoke): M90.2, craft.90" in out
-    assert "smoke M90.2" in out
+    assert "changed since HEAD~1: rt.90; dependents (smoke): rt.91" in out
+    assert "smoke rt.91" in out

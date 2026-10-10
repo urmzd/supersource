@@ -141,7 +141,7 @@ def test_struct_layouts_match_abi_md(tmp_path):
     rows = re.findall(
         r"^\| `(tl_\w+)` \| (\d+) \| (.+) \|$", (C / "c/ABI.md").read_text(), re.M
     )
-    assert len(rows) == 9
+    assert len(rows) == 8  # tl_pcg32 left with the C RNG (M06.3 is Python only)
     lines = []
     for name, size, fields in rows:
         lines.append(f'  printf("{name} %zu\\n", sizeof({name}));')

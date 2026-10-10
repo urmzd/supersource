@@ -33,21 +33,15 @@ def test_blocked_then_ref_deps_is_assisted(ss):
     ss("start", "M90.2", rc=0)
     ss.implement("python/tinyllm/demo/norm.py")
     out = ss("check", "M90.2", rc=3).out
-    assert "BLOCKED M90.2 needs M90.1 (todo), rt.90 (todo), rt.91 (todo)" in out
+    assert "BLOCKED M90.2 needs M90.1 (todo)" in out
     out = ss("check", "M90.2", "--ref-deps", rc=0).out
-    assert (
-        "deps: M90.1 ref, rt.90 ref, rt.91 ref" in out
-        and "PASS M90.2 (assisted)" in out
-    )
+    assert "deps: M90.1 ref" in out and "PASS M90.2 (assisted)" in out
     v = ss.verdicts("M90.2")[-1]
-    assert v["assisted"] and v["sources"] == {
-        "M90.1": "ref",
-        "rt.90": "ref",
-        "rt.91": "ref",
-    }
+    assert v["assisted"] and v["sources"] == {"M90.1": "ref"}
     assert "assisted  M90.2" in ss("status", rc=0).out
     assert "does not depend on" in ss("check", "M90.2", "--ref-deps=ds.90", rc=5).out
-    ss("check", "M90.2", "--ref-deps=rt.90,rt.91", rc=3)  # M90.1 still not passing
+    # The C demo is a standalone module now: no Python module depends on it.
+    assert "does not depend on" in ss("check", "M90.2", "--ref-deps=rt.91", rc=5).out
 
 
 def test_upgrade_takes_over_and_supersedes(ss):

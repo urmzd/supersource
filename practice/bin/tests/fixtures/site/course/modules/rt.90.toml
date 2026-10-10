@@ -1,6 +1,6 @@
 id        = "rt.90"
 title     = "Demo ABI: status codes, error slot, allocator hook"
-kind      = "build"
+kind      = "side"
 lang      = ["c"]
 pass      = 1
 chapter   = "chapters/rt-90-abi.md"
