@@ -797,6 +797,7 @@ B3 group 1 (M01.1, M01.2, M02.1, M01.3, M02.2, M04.1, M04.2):
 | B92-13 | No `[learner_tests]` for L10.6 to L10.9, load.01, load.02 (as for L10.1 to L10.5): the R6 and R7 rungs of the serving modules are not graded yet. | Mutants exist for every module, so a grading section can be added without new mutants. |
 | B92-14 | L10.8's n-gram draft counts continuations in the request's own tokens (no trained n-gram model as L8.6's `NGramDraft` uses), and model drafts are out of scope; prompt lookup follows L8.6 exactly. | The catalog says "prompt-lookup and n-gram drafts over the request's context". |
 | B92-15 | Chapters 06 to 11 of `ml/08-tinyllm/p10-serving/` are not yet in that part's README chapters table. | The track README is another owner's; `ss lint --fix-index` regenerates the table. |
+| B92-16 | The engine serves `course/fixtures/L7.9/tiny-llama-2l-1k` in PR CI: the weights of `tiny-llama-2l` with `max_position_embeddings` 1024 instead of 256 (`course/oracle/L7.9/tiny_llama_1k.py`). | A tool request's prompt carries the tool's JSON schema and the call format; with the byte tokenizer it is about 470 tokens, and the `tools.*` cases ask for up to 64 more. Even a minimal schema line and call format exceed the 192 tokens 256 positions leave, so the prompt cannot shrink to fit without dropping the schema the case tests. The model uses RoPE, so the same weights serve the longer context, and every fixture pinned to the original model keeps its 256. |
 
 ## B9 group B9-4: lang.11, gw.07, craft.20, MS-gateway, dep.01 to dep.03 (`B94`)
 

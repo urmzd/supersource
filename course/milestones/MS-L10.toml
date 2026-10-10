@@ -8,7 +8,9 @@
 # burst of 64 requests from your own load generator, reports its metrics in
 # the contract's names, keeps greedy output unchanged with prompt-lookup
 # speculation on, and answers a forced tool call with a schema-valid call.
-# PR CI runs on L7.9's committed tiny-llama-2l; the nightly step serves
+# PR CI runs on L7.9's committed tiny-llama-2l, in its 1024-position copy
+# tiny-llama-2l-1k (the same weights: a tool request's schema prompt is about
+# 470 byte tokens, past the original 256); the nightly step serves
 # SmolLM2-135M-Instruct (`ss fetch smollm2-135m-instruct`) and lets it choose
 # to call a tool.
 #
@@ -16,8 +18,8 @@
 #   [entry].engine        `--config {config}` (L10.5): your tl-serve main reads
 #                         runtime.toml; its [engine].model_dir is the model
 #   [services.engine]     config = a runtime.toml template serving
-#                         course/fixtures/L7.9/tiny-llama-2l as model "tiny"
-#                         ({fixture:L7.9/tiny-llama-2l} fills the path);
+#                         course/fixtures/L7.9/tiny-llama-2l-1k as model "tiny"
+#                         ({fixture:L7.9/tiny-llama-2l-1k} fills the path);
 #                         health = "http://127.0.0.1:{health_port}/healthz"
 #   [services.engine-spec]  the same template with
 #                         [engine].speculative = { draft = "prompt_lookup", k = 4 }
