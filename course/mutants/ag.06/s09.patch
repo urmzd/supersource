@@ -1,9 +1,9 @@
 --- a/go/agent/rag/store/store.go
 +++ b/go/agent/rag/store/store.go
-@@ -180,9 +180,7 @@
+@@ -175,9 +175,7 @@
+ // temporary name, fsynced, then renamed over the old one, so a reader never
  // sees half a file. It reports whether it wrote.
  func (x *Index) Save(now time.Time) (bool, error) {
- 	// SOLUTION-BEGIN ag.06
 -	if !x.dirty {
 -		return false, nil
 -	}

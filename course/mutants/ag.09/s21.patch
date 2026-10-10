@@ -1,9 +1,9 @@
 --- a/go/agent/eval/subject.go
 +++ b/go/agent/eval/subject.go
-@@ -182,7 +182,7 @@
+@@ -175,7 +175,7 @@
+ // longer than 128 bytes, the case part becomes the first 16 hex digits of
  // its SHA-256. The same case and sample always get the same id.
  func RunID(prefix, caseID string, sample int) string {
- 	// SOLUTION-BEGIN ag.09
 -	id := fmt.Sprintf("%s-%s-s%d", prefix, runIDUnsafe.ReplaceAllString(caseID, "_"), sample)
 +	id := fmt.Sprintf("%s-%s-s%d", prefix, caseID, sample)
  	if len(id) > 128 {

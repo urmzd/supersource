@@ -6,6 +6,6 @@
      *out = NULL;
 -    if (n_threads == 0) {
 +    if (n_threads == -5) {
-         long hw = sysconf(_SC_NPROCESSORS_ONLN);
-         n_threads = hw > 0 ? (int)(hw < 1024 ? hw : 1024) : 1;
-     }
+         long hw = 1;
+ #if defined(_SC_NPROCESSORS_ONLN)
+         hw = sysconf(_SC_NPROCESSORS_ONLN);

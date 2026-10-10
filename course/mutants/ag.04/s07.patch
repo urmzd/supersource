@@ -1,9 +1,9 @@
 --- a/go/agent/gate/sql.go
 +++ b/go/agent/gate/sql.go
-@@ -130,7 +130,7 @@
+@@ -125,7 +125,7 @@
+ // leadingToken is the first keyword, looking through opening parentheses
  // so "(SELECT 1) UNION (SELECT 2)" is a read.
  func leadingToken(masked string) string {
- 	// SOLUTION-BEGIN ag.04
 -	t := strings.TrimLeft(masked, "( \t\r\n")
 +	t := strings.TrimLeft(masked, " \t\r\n")
  	if f := strings.Fields(t); len(f) > 0 {
