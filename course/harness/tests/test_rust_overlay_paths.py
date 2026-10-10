@@ -20,8 +20,17 @@ def test_external_contract_path_is_rebased_for_ref_and_learner(tmp_path: Path):
         target_dir=tmp_path / "target",
     )
 
-    for root, origin in ((ref, course / "ref" / "rust" / "crates" / "tl-engine"),
-                         (learner / "rust", learner / "rust" / "crates" / "tl-engine")):
-        manifest = {"dependencies": {"tl-proto": {"path": "../../../../contracts/rust/tl-proto"}}}
+    for root, origin in (
+        (ref, course / "ref" / "rust" / "crates" / "tl-engine"),
+        (learner / "rust", learner / "rust" / "crates" / "tl-engine"),
+    ):
+        manifest = {
+            "dependencies": {
+                "tl-proto": {"path": "../../../../contracts/rust/tl-proto"}
+            }
+        }
         overlay._fix_paths(manifest, origin, root)
-        assert Path(manifest["dependencies"]["tl-proto"]["path"]) == overlay_contracts / "rust" / "tl-proto"
+        assert (
+            Path(manifest["dependencies"]["tl-proto"]["path"])
+            == overlay_contracts / "rust" / "tl-proto"
+        )

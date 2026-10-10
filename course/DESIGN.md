@@ -973,7 +973,7 @@ course/
     VERSION                      # {semver, sha, content_hash}
     c/include/tinyllm.h  c/include/tinyllm/*.h  c/ABI.md
     c/include/ss_test.h  ss_prop.h  ss_bench.h        # single-header C test kit (5.9)
-    py/tinyllm/**/*.pyi  py/tinyllm_rs.pyi  py/corpus/**/*.pyi
+    py/tinyllm/**/*.pyi  py/corpus/**/*.pyi
     rust/tl-contracts/           # traits, shared types, frozen assert_close helpers (D35)
     rust/tl-proto/               # prost + tonic output, committed (2.7)
     go/                          # module supersource.urmzd.com/tl/contracts: interfaces, testing helpers, gen/ (protoc output)
@@ -2140,7 +2140,7 @@ Learner Python units may import `pyarrow` and `zstandard` (listed for `corpus` i
 |---|---|---|---|---|---|---|---|
 | data.01 | Async fetch with resume, checksums, license capture (ledger rows) | `corpus/fetch.py` | lang.08 | `async def fetch(srcs: list[Source], dest: Path, *, concurrency=8, clock=...) -> Manifest` | data.02; `CorpusBuild` activity `fetch` | U, F (`flakyhttp` truncation resumes via `Range`; checksum mismatch is quarantined, not retried forever; rerun downloads nothing) | `{corpus} fetch --config {fixture:small-corpora/corpus/small.toml}` |
 | data.02 | Extract, normalize, quality filters (generator stages) | `corpus/stage.py`, `corpus/filter.py` | data.01 | `normalize_unicode`, `lang_filter(min_conf)`, `gopher_rules(...)`, `repetition_filter(n, max_frac)`, `ppl_filter(lm, max_ppl)` (any object with `perplexity`; C1 plugs in the L2.1 model), all `Stage` | data.03 | U per rule vs hand-labelled fixtures, C (golden in/out on 200 docs), I (an unbounded synthetic generator consumed through `islice` for 200k docs stays under a 50 MB `tracemalloc` peak) | `{corpus} run --until filter` |
-| data.03 | Exact dedup: paragraph hashes, Bloom screen, sort-merge confirm | `corpus/dedup.py` | data.02, ds.08 via `tinyllm_rs` | `exact_dedup(docs, bloom_bytes_per_item=10) -> Iterator[Doc]` | data.04 | I (zero false drops: every Bloom positive confirmed), C (fixture duplicate counts) | `{corpus} run --until dedup_exact` |
+| data.03 | Exact dedup: paragraph hashes, Bloom screen, sort-merge confirm | `corpus/dedup.py` | data.02, M06.3 (FNV-1a and SplitMix64 for a Python Bloom screen; parity with Rust ds.08 through `parity/bloom`) | `exact_dedup(docs, bloom_bytes_per_item=10) -> Iterator[Doc]` | data.04 | I (zero false drops: every Bloom positive confirmed), C (fixture duplicate counts) | `{corpus} run --until dedup_exact` |
 | data.04 | Near-dup MinHash + LSH + union-find, process-parallel; **decontamination** against protected eval and validation sets | `corpus/minhash.py` | data.03, M06.3, reading: S-M06b (Jaccard, S-curve) | `minhash(shingles, num_perm=128, seed) -> NDArray[uint64]`, `LSH(bands=16, rows=8)`, `clusters(...) -> list[set[str]]`, `decontaminate(docs, protected: Sequence[Path], n=13) -> Iterator[Doc]` | data.05 | S (unbiased estimator within CI; measured threshold matches `(1/b)^(1/r)` within 0.05), I (results invariant to worker count and seed-stable; no output document shares a 13-gram with a protected set; the dropped count is in the manifest) | `{corpus} run --until dedup_near --workers 4` |
 | data.05 | PII scrub with typed placeholders and audit spans | `corpus/pii.py` | data.04, reading: ethics.02 | `scrub(doc) -> tuple[Doc, list[PiiSpan]]` (email, phone, Luhn-valid card, IPv4/6, API-key shapes) | data.06, data.08 counts (gw.08 log redaction ports the detector list to Go) | C (labelled fixture: recall >= 0.98 on email and card, precision >= 0.95), U (lookalikes such as ISBNs and version strings give no false positives) | `{corpus} run --until pii` |
 | data.06 | Parquet shards, manifest, document-hash train/val split (uses `pyarrow`) | `corpus/shard.py` | data.05, reading: data-engineering/02 (columnar) | writer to `formats/corpus-shard.md` and `_MANIFEST.json` | data.07 | C (schema and manifest validation), I (no document crosses splits; output hash deterministic) | `{corpus} run --until shard` |
@@ -2815,7 +2815,7 @@ The runner first executes `[build].steps`, then starts services in dependency or
 
 | Suite (`course/conformance/parity/*.toml`) | Implementations | Mode | Equality |
 |---|---|---|---|
-| `tokenizer.bpe` | Python BPE (L1.2) vs Rust `tl-tok` via `tinyllm_rs` | golden (tiktoken GPT-2 ids, HF SmolLM2 ids) + live fuzz (Hypothesis text, 2k cases) | bit-exact ids |
+| `tokenizer.bpe` | Python BPE (L1.2) vs Rust `tl-tok` (L1.5), each run as its own process driver over shared fixture files | golden (tiktoken GPT-2 ids, HF SmolLM2 ids) + live fuzz (Hypothesis text, 2k cases) | bit-exact ids |
 | `rng` | Python (M06.3), Rust (L10.1), Go (load.01) | first 1024 outputs for seeds `0, 1, 2^63`, plus `uniform_f64` and Box-Muller normals | bit-exact |
 | `sampler` | Python L8.1 vs Rust L10.1 | the same fixture logits and seeds fed to both (never logits each side computed) | identical ids |
 | `matmul` | optional C L9.1 vs Python-generated golden outputs | golden | `abs err <= 4 * eps32 * sqrt(K) * max(abs(A) @ abs(B))` |
@@ -2823,7 +2823,7 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | `quant.int4`, `quant.fp8` | Python (M09.4, L8.5) vs optional C (M09.7, L9.5) | golden | packed bytes and dequant values bit-exact |
 | `kv.wire.v1`, `kv.wire.v2` (v2 from craft.13) | Rust writer vs Rust reader | golden blobs in the 2.9 envelope | byte-exact roundtrip |
 | `ring.hash` | Go ds.09 vs a Python reference map | golden key-to-node map | exact |
-| `bloom` | Rust `tl-ds` vs `tinyllm_rs` | golden bit arrays | exact |
+| `bloom` | Rust `tl-ds` (ds.08) vs the Python data.03 screen | golden bit arrays | exact |
 
 ### 5.9 Test frameworks
 
@@ -2838,7 +2838,7 @@ The runner first executes `[build].steps`, then starts services in dependency or
 
 ```bash
 # what ss check executes (WT = the supersource worktree at contracts/VERSION, OV = .ss/overlay/<ID>)
-PYTHONPATH="$TINYLLM_PYEXT_DIR:$OV/subst/python:$LEARNER/python" \
+PYTHONPATH="$OV/subst/python:$LEARNER/python" \
   uv run --project "$LEARNER/python" --with pytest --with pytest-randomly --with hypothesis --with "$ROOT/course/harness" \
   pytest -q -p no:cacheprovider -p randomly --randomly-seed="$SS_SEED" --hypothesis-profile=ss "$WT/course/tests/L5.1"
 GOWORK=$OV/go.work go test -count=1 -race supersource.urmzd.com/tl/coursetests/dur_06/...

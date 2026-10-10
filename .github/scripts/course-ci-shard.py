@@ -38,7 +38,10 @@ def layer_of(module: dict) -> str:
 
 def main() -> int:
     if len(sys.argv) != 2 or sys.argv[1] not in LAYERS:
-        print(f"usage: {Path(sys.argv[0]).name} <{'|'.join(sorted(LAYERS))}>", file=sys.stderr)
+        print(
+            f"usage: {Path(sys.argv[0]).name} <{'|'.join(sorted(LAYERS))}>",
+            file=sys.stderr,
+        )
         return 2
     wanted = sys.argv[1]
     rows = []

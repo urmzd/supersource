@@ -5,7 +5,6 @@ Each worked example in a format or spec page is recomputed here by an
 independent implementation written from the page's rules, so a wrong hex dump
 or a wrong number in a page fails a test (DESIGN 2.4 to 2.16, 3.2)."""
 
-import ast
 import json
 import math
 import os

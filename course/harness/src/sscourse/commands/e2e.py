@@ -194,8 +194,8 @@ def assemble(
     if engine_manifest.is_file():
         manifest = engine_manifest.read_text()
         manifest = manifest.replace(
-            '../../../../contracts/rust/tl-proto',
-            '../../../contracts/rust/tl-proto',
+            "../../../../contracts/rust/tl-proto",
+            "../../../contracts/rust/tl-proto",
         )
         engine_manifest.write_text(manifest)
     if (ref / "system.toml").is_file():

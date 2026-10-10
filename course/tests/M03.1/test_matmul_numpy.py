@@ -71,13 +71,18 @@ def test_transpose_scaling_and_empty_inner_dimension() -> None:
     a = np.array([[1, 2, 3]], np.float32)
     bt = np.array([[7, 9, 11], [8, 10, 12]], np.float32)
     c = np.full((1, 2), 2, np.float32)
-    assert matmul_f32(a, bt, trans_b=True, alpha=2, beta=0.5, c=c).tolist() == [[117, 129]]
+    assert matmul_f32(a, bt, trans_b=True, alpha=2, beta=0.5, c=c).tolist() == [
+        [117, 129]
+    ]
     empty_a = np.empty((2, 0), np.float32)
     empty_b = np.empty((0, 3), np.float32)
     empty = matmul_f32(empty_a, empty_b)
     assert empty.shape == (2, 3) and np.array_equal(empty, np.zeros((2, 3), np.float32))
     prior = np.full((2, 3), 3, np.float32)
-    assert np.array_equal(matmul_f32(empty_a, empty_b, beta=0.5, c=prior), np.full((2, 3), 1.5, np.float32))
+    assert np.array_equal(
+        matmul_f32(empty_a, empty_b, beta=0.5, c=prior),
+        np.full((2, 3), 1.5, np.float32),
+    )
 
 
 def test_beta_zero_does_not_read_nan_c() -> None:
@@ -97,4 +102,8 @@ def test_invalid_output_shape_is_rejected() -> None:
     # CATCHES: s08
     # CHAPTER: M03.1 section 2
     with pytest.raises(ValueError, match="shape"):
-        matmul_f32(np.ones((2, 3), np.float32), np.ones((3, 4), np.float32), c=np.ones((2, 3), np.float32))
+        matmul_f32(
+            np.ones((2, 3), np.float32),
+            np.ones((3, 4), np.float32),
+            c=np.ones((2, 3), np.float32),
+        )

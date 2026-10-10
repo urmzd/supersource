@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import platform
 import re
 import shutil
 import tomllib

@@ -333,7 +333,10 @@ def test_adr_0001_records_the_language_boundaries(repo: Path) -> None:
     text = prose(p.read_text())
     missing = [
         w
-        for w, pat in (("file exchange", r"\b(file|safetensors)\b"), ("HTTP", r"\bHTTP\b"))
+        for w, pat in (
+            ("file exchange", r"\b(file|safetensors)\b"),
+            ("HTTP", r"\bHTTP\b"),
+        )
         if not re.search(pat, text)
     ]
     if missing:

@@ -185,9 +185,7 @@ def test_gpt2_golden(tmp_path):
     # CHAPTER: data.07 section 4, What the tests check
     cases = gpt2_cases()
     m = corpus(tmp_path, [c["text"] for c in cases], val_permille=0)
-    tm = tokenize_shards(
-        m, GPT2, tmp_path / "t", tokenizer_id="gpt2", doc_sep_id=50256
-    )
+    tm = tokenize_shards(m, GPT2, tmp_path / "t", tokenizer_id="gpt2", doc_sep_id=50256)
     want = []
     for c in cases:  # ids a:0000 .. a:0299 sort in input order
         want += [50256] + c["ids"]
@@ -394,12 +392,8 @@ def test_output_is_deterministic(tmp_path):
     # CHAPTER: data.07 section 2, Principles
     cases = gpt2_cases()
     m = corpus(tmp_path, [c["text"] for c in cases] * 4, val_permille=200)
-    tokenize_shards(
-        m, GPT2, tmp_path / "a", tokenizer_id="gpt2", doc_sep_id=50256
-    )
-    tokenize_shards(
-        m, GPT2, tmp_path / "b", tokenizer_id="gpt2", doc_sep_id=50256
-    )
+    tokenize_shards(m, GPT2, tmp_path / "a", tokenizer_id="gpt2", doc_sep_id=50256)
+    tokenize_shards(m, GPT2, tmp_path / "b", tokenizer_id="gpt2", doc_sep_id=50256)
     for p in sorted((tmp_path / "a").iterdir()):
         assert p.read_bytes() == (tmp_path / "b" / p.name).read_bytes(), p.name
 
