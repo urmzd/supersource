@@ -1,6 +1,6 @@
 # Role Paths
 
-A path is a reading order for one job, cut across the tracks. The tracks stay where they are and own their content; a path only decides **which chapters, in what order, and what "done" means** for that role. Nothing is copied, so a chapter fixed in its track is fixed in every path that uses it.
+A path is a reading order for one job, cut across the tracks. The [course](course/) is the one path that also builds a system: its stages carry a check column that `ss check`, `ss milestone`, and `ss drill` grade. The tracks stay where they are and own their content; a path only decides **which chapters, in what order, and what "done" means** for that role. Nothing is copied, so a chapter fixed in its track is fixed in every path that uses it.
 
 Paths compose. Six **part** paths each cover one slice of the work and stand on their own for a narrower role; the **Superstar FDE** path includes all six and adds a capstone. Progress made in a part counts in every path that includes it.
 
@@ -16,6 +16,7 @@ flowchart LR
 
 | Path | For | Stages |
 |------|-----|--------|
+| [course](course/) | The end-to-end course: build your own LLM system in Python, C, Rust, and Go, pass by pass ([Pass 0](course-p00-setup/), [Pass 1](course-p01-tracer/) so far) | 21 |
 | [superstar-fde](superstar-fde/) | Forward deployed engineer at an inference and fine-tuning cloud, end to end: all six parts plus a capstone | 25 |
 | [llm-foundations](llm-foundations/) | Anyone new to LLMs: history, transformer math, architecture variants | 3 |
 | [frameworks-and-models](frameworks-and-models/) | ML engineer onboarding: PyTorch, JAX, Keras 3, loading from the Hub | 2 |
@@ -49,7 +50,7 @@ Each path also builds into its own PDF (`supersource-<path>.pdf`): CI attaches e
    @other-path
    ```
 
-   Files are repo-relative markdown, read in the order listed. A line `@other-path` includes every stage of that path at that point. Lines starting with `#` are comments. "Done when" is a checkable outcome (you built, measured, wrote, or explained something), not "read the chapter".
-3. Content belongs in a track, even when only one path uses it today. A path directory holds only its manifest, its README, and material that is about the path itself, such as a capstone.
+   Files are repo-relative markdown, read in the order listed. A line `@other-path` includes every stage of that path at that point. Lines starting with `#` are comments. The fifth column is `module:<ID>`, `milestone:<ID>`, `drill:<ID>`, or `-` for a manual stage. "Done when" is a checkable outcome (you built, measured, wrote, or explained something), not "read the chapter".
+3. Content belongs in a track, even when only one path uses it today. A path directory holds only its manifest, its README, and material that is about the path itself, such as a course pass intro or milestone page. (The Superstar FDE capstone now lives with the content it applies, in `field-engineering/08-mock-engagement/`.)
 4. Run `practice/bin/ss learn --verify`. CI runs it too: a missing file, an unknown include, or an include cycle fails the build.
 5. Add `outputs/supersource-<name>.pdf` to `sr.yaml` under `packages[].artifacts` so releases attach it.

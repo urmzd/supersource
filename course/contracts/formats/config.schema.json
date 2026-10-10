@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config.json",
+  "description": "A model directory's config.json: Hugging Face LlamaConfig keys plus tl_* extensions (formats/safetensors.md, formats/tokenizer.md). Unknown keys are allowed, so an HF config loads unchanged. A config without tl_arch must have model_type 'llama' and means tl_arch 'llama'. Each architecture's required keys are added by the module that introduces it.",
+  "type": "object",
+  "required": ["vocab_size"],
+  "properties": {
+    "tl_arch": {
+      "description": "Model family. Every value loads through the L6.7 zoo dispatch; the Rust engine serves bigram and llama.",
+      "enum": ["bigram", "ngram", "nplm", "word2vec", "rnnlm", "seq2seq", "transformer", "gpt", "bert", "electra", "llama", "elmo", "t5"]
+    },
+    "tl_tokenizer": {
+      "description": "bytes: the identity byte tokenizer, no tokenizer file (D32). file: tokenizer.json (or tinyllm_char.json) in the model directory. Default file.",
+      "enum": ["bytes", "file"],
+      "default": "file"
+    },
+    "tl_format": {
+      "description": "Checkpoint format version. Default 1.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "tl_cell": {"enum": ["rnn", "lstm", "gru"]},
+    "tl_attention": {"enum": ["mha", "gqa", "mqa", "mla"]},
+    "tl_mla_rank": {"type": "integer", "minimum": 1},
+    "tl_sliding_window": {"type": ["integer", "null"], "minimum": 1},
+    "tl_sink_tokens": {"type": "integer", "minimum": 0},
+    "tl_num_experts": {"type": "integer", "minimum": 1},
+    "tl_top_k_experts": {"type": "integer", "minimum": 1},
+    "tl_pos": {"enum": ["rope", "yarn", "alibi", "learned", "sinusoidal"]},
+
+    "architectures": {"type": "array", "items": {"type": "string"}},
+    "model_type": {"type": "string"},
+    "vocab_size": {"type": "integer", "minimum": 1},
+    "hidden_size": {"type": "integer", "minimum": 1},
+    "intermediate_size": {"type": "integer", "minimum": 1},
+    "num_hidden_layers": {"type": "integer", "minimum": 1},
+    "num_attention_heads": {"type": "integer", "minimum": 1},
+    "num_key_value_heads": {"type": "integer", "minimum": 1},
+    "head_dim": {"type": "integer", "minimum": 1},
+    "max_position_embeddings": {"type": "integer", "minimum": 1},
+    "rms_norm_eps": {"type": "number", "exclusiveMinimum": 0},
+    "rope_theta": {"type": "number", "exclusiveMinimum": 0},
+    "rope_scaling": {"type": ["object", "null"]},
+    "hidden_act": {"type": "string"},
+    "tie_word_embeddings": {"type": "boolean"},
+    "bos_token_id": {"type": ["integer", "null"], "minimum": 0},
+    "eos_token_id": {
+      "anyOf": [
+        {"type": "integer", "minimum": 0},
+        {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        {"type": "null"}
+      ]
+    },
+    "torch_dtype": {"type": "string"}
+  },
+  "allOf": [
+    {
+      "description": "tl_arch is set, or the config is a plain HF Llama config.",
+      "anyOf": [
+        {"required": ["tl_arch"]},
+        {"required": ["model_type"], "properties": {"model_type": {"const": "llama"}}}
+      ]
+    },
+    {
+      "description": "The byte tokenizer has exactly 256 ids.",
+      "anyOf": [
+        {"not": {"required": ["tl_tokenizer"], "properties": {"tl_tokenizer": {"const": "bytes"}}}},
+        {"properties": {"vocab_size": {"const": 256}}}
+      ]
+    },
+    {
+      "description": "An nplm config names its context, embedding width, hidden width, and direct-connection flag (L2.2).",
+      "anyOf": [
+        {"not": {"required": ["tl_arch"], "properties": {"tl_arch": {"const": "nplm"}}}},
+        {"required": ["tl_context", "tl_d_emb", "hidden_size", "tl_direct"]}
+      ]
+    },
+    {
+      "description": "A llama config (tl_arch llama, or no tl_arch) names its dimensions.",
+      "anyOf": [
+        {"required": ["tl_arch"], "not": {"properties": {"tl_arch": {"const": "llama"}}}},
+        {"required": ["hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads"]}
+      ]
+    }
+  ],
+  "examples": [
+    {"tl_arch": "bigram", "tl_tokenizer": "bytes", "vocab_size": 256, "tl_format": 1}
+  ]
+}

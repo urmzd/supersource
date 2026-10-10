@@ -6,7 +6,7 @@
   - [Kubernetes documentation](https://kubernetes.io/docs/) -- free, authoritative
   - [The Twelve-Factor App](https://12factor.net/) -- free, the contract a container must honor
 - **Supplementary**: *Cloud Native DevOps with Kubernetes* 2nd ed. (recommended), [Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) (free), [OCI Image Spec](https://github.com/opencontainers/image-spec) (free), [KEDA docs](https://keda.sh/) (free)
-- **Prerequisites**: Linux basics, [Concurrency & Systems](../../algorithms/12-concurrency-systems/), [Diagramming & the C4 Model](../../diagramming-and-documentation/01-diagramming-c4/) (the deployment view)
+- **Prerequisites**: Linux basics, [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/), [Diagramming & the C4 Model](../../software-craftsmanship/05-diagramming-c4/) (the deployment view)
 - **Estimated time**: 1-2 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -28,7 +28,7 @@
 
 ## Core Insight
 
-Kubernetes is not a deploy tool; it is a **control system**. You write down the desired state of the world (3 replicas, this image, this much memory) and a set of controllers run an endless loop: *observe actual state → diff against desired → act to close the gap*. A pod dies → the loop notices → it makes a new one. You change the image → the loop rolls pods one at a time. Once you see everything as this loop, the platform stops being magic -- and you can draw it honestly (the [C4 deployment view](../../diagramming-and-documentation/01-diagramming-c4/)).
+Kubernetes is not a deploy tool; it is a **control system**. You write down the desired state of the world (3 replicas, this image, this much memory) and a set of controllers run an endless loop: *observe actual state → diff against desired → act to close the gap*. A pod dies → the loop notices → it makes a new one. You change the image → the loop rolls pods one at a time. Once you see everything as this loop, the platform stops being magic -- and you can draw it honestly (the [C4 deployment view](../../software-craftsmanship/05-diagramming-c4/)).
 
 ```mermaid
 graph LR
@@ -62,7 +62,7 @@ A container is a Linux process isolated by **namespaces** (its own view of PIDs,
 | **Job / CronJob** | Run-to-completion / scheduled batch | nightly reconciliation |
 | **HPA / KEDA ScaledObject** | Autoscaling controllers (§5) | scale workers on lag |
 
-The [C4 deployment view](../../diagramming-and-documentation/01-diagramming-c4/) maps directly onto these:
+The [C4 deployment view](../../software-craftsmanship/05-diagramming-c4/) maps directly onto these:
 
 ![Streamflow on Kubernetes](diagrams/deployment-k8s.svg)
 
@@ -70,7 +70,7 @@ The [C4 deployment view](../../diagramming-and-documentation/01-diagramming-c4/)
 
 This is *the* axis that decides how a workload is deployed, scaled, and operated -- get it wrong and nothing else in this topic saves you. "Stateful vs stateless" is not about whether the process *does* work; it is about **where the durable state lives**.
 
-- **Stateless (Deployment)** -- any pod is interchangeable; scale by adding identical replicas. The `api` and `order-worker` are stateless *even though they do real work* -- their state lives in Kafka/Postgres/Redis, not on local disk. That externalization is exactly what makes them trivially horizontally scalable (and is the precondition for the lag-based scaling in [Distributed Workers](../03-distributed-workers/)).
+- **Stateless (Deployment)** -- any pod is interchangeable; scale by adding identical replicas. The `api` and `order-worker` are stateless *even though they do real work* -- their state lives in Kafka/Postgres/Redis, not on local disk. That externalization is exactly what makes them trivially horizontally scalable (and is the precondition for the lag-based scaling in [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/)).
 - **Stateful (StatefulSet)** -- pods have stable network identities (`kafka-0`, `kafka-1`) and their own persistent volumes, with ordered rollout. Needed for the systems that *are* the state: brokers and databases. **Caveat:** running stateful systems on K8s is genuinely hard (storage classes, backups, leader failover, rebalancing) -- many teams run Kafka/Postgres as managed services and keep only stateless workloads in the cluster. Know the tradeoff before you volunteer to operate a Kafka StatefulSet; the coordination cost behind it is unpacked in [Messaging & Distributed Queueing](../02-messaging-and-queueing/).
 - **Rule of thumb:** push every byte of state you can into a managed datastore so your own services stay stateless. Reserve StatefulSets for the data systems that have no stateless form.
 
@@ -83,7 +83,7 @@ This is where outages come from. Each has a one-line fix and a painful failure m
   - *Readiness* = "can I serve traffic now?" Fail it → removed from the Service, **not restarted**. Use during startup and when a dependency is down.
   - *Liveness* = "am I wedged and need a restart?" Fail it → **killed and restarted**.
   - The classic outage: a liveness probe that checks a *downstream dependency*. The dependency blips, every pod fails liveness, the whole Deployment restart-loops, and a minor blip becomes a full outage. Liveness probes must check *only the pod itself*.
-- **Graceful shutdown / SIGTERM.** On scale-down or rollout, K8s sends `SIGTERM`, waits `terminationGracePeriodSeconds` (default 30s), then `SIGKILL`. A worker that ignores SIGTERM gets killed mid-message → duplicate or lost work. **You must trap SIGTERM**: stop accepting new work, finish in-flight messages, commit offsets, exit. ([Distributed Workers](../03-distributed-workers/) shows the consumer side.) Also: the pod is removed from the Service *asynchronously*, so handle in-flight requests during the drain with a `preStop` sleep.
+- **Graceful shutdown / SIGTERM.** On scale-down or rollout, K8s sends `SIGTERM`, waits `terminationGracePeriodSeconds` (default 30s), then `SIGKILL`. A worker that ignores SIGTERM gets killed mid-message → duplicate or lost work. **You must trap SIGTERM**: stop accepting new work, finish in-flight messages, commit offsets, exit. ([Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/) shows the consumer side.) Also: the pod is removed from the Service *asynchronously*, so handle in-flight requests during the drain with a `preStop` sleep.
 - **The image tag trap.** `image: app:latest` is non-deterministic -- two nodes can pull different bytes, and you can't roll back. Pin a digest or an immutable tag.
 - **PodDisruptionBudgets.** Without a PDB, a node drain (upgrade, autoscale-down) can evict *all* your replicas at once. Declare a PDB (`minAvailable`) so voluntary disruptions stay safe.
 - **Networking is flat but mediated.** Every pod gets an IP; pods reach each other directly, but you reach them through a Service (stable) not a pod IP (ephemeral). `NetworkPolicy` is *deny-by-nothing* by default -- without one, every pod can talk to every other pod.
@@ -113,7 +113,7 @@ graph TD
 - **Horizontal Pod Autoscaler (HPA)** -- adds/removes pod replicas based on CPU, memory, or custom metrics. Default for stateless web services. **Caveat for workers:** CPU is a *terrible* proxy for queue backlog -- a worker can be idle (low CPU) while millions of messages pile up.
 - **Vertical Pod Autoscaler (VPA)** -- right-sizes `requests`/`limits`. **Caveat:** don't run VPA and HPA on the *same* metric -- they fight. VPA usually requires a pod restart to apply.
 - **Cluster Autoscaler / Karpenter** -- when pods can't be scheduled (no node has room), add nodes; remove underused nodes. This is why "scaling pods" can be slow -- you may be waiting on a new VM to boot.
-- **KEDA (event-driven)** -- the right tool for queue workers. It scales the worker Deployment on **Kafka consumer-group lag** (or SQS depth, etc.), and can scale to **zero** when idle. This is how Streamflow scales: lag rises → KEDA raises replicas (capped at the partition count -- see [Distributed Workers](../03-distributed-workers/)) → Cluster Autoscaler adds nodes if needed.
+- **KEDA (event-driven)** -- the right tool for queue workers. It scales the worker Deployment on **Kafka consumer-group lag** (or SQS depth, etc.), and can scale to **zero** when idle. This is how Streamflow scales: lag rises → KEDA raises replicas (capped at the partition count -- see [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/)) → Cluster Autoscaler adds nodes if needed.
 
 The full scaling story for the worker is therefore: **KEDA watches lag → sets desired replicas (≤ partitions) → scheduler places pods → Cluster Autoscaler grows the node pool if pods are Pending → pods join the consumer group → a rebalance assigns them partitions → lag drains.** Every arrow is a place it can stall; that's why you draw it.
 
@@ -140,9 +140,9 @@ See the annotated manifests: [`deployment.yaml`](manifests/deployment.yaml), [`h
 |---------|-----------------|-----|
 | Orchestration, GitOps, patterns | [Cloud Native](../../systems/03-cloud-native/) | The broader cloud-native context |
 | Probes, autoscaling, SLOs | [Observability](../../systems/04-observability/) | You scale and alert on metrics |
-| Lag-based scaling, partitions | [Distributed Workers](../03-distributed-workers/) | KEDA scales on the consumer-group topology that topic explains |
+| Lag-based scaling, partitions | [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/) | KEDA scales on the consumer-group topology that topic explains |
 | Brokers, coordination, queue vs log | [Messaging & Distributed Queueing](../02-messaging-and-queueing/) | The stateful systems your stateless pods lean on |
-| Deployment diagrams | [Diagramming & the C4 Model](../../diagramming-and-documentation/01-diagramming-c4/) | The deployment view is what you operate |
+| Deployment diagrams | [Diagramming & the C4 Model](../../software-craftsmanship/05-diagramming-c4/) | The deployment view is what you operate |
 | Manifest/policy testing | [The Testing Mentality](../../software-craftsmanship/03-testing-mentality/) | Validate YAML before it reaches the cluster |
 
 ## Company Relevance
@@ -154,3 +154,18 @@ See the annotated manifests: [`deployment.yaml`](manifests/deployment.yaml), [`h
 | Anthropic | K8s + GPU orchestration for inference | Scaling stateless serving workers |
 | Netflix | Titus (custom) → K8s | Resilience, graceful degradation |
 | Any platform/SRE role | You own the caveats in §4 | Operability under failure |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `dep.00` | [Tracer deploy: engine and gateway images, kind cluster, two Helm charts, Jaeger all-in-one](00-tracer-deploy.md) | practice | 1 |
+| 2 | `dep.01` | [Dockerfiles for the gateway and the engine](01-dockerfiles-for-gateway-and-engine.md) | practice | 7 |
+| 3 | `dep.02` | [kind cluster + local registry + port mappings](02-kind-cluster-and-local-registry.md) | practice | 7 |
+| 4 | `dep.03` | [Helm charts for the gateway and the engine, plus the observability stack](03-helm-charts-and-observability-stack.md) | practice | 7 |
+| 5 | `dep.04` | [Tilt dev loop](04-tilt-dev-loop.md) | practice | 7 |
+| 6 | `dep.05` | [CI for the learner repo](05-ci-for-your-repo.md) | practice | 7 |
+| 7 | `dep.06` | [Durable and worker images and charts: WAL PVC, StatefulSet, KEDA autoscaling of workers](06-durable-and-worker-charts.md) | practice | 8 |
+| 8 | `dep.07` | [Agent image and chart](07-agent-image-and-chart.md) | practice | 10 |
+<!-- /ss:chapters -->

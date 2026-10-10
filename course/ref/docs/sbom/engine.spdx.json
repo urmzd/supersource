@@ -1,0 +1,49 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "tinyllm-engine-reference-sbom",
+  "documentNamespace": "https://example.invalid/spdx/tinyllm-engine-reference-2026-10-09",
+  "creationInfo": {
+    "creators": ["Tool: supersource-course-reference"],
+    "created": "2026-10-09T00:00:00Z",
+    "comment": "Reference example only. Release automation must replace this inventory with the exact image digest and resolved Cargo.lock packages."
+  },
+  "packages": [
+    {
+      "name": "tinyllm-engine",
+      "SPDXID": "SPDXRef-Package-Engine",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "APPLICATION"
+    },
+    {
+      "name": "anyhow",
+      "SPDXID": "SPDXRef-Package-Anyhow",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:cargo/anyhow"}]
+    },
+    {
+      "name": "serde_json",
+      "SPDXID": "SPDXRef-Package-SerdeJson",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:cargo/serde_json"}]
+    }
+  ],
+  "relationships": [
+    {"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES", "relatedSpdxElement": "SPDXRef-Package-Engine"},
+    {"spdxElementId": "SPDXRef-Package-Engine", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-Package-Anyhow"},
+    {"spdxElementId": "SPDXRef-Package-Engine", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-Package-SerdeJson"}
+  ]
+}

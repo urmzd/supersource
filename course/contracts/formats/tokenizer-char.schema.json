@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tinyllm_char.json",
+  "description": "The char tokenizer of L1.1 (formats/tokenizer.md). vocab[i] is the text of id i: one code point, or a special token's text; entries are unique.",
+  "type": "object",
+  "required": [
+    "type",
+    "vocab",
+    "specials"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "char"
+    },
+    "vocab": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "specials": {
+      "type": "object",
+      "required": [
+        "unk"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unk": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pad": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "type": "char",
+      "vocab": [
+        "<unk>",
+        "\n",
+        " ",
+        "a",
+        "b"
+      ],
+      "specials": {
+        "unk": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system.toml",
+  "description": "The learner's harness manifest (DESIGN 2.16), as the JSON value of the parsed TOML. It tells ss how to build the system, which argv runs each role of spec/cli-roles.md, which local services a milestone starts, and where the deployed system lives. String values may hold runner placeholders such as {port}, {config}, or {engine.port}.",
+  "type": "object",
+  "required": [
+    "system"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "system": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "course_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "The system's name. It prefixes Kubernetes objects and charts, so it is a DNS label.",
+          "type": "string",
+          "pattern": "^[a-z]([a-z0-9-]{0,30}[a-z0-9])?$"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "course_version": {
+          "description": "The contracts/VERSION semver the learner built against.",
+          "$ref": "#/$defs/semver"
+        }
+      }
+    },
+    "build": {
+      "description": "Run in order before any service starts; a failure aborts the milestone.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "$ref": "#/$defs/argvList"
+        }
+      }
+    },
+    "entry": {
+      "description": "One argv template per role (spec/cli-roles.md).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tinyllm": {
+          "$ref": "#/$defs/argv"
+        },
+        "corpus": {
+          "$ref": "#/$defs/argv"
+        },
+        "tl-tok": {
+          "$ref": "#/$defs/argv"
+        },
+        "engine": {
+          "$ref": "#/$defs/argv"
+        },
+        "gateway": {
+          "$ref": "#/$defs/argv"
+        },
+        "durable": {
+          "$ref": "#/$defs/argv"
+        },
+        "worker": {
+          "$ref": "#/$defs/argv"
+        },
+        "ctl": {
+          "$ref": "#/$defs/argv"
+        },
+        "loadgen": {
+          "$ref": "#/$defs/argv"
+        },
+        "agent": {
+          "$ref": "#/$defs/argv"
+        }
+      }
+    },
+    "services": {
+      "description": "Local processes the milestone runner starts, keyed by instance name. Ports are allocated per run.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/service"
+      }
+    },
+    "endpoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "api_base": {
+          "description": "The OpenAI base URL clients use, for example http://127.0.0.1:{gateway.port}/v1.",
+          "type": "string"
+        },
+        "api_key_env": {
+          "description": "The environment variable holding the API key. Default TL_API_KEY.",
+          "type": "string",
+          "pattern": "^[A-Z_][A-Z0-9_]*$",
+          "default": "TL_API_KEY"
+        },
+        "model": {
+          "description": "The model name conformance requests send. Default tracer.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ci": {
+      "description": "MS-P0 ci-status, used when the repo has no GitHub remote.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "local": {
+          "$ref": "#/$defs/argvList"
+        }
+      }
+    },
+    "deploy": {
+      "description": "The deployed system, for kind milestone steps and drills only.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kube_context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "gateway_url": {
+          "$ref": "#/$defs/url"
+        },
+        "gateway_health_url": {
+          "description": "Optional: where the gateway's health port is reachable from the host on kind. Without it, conformance on kind reports the healthz case pending.",
+          "$ref": "#/$defs/url"
+        },
+        "prometheus": {
+          "$ref": "#/$defs/url"
+        },
+        "traces": {
+          "description": "Trace query API: Jaeger (Pass 1, :30686) or Tempo (from Pass 7, :30320).",
+          "$ref": "#/$defs/url"
+        },
+        "services": {
+          "description": "Logical name to workload, as kubectl names it: deploy/<name> or statefulset/<name>.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^(deploy|deployment|statefulset|sts|daemonset|ds)/[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "url": {
+      "type": "string",
+      "pattern": "^https?://"
+    },
+    "argv": {
+      "description": "A command as an argv list: the program, then its arguments. Never a shell string.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "argvList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/argv"
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "description": "The [entry] role to run. Default: the service's own name.",
+          "enum": [
+            "tinyllm",
+            "corpus",
+            "tl-tok",
+            "engine",
+            "gateway",
+            "durable",
+            "worker",
+            "ctl",
+            "loadgen",
+            "agent"
+          ]
+        },
+        "section": {
+          "description": "The runtime.toml section whose listen keys get this instance's ports. Default: the service's own name.",
+          "enum": [
+            "gateway",
+            "engine",
+            "durable",
+            "worker",
+            "agent"
+          ]
+        },
+        "config": {
+          "description": "A runtime.toml template, relative to the repo root; the runner writes a filled copy per instance as {config}.",
+          "type": "string"
+        },
+        "health": {
+          "description": "URL polled until it answers 200. Default http://127.0.0.1:{health_port}/healthz.",
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "ready_timeout_s": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 60
+        },
+        "after": {
+          "description": "Services that must be healthy first.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "description": "Extra arguments appended to the entry argv for this instance.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "description": "Extra environment variables for this instance, typically TL_<SECTION>__<KEY> overrides of runtime.toml (for example TL_ENGINE__ROLE = \"decode\" for a decode engine sharing the engine template). Values may hold placeholders.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

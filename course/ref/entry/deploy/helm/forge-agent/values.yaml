@@ -1,0 +1,39 @@
+image:
+  repository: forge-agent
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+replicaCount: 1
+durableAddress: forge-durable:7233
+provider:
+  baseUrl: http://forge-gateway:8080
+  model: smollm2-135m-instruct
+  apiKey:
+    name: agent-provider
+    key: api-key
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+probes:
+  liveness:
+    path: /healthz
+    periodSeconds: 10
+  readiness:
+    path: /readyz
+    periodSeconds: 5
+pdb:
+  enabled: true
+  maxUnavailable: 0
+artifacts:
+  hostPath: /artifacts
+  mountPath: /artifacts
+env: []

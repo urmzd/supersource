@@ -1,0 +1,166 @@
+name: Nightly course verification
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  full-verify:
+    name: Full verify / ${{ matrix.layer }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+        layer: [math, spine, systems, operations]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: course/ref/go/go.mod
+          cache: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify the layer
+        run: |
+          python .github/scripts/course-ci-shard.py "${{ matrix.layer }}" > "$RUNNER_TEMP/module-ids.txt"
+          test -s "$RUNNER_TEMP/module-ids.txt"
+          xargs practice/bin/ss verify course --nightly < "$RUNNER_TEMP/module-ids.txt"
+
+  milestones-full:
+    name: Full nightly milestones
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: course/ref/go/go.mod
+          cache: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run nightly and full training milestones
+        run: |
+          python - <<'PY' > "$RUNNER_TEMP/milestones.txt"
+          import glob, tomllib
+          ids = {"MS-L3", "MS-L4", "MS-L6"}
+          for path in glob.glob("course/milestones/*.toml"):
+              data = tomllib.load(open(path, "rb"))
+              if data.get("ci") == "nightly":
+                  ids.add(data["id"])
+          print("\n".join(sorted(ids)))
+          PY
+          while IFS= read -r id; do
+            practice/bin/ss milestone "$id"
+          done < "$RUNNER_TEMP/milestones.txt"
+
+  hf-real:
+    name: Real weights and agent eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: course/ref/go/go.mod
+          cache: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Fetch pinned models
+        run: practice/bin/ss fetch smollm2-135m smollm2-135m-instruct
+      - name: Run real-weight parity, tool calls, and agent evaluation
+        run: |
+          practice/bin/ss milestone MS-L7
+          practice/bin/ss milestone MS-agent
+
+  train-smoke:
+    name: Capstone training smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: course/ref/go/go.mod
+          cache: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Train, evaluate, serve, and conform
+        run: practice/bin/ss milestone MS-C1 --smoke
+
+  kind-e2e:
+    name: Kind, observability, and rotating drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TL_API_KEY: tl_ci_kind_reference_key
+      COURSE_ROOT: ${{ github.workspace }}/course
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: course/ref/go/go.mod
+          cache: false
+      - uses: azure/setup-helm@v4
+      - uses: helm/kind-action@v1
+        with:
+          install_only: true
+      - name: Assemble and deploy the reference system
+        run: practice/bin/ss verify course --assemble "$RUNNER_TEMP/forge"
+      - name: Build and deploy engine, gateway, and observability
+        working-directory: ${{ runner.temp }}/forge
+        run: |
+          set -euo pipefail
+          make -C c
+          uv run --quiet --project python python python/tinyllm/__main__.py \
+            train bigram --data "$GITHUB_WORKSPACE/course/fixtures/MS-P1/corpus.txt" --out artifacts/models/bigram
+          docker build -f deploy/docker/engine.Dockerfile -t localhost:5001/forge-engine:0.1.0 .
+          docker build -f deploy/docker/gateway.Dockerfile -t localhost:5001/forge-gateway:0.1.0 .
+          docker push localhost:5001/forge-engine:0.1.0
+          docker push localhost:5001/forge-gateway:0.1.0
+          deploy/kind/up.sh
+          kubectl create namespace forge
+          kubectl create namespace observability
+          kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
+          kubectl -n forge create secret generic forge-gateway-pepper --from-literal=pepper="$(openssl rand -hex 32)"
+          helm dependency build deploy/keda
+          helm upgrade --install keda deploy/keda -n keda --create-namespace --wait --timeout 5m
+          helm dependency build deploy/observability
+          helm upgrade --install observability deploy/observability -n observability --wait --timeout 5m
+          kubectl -n forge apply -f deploy/observability/jaeger.yaml
+          helm upgrade --install forge-engine deploy/helm/forge-engine -n forge --set image.repository=localhost:5001/forge-engine --wait --timeout 5m
+          helm upgrade --install forge-gateway deploy/helm/forge-gateway -n forge --set image.repository=localhost:5001/forge-gateway --wait --timeout 5m
+      - name: Run kind milestones and one rotating drill
+        working-directory: ${{ runner.temp }}/forge
+        run: |
+          practice/bin/ss verify course --kind
+          python - <<'PY' > "$RUNNER_TEMP/drill-name"
+          from datetime import date
+          from pathlib import Path
+          import os
+          drills = sorted(p.parent.name for p in (Path(os.environ["COURSE_ROOT"]) / "drills").glob("*/drill.toml"))
+          if not drills:
+              raise SystemExit("no course drills found")
+          print(drills[(date.today().timetuple().tm_yday - 1) % len(drills)])
+          PY
+          day="$(date +%j)"
+          practice/bin/ss drill run "$(cat "$RUNNER_TEMP/drill-name")" --seed "$day" --respond --max-wait-s 900
+          curl --fail --silent --show-error http://127.0.0.1:30080/healthz
+          curl --fail --silent --show-error http://127.0.0.1:30090/-/healthy
+      - if: failure()
+        name: Cluster state on failure
+        run: kubectl get all -A -o wide || true

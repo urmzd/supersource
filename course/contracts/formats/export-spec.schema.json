@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "export spec",
+  "description": "What `{tinyllm} export --spec` runs (spec/subprocess-activity.md; dur.12 ModelRelease): copy one checkpoint into an immutable released model directory (formats/checkpoint.md), optionally quantized.",
+  "type": "object",
+  "required": ["from", "model_id", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "from": {"type": "string", "minLength": 1, "description": "A checkpoint step directory under /artifacts, or a run's ckpt/ directory (then LATEST is used)."},
+    "model_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "version": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "dtype": {"enum": ["f32", "bf16"], "default": "f32"},
+    "quant": {"enum": ["none", "int8", "int4-g32", "int4-g64", "int4-g128"], "default": "none"},
+    "model_card": {"type": "string", "description": "MODEL_CARD.md to copy in; the release gate fails without one."},
+    "ledger": {"type": "string", "default": "corpus/LEDGER.jsonl"}
+  },
+  "examples": [{"from": "runs/train-1/ckpt", "model_id": "tinystories-10m", "version": "v1", "quant": "int4-g32", "model_card": "docs/MODEL_CARD.md"}]
+}

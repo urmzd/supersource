@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "generation_config.json",
+  "description": "Generation defaults and the chat template of a model directory (DESIGN 2.9; L1.6 chat template, L10.5 serving). Unknown HF keys are allowed. The chat template is read from generation_config.json's chat_template when present, else from tokenizer_config.json's chat_template (where HF models such as SmolLM2 keep it; the same key and syntax). BOS and EOS ids come from here; when absent, from config.json. The template language is a Jinja subset: {% for x in xs %}, {% if %} / {% elif %} / {% else %}, {{ expr }}, loop.first, loop.last, attribute and subscript access (message.role, message['role'], messages[0]), == and !=, and / or / not, string literals with \\n escapes, concatenation with + and ~, the variables messages, tools, add_generation_prompt, bos_token, eos_token, and the filters trim and tojson. Rendering it is the engine's job (tl-serve/src/template.rs) and L1.6's in Python.",
+  "type": "object",
+  "properties": {
+    "bos_token_id": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "eos_token_id": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pad_token_id": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "chat_template": {
+      "type": "string"
+    },
+    "bos_token": {
+      "type": "string"
+    },
+    "eos_token": {
+      "type": "string"
+    }
+  },
+  "examples": [
+    {
+      "bos_token_id": 1,
+      "eos_token_id": 2,
+      "bos_token": "<|im_start|>",
+      "eos_token": "<|im_end|>",
+      "chat_template": "{% for message in messages %}<|im_start|>{{ message.role }}\n{{ message.content }}<|im_end|>\n{% endfor %}{% if add_generation_prompt %}<|im_start|>assistant\n{% endif %}"
+    }
+  ]
+}

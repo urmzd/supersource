@@ -61,6 +61,6 @@ Try Robin Hood probing, where an insert that has travelled further than the
 entry it finds steals the slot and displaces it. It flattens the variance of
 probe lengths dramatically, which is the property you actually care about: the
 worst lookup, not the average one. Rust's `std::collections::HashMap` used it
-for years before switching to SwissTable, and this repo has a
-[`swiss-table/`](../../../../../swiss-table/) directory if you want to see where
-that leads.
+for years before switching to SwissTable. The course module `ds.02` builds a
+Swiss table on top of this exercise (it is the worked baseline); its chapter
+lives in [Systems Data Structures](../../../../../algorithms/16-systems-data-structures/).

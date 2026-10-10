@@ -1,0 +1,254 @@
+# contracts/otel/metrics.yaml: every metric instrument of the system (DESIGN 2.11, D18).
+# chapter: ml/08-tinyllm/p10-serving/07-serving-metrics-and-tracing.md
+#
+# modules: L10.7 (engine), gw.01 to gw.07 (gateway), dur.03 and dur.04
+# (durable), obs.02 (scrape checks), obs.03 (SLO rules read these names),
+# obs.04 (dashboards reference only these), L0.6 and C1 (training gauges)
+#
+# Names are OTel instrument names; `prometheus` is the exposition name, the
+# one the collector's translation produces and the one every service also
+# serves itself on its health port (`:9464/metrics`, `{health_port}` locally).
+# Histograms expose `<prometheus>_bucket{le=...}`, `_sum`, `_count`; counters
+# end in `_total`. Attribute keys become labels with `.` replaced by `_`.
+#
+# Units follow UCUM as OTel uses them. Dimensionless gauges whose name already
+# says what they count use the empty unit, so the translation adds no
+# suffix; `1` is used only where the name ends in `ratio`.
+#
+# Cardinality: a label marked `capped` keeps at most 64 distinct values per
+# process; later values are recorded as `_other`. A label with `values` takes
+# only those values.
+version: 1
+instruments:
+  # -- GenAI semantic conventions (engine; the gateway records the client view) --
+  - name: gen_ai.server.time_to_first_token
+    type: histogram
+    unit: s
+    prometheus: gen_ai_server_time_to_first_token_seconds
+    emitted_by: [engine, gateway]
+    description: Time from request receipt to the first output token. The TTFT SLO.
+    attributes:
+      gen_ai.operation.name: {values: [chat, text_completion]}
+      gen_ai.request.model: {capped: true}
+      tl.engine.role: {values: [unified, prefill, decode, gateway]}
+    buckets: [0.001, 0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]
+  - name: gen_ai.server.time_per_output_token
+    type: histogram
+    unit: s
+    prometheus: gen_ai_server_time_per_output_token_seconds
+    emitted_by: [engine, gateway]
+    description: (E2E - TTFT) / (output tokens - 1) per request. The TPOT SLO.
+    attributes:
+      gen_ai.operation.name: {values: [chat, text_completion]}
+      gen_ai.request.model: {capped: true}
+      tl.engine.role: {values: [unified, prefill, decode, gateway]}
+    buckets: [0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 2.5]
+  - name: gen_ai.server.request.duration
+    type: histogram
+    unit: s
+    prometheus: gen_ai_server_request_duration_seconds
+    emitted_by: [engine, gateway]
+    description: End-to-end request time.
+    attributes:
+      gen_ai.operation.name: {values: [chat, text_completion, embeddings]}
+      gen_ai.request.model: {capped: true}
+      error.type: {capped: true}
+    buckets: [0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.28, 2.56, 5.12, 10.24, 20.48, 40.96, 81.92]
+  - name: gen_ai.client.token.usage
+    type: histogram
+    unit: "{token}"
+    prometheus: gen_ai_client_token_usage
+    emitted_by: [gateway, agent]
+    description: Tokens per request, by direction; the billing cross-check against the usage ledger.
+    attributes:
+      gen_ai.operation.name: {values: [chat, text_completion, embeddings]}
+      gen_ai.request.model: {capped: true}
+      gen_ai.token.type: {values: [input, output]}
+    buckets: [1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864]
+  - name: http.server.request.duration
+    type: histogram
+    unit: s
+    prometheus: http_server_request_duration_seconds
+    emitted_by: [engine, gateway]
+    description: Every HTTP request. The availability SLO is the ratio of http_response_status_code >= 500.
+    attributes:
+      http.request.method: {values: [GET, POST, PUT, DELETE]}
+      http.route: {capped: true}
+      http.response.status_code: {capped: true}
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]
+  # -- engine -----------------------------------------------------------------
+  - name: tl.engine.kv.blocks
+    type: gauge
+    unit: "{block}"
+    prometheus: tl_engine_kv_blocks
+    emitted_by: [engine]
+    description: KV pool blocks by state; free + used + cached equals the pool size (tl_kv_stats_get).
+    attributes:
+      state: {values: [free, used, cached]}
+  - name: tl.engine.kv.evictions
+    type: counter
+    unit: "{block}"
+    prometheus: tl_engine_kv_evictions_total
+    emitted_by: [engine]
+    description: Cached blocks reclaimed (tl_kv_stats.evictions).
+  - name: tl.engine.queue.depth
+    type: gauge
+    unit: "{request}"
+    prometheus: tl_engine_queue_depth
+    emitted_by: [engine]
+    description: Requests admitted and waiting to run.
+  - name: tl.engine.active_sequences
+    type: gauge
+    unit: "{sequence}"
+    prometheus: tl_engine_active_sequences
+    emitted_by: [engine]
+    description: Sequences in the running batch. Returns to 0 after a disconnect test.
+  - name: tl.engine.batch.tokens
+    type: gauge
+    unit: "{token}"
+    prometheus: tl_engine_batch_tokens
+    emitted_by: [engine]
+    description: Tokens processed by the last step (prefill chunks plus decode tokens); at most max_batch_tokens.
+  - name: tl.engine.prefix_cache.hit_ratio
+    type: gauge
+    unit: "1"
+    prometheus: tl_engine_prefix_cache_hit_ratio
+    emitted_by: [engine]
+    description: Prompt tokens served from the prefix cache over prompt tokens, since start.
+  - name: tl.engine.spec_accept_rate
+    type: gauge
+    unit: ""
+    prometheus: tl_engine_spec_accept_rate
+    emitted_by: [engine]
+    description: Accepted draft tokens over proposed draft tokens, since start (L10.8).
+  - name: tl.engine.preemptions
+    type: counter
+    unit: "{request}"
+    prometheus: tl_engine_preemptions_total
+    emitted_by: [engine]
+    description: Requests preempted by recompute (L10.2).
+  - name: tl.kv.transfer.bytes
+    type: counter
+    unit: By
+    prometheus: tl_kv_transfer_bytes_total
+    emitted_by: [engine]
+    description: Envelope bytes pushed (prefill) or received (decode) over tl.kv.v1.
+    attributes:
+      direction: {values: [sent, received]}
+  - name: tl.kv.transfer.blocks
+    type: counter
+    unit: "{block}"
+    prometheus: tl_kv_transfer_blocks_total
+    emitted_by: [engine]
+    description: Blocks moved over tl.kv.v1, by outcome.
+    attributes:
+      outcome: {values: [sent, deduped]}
+  # -- gateway ----------------------------------------------------------------
+  - name: tl.gateway.requests
+    type: counter
+    unit: "{request}"
+    prometheus: tl_gateway_requests_total
+    emitted_by: [gateway]
+    description: Requests by route, status code, and tenant.
+    attributes:
+      route: {capped: true}
+      code: {capped: true}
+      tenant: {capped: true}
+  - name: tl.gateway.ratelimit.rejections
+    type: counter
+    unit: "{request}"
+    prometheus: tl_gateway_ratelimit_rejections_total
+    emitted_by: [gateway]
+    description: 429s from the gateway's limiter.
+    attributes:
+      limit: {values: [rpm, tpm]}
+      tenant: {capped: true}
+  - name: tl.gateway.cache.hits
+    type: counter
+    unit: "{request}"
+    prometheus: tl_gateway_cache_hits_total
+    emitted_by: [gateway]
+    description: Responses served from the response cache.
+  - name: tl.gateway.policy.denials
+    type: counter
+    unit: "{request}"
+    prometheus: tl_gateway_policy_denials_total
+    emitted_by: [gateway]
+    description: 451s by rule id (gw.08).
+    attributes:
+      rule: {capped: true}
+  - name: tl.gateway.workers
+    type: gauge
+    unit: "{worker}"
+    prometheus: tl_gateway_workers
+    emitted_by: [gateway]
+    description: Registered workers by role and health.
+    attributes:
+      role: {values: [unified, prefill, decode]}
+      state: {values: [healthy, draining]}
+  # -- durable ----------------------------------------------------------------
+  - name: tl.durable.task_queue.depth
+    type: gauge
+    unit: "{task}"
+    prometheus: tl_durable_task_queue_depth
+    emitted_by: [durable]
+    description: Pollable tasks per queue. KEDA scales workers on it (dep.06).
+    attributes:
+      queue: {capped: true}
+      kind: {values: [workflow, activity]}
+  - name: tl.durable.dlq.size
+    type: gauge
+    unit: "{task}"
+    prometheus: tl_durable_dlq_size
+    emitted_by: [durable]
+    description: Dead-lettered tasks per queue.
+    attributes:
+      queue: {capped: true}
+  - name: tl.durable.redeliveries
+    type: counter
+    unit: "{task}"
+    prometheus: tl_durable_redeliveries_total
+    emitted_by: [durable]
+    description: Activity tasks delivered again after a lease expired or a retry.
+    attributes:
+      queue: {capped: true}
+  - name: tl.durable.task.schedule_to_start
+    type: histogram
+    unit: s
+    prometheus: tl_durable_task_schedule_to_start_seconds
+    emitted_by: [durable]
+    description: Time a task waited in its queue before a worker leased it.
+    attributes:
+      queue: {capped: true}
+    buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 300.0]
+  - name: tl.durable.wal.bytes
+    type: gauge
+    unit: By
+    prometheus: tl_durable_wal_bytes
+    emitted_by: [durable]
+    description: Total size of the WAL segments; compare with wal_max_bytes (ops.11).
+  # -- training (Python, OTLP export from the subprocess, D9) ---------------------
+  - name: tl.train.loss
+    type: gauge
+    unit: ""
+    prometheus: tl_train_loss
+    emitted_by: [python]
+    description: Training loss of the last step, nats per token.
+    attributes:
+      tl.workflow.id: {capped: true}
+  - name: tl.train.tokens_per_second
+    type: gauge
+    unit: ""
+    prometheus: tl_train_tokens_per_second
+    emitted_by: [python]
+    description: Throughput over the last 50 steps.
+    attributes:
+      tl.workflow.id: {capped: true}
+  - name: tl.train.grad_norm
+    type: gauge
+    unit: ""
+    prometheus: tl_train_grad_norm
+    emitted_by: [python]
+    description: Global gradient L2 norm before clipping.
+    attributes:
+      tl.workflow.id: {capped: true}

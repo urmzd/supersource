@@ -4,7 +4,7 @@
 
 - **Primary references**: [MacKay — *Information Theory, Inference, and Learning*](http://www.inference.org.uk/mackay/itila/) (free; cross-entropy, perplexity, compression), [Stanford HELM](https://crfm.stanford.edu/helm/) (free), [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) (free)
 - **Supplementary**: [Ragas docs](https://docs.ragas.io/) (RAG metrics, free), [Chatbot Arena / LMSYS paper](https://arxiv.org/abs/2403.04132) (free), [*The Pile* paper](https://arxiv.org/abs/2101.00027) (bits-per-byte, free), [Hendrycks MMLU](https://arxiv.org/abs/2009.03300) (free), and **[saige](https://github.com/urmzd/saige)**'s `eval/` package as a reference for a composable `Scorer` framework
-- **Prerequisites**: [Information Theory](../../information-theory/) (entropy, KL divergence, cross-entropy), [Deep Learning](../../ml/02-deep-learning/) (the training loss), [Retrieval & RAG](../07-retrieval-and-rag/) (what RAG eval measures)
+- **Prerequisites**: [Information Theory](../../math/11-information-theory/) (entropy, KL divergence, cross-entropy), [Deep Learning](../../ml/02-deep-learning/) (the training loss), [Retrieval & RAG](../07-retrieval-and-rag/) (what RAG eval measures)
 - **Estimated time**: 2-3 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -22,6 +22,15 @@
 - Take two models with *different tokenizers* and show why perplexity is unfair but bits-per-byte is comparable.
 - Build a tiny eval harness: a `Scorer` interface, three metrics, and a dataset runner; score a model and aggregate.
 - Set up an LLM-as-judge for a subjective task, then measure the judge's bias (position, verbosity) and its agreement with human labels.
+
+## Agent evaluation build modules
+
+| Module | Chapter |
+|---|---|
+| `ag.09` Eval runner | [Run suites and write reports](09-eval-runner.md) |
+| `ag.10` Scorers | [Score text, retrieval, timing, tools, and state changes](10-scorers.md) |
+| `ag.11` LLM judge | [Use rubrics and detect position bias](11-llm-judge.md) |
+| `ag.12` A/B experiments | [Compare paired runs with confidence intervals](12-ab-experiments.md) |
 
 ---
 
@@ -41,7 +50,7 @@ Evaluating a generative model is hard because there's no single right answer to 
   `L = − (1/N) Σ_i log p(x_i | x_<i)`
 
   the average negative log-probability the model assigned to the *actual* next token. Use log base 2 and the unit is **bits**; natural log gives **nats**.
-- **Information-theoretic meaning** (see [Information Theory](../../information-theory/)): cross-entropy `H(p, q) = −Σ p(x) log q(x)` is the average number of bits to encode samples from the true distribution `p` using the model's distribution `q`. The model's loss is the cross-entropy between real text and its predictions. **Minimizing loss = learning the true distribution = compressing text** — a better language model is literally a better compressor (Shannon).
+- **Information-theoretic meaning** (see [Information Theory](../../math/11-information-theory/)): cross-entropy `H(p, q) = −Σ p(x) log q(x)` is the average number of bits to encode samples from the true distribution `p` using the model's distribution `q`. The model's loss is the cross-entropy between real text and its predictions. **Minimizing loss = learning the true distribution = compressing text** — a better language model is literally a better compressor (Shannon).
 - This is why eval *begins* at training: the loss curve is your first, cheapest, most honest signal.
 
 ## 2. Perplexity, Bits-per-Token, Bits-per-Byte
@@ -147,7 +156,7 @@ Evaluating a generative model is hard because there's no single right answer to 
 
 | Concept | Connected Track | Application |
 |---------|-----------------|-------------|
-| Entropy, cross-entropy, KL, compression | [Information Theory](../../information-theory/) | Why the loss measures bits |
+| Entropy, cross-entropy, KL, compression | [Information Theory](../../math/11-information-theory/) | Why the loss measures bits |
 | The training objective, scaling laws | [Deep Learning](../../ml/02-deep-learning/) | Loss as the first eval |
 | Context precision/recall, faithfulness | [Retrieval & RAG](../07-retrieval-and-rag/) | Evaluating the pipeline |
 | TTFT/TTLT, cost, serving SLOs | [LLM Systems](../../ml/04-llm-systems/) / [Streaming & SSE](../03-streaming-sse/) | Operational eval |
@@ -165,3 +174,14 @@ Evaluating a generative model is hard because there's no single right answer to 
 | EleutherAI | Reproducible benchmark harness | lm-evaluation-harness |
 | Ragas / eval vendors | LLM-as-judge for RAG metrics | Faithfulness, context precision/recall |
 | saige (reference) | Composable `Scorer` across subsystems | RAG/agent/KG metrics |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ag.09` | [Eval runner](09-eval-runner.md) | build | 10 |
+| 2 | `ag.10` | [Agent evaluation scorers](10-scorers.md) | build | 10 |
+| 3 | `ag.11` | [LLM judge with position control](11-llm-judge.md) | build | 10 |
+| 4 | `ag.12` | [Paired A/B experiments](12-ab-experiments.md) | build | 10 |
+<!-- /ss:chapters -->

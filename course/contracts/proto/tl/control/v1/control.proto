@@ -1,0 +1,39 @@
+// contracts/proto/tl/control/v1/control.proto: the worker registry (DESIGN
+// chapter: ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md
+// 2.7). Served by the gateway on :50060 in Kubernetes ({registry_port}
+// locally). Every engine sends a heartbeat every 2 s; a worker that misses 3
+// in a row ([gateway].heartbeat_miss_limit) is evicted from routing.
+//
+// owners: tl-engine/src/heartbeat.rs (L10.6) calls it; go/gateway/route
+// (gw.05) serves it.
+//
+// modules: L10.6 (heartbeat client), gw.05 (registry)
+syntax = "proto3";
+
+package tl.control.v1;
+
+option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/control/v1;controlv1";
+
+service WorkerRegistry {
+  rpc Heartbeat(WorkerStatus) returns (HeartbeatAck);
+}
+
+message WorkerStatus {
+  string worker_id = 1;         // stable for the life of the process (the pod name in Kubernetes)
+  string http_address = 2;      // host:port of the OpenAI HTTP surface
+  string grpc_address = 3;      // host:port of tl.engine.v1.EngineControl
+  string kv_address = 4;        // host:port of tl.kv.v1.KvTransferService ("" unless role is decode)
+  string role = 5;              // unified | prefill | decode
+  string model = 6;
+  uint32 kv_format = 7;
+  int32 queue_depth = 8;        // requests admitted but not yet running
+  int32 running = 9;            // sequences in the running batch
+  int32 kv_free_blocks = 10;
+  int32 kv_total_blocks = 11;
+  bool draining = 12;
+}
+
+message HeartbeatAck {
+  bool drain = 1;               // the gateway asks the worker to drain (POST /admin/v1/models/{id}:drain)
+  uint64 route_epoch = 2;       // increases on every route-table change; informational
+}

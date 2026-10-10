@@ -96,7 +96,7 @@ Every competitive programming problem reduces to: (1) identify the mathematical 
 **Essential problems**: CSES -- String Matching, Finding Borders, Finding Periods, Minimal Rotation
 **Challenge problems**: CSES -- Substring Order I/II, Repeating Substring
 
-**Connections**: [Information Theory](../information-theory/) (compression), bioinformatics (sequence alignment)
+**Connections**: [Information Theory](../math/11-information-theory/) (compression), bioinformatics (sequence alignment)
 
 ## 5. Geometry
 
@@ -159,7 +159,7 @@ Every competitive programming problem reduces to: (1) identify the mathematical 
 **Essential problems**: CSES -- Polynomial Multiplication
 **Challenge problems**: Codeforces -- Convolution problems
 
-**Connections**: Signal processing, [Information Theory](../information-theory/)
+**Connections**: Signal processing, [Information Theory](../math/11-information-theory/)
 
 ---
 

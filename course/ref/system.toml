@@ -1,0 +1,61 @@
+# The reference system's harness manifest (DESIGN 2.16, 3.2). `ss verify
+# course --e2e` copies it into a learner repo assembled from course/ref and
+# course/ref/entry; milestone roles point at the reference entry points.
+[system]
+name = "forge"
+version = "0.1.0"
+course_version = "0.1.0"
+
+# Run from the repo root before any service starts. The last step trains the
+# model directory the engine entry serves (MS-P1).
+[build]
+steps = [
+  ["cargo", "build", "--release", "--quiet", "--manifest-path", "rust/Cargo.toml", "-p", "tl-serve"],
+  ["go", "build", "-C", "go", "-o", "bin/gateway", "./cmd/gateway"],
+  ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py",
+   "train", "bigram", "--data", "{fixture:MS-P1/corpus.txt}", "--out", "artifacts/models/bigram"],
+  # The model the v1 engine serves in PR CI: L7.9's committed tiny-llama-2l,
+  # in its 1024-position copy (tiny-llama-2l-1k: same weights) so a tool
+  # request's schema prompt fits.
+  ["sh", "-c", "mkdir -p artifacts/models/tiny && cp \"$0/config.json\" \"$0/model.safetensors\" artifacts/models/tiny/",
+   "{fixture:L7.9/tiny-llama-2l-1k}"],
+]
+
+[entry]
+tinyllm = ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py"]
+# The v1 server (L10.5) with its runtime.toml template; `--model-dir` (the tracer form)
+# is still accepted for the Pass 1 entry point.
+engine  = ["rust/target/release/tl-serve", "--config", "{config}"]
+gateway = ["go/bin/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
+# Pass 3 (MS-L1): built on first use, so the earlier passes' [build] stays as it was.
+tl-tok  = ["cargo", "run", "--release", "--quiet", "--manifest-path", "rust/Cargo.toml", "-p", "tl-tok", "--"]
+# Pass 3 (MS-corpus): the Python corpus CLI.
+corpus  = ["uv", "run", "--quiet", "--project", "python", "python", "python/corpus/__main__.py"]
+
+[services.engine]
+config = "config/engine.runtime.toml"
+health = "http://127.0.0.1:{health_port}/healthz"
+ready_timeout_s = 30
+
+[services.gateway]
+health = "http://127.0.0.1:{health_port}/readyz"
+after = ["engine"]
+ready_timeout_s = 30
+
+[endpoints]
+api_base    = "http://127.0.0.1:{gateway.port}/v1"
+api_key_env = "TL_API_KEY"
+model       = "tracer"
+
+# MS-P0 ci-status without a GitHub remote: the reference runs its CI locally.
+[ci]
+local = [["bash", "scripts/ci-local.sh"]]
+
+# The kind deployment of dep.00 (chapter section 2.7).
+[deploy]
+kube_context = "kind-forge"
+namespace    = "forge"
+gateway_url  = "http://127.0.0.1:30080"
+prometheus   = "http://127.0.0.1:30090"   # dep.03: kube-prometheus-stack, NodePort 30090
+traces       = "http://127.0.0.1:30686"
+services     = { engine = "deploy/forge-engine", gateway = "deploy/forge-gateway" }

@@ -222,8 +222,8 @@ The code you leave behind is the code that represents you.
 | Naming, DRY, tracer bullets, reversibility | [The Pragmatic Programmer](../01-pragmatic-programmer/) | The principles these lessons violate, stated positively |
 | Missing tests, empty test files | [The Testing Mentality](../03-testing-mentality/) | Pure functions like move calculation are the easiest tests to write and the ones most often skipped |
 | Code review as the judgment filter | [Software Engineering at Google](../02-swe-at-google/) | The signals in Theme 3 are exactly what reviewers read for |
-| Union types, unrepresentable invalid states | [Type Systems](../../programming-languages/01-type-systems/) | The formal version of lesson 3 |
-| Retry, backoff, rate limiting, idempotency | [Distributed Workers](../../infrastructure/03-distributed-workers/) | The production-scale form of Theme 2 |
+| Union types, unrepresentable invalid states | [Type Systems](../07-type-systems/) | The formal version of lesson 3 |
+| Retry, backoff, rate limiting, idempotency | [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/) | The production-scale form of Theme 2 |
 | Infrastructure surface area vs delivery | [System Design](../../systems/01-system-design/) | Choosing the smallest architecture that meets the requirement |
 
 ## Company Relevance

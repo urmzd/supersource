@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "chapter: responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md\nchapter: ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md",
+  "title": "linear head (models/<id>/heads/<name>.json)",
+  "description": "A linear classifier over an embedding model's /v1/embeddings output (D33): logits = W e + b, probabilities = softmax(logits), with e the L2-normalized embedding of the request text. Exported by L6.5 / ethics.05 (fitted with M07.7 IRLS), evaluated in Go by gw.08; Go and Python scores agree within 1e-6.",
+  "type": "object",
+  "required": [
+    "embedding_model",
+    "dim",
+    "classes",
+    "W",
+    "b",
+    "threshold"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "embedding_model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The model id whose /v1/embeddings the head was fitted on."
+    },
+    "dim": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "classes": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "W": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "number"
+        }
+      },
+      "description": "[len(classes)][dim], row c scores class c."
+    },
+    "b": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Default decision threshold on the last class's probability."
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Optional held-out metrics recorded at export (precision, recall, auc)."
+    }
+  },
+  "examples": [
+    {
+      "embedding_model": "smol-135m",
+      "dim": 3,
+      "classes": [
+        "safe",
+        "unsafe"
+      ],
+      "W": [
+        [
+          0.5,
+          -0.25,
+          0.0
+        ],
+        [
+          -0.5,
+          0.25,
+          1.0
+        ]
+      ],
+      "b": [
+        0.1,
+        -0.1
+      ],
+      "threshold": 0.9
+    }
+  ]
+}

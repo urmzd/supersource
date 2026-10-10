@@ -1,0 +1,22 @@
+id        = "craft.14"
+title     = "Interface migration: API v1 to v2"
+kind      = "build"
+lang      = ["rust", "go"]
+pass      = 11
+chapter   = "software-craftsmanship/10-maintenance/02-api-v1-to-v2.md"
+contract  = []
+deps      = ["craft.12"]
+reading   = ["craft.02", "course/contracts/openapi/openai-subset.v2.yaml", "gw.07", "L10.5"]
+used_by   = ["ops.05"]
+units     = ["rust/crates/tl-serve/src/api_version.rs", "go/gateway/server/apiversion.go"]
+upgrades  = []
+milestone = "MS-P11"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/go/craft_14/"
+timeout_s = 120
+determinism_runs = 2
+
+[fixtures]
+files = []

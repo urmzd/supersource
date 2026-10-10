@@ -1,0 +1,62 @@
+# Validated by values.schema.json (a copy of contracts/helm/engine.values.schema.json).
+# One release per role: helm upgrade --install forge-engine-decode deploy/helm/forge-engine --set role=decode
+role: unified
+replicaCount: 1
+
+image:
+  repository: forge-engine        # localhost:5001/forge-engine once dep.02's registry is up
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# A model directory under /artifacts on the node (kind mounts ./artifacts there).
+model:
+  dir: /artifacts/models/bigram
+  id: tracer
+
+service:
+  type: ClusterIP
+  httpPort: 8000       # the OpenAI-compatible API
+  grpcPort: 50051      # tl.engine.v1.EngineControl
+  kvPort: 50052        # tl.kv.v1 (disaggregated roles)
+  healthPort: 9464     # /healthz, /readyz, /metrics
+
+probes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    path: /healthz     # /readyz (model loaded) once your engine serves it (L10.5)
+    periodSeconds: 2
+
+pdb:
+  enabled: true
+  maxUnavailable: 1
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: "1"
+    memory: 256Mi
+
+artifacts:
+  hostPath: /artifacts
+  mountPath: /artifacts
+
+otel:
+  endpoint: http://jaeger:4318
+
+env: []
+
+# Non-empty: rendered into a ConfigMap as runtime.toml and passed with --config
+# (the L10.5 form; [engine].role and model_dir come from role and model.dir).
+runtime: {}

@@ -1,0 +1,13 @@
+# kind create cluster --config primers/lang.07/kind.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: lang07
+nodes:
+  - role: control-plane
+    # kind's node is itself a container: a NodePort is reachable from your
+    # machine only through a port mapping fixed when the cluster is created.
+    extraPortMappings:
+      - containerPort: 31007
+        hostPort: 31007
+        listenAddress: "127.0.0.1"
+        protocol: TCP

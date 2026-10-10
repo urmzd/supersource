@@ -1,0 +1,5 @@
+--- a/rust/crates/tl-engine/src/forward.rs
++++ b/rust/crates/tl-engine/src/forward.rs
+@@ -94,1 +94,1 @@
+-            let seen = q_offset + i + 1;
++            let seen = i + 1;

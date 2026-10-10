@@ -1,0 +1,50 @@
+# Scrape targets for the serving path (obs.02 reference). PodMonitors, not
+# ServiceMonitors: Prometheus scrapes every pod's health port (9464, the
+# container port named `health` in both charts) directly, so each engine
+# replica and each role release (<system>-engine-prefill, -decode) is its own
+# target and the Services need no metrics port. Pods are selected by
+# app.kubernetes.io/component, which every release of a chart shares, and the
+# relabeling names the job <system>-gateway or <system>-engine, which the SLO
+# rules (obs.03) and the dashboards (obs.04) select on. 10 s scrapes keep two
+# samples inside the drill profile's 25 s window.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: forge-gateway
+  namespace: observability
+  labels:
+    release: observability          # the stack's monitor selector (contracts/helm/observability.md)
+spec:
+  namespaceSelector:
+    matchNames: [forge]
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: gateway
+  podMetricsEndpoints:
+    - port: health
+      path: /metrics
+      interval: 10s
+      relabelings:
+        - targetLabel: job
+          replacement: forge-gateway
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: forge-engine
+  namespace: observability
+  labels:
+    release: observability
+spec:
+  namespaceSelector:
+    matchNames: [forge]
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: engine
+  podMetricsEndpoints:
+    - port: health
+      path: /metrics
+      interval: 10s
+      relabelings:
+        - targetLabel: job
+          replacement: forge-engine

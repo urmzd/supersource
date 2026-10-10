@@ -42,7 +42,7 @@ practice/bin/ss diff  build cpp 01       # your attempt against the reference
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather
 than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../README.md) for how the
+this table and nothing more; see the [practice path](../../../README.md) for how the
 harness works.
 
 ## Exercises
@@ -51,7 +51,6 @@ harness works.
 |---|----------|----------|------------|
 | 01 | `Vector<T>` (like `std::vector`) | Templates, move semantics, allocator awareness | ⭐⭐⭐ |
 | 02 | `UniquePtr<T>` | RAII, move-only types, custom deleters | ⭐⭐ |
-| 03 | Hash map (`std::unordered_map` clone) | Hash, open addressing, iterator invalidation | ⭐⭐⭐⭐ |
 | 04 | Compile-time matrix (`constexpr`) | `constexpr`, template metaprogramming | ⭐⭐⭐ |
 | 05 | Thread-safe queue | `std::mutex`, `std::condition_variable`, move semantics | ⭐⭐⭐ |
 | 06 | Expression template (lazy eval) | CRTP, operator overloading, zero-cost abstractions | ⭐⭐⭐⭐ |
@@ -59,3 +58,5 @@ harness works.
 | 08 | `std::function` clone | Type erasure, small buffer optimization | ⭐⭐⭐⭐ |
 | 09 | Graph with concepts | C++20 concepts, ranges, BFS/DFS | ⭐⭐⭐ |
 | 10 | Memory pool allocator | Custom allocator, placement new, alignment | ⭐⭐⭐⭐ |
+
+Exercise 03 (hash map) is consolidated into the course: six hash maps across the drills became two course modules, `ds.02` (Swiss table, C) and `ds.05` (Robin Hood, Rust), whose chapters live in [Systems Data Structures](../../../../algorithms/16-systems-data-structures/). The C++ version is archived in [`archive/practice/cpp-03-hash-map/`](../../../../archive/practice/cpp-03-hash-map/).

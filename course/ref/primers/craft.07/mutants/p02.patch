@@ -1,0 +1,12 @@
+# pitfall: chrF's beta is a parameter (L4.5 section 2.3); this mutant always weights recall by 2^2
+--- a/python/tinyllm/eval/seqmetrics.py
++++ b/python/tinyllm/eval/seqmetrics.py
+@@ -179,7 +179,7 @@
+     _check_chrf(n, beta)
+     if len(stats) != 3 * n:
+         raise ValueError(f"chrF with n = {n} has {3 * n} statistics, got {len(stats)}")
+-    factor = beta**2
++    factor = 4.0
+     prec = rec = 0.0
+     orders = 0
+     for k in range(n):

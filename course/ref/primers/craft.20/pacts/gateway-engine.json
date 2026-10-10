@@ -1,0 +1,273 @@
+{
+  "consumer": "gateway",
+  "provider": "engine",
+  "interactions": [
+    {
+      "description": "a chat completion",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-TL-Priority": "5",
+          "X-Request-Id": "req-7",
+          "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-b7ad6b7169203331-01"
+        },
+        "absentHeaders": [
+          "Authorization",
+          "X-TL-KV-Handle"
+        ],
+        "body": {
+          "model": "smol",
+          "messages": [
+            {
+              "role": "user",
+              "content": "Once"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": "chatcmpl-1",
+          "object": "chat.completion",
+          "created": 1760000000,
+          "model": "smol-135m@v3",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "upon a time"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 12,
+            "completion_tokens": 30,
+            "total_tokens": 42
+          }
+        }
+      }
+    },
+    {
+      "description": "a streamed chat with usage",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-TL-Priority": "5",
+          "X-Request-Id": "req-7",
+          "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-b7ad6b7169203331-01",
+          "Accept": "text/event-stream"
+        },
+        "absentHeaders": [
+          "Authorization",
+          "X-TL-KV-Handle"
+        ],
+        "body": {
+          "model": "smol",
+          "stream": true,
+          "stream_options": {
+            "include_usage": true
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "splitEvents": true,
+        "events": [
+          "data: {\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"finish_reason\":null}]}\n\n",
+          ": ping\n\n",
+          "data: {\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Once\"},\"finish_reason\":null}]}\n\n",
+          "data: {\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" upon\"},\"finish_reason\":\"length\"}]}\n\n",
+          "data: {\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[],\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":30,\"total_tokens\":42}}\n\n",
+          "data: [DONE]\n\n"
+        ]
+      }
+    },
+    {
+      "description": "a stream that fails after its first token",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "body": {
+          "stream": true
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "events": [
+          "data: {\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"finish_reason\":null}]}\n\n",
+          "data: {\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Once\"},\"finish_reason\":null}]}\n\n",
+          "data: {\"error\":{\"message\":\"the decode worker was lost\",\"type\":\"server_error\",\"param\":null,\"code\":\"internal_error\"}}\n\n"
+        ]
+      }
+    },
+    {
+      "description": "a stream cut off before [DONE]",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "body": {
+          "stream": true
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "events": [
+          "data: {\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"finish_reason\":null}]}\n\n",
+          "data: {\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Once\"},\"finish_reason\":null}]}\n\n"
+        ]
+      }
+    },
+    {
+      "description": "a stream with no space after data:",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "body": {
+          "stream": true
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "events": [
+          "data:{\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"finish_reason\":null}]}\n\n",
+          "data:{\"id\":\"chatcmpl-9\",\"object\":\"chat.completion.chunk\",\"created\":1760000000,\"model\":\"smol-135m@v3\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hi\"},\"finish_reason\":\"stop\"}]}\n\n",
+          "data:[DONE]\n\n"
+        ]
+      }
+    },
+    {
+      "description": "the engine's admission queue is full",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "headers": {
+          "X-TL-Priority": "5"
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "Content-Type": "application/json",
+          "Retry-After": "2"
+        },
+        "body": {
+          "error": {
+            "message": "the admission queue is full",
+            "type": "rate_limit_error",
+            "param": null,
+            "code": "rate_limit_exceeded"
+          }
+        }
+      }
+    },
+    {
+      "description": "an unknown model",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "body": {
+          "model": "nope"
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": {
+            "message": "no model nope",
+            "type": "invalid_request_error",
+            "param": null,
+            "code": "model_not_found"
+          }
+        }
+      }
+    },
+    {
+      "description": "a text completion",
+      "request": {
+        "method": "POST",
+        "path": "/v1/completions",
+        "headers": {
+          "X-TL-Priority": "0"
+        },
+        "body": {
+          "model": "smol",
+          "prompt": "Once"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": "cmpl-2",
+          "object": "text_completion",
+          "created": 1760000000,
+          "model": "smol-135m@v3",
+          "choices": [
+            {
+              "index": 0,
+              "text": " upon a time",
+              "finish_reason": "length"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 4,
+            "completion_tokens": 4,
+            "total_tokens": 8
+          }
+        }
+      }
+    },
+    {
+      "description": "a token count",
+      "request": {
+        "method": "POST",
+        "path": "/v1/tokenize",
+        "body": {
+          "model": "smol",
+          "text": "Once upon a time"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "ids": [
+            7454,
+            2402,
+            257,
+            640
+          ]
+        }
+      }
+    }
+  ]
+}

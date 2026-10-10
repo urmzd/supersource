@@ -1,0 +1,22 @@
+# System context: people and external systems only.
+client: Client application
+operator: Platform operator
+platform: TinyLLM platform {
+  gateway: API gateway
+  engine: Inference engine
+  durable: Durable control plane
+  artifacts: Model and corpus files
+  telemetry: Telemetry collector
+}
+provider: External model or data provider
+
+client -> platform.gateway: HTTPS / OpenAI subset
+operator -> platform.gateway: HTTPS / admin API
+operator -> platform.durable: gRPC / workflow operations
+platform.gateway -> platform.engine: HTTP inference, gRPC control
+platform.engine -> platform.artifacts: safetensors and tokenizer files
+platform.durable -> platform.artifacts: corpus and checkpoint files
+platform.gateway -> platform.telemetry: OTLP
+platform.engine -> platform.telemetry: OTLP
+platform.durable -> platform.telemetry: OTLP
+platform.gateway -> provider: HTTPS provider adapter

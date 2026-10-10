@@ -1,0 +1,11 @@
+--- a/python/tinyllm/tok/bpe.py
++++ b/python/tinyllm/tok/bpe.py
+@@ -356,7 +356,7 @@
+             "version": "1.0",
+             "truncation": None,
+             "padding": None,
+-            "added_tokens": added,
++            "added_tokens": [],
+             "normalizer": None,
+             "pre_tokenizer": self.pre_tokenizer,
+             "post_processor": None,

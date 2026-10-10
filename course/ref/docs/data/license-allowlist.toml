@@ -1,0 +1,59 @@
+# Reference allowlist for ethics.01 (format: chapter section 4). data.08
+# verifies every ledger row against this file.
+version = 1
+owner = "data owner"
+reviewed = 2026-10-09
+
+[[allow]]
+spdx = "CC0-1.0"
+uses = ["train", "eval"]
+obligations = []
+why = "A public domain dedication: no conditions on use or redistribution."
+
+[[allow]]
+spdx = "Apache-2.0"
+uses = ["train", "eval"]
+obligations = ["notice"]
+why = "The course fixtures and much open code; keep the license notice with copies we share."
+
+[[allow]]
+spdx = "MIT"
+uses = ["train", "eval"]
+obligations = ["notice"]
+why = "Permissive; keep the copyright and permission notice with copies we share."
+
+[[allow]]
+spdx = "CC-BY-4.0"
+uses = ["train", "eval"]
+obligations = ["attribution"]
+why = "Permissive with attribution; the datasheet credits every source under it."
+
+[[allow]]
+spdx = "ODC-By-1.0"
+uses = ["train", "eval"]
+obligations = ["attribution"]
+why = "The open data attribution license; the datasheet credits the database."
+
+[[allow]]
+spdx = "CDLA-Sharing-1.0"
+uses = ["train", "eval"]
+obligations = ["share-alike"]
+why = "TinyStories, the C1 corpus: data we share must stay under the same terms, model results are not restricted."
+
+[[allow]]
+spdx = "CC-BY-SA-4.0"
+uses = ["eval"]
+obligations = ["attribution", "share-alike"]
+why = "Allowed for evaluation only until we decide whether a released model counts as an adaptation that must be ShareAlike."
+
+[[refuse]]
+spdx = "CC-BY-NC-4.0"
+why = "Non-commercial terms conflict with releasing the model under a license of our choosing."
+
+[[refuse]]
+spdx = "CC-BY-ND-4.0"
+why = "No-derivatives terms forbid the adaptation that training produces."
+
+[[refuse]]
+spdx = "NOASSERTION"
+why = "Nobody recorded a license, so all rights are reserved until someone finds the terms."

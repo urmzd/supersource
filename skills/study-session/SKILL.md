@@ -70,7 +70,7 @@ Full diagnostic assessment:
    - Math topics: `math/{topic-dir}/README.md`
    - Practice languages: `practice/{tier}/{lang}/README.md`
    - Competitive programming: `competitive-programming/README.md`
-   - Information theory: `information-theory/README.md`
+   - Information theory: `math/11-information-theory/README.md`
    - Case studies: `case-studies/{study-dir}/README.md`
 3. If a language is given, frame code questions in that language and evaluate idiom
 4. For language-specific questions, also read `practice/{tier}/{lang}/README.md` for idiom reference
@@ -111,13 +111,13 @@ Map shorthand topic names to directories:
 - backtracking → algorithms/09-backtracking/
 - math, bits → algorithms/10-math-bit/
 - recursion, divide-conquer → algorithms/11-recursion-divide-conquer/
-- concurrency, systems → algorithms/12-concurrency-systems/
-- functional, fp → algorithms/13-functional-programming/
-- ml, statistics → algorithms/14-ml-statistics/
+- concurrency, systems → archive/algorithms/12-concurrency-systems/ (archived coursework)
+- functional, fp → archive/algorithms/13-functional-programming/ (archived coursework)
+- ml, statistics → archive/algorithms/14-ml-statistics/ (archived coursework)
 - probabilistic → algorithms/15-probabilistic-structures/
 - calculus-1 through probability → math/{topic}/
 - cp, competitive → competitive-programming/
-- info-theory → information-theory/
+- info-theory → math/11-information-theory/
 - order-book, matching → case-studies/01-order-book-matching/
 - sql-agent, text-to-sql → case-studies/02-grounded-sql-agent/
 - events, idempotency, exactly-once → case-studies/03-exactly-once-event-api/

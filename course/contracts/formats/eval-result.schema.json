@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "eval results (evals/<suite>/<run_id>/results.jsonl row and summary.json)",
+  "description": "Rows are one line of results.jsonl: one case run against one subject. The summary (summary.json) holds means with 95% bootstrap CIs and, for A/B, the paired delta (DESIGN 2.9; ag.09, ag.12). A scorer that errored has a null score and an entry in errors; it is excluded from the means and counted.",
+  "$ref": "#/$defs/row",
+  "$defs": {
+    "row": {
+      "type": "object",
+      "required": [
+        "suite",
+        "case_id",
+        "subject",
+        "input_sha",
+        "output",
+        "scores",
+        "latency_ms",
+        "ttft_ms",
+        "tokens",
+        "trace_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "suite": {
+          "type": "string"
+        },
+        "case_id": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "sample": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "input_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "output": {
+          "description": "The subject's output: text, or the final message object."
+        },
+        "scores": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "errors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "latency_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "ttft_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trace_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{32}$"
+        }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "required": [
+        "mean",
+        "ci_low",
+        "ci_high",
+        "n",
+        "errored"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mean": {
+          "type": "number"
+        },
+        "ci_low": {
+          "type": "number"
+        },
+        "ci_high": {
+          "type": "number"
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errored": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "suite",
+        "run_id",
+        "subjects",
+        "metrics",
+        "n_boot",
+        "seed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "suite": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "description": "subject -> score name -> statistics.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/$defs/ci"
+            }
+          }
+        },
+        "ab": {
+          "type": "object",
+          "required": [
+            "base",
+            "exp",
+            "metrics"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "type": "string"
+            },
+            "exp": {
+              "type": "string"
+            },
+            "metrics": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": [
+                  "delta",
+                  "ci_low",
+                  "ci_high",
+                  "p_value",
+                  "n_pairs"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "delta": {
+                    "type": "number",
+                    "description": "mean(exp) - mean(base) over paired cases"
+                  },
+                  "ci_low": {
+                    "type": "number"
+                  },
+                  "ci_high": {
+                    "type": "number"
+                  },
+                  "p_value": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Paired permutation test, two-sided."
+                  },
+                  "n_pairs": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "n_boot": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "suite": "docsqa",
+      "case_id": "docsqa-001",
+      "subject": "base",
+      "input_sha": "8888888888888888888888888888888888888888888888888888888888888888",
+      "output": "Chained FNV-1a 64.",
+      "scores": {
+        "regex": 1.0,
+        "judge": null
+      },
+      "errors": {
+        "judge": "unparsable judge output"
+      },
+      "latency_ms": 812.5,
+      "ttft_ms": 95.0,
+      "tokens": 9,
+      "trace_id": "0af7651916cd43dd8448eb211c80319c"
+    }
+  ]
+}

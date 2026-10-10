@@ -115,7 +115,7 @@ Deep learning succeeds because deep networks can learn hierarchical representati
 - **Variational Autoencoder (VAE)**: encode to distribution parameters (mu, sigma); sample z ~ N(mu, sigma); decode. Objective: reconstruction loss + KL divergence to prior
 - **ELBO**: Evidence Lower Bound = E[log p(x|z)] - D_KL(q(z|x) || p(z)); maximizing ELBO approximates maximizing log p(x)
 
-**Connection to information theory**: the KL term in VAE connects directly to [Information Theory](../../information-theory/) -- it measures how far the encoder distribution is from the prior.
+**Connection to information theory**: the KL term in VAE connects directly to [Information Theory](../../math/11-information-theory/) -- it measures how far the encoder distribution is from the prior.
 
 ## 9. Generative Models
 
@@ -185,7 +185,7 @@ Deep learning succeeds because deep networks can learn hierarchical representati
 |---------|-----------------|-------------|
 | Gradient, Jacobian, chain rule | [Calculus 3](../../math/04-calculus-3/) | Backpropagation IS the chain rule |
 | Eigenvalues, SVD | [Linear Algebra](../../math/03-linear-algebra/) | PCA, weight initialization, spectral normalization |
-| KL divergence, entropy | [Information Theory](../../information-theory/) | VAE objective, cross-entropy loss |
+| KL divergence, entropy | [Information Theory](../../math/11-information-theory/) | VAE objective, cross-entropy loss |
 | Statistical learning theory | [Statistical Learning](../01-statistical-learning/) | Bias-variance extends to double descent |
 | Reinforcement learning | [RL](../03-reinforcement-learning/) | RLHF for language model alignment |
 

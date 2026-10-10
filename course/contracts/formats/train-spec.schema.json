@@ -1,0 +1,308 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "train spec (specs/<name>.json)",
+  "description": "What `{tinyllm} train --spec` runs (DESIGN 2.8, 2.9; L0.6, L11.1, C1, dur.11). The spec plus the data manifest fully determine a run: two runs of the same spec on the same machine give the same losses.",
+  "type": "object",
+  "required": [
+    "name",
+    "model",
+    "data",
+    "optimizer",
+    "schedule",
+    "batch",
+    "steps",
+    "seed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "vocab_size"
+      ],
+      "description": "A config.json object (formats/config.schema.json), written verbatim into every checkpoint."
+    },
+    "init_from": {
+      "type": "string",
+      "description": "A checkpoint or released model directory to start from (fine-tuning)."
+    },
+    "tokenizer": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "train",
+        "val"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "train": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": ".bin files or a tokens _MANIFEST.json, under /artifacts."
+        },
+        "val": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shuffle": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sample windows with the 'shuffle' sub-stream (spec/pcg32.md)."
+        }
+      }
+    },
+    "optimizer": {
+      "type": "object",
+      "required": [
+        "name",
+        "lr"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "sgd",
+            "adamw",
+            "muon"
+          ]
+        },
+        "lr": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "betas": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMaximum": 1
+          },
+          "default": [
+            0.9,
+            0.95
+          ]
+        },
+        "eps": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1e-08
+        },
+        "weight_decay": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.1
+        },
+        "momentum": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "grad_clip": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "default": 1.0
+        }
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "constant",
+            "linear",
+            "cosine",
+            "wsd"
+          ]
+        },
+        "warmup_steps": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "min_lr_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.1
+        },
+        "decay_frac": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "wsd only: the final fraction of steps that decays."
+        }
+      }
+    },
+    "precision": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dtype": {
+          "enum": [
+            "fp32",
+            "bf16",
+            "fp16"
+          ],
+          "default": "fp32"
+        },
+        "loss_scale": {
+          "enum": [
+            "dynamic",
+            "none"
+          ],
+          "default": "dynamic",
+          "description": "fp16 only (L11.1)."
+        },
+        "recompute": {
+          "type": "boolean",
+          "default": false,
+          "description": "Activation checkpointing (L11.1)."
+        }
+      }
+    },
+    "batch": {
+      "type": "object",
+      "required": [
+        "micro_batch",
+        "seq_len"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "micro_batch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "accum": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "seq_len": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "steps": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "eval_every": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "eval_interval_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Durable wait between a segment's evaluation and the next training segment; 0 disables the wait."
+    },
+    "ckpt_every": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 500
+    },
+    "keep_ckpts": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 3
+    },
+    "threads": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "out": {
+      "type": "string",
+      "description": "Run directory under /artifacts; default runs/<TL_IDEMPOTENCY_KEY or name>."
+    }
+  },
+  "examples": [
+    {
+      "name": "tinystories-10m",
+      "model": {
+        "tl_arch": "llama",
+        "tl_tokenizer": "file",
+        "vocab_size": 8192,
+        "hidden_size": 256,
+        "intermediate_size": 704,
+        "num_hidden_layers": 8,
+        "num_attention_heads": 8,
+        "num_key_value_heads": 4,
+        "max_position_embeddings": 512,
+        "rms_norm_eps": 1e-05,
+        "rope_theta": 10000,
+        "tie_word_embeddings": true,
+        "tl_format": 1
+      },
+      "tokenizer": {
+        "id": "ts-bpe-8k",
+        "path": "tokenizers/ts-bpe-8k/tokenizer.json"
+      },
+      "data": {
+        "train": [
+          "tokens/ts-bpe-8k/tinystories/_MANIFEST.json"
+        ],
+        "val": []
+      },
+      "optimizer": {
+        "name": "adamw",
+        "lr": 0.001
+      },
+      "schedule": {
+        "name": "cosine",
+        "warmup_steps": 200
+      },
+      "precision": {
+        "dtype": "bf16"
+      },
+      "batch": {
+        "micro_batch": 16,
+        "accum": 4,
+        "seq_len": 256
+      },
+      "steps": 20000,
+      "eval_every": 500,
+      "ckpt_every": 500,
+      "seed": 0
+    }
+  ]
+}

@@ -111,6 +111,84 @@ A request lives for milliseconds; a *process* — fulfill an order, ingest and i
 - **Latency vs throughput, p50 vs p99**: tail latency is where users feel pain; profile the p99 path, not the average. Workers make this concrete — a few slow activities drag the whole workflow's wall-clock.
 - **The discipline**: form a hypothesis → measure → confirm → fix → re-measure. The bottleneck is almost never where intuition first points (it's usually I/O wait, lock contention, or an N+1, not "the algorithm").
 
+## Depth: partitioned consumers
+
+> Formerly the separate topic `infrastructure/03-distributed-workers` (merged here by the course consolidation). The durable engine above owns *workflow* state; this section is the other common worker shape: a pool of consumers reading a partitioned log (Kafka), where the partition, not the engine, decides who does what. The runnable consumers and a hands-on lab are the side quest [`side-quests/kafka-consumers/`](side-quests/kafka-consumers/). Read [Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/) first for the dynamics (queue vs log, push vs pull, delivery semantics).
+
+### The partition is the unit of everything
+
+A **worker** is a process that pulls work off a log and does it. Once you accept at-least-once delivery ([Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/)), the entire job becomes operational: distribute partitions across a pool, keep the group stable through joins and leaves, make handlers tolerate redelivery, contain poison messages, and size the pool to the backlog. The unifying constraint is the **partition**: it is simultaneously the unit of ordering, the unit of assignment, and the **ceiling on useful parallelism** within a group.
+
+![Kafka partitions, consumer groups, and the parallelism cap](side-quests/kafka-consumers/kafka-consumption.svg)
+
+```mermaid
+graph LR
+    subgraph "Topic: orders (4 partitions)"
+        P0[p0]; P1[p1]; P2[p2]; P3[p3]
+    end
+    subgraph "Group: order-workers"
+        W0[worker-0]; W1[worker-1]; W2[worker-2]; W3[worker-3]; W4[worker-4 IDLE]
+    end
+    P0-->W0; P1-->W1; P2-->W2; P3-->W3
+    style W4 fill:#cfcfcf,color:#444,stroke-dasharray: 4
+```
+
+The 5th worker is **idle** -- there is no partition left to own. This is the single most important operational fact about Kafka scaling, and it is why the KEDA replica cap ([Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/)) is the partition count.
+
+### 1. Partition count = the parallelism ceiling
+
+- Within one consumer group, **each partition is owned by exactly one consumer.** A consumer may own several partitions; a partition is never split across two consumers in the same group.
+- Therefore **useful parallelism ≤ partition count.** Workers beyond the partition count get no assignment and sit idle, burning resources for nothing.
+- Pick partition count for your *peak* worker count plus headroom. Over-partitioning costs metadata and end-to-end latency; under-partitioning permanently caps throughput.
+- **Adding partitions later breaks key→partition stability** (the hash target changes), so events for `order_id=42` can land on a different partition than before -- reordering relative to history. Forecast partitions ahead of time rather than reactively.
+
+### 2. Consumer groups & rebalancing -- the thing that bites you
+
+When a consumer joins, leaves, or dies, the group **rebalances**: partitions are reassigned across surviving members. The mechanics cause real incidents.
+
+- **Eager (stop-the-world) rebalancing.** The classic protocol revokes *all* partitions from *all* members, then reassigns from scratch -- consumption pauses across the entire group during the reassignment. Cheap to reason about, expensive in availability.
+- **Cooperative / incremental rebalancing** ([KIP-429](https://cwiki.apache.org/confluence/display/KAFKA/KIP-429%3A+Kafka+Consumer+Incremental+Rebalance+Protocol), `CooperativeStickyAssignor`) revokes *only* the partitions that must move and lets everyone else keep consuming. No global stall. Use it for any group where a stop-the-world pause hurts -- which is most of them. This is what [`code/consumer-go.go`](side-quests/kafka-consumers/consumer-go.go) and its siblings configure.
+- **Slow-handler false rebalances.** If you don't call `poll()` within `max.poll.interval.ms`, the broker assumes the consumer is dead and *kicks it*, triggering a rebalance and reprocessing of its partitions. A handler that occasionally takes 6 minutes on a 5-minute interval will flap the whole group. Fixes: keep handlers fast, lower `max.poll.records` so each poll batch finishes in time, or raise the interval to cover the worst case.
+- **Clean leave on SIGTERM.** On scale-down or rollout, Kubernetes sends `SIGTERM`. A worker that traps it and `Close()`s the consumer **leaves the group cleanly**, so its partitions are reassigned *immediately*. A worker that is just killed leaves the group to wait out `session.timeout.ms` before noticing it's gone -- a window of stalled partitions. This is the consumer side of graceful shutdown from [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) (trap SIGTERM → stop new work → finish in-flight → commit → exit). All three `code/consumer-*` examples implement it.
+
+### 3. Idempotency & atomic state changes
+
+Because delivery is at-least-once ([Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/)), every handler must tolerate seeing the same message twice.
+
+- **Idempotency key (`SETNX`).** Before doing the work, claim the message's natural key: Streamflow's `order-worker` does `SETNX order_id` in Redis (with a TTL). If the key already exists, this is a redelivery -- skip the work and let the offset advance. This is the [Idempotent Receiver](https://www.enterpriseintegrationpatterns.com/IdempotentReceiver.html) pattern; the Redis dependency appears in the C4 component diagram from [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/).
+- **Transactional outbox.** The "wrote to the DB but crashed before producing the event" hole is real. Fix it by writing business state *and* the outgoing event into the *same* database transaction (an `outbox` table); a separate relay (or CDC) reads the outbox and publishes. State and event now commit atomically -- no lost or phantom events. See [microservices.io: Transactional Outbox](https://microservices.io/patterns/data/transactional-outbox.html).
+- **Commit offsets only after durable work**, and **batch commits** for throughput. Committing before the work is at-most-once (loss on crash); committing after is at-least-once (duplicate on crash, absorbed by the idempotency key). The examples set `enable.auto.commit=false` and commit explicitly after `handle()` returns.
+
+### 4. Failure handling: retries, poison messages, and the DLQ
+
+- **Retryable vs poison.** A *transient* failure (DB blip, downstream timeout) → retry with backoff; it will likely succeed. A *poison* message (malformed, references deleted data, fails a hard invariant) will **never** succeed -- retrying it forever blocks the partition behind it. Because ordering is per-partition, a stuck message is **head-of-line blocking**: everything behind it on that partition waits.
+- **Dead-letter queue (DLQ).** After N attempts, route the poison message to an `orders.DLQ` topic and move on, unblocking the partition. **Alert on DLQ depth**; a human or a repair job drains it. The DLQ edge appears in the Streamflow container diagram ([Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/)).
+- **Tiered retry topics.** Rather than blocking live traffic with in-line backoff, some designs route transient failures to staged retry topics (`orders.retry.5s`, `orders.retry.1m`, `orders.retry.10m`), each consumed by a delayed worker. Live consumption never stalls; retries escalate through the tiers; whatever survives all tiers lands in the DLQ.
+- **Bound per-message time.** One slow handler must not block the batch -- set a per-message deadline and DLQ the overrun, or you reintroduce the slow-handler rebalance from §2.
+
+### 5. Sizing & operating the worker pool
+
+- **Partitions = max parallelism.** (§1.) Size partition count for peak workers plus headroom; you cannot scale useful workers past it.
+- **Lag is the master signal.** Consumer **lag** = log-end offset − committed offset = "messages behind." It is the right input for both alerting and autoscaling, because it directly measures whether the pool is keeping up (unlike CPU, which a blocked-on-I/O worker leaves low while lag explodes).
+- **KEDA scales on lag.** [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) wires a KEDA `ScaledObject` to consumer-group lag: lag rises → KEDA raises worker replicas (capped at the partition count) → the Cluster Autoscaler adds nodes if pods are Pending → new members join → a rebalance assigns them partitions → lag drains. KEDA can also scale to **zero** when idle.
+- **At the cap, add partitions, not pods.** When lag keeps rising but replicas already equal the partition count, more pods do nothing (they sit idle, §1). The lever is *more partitions* (and a one-time reshuffle of key→partition mapping). This is the cap referenced by the Kubernetes topic's scaling story.
+
+### Technique Catalog
+
+| Technique | When to apply |
+|-----------|---------------|
+| One consumer per partition (group sizing) | Always -- never run more workers than partitions |
+| Cooperative/incremental rebalancing | Any group where stop-the-world stalls hurt |
+| Tune `max.poll.records` / `max.poll.interval.ms` | When handlers are slow enough to risk false rebalances |
+| Clean leave on SIGTERM | Every worker (fast partition reassignment on scale-down) |
+| Idempotency key (SETNX) | Deduping redelivered messages |
+| Transactional outbox | Atomic "update state + emit event" |
+| Commit after durable work + batch commits | Every at-least-once consumer |
+| Dead-letter queue | Any consumer that can receive poison messages |
+| Tiered retry topics | When in-line retries would block live traffic |
+| Scale on consumer lag (KEDA) | Sizing the worker pool to backlog |
+| Add partitions (not pods) at the cap | When lag rises with replicas already = partitions |
+
 ---
 
 ## Patterns Worth Internalizing
@@ -121,6 +199,46 @@ A request lives for milliseconds; a *process* — fulfill an order, ingest and i
 - **Saga, not 2PC, across services** — roll forward where you can, compensate where you can't.
 - **Trace across hops, profile within them** — observability locates the slow thing; profiling explains it. Measure before optimizing, every time.
 
+## Course modules
+
+In the course you build the durable engine this topic describes, in Go, and run your own data pipeline, training runs, evals, releases, and agent runs on it. Temporal is the north star (history events and replay, sticky task queues, `GetVersion`, Continue-As-New).
+
+| Module | Topic | Kind | Pass |
+|---|---|---|---|
+| `dur.01` | Append-only segmented event log | build | 8 |
+| `dur.02` | Workflow service + idempotent start (gRPC `WorkflowService`) | build | 8 |
+| `dur.03` | Task queue: visibility timeout, fenced leases, retries to DLQ, long poll | build | 8 |
+| `dur.04` | Task gRPC protocol, Go worker SDK, worker pool | build | 8 |
+| `dur.05` | Activities: retries, backoff + jitter, timeouts, heartbeats, idempotency keys | build | 8 |
+| `dur.06` | Deterministic replay workflows, `ContinueAsNew`, history paging, payload limits (2.7) | build | 8 |
+| `dur.07` | Durable timers (own min-heap; merges practice `go/04`) | build | 8 |
+| `dur.08` | Signals, cancellation, sagas (compensation) | build | 8 |
+| `dur.09` | Subprocess activity runner (Go) and the Python activity helper (2.8) | build | 8 |
+| `dur.10` | Raft HA for the log (optional) | build | 8, optional |
+| `dur.11` | Platform workflows `TrainRun` and `EvalSuite` | build | 8 |
+| `dur.12` | `ModelRelease`: export, `EvalSuite`, license and model-card gates, approval signal, canary | build | 9 |
+
+`dur.10` (Raft HA for the event log) is optional, with its own milestone `MS-durable-ha`.
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `dur.01` | [Append-only segmented event log](01-event-log.md) | build | 8 |
+| 2 | `dur.02` | [Workflow service + idempotent start, describe, list, paged history](02-workflow-service.md) | build | 8 |
+| 3 | `dur.03` | [Task queue: visibility timeout, fenced leases, retries to DLQ, long poll](03-task-queue.md) | build | 8 |
+| 4 | `dur.04` | [Task gRPC protocol, Go worker SDK, worker pool](04-task-protocol-and-workers.md) | build | 8 |
+| 5 | `dur.05` | [Activities: retries, backoff + jitter, timeouts, heartbeats, idempotency keys](05-activities.md) | build | 8 |
+| 6 | `dur.06` | [Deterministic replay workflows, ContinueAsNew, history paging, payload limits](06-deterministic-replay.md) | build | 8 |
+| 7 | `dur.07` | [Durable timers and the test clock](07-durable-timers.md) | build | 8 |
+| 8 | `dur.08` | [Signals, cancellation, sagas (compensation)](08-signals-cancellation-and-sagas.md) | build | 8 |
+| 9 | `dur.09` | [Subprocess activity runner (Go) and the Python activity helper](09-subprocess-activities.md) | build | 8 |
+| 10 | `dur.10` | [Raft HA for the durable log (optional)](10-raft-ha.md) | side | 8 |
+| 11 | `dur.11` | [Platform workflows TrainRun and EvalSuite](11-trainrun-and-evalsuite.md) | build | 8 |
+| 12 | `dur.12` | [ModelRelease: gates, canary, PromQL burn check, rollback](12-model-release.md) | build | 9 |
+<!-- /ss:chapters -->
+
 ## Connections to Other Tracks
 
 | Concept | Connected Track | Application |
@@ -130,7 +248,9 @@ A request lives for milliseconds; a *process* — fulfill an order, ingest and i
 | Sharded state store under the engine | [Distributed Data & Caching](../04-distributed-data-and-caching/) | Temporal needs Cassandra/Postgres |
 | Checkpointed training pipelines | [Training & Frameworks](../01-training-and-frameworks/) | Same checkpoint pattern, different payload |
 | Traces, metrics, logs, RED/USE, SLOs | [Observability](../../systems/04-observability/) | Operating long-running workflows |
-| Producer-consumer, thread pools | [Concurrency & Systems](../../algorithms/12-concurrency-systems/) | The worker pool, at the language level |
+| Producer-consumer, thread pools | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | The worker pool, at the language level |
+| Partitioned logs, consumer groups, lag | [Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/) | The queue and log dynamics the partitioned consumers operate |
+| KEDA lag scaling, SIGTERM drains | [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) | Scaling and stopping the worker pool |
 | Decorators wrapping workflows/retries | [Coding & Design Patterns](../06-coding-and-design-patterns/) | How the engine's API is built |
 
 ## How Companies Apply These Patterns

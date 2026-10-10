@@ -1,0 +1,21 @@
+replicas: 2
+
+image:
+  repository: hello
+  tag: "0.1.0"
+  # kind loads the image into the node (`kind load docker-image`); never pull it.
+  pullPolicy: IfNotPresent
+
+greeting: "hello from kind"
+
+service:
+  port: 80
+  nodePort: 31007
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    cpu: 100m
+    memory: 32Mi

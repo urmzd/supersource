@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "eval case (one line of evals/suites/<suite>.jsonl)",
+  "description": "One case of an eval suite (DESIGN 2.9; ag.09, L6.7).",
+  "type": "object",
+  "required": [
+    "case_id",
+    "input",
+    "tags",
+    "scorer_args"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique within the suite; stable across versions of the suite."
+    },
+    "input": {
+      "description": "A prompt string, or a chat as {messages: [...]} in the openai-subset.v1 message shape.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "messages"
+          ]
+        }
+      ]
+    },
+    "ground_truth": {
+      "description": "Any JSON value the scorers compare against."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scorer_args": {
+      "type": "object",
+      "description": "Per-scorer arguments, by scorer name."
+    }
+  },
+  "examples": [
+    {
+      "case_id": "docsqa-001",
+      "input": "Which hash names a KV block?",
+      "ground_truth": {
+        "answer": "chained FNV-1a 64",
+        "citations": [
+          "contracts/formats/kv-block.md"
+        ]
+      },
+      "tags": [
+        "rag"
+      ],
+      "scorer_args": {
+        "regex": {
+          "pattern": "FNV-1a"
+        }
+      }
+    }
+  ]
+}

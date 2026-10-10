@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "eval spec (specs/<name>.json)",
+  "description": "What `{tinyllm} eval --spec` and the EvalSuite workflow run (DESIGN 2.9; L6.7, ag.09 to ag.12, dur.11): suites, subjects, an optional judge, and an optional A/B pairing.",
+  "type": "object",
+  "required": [
+    "name",
+    "suites",
+    "subjects",
+    "seed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "suites": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Suite ids: evals/suites/<id>.jsonl, or a built-in suite such as zoo or ppl."
+    },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name in results (the subject field)."
+          },
+          "model": {
+            "type": "string",
+            "description": "A model directory under /artifacts (Python suites)."
+          },
+          "base_url": {
+            "type": "string",
+            "description": "An OpenAI-compatible base URL, for example the gateway's /v1 (agent suites)."
+          },
+          "served_model": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scorers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Scorer names (ag.10); default: each suite's own."
+    },
+    "judge": {
+      "type": "object",
+      "required": [
+        "base_url",
+        "model",
+        "rubric"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "base_url": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "rubric": {
+          "type": "string",
+          "description": "evals/rubrics/<name>.md"
+        },
+        "samples": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "pairwise": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "ab": {
+      "type": "object",
+      "required": [
+        "base",
+        "exp"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "exp": {
+          "type": "string"
+        },
+        "n_boot": {
+          "type": "integer",
+          "minimum": 100,
+          "default": 10000
+        },
+        "alpha": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1,
+          "default": 0.05
+        }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      },
+      "description": "Release gate (dur.12): minimum mean per score name."
+    },
+    "concurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 4
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "examples": [
+    {
+      "name": "docsqa-ab",
+      "suites": [
+        "docsqa"
+      ],
+      "subjects": [
+        {
+          "id": "base",
+          "base_url": "http://127.0.0.1:30080/v1",
+          "served_model": "smol-135m"
+        },
+        {
+          "id": "exp",
+          "base_url": "http://127.0.0.1:30080/v1",
+          "served_model": "tinystories-sft"
+        }
+      ],
+      "ab": {
+        "base": "base",
+        "exp": "exp"
+      },
+      "seed": 0
+    }
+  ]
+}

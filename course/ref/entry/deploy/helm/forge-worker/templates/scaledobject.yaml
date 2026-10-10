@@ -1,0 +1,28 @@
+{{- if .Values.autoscaling.enabled }}
+# KEDA (pinned in deploy/keda/Chart.lock) owns the replica count: it creates
+# and drives an HPA for this Deployment from the Prometheus query below. The
+# Deployment leaves spec.replicas unset so a `helm upgrade` never fights it.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "worker.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}
+  minReplicaCount: {{ .Values.autoscaling.minReplicas | default 1 }}
+  maxReplicaCount: {{ .Values.autoscaling.maxReplicas | default 6 }}
+  pollingInterval: 15
+  # Scale down slowly: a worker removed mid-activity is drained (75 s) and
+  # its task redelivered, which costs more than an idle pod.
+  cooldownPeriod: 120
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: {{ .Values.autoscaling.prometheusAddress | quote }}
+        query: sum(tl_durable_task_queue_depth{queue={{ .Values.autoscaling.queue | default "data" | quote }},kind="activity"})
+        threshold: {{ .Values.autoscaling.targetDepth | default 4 | quote }}
+{{- end }}

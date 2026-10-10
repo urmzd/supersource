@@ -42,20 +42,20 @@ practice/bin/ss diff  build rust 01       # your attempt against the reference
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather
 than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../README.md) for how the
+this table and nothing more; see the [practice path](../../../README.md) for how the
 harness works.
 
 ## Exercises
 
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|
-| 01 | `Vec<T>` from scratch | Unsafe, `RawVec`, `Drop`, `Deref` | ⭐⭐⭐ |
-| 02 | Doubly-linked list | `Rc<RefCell<T>>` or unsafe, borrow checker challenges | ⭐⭐⭐⭐ |
-| 03 | Hash map (Robin Hood) | Hashing, `Entry` API, generics with trait bounds | ⭐⭐⭐⭐ |
-| 04 | Channel (`mpsc` clone) | `Arc<Mutex<T>>`, `Condvar`, `Send` bounds | ⭐⭐⭐⭐ |
-| 05 | Iterator adaptor library | `Iterator` trait, associated types, lazy evaluation | ⭐⭐⭐ |
+| 01 | `Vec<T>` from scratch | Unsafe, `RawVec`, `Drop`, `Deref`; recommended before course module `L10.1` | ⭐⭐⭐ |
+| 02 | Doubly-linked list | `Rc<RefCell<T>>` or unsafe, borrow checker challenges; course version: `ds.07` | ⭐⭐⭐⭐ |
+| 03 | Hash map (Robin Hood) | Hashing, `Entry` API, generics with trait bounds; course version: `ds.05` | ⭐⭐⭐⭐ |
+| 04 | Channel (`mpsc` clone) | `Arc<Mutex<T>>`, `Condvar`, `Send` bounds; course version: `lang.09` | ⭐⭐⭐⭐ |
+| 05 | Iterator adaptor library | `Iterator` trait, associated types, lazy evaluation; course version: `L1.5` | ⭐⭐⭐ |
 | 06 | CLI argument parser | Lifetimes, `&str` vs `String`, builder pattern | ⭐⭐ |
-| 07 | Async TCP echo server | `async`/`await`, `tokio`, `Pin`, `Future` | ⭐⭐⭐⭐ |
+| 07 | Async TCP echo server | `async`/`await`, `tokio`, `Pin`, `Future`; course version: `lang.09`, `L10.5` | ⭐⭐⭐⭐ |
 | 08 | ECS (Entity Component System) | Trait objects vs enums, `Any`, downcast, arena allocation | ⭐⭐⭐⭐⭐ |
 | 09 | Proc macro for `derive(Builder)` | Procedural macros, `syn`, `quote`, token streams | ⭐⭐⭐⭐ |
 | 10 | Lock-free stack | `AtomicPtr`, `compare_exchange`, ABA problem | ⭐⭐⭐⭐⭐ |

@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "corpus config (specs/corpus/<dataset>.toml)",
+  "description": "The parsed TOML that fixes one CorpusBuild (DESIGN 2.9; data.01 to data.07, data.09): sources, filter thresholds, dedup parameters, protected sets for decontamination, sharding, and the tokenizer. Its sha256 (of the file bytes) is the manifest's config_sha256 and part of every activity's idempotency key.",
+  "type": "object",
+  "required": [
+    "dataset",
+    "version",
+    "sources",
+    "shard",
+    "tokenizer"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dataset": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "sha256",
+          "license_spdx"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]*$"
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "license_spdx": {
+            "type": "string",
+            "minLength": 1
+          },
+          "allowed_uses": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "train",
+                "eval"
+              ]
+            },
+            "default": [
+              "train",
+              "eval"
+            ]
+          },
+          "format": {
+            "enum": [
+              "text",
+              "jsonl",
+              "parquet"
+            ],
+            "default": "jsonl",
+            "description": "text: one document per blank-line-separated block; jsonl: a 'text' field per line; parquet: a 'text' column."
+          }
+        }
+      }
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_chars": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 50
+        },
+        "max_chars": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100000
+        },
+        "langs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]{2}$"
+          },
+          "default": [
+            "en"
+          ]
+        },
+        "lang_min_conf": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.65
+        },
+        "gopher": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Gopher rule thresholds by name (data.02 defines the names)."
+        },
+        "repetition": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "n": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3
+            },
+            "max_frac": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.3
+            }
+          }
+        },
+        "ppl": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_ppl": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "model": {
+              "type": "string",
+              "description": "Path of the L2.1 n-gram model under /artifacts; absent disables the filter."
+            }
+          }
+        }
+      }
+    },
+    "dedup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bloom_bytes_per_item": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10
+        },
+        "jaccard_threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "default": 0.8
+        },
+        "num_perm": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 128
+        },
+        "bands": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 16
+        },
+        "shingle": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Word n-gram length of a MinHash shingle."
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "decontam": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protected": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Paths (under /artifacts) of eval and validation sets no output document may overlap."
+        },
+        "ngram": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 13
+        }
+      }
+    },
+    "shard": {
+      "type": "object",
+      "required": [
+        "shard_rows"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shard_rows": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "val_permille": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 5
+        },
+        "row_group_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864,
+          "default": 67108864
+        }
+      }
+    },
+    "tokenizer": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "path": {
+          "type": "string",
+          "description": "tokenizer.json under /artifacts; absent means the byte tokenizer when id is bytes."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "dataset": "small",
+      "version": "v1",
+      "sources": [
+        {
+          "id": "fixture-stories",
+          "url": "http://127.0.0.1:8765/stories.jsonl",
+          "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+          "license_spdx": "CC0-1.0"
+        }
+      ],
+      "filters": {
+        "min_chars": 20,
+        "langs": [
+          "en"
+        ]
+      },
+      "dedup": {
+        "jaccard_threshold": 0.8
+      },
+      "decontam": {
+        "protected": [
+          "evals/suites/stories-val.jsonl"
+        ],
+        "ngram": 13
+      },
+      "shard": {
+        "shard_rows": 1000,
+        "val_permille": 50
+      },
+      "tokenizer": {
+        "id": "bytes"
+      }
+    }
+  ]
+}

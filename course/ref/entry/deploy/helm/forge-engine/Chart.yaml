@@ -1,0 +1,6 @@
+apiVersion: v2
+name: forge-engine
+description: The forge engine (tl-serve), one release per role (unified, or prefill and decode)
+type: application
+version: 0.2.0
+appVersion: "0.2.0"

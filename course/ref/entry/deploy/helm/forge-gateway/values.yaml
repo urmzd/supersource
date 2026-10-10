@@ -1,0 +1,69 @@
+# Validated by values.schema.json (a copy of contracts/helm/gateway.values.schema.json).
+replicaCount: 1        # the schema allows only 1: limits, cache, ledger, and registry are per process
+
+image:
+  repository: forge-gateway       # localhost:5001/forge-gateway once dep.02's registry is up
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 8080           # the API
+  nodePort: 30080      # mapped to 127.0.0.1:30080 by deploy/kind/cluster.yaml
+  healthPort: 9464     # /healthz, /readyz, /metrics
+  registryPort: 50060  # tl.control.v1 heartbeats from the engines (gw.05)
+
+probes:
+  liveness:
+    path: /healthz     # the gateway itself: an engine outage never restarts it
+    periodSeconds: 10
+  readiness:
+    path: /readyz      # ready when it can route
+    periodSeconds: 2
+
+pdb:
+  enabled: true
+  maxUnavailable: 1
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi
+
+# Secrets only by reference; create them by hand:
+#   kubectl -n forge create secret generic forge-gateway-pepper --from-literal=pepper="$(openssl rand -hex 32)"
+#   kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
+pepper:
+  name: forge-gateway-pepper
+  key: pepper
+apiKey:                # the tracer's static key (gw.00 form)
+  secretName: forge-api-key
+  secretKey: api-key
+
+# The engine Service; "" means http://<release name minus -gateway>-engine:8000.
+upstream: ""
+
+# The usage ledger (gw.07) lives on a PersistentVolumeClaim: the root
+# filesystem is read-only, and an emptyDir would lose the bill on every restart.
+ledger:
+  size: 1Gi
+  mountPath: /var/lib/gateway
+
+otel:
+  endpoint: http://jaeger:4318
+
+env: []
+
+# Non-empty: rendered into a ConfigMap as runtime.toml and passed with --config
+# (spec/cli-roles.md, the gw.01 form). Empty: the tracer flags above.
+runtime: {}

@@ -1,0 +1,517 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "runtime.toml",
+  "description": "Service runtime configuration (DESIGN 2.12), as the JSON value of the parsed TOML. One file, mounted as a ConfigMap in Kubernetes; locally the milestone runner fills one copy per service instance from the learner's [services.*].config template with allocated ports (2.16). Each service reads its own section plus [paths] and [otel]. Every scalar key can be overridden by the environment variable TL_<SECTION>__<KEY> (both upper-cased, a double underscore between them; for example TL_ENGINE__KV_BLOCKS=4096 or TL_DURABLE__WAL_MAX_BYTES); an override is parsed as the key's type (integers, numbers, true/false, strings as-is), and arrays and tables are not overridable. Precedence: environment, then file, then the defaults here. Allowed parsers: Python tomllib, Rust toml, Go github.com/BurntSushi/toml. Unknown keys are errors, except under [ext], which is the learner's own.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "type": "string",
+          "default": "/artifacts"
+        }
+      }
+    },
+    "otel": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "description": "OTLP endpoint; empty disables export. OTEL_EXPORTER_OTLP_ENDPOINT wins when set."
+        },
+        "service_namespace": {
+          "type": "string"
+        },
+        "trace_sample_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1.0
+        }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":8080"
+        },
+        "health_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":9464"
+        },
+        "registry_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":50060"
+        },
+        "upstream": {
+          "type": "string",
+          "description": "Tracer form only (gw.00): one engine base URL; ignored once routes exist."
+        },
+        "keys_file": {
+          "type": "string",
+          "description": "JSON Lines, one key record per line: key_id, the HMAC-SHA256(pepper, secret) hex, tenant, name, scopes, rpm, tpm, priority, models, created_at, expires_at, revoked."
+        },
+        "pepper_env": {
+          "type": "string",
+          "pattern": "^[A-Z_][A-Z0-9_]*$",
+          "default": "TL_GATEWAY_PEPPER",
+          "description": "The variable holding the HMAC pepper; the value itself never appears in this file."
+        },
+        "key_cache_ttl_s": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "default": 5
+        },
+        "policy_file": {
+          "type": "string"
+        },
+        "usage_db": {
+          "type": "string"
+        },
+        "cache_entries": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 4096
+        },
+        "cache_ttl_s": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 300
+        },
+        "heartbeat_miss_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3
+        },
+        "route_policy": {
+          "enum": [
+            "weighted",
+            "least_outstanding",
+            "affinity"
+          ],
+          "default": "affinity"
+        },
+        "affinity_load_factor": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1.25,
+          "description": "c of consistent hashing with bounded loads (ds.09)."
+        },
+        "drain_deadline_s": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 30
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/route"
+          }
+        }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "unified",
+            "prefill",
+            "decode"
+          ],
+          "default": "unified"
+        },
+        "model_dir": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._@-]*$",
+          "description": "The id served in /v1/models and heartbeats. Default: the model directory's parent name, then its own name (models/<id>/<version>/)."
+        },
+        "http_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":8000"
+        },
+        "health_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":9464"
+        },
+        "grpc_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":50051"
+        },
+        "kv_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":50052"
+        },
+        "gateway_registry": {
+          "type": "string",
+          "description": "host:port of the gateway's tl.control.v1 registry; empty disables heartbeats."
+        },
+        "advertise_host": {
+          "type": "string",
+          "description": "Host other components use to reach this engine (the pod IP in Kubernetes); default 127.0.0.1."
+        },
+        "kv_blocks": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2048
+        },
+        "block_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 16
+        },
+        "kv_format": {
+          "enum": [
+            1,
+            2
+          ],
+          "default": 1,
+          "description": "2 only after the craft.13 migration."
+        },
+        "prefix_cache": {
+          "enum": [
+            "none",
+            "hash",
+            "radix"
+          ],
+          "default": "radix"
+        },
+        "max_batch_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2048
+        },
+        "max_seqs": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 64
+        },
+        "prefill_chunk": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 512
+        },
+        "queue_capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 256,
+          "description": "Bounded admission: a full queue answers 429 with Retry-After."
+        },
+        "queue_deadline_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30000,
+          "description": "A request waiting for KV blocks longer than this answers 503 no_capacity."
+        },
+        "threads": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "quant": {
+          "enum": [
+            "none",
+            "int8",
+            "int4"
+          ],
+          "default": "none",
+          "description": "Must match the weights in model_dir."
+        },
+        "speculative": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "draft": {
+              "enum": [
+                "none",
+                "ngram",
+                "prompt_lookup"
+              ],
+              "default": "none"
+            },
+            "k": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16,
+              "default": 4
+            }
+          }
+        }
+      }
+    },
+    "durable": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "grpc_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":7233"
+        },
+        "health_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":9464"
+        },
+        "raft_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":7234"
+        },
+        "wal_dir": {
+          "type": "string"
+        },
+        "wal_max_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2147483648
+        },
+        "visibility_timeout_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30000
+        },
+        "dlq_after_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5
+        },
+        "long_poll_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 30000
+        },
+        "raft": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "peers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "address"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "address": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9.-]+:[0-9]{1,5}$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "durable": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9.-]+:[0-9]{1,5}$"
+        },
+        "health_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":9464"
+        },
+        "task_queues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "python": {
+          "type": "string",
+          "description": "The command prefix for Python entries, split on spaces (DESIGN 2.12 example)."
+        },
+        "max_concurrent_activities": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4
+        },
+        "max_concurrent_workflow_tasks": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 16
+        },
+        "identity": {
+          "type": "string",
+          "description": "Default: hostname and pid."
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "durable": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9.-]+:[0-9]{1,5}$"
+        },
+        "health_listen": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9.-]*|\\[[0-9a-fA-F:]+\\]):[0-9]{1,5}$",
+          "description": "host:port; an empty host means every interface (\":8080\").",
+          "default": ":9464"
+        },
+        "task_queue": {
+          "type": "string",
+          "default": "agent"
+        },
+        "base_url": {
+          "type": "string",
+          "description": "The OpenAI-compatible base URL the Provider calls: the gateway's /v1 or a frontier API."
+        },
+        "model": {
+          "type": "string"
+        },
+        "api_key_env": {
+          "type": "string",
+          "pattern": "^[A-Z_][A-Z0-9_]*$",
+          "default": "TL_API_KEY"
+        },
+        "rag_index": {
+          "type": "string",
+          "description": "rag/<index_id> under /artifacts."
+        },
+        "max_iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8
+        }
+      }
+    },
+    "ext": {
+      "type": "object",
+      "description": "Free-form: the learner's own keys."
+    }
+  },
+  "$defs": {
+    "cascadeStep": {
+      "type": "object",
+      "required": [
+        "model"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "accept_if": {
+          "type": "string",
+          "pattern": "^(mean_logprob|min_logprob) (>|>=|<|<=) -?[0-9]+(\\.[0-9]+)?$"
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "required": [
+        "model"
+      ],
+      "additionalProperties": false,
+      "description": "One entry of the route table; the same shape as Route in openapi/admin.v1.yaml.",
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "unified",
+              "disaggregated"
+            ]
+          }
+        },
+        "backends": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "served_model",
+              "weight"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "served_model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "cascade": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/cascadeStep"
+          }
+        }
+      }
+    }
+  }
+}

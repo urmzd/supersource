@@ -42,20 +42,20 @@ practice/bin/ss diff  build go 01       # your attempt against the reference
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather
 than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../README.md) for how the
+this table and nothing more; see the [practice path](../../../README.md) for how the
 harness works.
 
 ## Exercises
 
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|
-| 01 | Concurrent web crawler | Goroutines, channels, `sync.WaitGroup`, rate limiting | ⭐⭐⭐ |
-| 02 | In-memory key-value store | `sync.RWMutex`, interfaces, HTTP handler | ⭐⭐ |
-| 03 | Worker pool | Bounded concurrency, `context` cancellation | ⭐⭐⭐ |
-| 04 | Generic sorted set | Generics, type constraints, `cmp.Ordered` | ⭐⭐⭐ |
-| 05 | Log-structured storage | `io.Reader`/`Writer`, binary encoding, file I/O | ⭐⭐⭐⭐ |
-| 06 | Pub/sub message broker | Channels, fan-out, `select`, graceful shutdown | ⭐⭐⭐ |
-| 07 | Rate limiter (token bucket) | `time.Ticker`, atomic operations, middleware | ⭐⭐ |
-| 08 | Raft consensus (simplified) | State machines, RPC, leader election | ⭐⭐⭐⭐⭐ |
+| 01 | Concurrent web crawler | Goroutines, channels, `sync.WaitGroup`, rate limiting; course version: `ag.06` | ⭐⭐⭐ |
+| 02 | In-memory key-value store | `sync.RWMutex`, interfaces, HTTP handler; course version: `gw.06` | ⭐⭐ |
+| 03 | Worker pool | Bounded concurrency, `context` cancellation; course version: `dur.04` | ⭐⭐⭐ |
+| 04 | Generic sorted set | Generics, type constraints, `cmp.Ordered`; course version: `dur.07` | ⭐⭐⭐ |
+| 05 | Log-structured storage | `io.Reader`/`Writer`, binary encoding, file I/O; course version: `dur.01` | ⭐⭐⭐⭐ |
+| 06 | Pub/sub message broker | Channels, fan-out, `select`, graceful shutdown; course version: `dur.03` | ⭐⭐⭐ |
+| 07 | Rate limiter (token bucket) | `time.Ticker`, atomic operations, middleware; course version: `gw.03` | ⭐⭐ |
+| 08 | Raft consensus (simplified) | State machines, RPC, leader election; course version: `dur.10` | ⭐⭐⭐⭐⭐ |
 | 09 | Dependency injection container | Reflection, interfaces, `sync.Once` | ⭐⭐⭐ |
-| 10 | gRPC service + client | Protocol buffers, streaming, interceptors | ⭐⭐⭐⭐ |
+| 10 | gRPC service + client | Protocol buffers, streaming, interceptors; course version: `dur.04` | ⭐⭐⭐⭐ |

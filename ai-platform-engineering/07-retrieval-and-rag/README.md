@@ -84,7 +84,7 @@ Every production RAG system is a specialization of this. The rest of this topic 
 
 **Key ideas**:
 - **Bag-of-words**: represent text as term counts, ignoring order. Sparse, high-dimensional, exact-term.
-- **TF-IDF**: weight a term by its frequency in the doc (TF) × its rarity across the corpus (IDF) — common words count less, distinctive words more. (See the from-scratch [TF-IDF Vector Search](../../algorithms/14-ml-statistics/tf-idf-vector-search.py).)
+- **TF-IDF**: weight a term by its frequency in the doc (TF) × its rarity across the corpus (IDF) — common words count less, distinctive words more. (See the from-scratch [TF-IDF Vector Search](../../archive/algorithms/14-ml-statistics/tf-idf-vector-search.py).)
 - **BM25**: the refined, dominant lexical ranker — TF-IDF with **saturation** (`k1`: extra occurrences matter less and less) and **length normalization** (`b`: don't reward long docs for having more words). Decades old, still a brutally strong baseline.
 - **Why keep lexical at all**: dense retrieval misses **exact matches** — IDs, error codes, names, rare jargon, acronyms — that BM25 nails. They fail in opposite directions, which is exactly why you fuse them.
 
@@ -158,7 +158,7 @@ Retrieval has its own metrics, separate from generation (full treatment in [LLM 
 |---------|-----------------|-------------|
 | Encoders, embeddings, fine-tuning, CLIP | [Training & Frameworks](../01-training-and-frameworks/) / [Foundation Models](../../ml/05-foundation-models/) | The models that embed |
 | Vector stores, ANN, knowledge graphs, caching | [Distributed Data & Caching](../04-distributed-data-and-caching/) | Where the index lives |
-| TF-IDF, BM25, bag-of-words | [ML & Statistics](../../algorithms/14-ml-statistics/) | The lexical half, from scratch |
+| TF-IDF, BM25, bag-of-words | [ML & Statistics](../../archive/algorithms/14-ml-statistics/) | The lexical half, from scratch |
 | Permission-filtered retrieval | [Authorization & Access Control](../08-authorization-and-access-control/) | Secure / multi-tenant RAG |
 | Retrieval & faithfulness metrics | [LLM Evaluation](../09-llm-evaluation/) | Measuring the pipeline |
 | Token streaming of the answer | [Streaming & SSE](../03-streaming-sse/) | Delivering the generation |
@@ -173,3 +173,13 @@ Retrieval has its own metrics, separate from generation (full treatment in [LLM 
 | Cohere / Voyage | Bi-encoder embeddings + cross-encoder rerankers | Retrieval-as-a-service |
 | Glean / enterprise search | Permission-filtered, metadata-rich RAG | Secure multi-tenant retrieval |
 | saige (reference) | RRF over vector + BM25 + graph, multimodal variants | Go SDK for agents/KG/RAG |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ag.06` | [RAG ingest: crawler with SSRF allowlist, chunker, embedder, store](06-rag-ingest.md) | build | 10 |
+| 2 | `ag.07` | [Retrieval: BM25, flat and IVF vectors, RRF, MMR](07-retrieval.md) | build | 10 |
+| 3 | `ag.08` | [Context assembly, citations, search_docs tool](08-context-assembly.md) | build | 10 |
+<!-- /ss:chapters -->

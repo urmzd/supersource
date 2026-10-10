@@ -1,0 +1,842 @@
+# contracts/openapi/openai-subset.v2.yaml: the v2 serving surface, published
+# for the api-v2-migration drill (DESIGN 2.6, ops.05, craft.14).
+#
+# modules: craft.14 (the migration), gw.07 (per-version usage), L10.5 and
+# gw.04 (serve both versions during the window)
+#
+# v2 is v1 with three changes, each breaking for some client:
+#   1. usage.prompt_tokens_details.cached_tokens is required in every usage.
+#   2. POST /v1/completions is deprecated: responses carry Deprecation and
+#      Sunset headers (RFC 9745, RFC 8594).
+#   3. New error codes: rate_limit_exceeded splits into
+#      requests_limit_exceeded, tokens_limit_exceeded, and queue_full;
+#      no_capacity splits off model_draining.
+#
+# Two tiers share this spec. The engine tier (every tl-serve role) has no
+# auth and serves the extensions marked `x-tl-extension`. The gateway tier
+# requires `Authorization: Bearer tl_<id>_<secret>`, applies policy, limits,
+# and the cache, and adds the response headers below. Paths marked
+# `x-tl-tier: engine` exist on the engine tier only.
+#
+# Conformance (`ss conform openapi:v1 --target engine|gateway`) validates
+# every response body against the schema declared here for its path, status,
+# and content type. SSE chunks validate against the `x-tl-chunk` schema of
+# the 200 `text/event-stream` content.
+openapi: 3.1.0
+info:
+  title: tinyllm OpenAI subset, v2
+  version: 2.0.0
+  description: |
+    Chat completions with tools, text completions, embeddings, models, and
+    tokenization, compatible with the official OpenAI clients for the
+    fields listed here.
+
+    **Versions side by side.** During the migration window one deployment
+    serves v1 and v2 on the same paths. A client picks a version with the
+    request header `X-TL-API-Version: 1` or `2`; without it the server
+    answers as its default version (v1 until the window closes, then v2),
+    and every response echoes the version it used in `X-TL-API-Version`.
+    Every v1 response during the window carries `Deprecation` (the date v1
+    was deprecated, `@<unix seconds>`) and `Sunset` (the HTTP-date after
+    which v1 requests answer 410 with code `api_version_sunset`). The usage
+    ledger records the version of every request (formats/usage.v1.sql
+    `api_version`). Everything below is v1 unless a rule says otherwise.
+
+    Rules that a schema cannot express:
+
+    - **Defaults.** Omitted sampling fields take the defaults in the request
+      schemas. `max_completion_tokens` wins over `max_tokens` when both are
+      set; with neither, generation runs to the model's context limit or an
+      end-of-sequence token.
+    - **Sampling** follows `spec/sampling.md` exactly (op order, one uniform
+      draw per sampled token, ties to the lowest id). `temperature: 0` is
+      greedy. With `temperature > 0` the same `seed` on the same engine
+      gives the same output; without `seed` the engine picks one.
+    - **Unsupported values** answer 422 `unsupported_parameter` with `param`
+      naming the field: `n > 1`, `echo: true`, content given as an array of
+      parts, and (before L10.9) any of `tools`, `tool_choice`, or
+      `response_format`. Unknown fields are ignored.
+    - **Stop.** `stop` strings end generation when the decoded text contains
+      one; the stop string itself is not returned, `finish_reason` is `stop`.
+      An end-of-sequence token also gives `stop`. Hitting the token limit
+      gives `length`. A tool call gives `tool_calls`. A usage-policy block
+      mid-stream gives `content_filter`.
+    - **Chat template.** The engine renders `messages` (and `tools`) with
+      the model's `generation_config.json` `chat_template`
+      (formats/checkpoint.md) and adds the generation prompt.
+    - **Tool calls** (from L10.9). With `tools` set and `tool_choice` not
+      `none`, the engine parses the model's tool-call syntax into
+      `message.tool_calls` (or `delta.tool_calls` fragments when
+      streaming). `tool_choice: required` or a named function constrains
+      decoding to a call whose `arguments` validate against the function's
+      `parameters` (JSON-schema subset of L8.7). `response_format:
+      {type: json_object}` constrains the output to one JSON object.
+    - **Streaming** (`stream: true`). `text/event-stream`, one event per
+      chunk, each exactly `data: <json>\n\n`, all chunks with the same `id`.
+      The first chunk carries `delta.role: assistant`. The last content
+      chunk carries `finish_reason`. With `stream_options.include_usage`,
+      one more chunk follows with `choices: []` and `usage`. Then
+      `data: [DONE]\n\n`. While no token is ready for 15 s the server sends
+      the comment `: ping\n\n`. Text is decoded incrementally
+      (formats/tokenizer.md), so a chunk may carry `content: ""`. A failure
+      after the first byte sends `data: {"error": {...}}\n\n` and ends the
+      stream without `[DONE]`; it is never retried or spliced.
+    - **Disconnect.** When the client goes away, the engine aborts the
+      request within one decode step and its KV blocks return to the pool;
+      the gateway cancels its upstream request within 100 ms.
+    - **Headers in.** `traceparent` (W3C) is propagated. `X-Request-Id` is
+      kept when given, else generated, and returned on every response.
+      `X-TL-KV-Handle` and `X-TL-Priority` are internal: the gateway strips
+      them from client requests and sets them toward engines; the engine
+      tier honors them (case `priority.internal`).
+    - **Headers out (gateway tier).** `x-ratelimit-limit-requests`,
+      `x-ratelimit-remaining-requests`, `x-ratelimit-limit-tokens`,
+      `x-ratelimit-remaining-tokens`, `x-ratelimit-reset-tokens` on every
+      authenticated response; `X-TL-Cache: hit|miss` on cacheable requests
+      (`temperature: 0` or a fixed `seed`); `X-TL-Route` (the worker id) only
+      for keys with the `debug` scope; `Retry-After` (seconds) on 429.
+    - **Errors** always have the shape `{"error": {"message", "type",
+      "param", "code"}}` with `Content-Type: application/json`. `code` is one
+      of the values in the `Error` schema or null. v2 never sends
+      `rate_limit_exceeded`: a key over its RPM gets
+      `requests_limit_exceeded`, over its TPM `tokens_limit_exceeded`, and
+      an engine whose admission queue is full `queue_full`. A model whose
+      workers are all draining gets 503 `model_draining`.
+    - **Health** is on the health port (`9464` in Kubernetes,
+      `{health_port}` locally): `GET /healthz` (process up), `GET /readyz`
+      (ready to take traffic: model loaded on the engine, at least one
+      routable worker on the gateway; 503 while draining), `GET /metrics`
+      (Prometheus exposition of `otel/metrics.yaml`).
+  x-tl-tiers:
+    engine: "no auth; serves x-tl-extension fields and x-tl-tier: engine paths"
+    gateway: "Authorization: Bearer tl_<id>_<secret>; strips X-TL-* request headers"
+servers:
+  - url: http://127.0.0.1:{port}
+    variables:
+      port: {default: "8080"}
+paths:
+  /healthz:
+    get:
+      operationId: healthz
+      summary: Liveness, on the health port.
+      security: []
+      responses:
+        "200": {description: The process is up. Any body.}
+  /readyz:
+    get:
+      operationId: readyz
+      summary: Readiness, on the health port.
+      security: []
+      responses:
+        "200": {description: Ready. Any body.}
+        "503": {description: Not ready, or draining. Any body.}
+  /metrics:
+    get:
+      operationId: metrics
+      summary: Prometheus text exposition of the otel/metrics.yaml instruments, on the health port.
+      security: []
+      responses:
+        "200":
+          description: "`text/plain; version=0.0.4` exposition."
+          content:
+            text/plain:
+              schema: {type: string}
+  /v1/chat/completions:
+    post:
+      operationId: createChatCompletion
+      summary: Chat completion, plain or streamed, with optional tool calls.
+      security: [{}, {bearer: []}]
+      parameters:
+        - $ref: "#/components/parameters/ApiVersion"
+        - $ref: "#/components/parameters/Traceparent"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/KvHandle"
+        - $ref: "#/components/parameters/Priority"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ChatCompletionRequest"}
+      responses:
+        "200":
+          description: "A chat.completion, or with `stream` an SSE stream of chat.completion.chunk ending in `data: [DONE]`."
+          headers:
+            X-TL-API-Version: {$ref: "#/components/headers/X-TL-API-Version"}
+            X-Request-Id: {$ref: "#/components/headers/X-Request-Id"}
+            x-ratelimit-limit-requests: {$ref: "#/components/headers/RateLimitInt"}
+            x-ratelimit-remaining-requests: {$ref: "#/components/headers/RateLimitInt"}
+            x-ratelimit-limit-tokens: {$ref: "#/components/headers/RateLimitInt"}
+            x-ratelimit-remaining-tokens: {$ref: "#/components/headers/RateLimitInt"}
+            x-ratelimit-reset-tokens: {$ref: "#/components/headers/RateLimitReset"}
+            X-TL-Cache: {$ref: "#/components/headers/X-TL-Cache"}
+            X-TL-Route: {$ref: "#/components/headers/X-TL-Route"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ChatCompletion"}
+            text/event-stream:
+              schema:
+                type: string
+                description: "`data: <ChatCompletionChunk json>\\n\\n` per chunk, then `data: [DONE]\\n\\n`."
+              x-tl-chunk: {$ref: "#/components/schemas/ChatCompletionChunk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/ModelNotFound"}
+        "422": {$ref: "#/components/responses/Unsupported"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "451": {$ref: "#/components/responses/PolicyBlocked"}
+        "503": {$ref: "#/components/responses/NoCapacity"}
+  /v1/completions:
+    post:
+      operationId: createCompletion
+      summary: Text completion, plain or streamed. Deprecated in v2.
+      deprecated: true
+      description: |
+        Still served in v2, unchanged except for the usage field, with
+        `Deprecation` and `Sunset` on every response. Use
+        /v1/chat/completions.
+      security: [{}, {bearer: []}]
+      parameters:
+        - $ref: "#/components/parameters/ApiVersion"
+        - $ref: "#/components/parameters/Traceparent"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/KvHandle"
+        - $ref: "#/components/parameters/Priority"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CompletionRequest"}
+      responses:
+        "200":
+          description: "A text_completion, or with `stream` an SSE stream of chunks ending in `data: [DONE]`."
+          headers:
+            X-TL-API-Version: {$ref: "#/components/headers/X-TL-API-Version"}
+            Deprecation:
+              description: "Always set on this path in v2: `@<unix seconds>` (RFC 9745)."
+              required: true
+              schema: {type: string, pattern: "^@[0-9]+$"}
+            Sunset:
+              description: "Always set on this path in v2: an HTTP-date (RFC 8594)."
+              required: true
+              schema: {type: string}
+            X-Request-Id: {$ref: "#/components/headers/X-Request-Id"}
+            X-TL-Cache: {$ref: "#/components/headers/X-TL-Cache"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Completion"}
+            text/event-stream:
+              schema:
+                type: string
+                description: "`data: <CompletionChunk json>\\n\\n` per chunk, then `data: [DONE]\\n\\n`."
+              x-tl-chunk: {$ref: "#/components/schemas/CompletionChunk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/ModelNotFound"}
+        "422": {$ref: "#/components/responses/Unsupported"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "451": {$ref: "#/components/responses/PolicyBlocked"}
+        "503": {$ref: "#/components/responses/NoCapacity"}
+  /v1/embeddings:
+    post:
+      operationId: createEmbedding
+      summary: Mean-pooled final hidden states, L2-normalized.
+      description: |
+        For each input the engine runs the model without sampling, averages
+        the final hidden states (after the final norm) over the input's
+        tokens, and divides by the L2 norm. The gateway's usage policy calls
+        this path for its classifier rule (D33).
+      security: [{}, {bearer: []}]
+      parameters:
+        - $ref: "#/components/parameters/ApiVersion"
+        - $ref: "#/components/parameters/Traceparent"
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/EmbeddingRequest"}
+      responses:
+        "200":
+          description: One embedding per input, in input order.
+          headers:
+            X-Request-Id: {$ref: "#/components/headers/X-Request-Id"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EmbeddingList"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/ModelNotFound"}
+        "422": {$ref: "#/components/responses/Unsupported"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "503": {$ref: "#/components/responses/NoCapacity"}
+  /v1/models:
+    get:
+      operationId: listModels
+      summary: The route table's models (gateway) or the loaded model (engine).
+      security: [{}, {bearer: []}]
+      responses:
+        "200":
+          description: Every model the caller may use.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ModelList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+  /v1/models/{model}:
+    get:
+      operationId: retrieveModel
+      summary: One model.
+      security: [{}, {bearer: []}]
+      parameters:
+        - name: model
+          in: path
+          required: true
+          schema: {type: string, minLength: 1}
+      responses:
+        "200":
+          description: The model.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Model"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/ModelNotFound"}
+  /v1/tokenize:
+    x-tl-tier: engine
+    post:
+      operationId: tokenize
+      summary: Token ids of a text with the model's tokenizer (engine tier only).
+      description: |
+        The gateway calls it to compute a request's token cost for TPM
+        limits (gw.03); it is not exposed through the gateway.
+      security: []
+      x-tl-extension: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TokenizeRequest"}
+      responses:
+        "200":
+          description: The ids.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TokenizeResponse"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/ModelNotFound"}
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: "Gateway tier. Keys are `tl_<id>_<secret>`; the gateway stores HMAC-SHA256(pepper, secret) only (D19, gw.02)."
+  parameters:
+    ApiVersion:
+      name: X-TL-API-Version
+      in: header
+      required: false
+      schema: {type: string, enum: ["1", "2"]}
+    Traceparent:
+      name: traceparent
+      in: header
+      required: false
+      schema: {type: string, pattern: "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"}
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: {type: string, maxLength: 128}
+    KvHandle:
+      name: X-TL-KV-Handle
+      in: header
+      required: false
+      description: "Internal (engine tier, decode role): resume the request whose prompt KV arrived under this tl.kv.v1 handle (proto/tl/engine/v1/engine.proto KvHandle). Unknown handle: 404 with code `kv_handle_not_found`."
+      schema: {type: string, minLength: 1, maxLength: 128}
+      x-tl-extension: true
+    Priority:
+      name: X-TL-Priority
+      in: header
+      required: false
+      description: "Internal (engine tier): scheduler priority from the key's tenant tier; higher runs first (L10.2). Default 0."
+      schema: {type: integer, minimum: -100, maximum: 100}
+      x-tl-extension: true
+  headers:
+    X-TL-API-Version:
+      description: The API version this response follows.
+      schema: {type: string, enum: ["1", "2"]}
+    Deprecation:
+      description: "RFC 9745: `@<unix seconds>` when the version or path was deprecated."
+      schema: {type: string, pattern: "^@[0-9]+$"}
+    Sunset:
+      description: "RFC 8594: the HTTP-date after which the version or path stops answering."
+      schema: {type: string}
+    X-Request-Id:
+      description: Copied from the request, or generated.
+      schema: {type: string}
+    RateLimitInt:
+      description: Gateway tier.
+      schema: {type: integer, minimum: 0}
+    RateLimitReset:
+      description: "Gateway tier: time until the token bucket refills, for example `6s` or `1m30s`."
+      schema: {type: string}
+    X-TL-Cache:
+      description: "Gateway tier, cacheable requests only."
+      schema: {type: string, enum: [hit, miss]}
+    X-TL-Route:
+      description: "Gateway tier, keys with the `debug` scope only: the worker id that served the request."
+      schema: {type: string}
+    Retry-After:
+      description: Seconds before a retry may succeed.
+      schema: {type: integer, minimum: 0}
+  responses:
+    BadRequest:
+      description: "Malformed JSON, a missing field, or a value out of range (for example `temperature: -1`); `context_length_exceeded` when the prompt plus the token limit exceed the model's context. `type: invalid_request_error`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Unauthorized:
+      description: "Gateway tier: missing or unknown key. `invalid_request_error` / `invalid_api_key`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Forbidden:
+      description: "Gateway tier: the key lacks the scope or the model. `permission_error` / `insufficient_scope`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    ModelNotFound:
+      description: "Unknown model. `invalid_request_error` / `model_not_found` (or `kv_handle_not_found`)."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Unsupported:
+      description: "A supported field with an unsupported value, for example `n > 1`. `invalid_request_error` / `unsupported_parameter`."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    RateLimited:
+      description: "`rate_limit_error` / `requests_limit_exceeded` (RPM) or `tokens_limit_exceeded` (TPM) at the gateway, `queue_full` from an engine's admission queue; sets `Retry-After`."
+      headers:
+        Retry-After: {$ref: "#/components/headers/Retry-After"}
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    PolicyBlocked:
+      description: "Gateway tier, from gw.08: the usage policy blocks the request. `policy_error` / `usage_policy`; `message` names the rule id."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    NoCapacity:
+      description: "`server_error` / `no_capacity` (no healthy worker, or every KV pool stayed full past the queue deadline) or `model_draining` (every worker of the model is draining)."
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+  schemas:
+    # -- requests -----------------------------------------------------------
+    SamplingFields:
+      description: Fields shared by both completion requests; the order of application is spec/sampling.md.
+      type: object
+      properties:
+        temperature: {type: number, minimum: 0, maximum: 2, default: 1}
+        top_p: {type: number, exclusiveMinimum: 0, maximum: 1, default: 1}
+        top_k:
+          type: integer
+          minimum: 0
+          default: 0
+          description: 0 disables top-k.
+          x-tl-extension: true
+        min_p:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0
+          x-tl-extension: true
+        repetition_penalty:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 10
+          default: 1
+          x-tl-extension: true
+        presence_penalty: {type: number, minimum: -2, maximum: 2, default: 0}
+        frequency_penalty: {type: number, minimum: -2, maximum: 2, default: 0}
+        seed: {type: integer, minimum: 0, maximum: 9223372036854775807}
+        stop:
+          oneOf:
+            - {type: string, minLength: 1}
+            - {type: array, minItems: 1, maxItems: 4, items: {type: string, minLength: 1}}
+        stream: {type: boolean, default: false}
+        stream_options:
+          type: object
+          properties:
+            include_usage: {type: boolean, default: false}
+        user: {type: string, maxLength: 256}
+    ChatMessage:
+      oneOf:
+        - type: object
+          required: [role, content]
+          properties:
+            role: {const: system}
+            content: {type: string}
+            name: {type: string}
+        - type: object
+          required: [role, content]
+          properties:
+            role: {const: user}
+            content: {type: string}
+            name: {type: string}
+        - type: object
+          required: [role]
+          properties:
+            role: {const: assistant}
+            content: {type: [string, "null"]}
+            name: {type: string}
+            tool_calls:
+              type: array
+              items: {$ref: "#/components/schemas/ToolCall"}
+        - type: object
+          required: [role, content, tool_call_id]
+          properties:
+            role: {const: tool}
+            content: {type: string}
+            tool_call_id: {type: string, minLength: 1}
+    Tool:
+      type: object
+      required: [type, function]
+      properties:
+        type: {const: function}
+        function:
+          type: object
+          required: [name]
+          properties:
+            name: {type: string, pattern: "^[A-Za-z0-9_-]{1,64}$"}
+            description: {type: string}
+            parameters:
+              type: object
+              description: "A JSON Schema object in the L8.7 subset (type, properties, required, enum, items, string patterns)."
+    ToolChoice:
+      oneOf:
+        - {type: string, enum: [none, auto, required]}
+        - type: object
+          required: [type, function]
+          properties:
+            type: {const: function}
+            function:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string}
+    ChatCompletionRequest:
+      allOf:
+        - $ref: "#/components/schemas/SamplingFields"
+        - type: object
+          required: [model, messages]
+          properties:
+            model: {type: string, minLength: 1}
+            messages:
+              type: array
+              minItems: 1
+              items: {$ref: "#/components/schemas/ChatMessage"}
+            max_tokens: {type: [integer, "null"], minimum: 1}
+            max_completion_tokens: {type: [integer, "null"], minimum: 1}
+            n: {type: integer, minimum: 1, default: 1, description: "Only 1 is supported; larger values answer 422."}
+            logprobs: {type: boolean, default: false}
+            top_logprobs: {type: integer, minimum: 0, maximum: 20}
+            tools:
+              type: array
+              maxItems: 128
+              items: {$ref: "#/components/schemas/Tool"}
+            tool_choice: {$ref: "#/components/schemas/ToolChoice"}
+            parallel_tool_calls: {type: boolean, default: true}
+            response_format:
+              type: object
+              required: [type]
+              properties:
+                type: {type: string, enum: [text, json_object]}
+    CompletionRequest:
+      allOf:
+        - $ref: "#/components/schemas/SamplingFields"
+        - type: object
+          required: [model, prompt]
+          properties:
+            model: {type: string, minLength: 1}
+            prompt: {type: string, minLength: 1}
+            max_tokens: {type: [integer, "null"], minimum: 1, default: 16}
+            echo: {type: boolean, default: false, description: "Only false is supported; true answers 422."}
+            logprobs: {type: [integer, "null"], minimum: 0, maximum: 5}
+    EmbeddingRequest:
+      type: object
+      required: [model, input]
+      properties:
+        model: {type: string, minLength: 1}
+        input:
+          oneOf:
+            - {type: string, minLength: 1}
+            - {type: array, minItems: 1, maxItems: 256, items: {type: string, minLength: 1}}
+        encoding_format: {type: string, enum: [float], default: float}
+        user: {type: string}
+    TokenizeRequest:
+      type: object
+      required: [model, text]
+      properties:
+        model: {type: string, minLength: 1}
+        text: {type: string}
+        add_special: {type: boolean, default: false, description: "Apply the tokenizer's post-processor (BOS and friends)."}
+    # -- responses ----------------------------------------------------------
+    Usage:
+      type: object
+      required: [prompt_tokens, completion_tokens, total_tokens, prompt_tokens_details]
+      properties:
+        prompt_tokens: {type: integer, minimum: 0}
+        completion_tokens: {type: integer, minimum: 0}
+        total_tokens: {type: integer, minimum: 0}
+        prompt_tokens_details:
+          type: object
+          required: [cached_tokens]
+          properties:
+            cached_tokens:
+              type: integer
+              minimum: 0
+              description: "Prompt tokens served from the engine's prefix cache (L10.4) or, disaggregated, the prefill side's cache plus deduplicated KV blocks; at most prompt_tokens."
+
+    ToolCall:
+      type: object
+      required: [id, type, function]
+      properties:
+        id: {type: string, minLength: 1}
+        type: {const: function}
+        function:
+          type: object
+          required: [name, arguments]
+          properties:
+            name: {type: string}
+            arguments: {type: string, description: "A JSON object, serialized."}
+    TokenLogprob:
+      type: object
+      required: [token, logprob, bytes]
+      properties:
+        token: {type: string}
+        logprob: {type: number, maximum: 0}
+        bytes: {type: [array, "null"], items: {type: integer, minimum: 0, maximum: 255}}
+    ChatLogprobs:
+      type: [object, "null"]
+      required: [content]
+      properties:
+        content:
+          type: [array, "null"]
+          items:
+            allOf:
+              - $ref: "#/components/schemas/TokenLogprob"
+              - type: object
+                required: [top_logprobs]
+                properties:
+                  top_logprobs:
+                    type: array
+                    items: {$ref: "#/components/schemas/TokenLogprob"}
+    FinishReason:
+      type: string
+      enum: [stop, length, tool_calls, content_filter]
+    ChatCompletion:
+      type: object
+      required: [id, object, created, model, choices, usage]
+      properties:
+        id: {type: string, minLength: 1}
+        object: {const: chat.completion}
+        created: {type: integer}
+        model: {type: string}
+        choices:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: object
+            required: [index, message, finish_reason]
+            properties:
+              index: {const: 0}
+              message:
+                type: object
+                required: [role, content]
+                properties:
+                  role: {const: assistant}
+                  content: {type: [string, "null"]}
+                  tool_calls:
+                    type: array
+                    minItems: 1
+                    items: {$ref: "#/components/schemas/ToolCall"}
+              finish_reason: {$ref: "#/components/schemas/FinishReason"}
+              logprobs: {$ref: "#/components/schemas/ChatLogprobs"}
+        usage: {$ref: "#/components/schemas/Usage"}
+    ToolCallDelta:
+      type: object
+      required: [index]
+      properties:
+        index: {type: integer, minimum: 0, description: "Position of the call in tool_calls; fragments with the same index concatenate."}
+        id: {type: string, description: "Only in the call's first fragment."}
+        type: {const: function}
+        function:
+          type: object
+          properties:
+            name: {type: string, description: "Only in the call's first fragment."}
+            arguments: {type: string, description: "A fragment of the serialized arguments."}
+    ChatCompletionChunk:
+      type: object
+      required: [id, object, created, model, choices]
+      properties:
+        id: {type: string, minLength: 1}
+        object: {const: chat.completion.chunk}
+        created: {type: integer}
+        model: {type: string}
+        choices:
+          type: array
+          maxItems: 1
+          description: "Empty only in the usage chunk."
+          items:
+            type: object
+            required: [index, delta, finish_reason]
+            properties:
+              index: {const: 0}
+              delta:
+                type: object
+                properties:
+                  role: {const: assistant}
+                  content: {type: [string, "null"]}
+                  tool_calls:
+                    type: array
+                    items: {$ref: "#/components/schemas/ToolCallDelta"}
+              finish_reason:
+                type: [string, "null"]
+                enum: [stop, length, tool_calls, content_filter, null]
+              logprobs: {$ref: "#/components/schemas/ChatLogprobs"}
+        usage:
+          description: "Only in the usage chunk (stream_options.include_usage), else absent or null."
+          oneOf:
+            - {type: "null"}
+            - {$ref: "#/components/schemas/Usage"}
+    CompletionLogprobs:
+      type: [object, "null"]
+      required: [tokens, token_logprobs, top_logprobs, text_offset]
+      properties:
+        tokens: {type: array, items: {type: string}}
+        token_logprobs: {type: array, items: {type: number, maximum: 0}}
+        top_logprobs:
+          type: array
+          items: {type: object, additionalProperties: {type: number, maximum: 0}}
+        text_offset: {type: array, items: {type: integer, minimum: 0}}
+    Completion:
+      type: object
+      required: [id, object, created, model, choices, usage]
+      properties:
+        id: {type: string, minLength: 1}
+        object: {const: text_completion}
+        created: {type: integer}
+        model: {type: string}
+        choices:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: object
+            required: [index, text, finish_reason]
+            properties:
+              index: {const: 0}
+              text: {type: string}
+              finish_reason: {type: string, enum: [stop, length, content_filter]}
+              logprobs: {$ref: "#/components/schemas/CompletionLogprobs"}
+        usage: {$ref: "#/components/schemas/Usage"}
+    CompletionChunk:
+      type: object
+      required: [id, object, created, model, choices]
+      properties:
+        id: {type: string, minLength: 1}
+        object: {const: text_completion}
+        created: {type: integer}
+        model: {type: string}
+        choices:
+          type: array
+          maxItems: 1
+          items:
+            type: object
+            required: [index, text, finish_reason]
+            properties:
+              index: {const: 0}
+              text: {type: string}
+              finish_reason:
+                type: [string, "null"]
+                enum: [stop, length, content_filter, null]
+              logprobs: {$ref: "#/components/schemas/CompletionLogprobs"}
+        usage:
+          oneOf:
+            - {type: "null"}
+            - {$ref: "#/components/schemas/Usage"}
+    EmbeddingList:
+      type: object
+      required: [object, data, model, usage]
+      properties:
+        object: {const: list}
+        model: {type: string}
+        data:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [object, index, embedding]
+            properties:
+              object: {const: embedding}
+              index: {type: integer, minimum: 0}
+              embedding: {type: array, minItems: 1, items: {type: number}}
+        usage:
+          type: object
+          required: [prompt_tokens, total_tokens]
+          properties:
+            prompt_tokens: {type: integer, minimum: 0}
+            total_tokens: {type: integer, minimum: 0}
+    Model:
+      type: object
+      required: [id, object, created, owned_by]
+      properties:
+        id: {type: string, minLength: 1}
+        object: {const: model}
+        created: {type: integer}
+        owned_by: {type: string}
+    ModelList:
+      type: object
+      required: [object, data]
+      properties:
+        object: {const: list}
+        data: {type: array, items: {$ref: "#/components/schemas/Model"}}
+    TokenizeResponse:
+      type: object
+      required: [ids]
+      properties:
+        ids: {type: array, items: {type: integer, minimum: 0}}
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [message, type, param, code]
+          properties:
+            message: {type: string}
+            type:
+              type: string
+              enum: [invalid_request_error, permission_error, rate_limit_error, policy_error, server_error]
+            param: {type: [string, "null"]}
+            code:
+              type: [string, "null"]
+              enum:
+                - invalid_api_key
+                - insufficient_scope
+                - model_not_found
+                - kv_handle_not_found
+                - unsupported_parameter
+                - context_length_exceeded
+                - requests_limit_exceeded
+                - tokens_limit_exceeded
+                - queue_full
+                - usage_policy
+                - no_capacity
+                - model_draining
+                - api_version_sunset
+                - internal_error
+                - null

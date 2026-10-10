@@ -103,29 +103,6 @@ run-11-recursion-divide-conquer:
   python3 algorithms/11-recursion-divide-conquer/example-1.py
   python3 algorithms/11-recursion-divide-conquer/example-3.py
 
-run-12-concurrency-systems:
-  make -C algorithms/12-concurrency-systems/miner
-  cd algorithms/12-concurrency-systems && \
-    for cfg in tests/test.*.cfg; do \
-      id=${cfg##*/}; id=${id#test.}; id=${id%.cfg}; \
-      ./tests/test.sh "$id"; \
-    done
-
-run-13-functional-programming:
-  echo "Scheme files; run with a Scheme interpreter (e.g., racket or guile)."
-  echo "Example: racket algorithms/13-functional-programming/Factors.scm"
-
-run-14-ml-statistics:
-  echo "Use subcommands: run-14-ml-statistics-nlp or run-14-ml-statistics-r-exercises"
-
-run-14-ml-statistics-nlp:
-  echo "Python: python3 algorithms/14-ml-statistics/nlp/hmm_tagger.py"
-  echo "Prolog: swipl -s algorithms/14-ml-statistics/nlp/dcg.pl"
-  echo "Perl: perl algorithms/14-ml-statistics/nlp/a1q4.pl"
-
-run-14-ml-statistics-r-exercises:
-  echo "R: Rscript algorithms/14-ml-statistics/r-exercises/exercise-1/q4.r"
-
 run-15-probabilistic-structures:
   command -v python3 >/dev/null
   python3 algorithms/15-probabilistic-structures/bloom.py
@@ -151,6 +128,24 @@ run-build-lang lang:
 run-practice-status:
   practice/bin/ss where
 
+# ---------- Course (course/DESIGN.md) ----------
+
+# Maintainer checks for the course registry, references, tests, and mutants.
+course-verify:
+  practice/bin/ss verify course
+
+# Registry invariants, chapter contract, and every markdown link in the repo.
+course-lint:
+  practice/bin/ss lint --links
+
+# Run one milestone against your system, e.g. `just milestone MS-P1`.
+milestone M:
+  practice/bin/ss milestone {{M}}
+
+# Start a drill against your kind cluster, e.g. `just drill engine-crashloop`.
+drill D:
+  practice/bin/ss drill start {{D}}
+
 # ---------- Aggregate recipes ----------
 
 run-all: \
@@ -165,11 +160,6 @@ run-all: \
   run-09-backtracking \
   run-10-math-bit \
   run-11-recursion-divide-conquer \
-  run-12-concurrency-systems \
-  run-13-functional-programming \
-  run-14-ml-statistics \
-  run-14-ml-statistics-nlp \
-  run-14-ml-statistics-r-exercises \
   run-15-probabilistic-structures
 
 run-all-parallel:
@@ -185,9 +175,4 @@ run-all-parallel:
     run-09-backtracking \
     run-10-math-bit \
     run-11-recursion-divide-conquer \
-    run-12-concurrency-systems \
-    run-13-functional-programming \
-    run-14-ml-statistics \
-    run-14-ml-statistics-nlp \
-    run-14-ml-statistics-r-exercises \
-    run-15-probabilistic-structures
+              run-15-probabilistic-structures

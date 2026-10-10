@@ -41,7 +41,7 @@ practice/bin/ss diff  build c 01       # your attempt against the reference
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather
 than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../README.md) for how the
+this table and nothing more; see the [practice path](../../../README.md) for how the
 harness works.
 
 ## Exercises
@@ -50,13 +50,13 @@ Implement each using only the C standard library. No external dependencies.
 
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|
-| 01 | Dynamic array (`vec.h`) | `realloc`, growth factor, generics via macros | ⭐⭐ |
-| 02 | Hash map (open addressing) | Hash functions, probing, load factor | ⭐⭐⭐ |
-| 03 | Linked list (intrusive) | Container-of macro, pointer manipulation | ⭐⭐ |
-| 04 | Binary heap | Array-based, `sift_up`/`sift_down` | ⭐⭐ |
+| 01 | Dynamic array (`vec.h`) | `realloc`, growth factor, generics via macros; course version: `ds.01`, `lang.03` | ⭐⭐ |
+| 02 | Hash map (open addressing) | Hash functions, probing, load factor; course version: `ds.02` (this drill is its worked baseline) | ⭐⭐⭐ |
+| 03 | Linked list (intrusive) | Container-of macro, pointer manipulation; course version: `ds.03` | ⭐⭐ |
+| 04 | Binary heap | Array-based, `sift_up`/`sift_down`; course version: `ds.04` | ⭐⭐ |
 | 05 | Merge sort (in-place) | Pointer arithmetic, recursion | ⭐⭐ |
 | 06 | Graph (adjacency list) | Flexible arrays, BFS/DFS | ⭐⭐⭐ |
-| 07 | Thread pool | pthreads, condition variables, work queue | ⭐⭐⭐⭐ |
-| 08 | Arena allocator | Memory management, alignment, bump allocation | ⭐⭐⭐ |
+| 07 | Thread pool | pthreads, condition variables, work queue; course version: `rt.03` | ⭐⭐⭐⭐ |
+| 08 | Arena allocator | Memory management, alignment, bump allocation; course version: `rt.02` | ⭐⭐⭐ |
 | 09 | String interning | Hash table, `strdup`, lifetime management | ⭐⭐⭐ |
 | 10 | Simple HTTP parser | State machine, buffer management, `recv` | ⭐⭐⭐⭐ |

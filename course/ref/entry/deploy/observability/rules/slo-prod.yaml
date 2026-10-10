@@ -1,0 +1,205 @@
+# Rendered by render_slo_rules.py from slo.yaml: do not edit by hand.
+# Profile prod: fast 1h/5m, slow 6h/30m.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: forge-slo-prod
+  namespace: observability
+  labels:
+    release: observability          # the kube-prometheus-stack rule selector (contracts/helm/observability.md)
+    app.kubernetes.io/part-of: forge
+spec:
+  groups:
+    - name: forge-slo-prod
+      interval: 30s
+      rules:
+        - record: slo:sli_error:ratio_rate1h
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_to_first_token_seconds_bucket{job="forge-gateway",le="0.5"}[1h]))
+              /
+              sum(rate(gen_ai_server_time_to_first_token_seconds_count{job="forge-gateway"}[1h]))
+            )
+          labels:
+            slo: ttft
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate5m
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_to_first_token_seconds_bucket{job="forge-gateway",le="0.5"}[5m]))
+              /
+              sum(rate(gen_ai_server_time_to_first_token_seconds_count{job="forge-gateway"}[5m]))
+            )
+          labels:
+            slo: ttft
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate6h
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_to_first_token_seconds_bucket{job="forge-gateway",le="0.5"}[6h]))
+              /
+              sum(rate(gen_ai_server_time_to_first_token_seconds_count{job="forge-gateway"}[6h]))
+            )
+          labels:
+            slo: ttft
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate30m
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_to_first_token_seconds_bucket{job="forge-gateway",le="0.5"}[30m]))
+              /
+              sum(rate(gen_ai_server_time_to_first_token_seconds_count{job="forge-gateway"}[30m]))
+            )
+          labels:
+            slo: ttft
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate1h
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_per_output_token_seconds_bucket{job="forge-gateway",le="0.05"}[1h]))
+              /
+              sum(rate(gen_ai_server_time_per_output_token_seconds_count{job="forge-gateway"}[1h]))
+            )
+          labels:
+            slo: tpot
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate5m
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_per_output_token_seconds_bucket{job="forge-gateway",le="0.05"}[5m]))
+              /
+              sum(rate(gen_ai_server_time_per_output_token_seconds_count{job="forge-gateway"}[5m]))
+            )
+          labels:
+            slo: tpot
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate6h
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_per_output_token_seconds_bucket{job="forge-gateway",le="0.05"}[6h]))
+              /
+              sum(rate(gen_ai_server_time_per_output_token_seconds_count{job="forge-gateway"}[6h]))
+            )
+          labels:
+            slo: tpot
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate30m
+          expr: |
+            1 - (
+              sum(rate(gen_ai_server_time_per_output_token_seconds_bucket{job="forge-gateway",le="0.05"}[30m]))
+              /
+              sum(rate(gen_ai_server_time_per_output_token_seconds_count{job="forge-gateway"}[30m]))
+            )
+          labels:
+            slo: tpot
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate1h
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway",http_response_status_code=~"5.."}[1h]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway"}[1h]))
+          labels:
+            slo: availability
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate5m
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway",http_response_status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway"}[5m]))
+          labels:
+            slo: availability
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate6h
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway",http_response_status_code=~"5.."}[6h]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway"}[6h]))
+          labels:
+            slo: availability
+            slo_profile: prod
+        - record: slo:sli_error:ratio_rate30m
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway",http_response_status_code=~"5.."}[30m]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{job="forge-gateway"}[30m]))
+          labels:
+            slo: availability
+            slo_profile: prod
+        - alert: TTFTBudgetBurnFast
+          expr: |
+            slo:sli_error:ratio_rate1h{slo="ttft",slo_profile="prod"} > (14.4 * 0.01)
+            and
+            slo:sli_error:ratio_rate5m{slo="ttft",slo_profile="prod"} > (14.4 * 0.01)
+          for: 2m
+          labels:
+            severity: page
+            slo: ttft
+            slo_profile: prod
+          annotations:
+            summary: ttft error budget burning at more than 14.4x over 1h and 5m
+            runbook: docs/runbooks/TTFTBudgetBurnFast.md
+        - alert: TTFTBudgetBurnSlow
+          expr: |
+            slo:sli_error:ratio_rate6h{slo="ttft",slo_profile="prod"} > (6 * 0.01)
+            and
+            slo:sli_error:ratio_rate30m{slo="ttft",slo_profile="prod"} > (6 * 0.01)
+          for: 15m
+          labels:
+            severity: ticket
+            slo: ttft
+            slo_profile: prod
+          annotations:
+            summary: ttft error budget burning at more than 6x over 6h and 30m
+            runbook: docs/runbooks/TTFTBudgetBurnSlow.md
+        - alert: TPOTBudgetBurnFast
+          expr: |
+            slo:sli_error:ratio_rate1h{slo="tpot",slo_profile="prod"} > (14.4 * 0.01)
+            and
+            slo:sli_error:ratio_rate5m{slo="tpot",slo_profile="prod"} > (14.4 * 0.01)
+          for: 2m
+          labels:
+            severity: page
+            slo: tpot
+            slo_profile: prod
+          annotations:
+            summary: tpot error budget burning at more than 14.4x over 1h and 5m
+            runbook: docs/runbooks/TPOTBudgetBurnFast.md
+        - alert: TPOTBudgetBurnSlow
+          expr: |
+            slo:sli_error:ratio_rate6h{slo="tpot",slo_profile="prod"} > (6 * 0.01)
+            and
+            slo:sli_error:ratio_rate30m{slo="tpot",slo_profile="prod"} > (6 * 0.01)
+          for: 15m
+          labels:
+            severity: ticket
+            slo: tpot
+            slo_profile: prod
+          annotations:
+            summary: tpot error budget burning at more than 6x over 6h and 30m
+            runbook: docs/runbooks/TPOTBudgetBurnSlow.md
+        - alert: AvailabilityBudgetBurnFast
+          expr: |
+            slo:sli_error:ratio_rate1h{slo="availability",slo_profile="prod"} > (14.4 * 0.005)
+            and
+            slo:sli_error:ratio_rate5m{slo="availability",slo_profile="prod"} > (14.4 * 0.005)
+          for: 2m
+          labels:
+            severity: page
+            slo: availability
+            slo_profile: prod
+          annotations:
+            summary: availability error budget burning at more than 14.4x over 1h and 5m
+            runbook: docs/runbooks/AvailabilityBudgetBurnFast.md
+        - alert: AvailabilityBudgetBurnSlow
+          expr: |
+            slo:sli_error:ratio_rate6h{slo="availability",slo_profile="prod"} > (6 * 0.005)
+            and
+            slo:sli_error:ratio_rate30m{slo="availability",slo_profile="prod"} > (6 * 0.005)
+          for: 15m
+          labels:
+            severity: ticket
+            slo: availability
+            slo_profile: prod
+          annotations:
+            summary: availability error budget burning at more than 6x over 6h and 30m
+            runbook: docs/runbooks/AvailabilityBudgetBurnSlow.md

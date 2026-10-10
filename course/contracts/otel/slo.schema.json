@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "deploy/observability/slo.yaml",
+  "description": "The learner's SLO file (DESIGN 2.11; obs.03), as the JSON value of the parsed YAML. It declares the three SLOs and the six multi-window burn-rate alerts with fixed names; the learner renders them into PrometheusRule objects (deploy/observability/rules/). Latency SLOs are ratio SLIs: the fraction of requests whose TTFT (TPOT) is at most threshold_ms, from the metrics.yaml histograms, must be at least objective. Availability is 1 minus the ratio of HTTP 5xx. An alert fires when the burn rate (error ratio divided by 1 - objective) exceeds burn_rate over both its long and its short window. The window profile is fixed: prod uses 1h/5m at 14.4 and 6h/30m at 6; drill uses the same ratios with windows compressed 12x (5m/25s and 30m/2m30s) so a drill can fire within minutes. Latency thresholds start from the course defaults scaled by ss bench --calibrate; the learner may set stricter targets (lower thresholds, higher objectives), never looser ones, which ss checks against the calibration.",
+  "type": "object",
+  "required": ["version", "profile", "windows", "slos", "alerts"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"const": 1},
+    "profile": {"enum": ["prod", "drill"]},
+    "windows": {
+      "type": "object",
+      "required": ["fast", "slow"],
+      "additionalProperties": false,
+      "properties": {
+        "fast": {"$ref": "#/$defs/window"},
+        "slow": {"$ref": "#/$defs/window"}
+      }
+    },
+    "slos": {
+      "type": "object",
+      "required": ["ttft", "tpot", "availability"],
+      "additionalProperties": false,
+      "properties": {
+        "ttft": {"$ref": "#/$defs/latency"},
+        "tpot": {"$ref": "#/$defs/latency"},
+        "availability": {
+          "type": "object",
+          "required": ["objective", "period"],
+          "additionalProperties": false,
+          "properties": {
+            "objective": {"type": "number", "minimum": 0.995, "exclusiveMaximum": 1},
+            "period": {"const": "30d"}
+          }
+        }
+      }
+    },
+    "alerts": {
+      "type": "object",
+      "required": ["TTFTBudgetBurnFast", "TTFTBudgetBurnSlow", "TPOTBudgetBurnFast", "TPOTBudgetBurnSlow", "AvailabilityBudgetBurnFast", "AvailabilityBudgetBurnSlow"],
+      "additionalProperties": false,
+      "properties": {
+        "TTFTBudgetBurnFast": {"$ref": "#/$defs/alert", "properties": {"slo": {"const": "ttft"}, "window": {"const": "fast"}}},
+        "TTFTBudgetBurnSlow": {"$ref": "#/$defs/alert", "properties": {"slo": {"const": "ttft"}, "window": {"const": "slow"}}},
+        "TPOTBudgetBurnFast": {"$ref": "#/$defs/alert", "properties": {"slo": {"const": "tpot"}, "window": {"const": "fast"}}},
+        "TPOTBudgetBurnSlow": {"$ref": "#/$defs/alert", "properties": {"slo": {"const": "tpot"}, "window": {"const": "slow"}}},
+        "AvailabilityBudgetBurnFast": {"$ref": "#/$defs/alert", "properties": {"slo": {"const": "availability"}, "window": {"const": "fast"}}},
+        "AvailabilityBudgetBurnSlow": {"$ref": "#/$defs/alert", "properties": {"slo": {"const": "availability"}, "window": {"const": "slow"}}}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "The windows are the profile's.",
+      "anyOf": [
+        {
+          "properties": {
+            "profile": {"const": "prod"},
+            "windows": {"properties": {
+              "fast": {"properties": {"long": {"const": "1h"}, "short": {"const": "5m"}, "burn_rate": {"const": 14.4}}},
+              "slow": {"properties": {"long": {"const": "6h"}, "short": {"const": "30m"}, "burn_rate": {"const": 6}}}
+            }}
+          }
+        },
+        {
+          "properties": {
+            "profile": {"const": "drill"},
+            "windows": {"properties": {
+              "fast": {"properties": {"long": {"const": "5m"}, "short": {"const": "25s"}, "burn_rate": {"const": 14.4}}},
+              "slow": {"properties": {"long": {"const": "30m"}, "short": {"const": "2m30s"}, "burn_rate": {"const": 6}}}
+            }}
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "window": {
+      "type": "object",
+      "required": ["long", "short", "burn_rate"],
+      "additionalProperties": false,
+      "properties": {
+        "long": {"type": "string", "pattern": "^([0-9]+[hms])+$"},
+        "short": {"type": "string", "pattern": "^([0-9]+[hms])+$"},
+        "burn_rate": {"type": "number", "exclusiveMinimum": 1}
+      }
+    },
+    "latency": {
+      "type": "object",
+      "required": ["threshold_ms", "objective"],
+      "additionalProperties": false,
+      "properties": {
+        "threshold_ms": {"type": "number", "exclusiveMinimum": 0},
+        "objective": {"type": "number", "minimum": 0.95, "exclusiveMaximum": 1}
+      }
+    },
+    "alert": {
+      "type": "object",
+      "required": ["slo", "window", "severity"],
+      "additionalProperties": false,
+      "properties": {
+        "slo": {"enum": ["ttft", "tpot", "availability"]},
+        "window": {"enum": ["fast", "slow"]},
+        "severity": {"enum": ["page", "ticket"]}
+      }
+    }
+  },
+  "examples": [
+    {
+      "version": 1,
+      "profile": "prod",
+      "windows": {"fast": {"long": "1h", "short": "5m", "burn_rate": 14.4}, "slow": {"long": "6h", "short": "30m", "burn_rate": 6}},
+      "slos": {"ttft": {"threshold_ms": 500, "objective": 0.95}, "tpot": {"threshold_ms": 60, "objective": 0.95}, "availability": {"objective": 0.995, "period": "30d"}},
+      "alerts": {
+        "TTFTBudgetBurnFast": {"slo": "ttft", "window": "fast", "severity": "page"},
+        "TTFTBudgetBurnSlow": {"slo": "ttft", "window": "slow", "severity": "ticket"},
+        "TPOTBudgetBurnFast": {"slo": "tpot", "window": "fast", "severity": "page"},
+        "TPOTBudgetBurnSlow": {"slo": "tpot", "window": "slow", "severity": "ticket"},
+        "AvailabilityBudgetBurnFast": {"slo": "availability", "window": "fast", "severity": "page"},
+        "AvailabilityBudgetBurnSlow": {"slo": "availability", "window": "slow", "severity": "ticket"}
+      }
+    }
+  ]
+}

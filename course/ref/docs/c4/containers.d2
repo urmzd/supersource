@@ -1,0 +1,25 @@
+# Container view: each box is a deployable process or a managed external system.
+client: Client process
+subgraph tinyllm: TinyLLM platform {
+  gateway: Go gateway\nHTTP API, auth, routing
+  engine: Rust engine\nHTTP/SSE, scheduler, KV blocks
+  durable: Go durable service\nworkflows, queues, history
+  worker: Go worker\nactivity subprocesses
+  corpus: Python corpus and training tools\nCLI + subprocess
+  storage: Persistent files\nweights, tokenizer, corpus, WAL
+  collector: OTel collector
+}
+provider: Model provider
+
+client -> gateway: HTTPS
+ gateway -> engine: HTTP inference\n gRPC control
+worker -> durable: gRPC
+corpus -> durable: gRPC workflow client
+worker -> corpus: subprocess + files
+engine -> storage: safetensors, tokenizer, KV envelopes
+corpus -> storage: corpus shards, tokens, checkpoints
+ durable -> storage: WAL and snapshots
+ gateway -> collector: OTLP
+ engine -> collector: OTLP
+ durable -> collector: OTLP
+ gateway -> provider: HTTPS

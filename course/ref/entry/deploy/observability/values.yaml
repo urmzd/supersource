@@ -1,0 +1,37 @@
+# Values for the subcharts of deploy/observability (dep.03). Ports are the
+# fixed ones of contracts/helm/observability.md; kind maps the NodePorts to
+# 127.0.0.1 (deploy/kind/cluster.yaml).
+otel-collector:
+  mode: deployment
+  image:
+    repository: otel/opentelemetry-collector-contrib
+  fullnameOverride: otel-collector     # Service otel-collector.observability:4317/4318
+  # The pipelines (OTLP in, Tempo and the prometheus exporter out) are obs.01's
+  # deploy/observability/collector.yaml, passed with -f at install.
+
+kube-prometheus-stack:
+  # Leave the rule selector at its default: Prometheus loads PrometheusRules
+  # and ServiceMonitors labelled release: observability (the release name).
+  prometheus:
+    service:
+      type: NodePort
+      nodePort: 30090
+    prometheusSpec:
+      ruleSelectorNilUsesHelmValues: true
+      serviceMonitorSelectorNilUsesHelmValues: true
+  grafana:
+    service:
+      type: NodePort
+      nodePort: 30300
+    # The admin password comes from a Secret you create, never from this file:
+    #   kubectl -n observability create secret generic grafana-admin \
+    #     --from-literal=admin-user=admin --from-literal=admin-password="$(openssl rand -hex 16)"
+    admin:
+      existingSecret: grafana-admin
+      userKey: admin-user
+      passwordKey: admin-password
+  alertmanager:
+    enabled: true
+
+tempo:
+  fullnameOverride: tempo              # query API tempo.observability:3200

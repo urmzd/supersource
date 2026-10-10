@@ -103,7 +103,7 @@ Software development is a craft. Pragmatic programmers take responsibility for t
 | DRY, orthogonality | [Software Architecture](../../systems/02-software-architecture/) | Architecture patterns formalize these principles |
 | Refactoring | [Algorithms](../../algorithms/) | Refactoring algorithm code for clarity without changing behavior |
 | Design-by-contract, invariants | [The Testing Mentality](../03-testing-mentality/) | Contracts become the properties you test |
-| Artifacts as source | [Diagramming & Documentation](../../diagramming-and-documentation/) | The same "treat it like code" discipline for diagrams and docs |
+| Artifacts as source | [Diagramming & Documentation](../) | The same "treat it like code" discipline for diagrams and docs |
 
 ## Company Relevance
 

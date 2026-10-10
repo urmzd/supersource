@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "durable.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type | default "NodePort" }}
+  selector:
+    app.kubernetes.io/name: {{ .Release.Name }}
+  ports:
+    - name: grpc
+      port: {{ .Values.service.grpcPort }}
+      targetPort: grpc
+      {{- if eq (.Values.service.type | default "NodePort") "NodePort" }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+    - name: health
+      port: {{ .Values.service.healthPort }}
+      targetPort: health
+---
+# The StatefulSet's governing Service: stable pod names for Raft peers (dur.10).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-headless
+  labels:
+    {{- include "durable.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: {{ .Release.Name }}
+  ports:
+    - name: grpc
+      port: {{ .Values.service.grpcPort }}
+    - name: raft
+      port: {{ .Values.service.raftPort }}

@@ -1,0 +1,5 @@
+--- a/rust/crates/tl-serve/src/control.rs
++++ b/rust/crates/tl-serve/src/control.rs
+@@ -133 +133 @@
+-        if !self.roles.iter().any(|x| x == "prefill") {
++        if self.roles.is_empty() {

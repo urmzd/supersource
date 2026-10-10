@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "trainer_state.json",
+  "description": "The resumable state of a training run inside a checkpoint directory (formats/checkpoint.md; L0.6, L11.1, C1). Resuming from it continues bitwise as if the run had not stopped: the same data cursor, generator state, and step.",
+  "type": "object",
+  "required": [
+    "step",
+    "tokens_seen",
+    "data_cursor",
+    "rng",
+    "lr",
+    "config_sha256",
+    "git_sha"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "step": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optimizer steps completed."
+    },
+    "tokens_seen": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "data_cursor": {
+      "type": "object",
+      "required": [
+        "shard",
+        "offset"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shard": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Index into the spec's data.train list (after expanding a manifest)."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Token offset of the next window in that file."
+        }
+      }
+    },
+    "rng": {
+      "type": "object",
+      "required": [
+        "pcg_state",
+        "pcg_inc"
+      ],
+      "description": "The 'shuffle' generator (spec/pcg32.md), as 16 lowercase hex digits each so no JSON reader rounds them; other sub-streams by name may follow.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{16}$"
+      },
+      "properties": {
+        "pcg_state": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "pcg_inc": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        }
+      }
+    },
+    "lr": {
+      "type": "number",
+      "minimum": 0,
+      "description": "The learning rate of the last step."
+    },
+    "loss_scale": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "fp16 dynamic loss scale (L11.1)."
+    },
+    "config_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 of the train spec file."
+    },
+    "git_sha": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|unknown)$"
+    }
+  },
+  "examples": [
+    {
+      "step": 500,
+      "tokens_seen": 8192000,
+      "data_cursor": {
+        "shard": 0,
+        "offset": 8191744
+      },
+      "rng": {
+        "pcg_state": "853c49e6748fea9b",
+        "pcg_inc": "da3e39cb94b95bdb"
+      },
+      "lr": 0.0009,
+      "config_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "git_sha": "unknown"
+    }
+  ]
+}

@@ -4,7 +4,7 @@ The infrastructure layer underneath modern AI products — but taught as **patte
 
 > **The math analogy**: once you understand limits, derivatives, and integrals, every named technique downstream is a special case. The same is true here. *Cache-aside*, *consistent hashing*, *idempotent retry*, *event-sourced replay*, *the worker pool*, *backpressure*, *the decorator* — learn the pattern and how it works, and "what's trending this quarter" becomes derivative. We name the trendy tools (vLLM, Temporal, Redis, gRPC) as **instances of patterns**, and we note how companies apply them, but the pattern is the lesson.
 
-> **Prerequisites**: [Deep Learning](../ml/02-deep-learning/) (transformers, training loops), [LLM Systems & Inference](../ml/04-llm-systems/) (serving, KV cache, parallelism), [System Design](../systems/01-system-design/), [Cloud Native](../systems/03-cloud-native/), [Data Engineering](../data-engineering/) (OLTP vs OLAP, storage), [Functional Programming](../algorithms/13-functional-programming/). Comfortable with [Concurrency & Systems](../algorithms/12-concurrency-systems/).
+> **Prerequisites**: [Deep Learning](../ml/02-deep-learning/) (transformers, training loops), [LLM Systems & Inference](../ml/04-llm-systems/) (serving, KV cache, parallelism), [System Design](../systems/01-system-design/), [Cloud Native](../systems/03-cloud-native/), [Data Engineering](../data-engineering/) (OLTP vs OLAP, storage), [Functional Programming](../archive/algorithms/13-functional-programming/). Comfortable with [Concurrency & Systems](../archive/algorithms/12-concurrency-systems/).
 
 ## Prerequisite Graph
 
@@ -34,6 +34,11 @@ graph LR
     EVAL --> ROUTE[Model Routing & Cascades]
     TF --> ROUTE
     LLM --> ROUTE
+    SSE --> GWY[Gateway]
+    ROUTE --> GWY
+    GWY --> AGT[Agent SDK]
+    ORC --> AGT
+    RAG --> AGT
 ```
 
 ## The Split: Three Different "Distributed" Problems
@@ -61,6 +66,8 @@ A recurring confusion is that "distributed X" is one topic. It is three, and thi
 | 09 | [LLM Evaluation](09-llm-evaluation/) | Cross-entropy/perplexity/bits-per-byte, judges | [MacKay](http://www.inference.org.uk/mackay/itila/) + [HELM](https://crfm.stanford.edu/helm/) + [Ragas](https://docs.ragas.io/) | 2-3 weeks |
 | 10 | [Edge, Realtime & On-Device Inference](10-edge-realtime-inference/) | Deployment spectrum, streaming encoders, efficiency architectures | [llama.cpp](https://github.com/ggml-org/llama.cpp) + [Mistral 7B](https://arxiv.org/abs/2310.06825) + [Mamba](https://arxiv.org/abs/2312.00752) | 2-3 weeks |
 | 11 | [Model Routing & Cascades](11-model-routing-and-cascades/) | Oracle vs router, cascades, escalation, cache-aware switching, decision models | [RouteLLM](https://arxiv.org/abs/2406.18665) + [FrugalGPT](https://arxiv.org/abs/2305.05176) + [LLMRouterBench](https://arxiv.org/abs/2601.07206) | 1-2 weeks |
+| 12 | [Gateway](12-gateway/) | The reverse proxy whose payload is a stream: keys, trace propagation, then limits, routing, caching (course) | [OpenAI API reference](https://platform.openai.com/docs/api-reference) + [W3C Trace Context](https://www.w3.org/TR/trace-context/) | course passes 1, 7, 10 |
+| 13 | [Agent SDK](13-agent-sdk/) | The model proposes, the program disposes: types, tools, the loop, gates, durable runs (course) | [*Building effective agents*](https://www.anthropic.com/engineering/building-effective-agents) + [ReAct](https://arxiv.org/abs/2210.03629) (free) | course pass 10 |
 
 ## Key Takeaways
 

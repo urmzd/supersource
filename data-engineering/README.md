@@ -2,7 +2,7 @@
 
 Building the systems that move, store, and shape data so analysts, ML models, and applications can use it reliably. From storage formats and warehouses through batch/stream processing to orchestration and data quality.
 
-> **Prerequisites**: [Algorithms](../algorithms/) (especially [Concurrency & Systems](../algorithms/12-concurrency-systems/)), [System Design](../systems/01-system-design/) basics, SQL
+> **Prerequisites**: [Algorithms](../algorithms/) (especially [Concurrency & Systems](../archive/algorithms/12-concurrency-systems/)), [System Design](../systems/01-system-design/) basics, SQL
 
 ## Prerequisite Graph
 
@@ -14,6 +14,8 @@ graph LR
     SW --> OM[Orchestration & Modeling]
     BS --> OM
     OM --> ML[ML Infrastructure / Serving]
+    SW --> CP[05 Corpus Pipeline]
+    OM --> CP
 ```
 
 ## Topics
@@ -24,6 +26,7 @@ graph LR
 | 02 | [Storage & Warehousing](02-storage-warehousing/) | [DDIA](https://dataintensive.net/) Ch 3 + *The Data Warehouse Toolkit* (Kimball) | 3-4 weeks |
 | 03 | [Batch & Streaming Processing](03-batch-streaming/) | [*Streaming Systems*](https://www.oreilly.com/library/view/streaming-systems/9781491983867/) + [Spark](https://spark.apache.org/docs/latest/) / [Kafka](https://kafka.apache.org/documentation/) docs (free) | 3-4 weeks |
 | 04 | [Orchestration & Modeling](04-orchestration-modeling/) | [dbt docs](https://docs.getdbt.com/) (free) + [Airflow docs](https://airflow.apache.org/docs/) (free) | 2-3 weeks |
+| 05 | [Corpus Pipeline](05-corpus-pipeline/) | [FineWeb](https://arxiv.org/abs/2406.17557) + [datatrove](https://github.com/huggingface/datatrove) (free) | course passes 3, 8 |
 
 ## Key Takeaways
 
@@ -43,7 +46,7 @@ A small end-to-end **Streamflow orders** pipeline runs through this track, so th
 | Model clean → tested marts (dbt, silver→gold) | [`dbt/`](04-orchestration-modeling/dbt/) | [04](04-orchestration-modeling/) |
 | Orchestrate the whole DAG (Airflow) | [`airflow/streamflow_orders_dag.py`](04-orchestration-modeling/airflow/streamflow_orders_dag.py) | [04](04-orchestration-modeling/) |
 
-It uses the same Streamflow event-driven platform as the [Infrastructure](../infrastructure/) and [Diagramming](../diagramming-and-documentation/) tracks, and runs locally on DuckDB with no cloud setup.
+It uses the same Streamflow event-driven platform as the [Infrastructure](../infrastructure/) and [Diagramming](../software-craftsmanship/) tracks, and runs locally on DuckDB with no cloud setup.
 
 ## Quick Start
 

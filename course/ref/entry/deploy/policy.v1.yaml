@@ -1,0 +1,22 @@
+version: 1
+default_action: allow
+rules:
+  - id: restricted-model
+    match:
+      model: ["experimental-unsafe"]
+    action: deny
+    reason: "This model is not available through the public gateway"
+  - id: free-token-cap
+    match:
+      tenant: ["free"]
+      max_tokens: 1024
+    action: deny
+    reason: "Requested output limit exceeds the free tier"
+  - id: unsafe-prompt
+    match: {}
+    classifier:
+      head: "models/smol-135m/heads/usage.json"
+      class: "unsafe"
+      threshold: 0.9
+    action: deny
+    reason: "The request was blocked by the usage policy"

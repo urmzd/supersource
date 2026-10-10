@@ -1,0 +1,76 @@
+# Validated by values.schema.json (a copy of contracts/helm/worker.values.schema.json).
+replicaCount: 2            # the floor without KEDA; with KEDA, minReplicas below
+
+image:
+  repository: forge-worker # localhost:5001/forge-worker with dep.02's registry
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+durableAddress: forge-durable:7233
+taskQueues: [data, train, eval, release]
+
+# The Python entries the subprocess runner execs (dur.09): runtime.toml
+# [worker].python, split on spaces.
+python: python /app/python/tinyllm/__main__.py
+corpus: python /app/python/corpus/__main__.py
+
+# KEDA scales the Deployment on the durable server's queue-depth gauge
+# (otel/metrics.yaml tl.durable.task_queue.depth), read from Prometheus.
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 6
+  queue: data
+  targetDepth: 4           # pending tasks per worker before KEDA adds one
+  prometheusAddress: http://observability-kube-prometh-prometheus.observability:9090
+
+probes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    path: /readyz          # connected to the durable server
+    periodSeconds: 5
+
+pdb:
+  enabled: true
+  maxUnavailable: 1
+
+# A worker stops polling on SIGTERM and lets in-flight activities finish
+# (dur.04 drain, 30 s), and a Python child gets 30 s between SIGTERM and
+# SIGKILL to checkpoint (dur.09): the pod needs both before Kubernetes kills it.
+terminationGracePeriodSeconds: 75
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+# Subprocess activities write checkpoints, shards, and DONE.json under
+# /artifacts: the worker mounts it read-write (the node's ./artifacts).
+artifacts:
+  hostPath: /artifacts
+  mountPath: /artifacts
+
+otel:
+  endpoint: http://otel-collector.observability:4317   # the Go worker: OTLP over gRPC
+  serviceName: forge-worker
+
+env:
+  # The Python children export OTLP over HTTP with a JSON body (dur.09,
+  # telemetry.py): port 4318, not the gRPC 4317 the Go worker uses (obs.05).
+  - name: TL_PYTHON_OTLP_ENDPOINT
+    value: http://otel-collector.observability:4318
+  - name: TL_PYTHON_SERVICE_NAME
+    value: forge-python

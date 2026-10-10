@@ -6,7 +6,7 @@
   - *ByteByteGo System Design* (recommended purchase)
   - *Designing Data-Intensive Applications* by Martin Kleppmann (recommended purchase -- the industry bible)
   - [System Design Primer](https://github.com/donnemartin/system-design-primer) (free)
-- **Prerequisites**: [Algorithms](../../algorithms/), especially [Concurrency & Systems](../../algorithms/12-concurrency-systems/)
+- **Prerequisites**: [Algorithms](../../algorithms/), especially [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/)
 - **Estimated time**: 4-5 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -122,3 +122,13 @@ Every system design problem reduces to: (1) what are the access patterns? (2) wh
 | Stripe | Payment processing, ledger, API design | Correctness, idempotency |
 | Anthropic | ML inference serving, API rate limiting | GPU scheduling, latency |
 | Uber | Real-time dispatch, geospatial indexing | Low latency, high throughput |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `review.01` | [Design review: tracer and serving platform](01-design-review-tracer-and-serving-platform.md) | proof | 7 |
+| 2 | `review.02` | [Design review: control plane](02-design-review-control-plane.md) | proof | 11 |
+| 3 | `review.03` | [Design review: the whole system](03-design-review-whole-system.md) | proof | 11 |
+<!-- /ss:chapters -->

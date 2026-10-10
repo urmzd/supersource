@@ -3,6 +3,28 @@
 Structured schedules for self-paced learning. Pick the plan that matches your goals.
 For a degree-shaped sequence with assessment and specialization, use the [CS curriculum](CS-CURRICULUM.md). These shorter schedules are introductory passes or refreshers.
 
+## Build Your Own LLM System (about 67 weeks)
+
+Follow the [course path](paths/course/) at roughly 10 to 12 hours per week. Each pass ends at a runnable milestone. P0 to P11 are staged; P12 is a design plan whose modules and implementation are not built yet.
+
+| Pass | Focus | Path | Approx. time |
+|---|---|---|---:|
+| 0 | Repository, Python, shell, Git, Make, and CI | [Setup](paths/course-p00-setup/) | 1.5 weeks |
+| 1 | Byte bigram, Rust engine, Go gateway, and deployment | [Tracer](paths/course-p01-tracer/) | 5 weeks |
+| 2 | Autograd and training foundations | [Foundations](paths/course-p02-foundations/) | 7.5 weeks |
+| 3 | Tokenizers and data | [Tokens and data](paths/course-p03-tokens-and-data/) | 7.5 weeks |
+| 4 | Recurrent and sequence-to-sequence models | [Sequence models](paths/course-p04-sequence-models/) | 4 weeks |
+| 5 | Transformer models and fine-tuning | [Transformer](paths/course-p05-transformer/) | 6 weeks |
+| 6 | Python inference and optional standalone C exercises | [Inference and kernels](paths/course-p06-inference-and-kernels/) | 7 weeks |
+| 7 | Serving platform and observability | [Serving platform](paths/course-p07-serving-platform/) | 8 weeks |
+| 8 | Durable data and training workflows | [Durable](paths/course-p08-durable/) | 4.5 weeks |
+| 9 | Training and evaluating the capstone model | [Capstone training](paths/course-p09-capstone-training/) | 5 weeks |
+| 10 | Agents, retrieval, and usage policy | [Agents](paths/course-p10-agents/) | 5 weeks |
+| 11 | Operability, security, and release readiness | [Operate](paths/course-p11-operate/) | 5.5 weeks |
+| 12 | Planned image and audio extensions | [Multimodal plan](paths/course-p12-multimodal/) | Not estimated |
+
+Python and Rust exchange model and tokenizer data through files; the Rust engine uses candle. C modules are optional standalone exercises and are not required by core pass gates.
+
 ## Math Foundations (16 weeks)
 
 ~10-12 hours per active subject per week, or ~20-24 hours while two subjects are paired. At 10-12 hours total, take subjects sequentially and extend the schedule.
@@ -87,11 +109,11 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 
 | Day | Focus | Problems | Patterns |
 |-----|-------|----------|----------|
-| **15** | Concurrency & Systems | [C Miner project](algorithms/12-concurrency-systems/miner/) | [Thread pools, producer-consumer, lock-free structures](algorithms/12-concurrency-systems/README.md) |
-| **16** | Functional Programming | [BST](algorithms/13-functional-programming/bst.scm), [Visitors](algorithms/13-functional-programming/list-visitor.scm), [Iterators](algorithms/13-functional-programming/new-sqrt-iterator.scm), [Primes](algorithms/13-functional-programming/IsPrime.scm) | [Immutable data, higher-order functions, recursion schemes](algorithms/13-functional-programming/README.md) |
-| **17** | ML & Statistics (models) | [Linear Regression](algorithms/14-ml-statistics/linear-regression.py), [Logistic Reg & NNs](algorithms/14-ml-statistics/ml-logistic-regression-and-neural-nets.py), [PyTorch](algorithms/14-ml-statistics/learn-pytorch.py) | [Gradient descent, loss functions, backprop](algorithms/14-ml-statistics/README.md) |
-| **18** | ML (unsupervised) + Probabilistic | [Clustering](algorithms/14-ml-statistics/clustering.py), [Naive Bayes & GMM](algorithms/14-ml-statistics/ml-naive-bayes-and-gmm.py), [CNN & RNN](algorithms/14-ml-statistics/ml-clustering-cnn-rnn.py), [Bloom Filter](algorithms/15-probabilistic-structures/bloom.py) | [Clustering, probabilistic models](algorithms/14-ml-statistics/README.md), [Bloom filters, HyperLogLog, skip lists](algorithms/15-probabilistic-structures/README.md) |
-| **19** | Practice: implement from scratch | [K-Means](algorithms/14-ml-statistics/k-means.py), [TF-IDF Vector Search](algorithms/14-ml-statistics/tf-idf-vector-search.py) | Re-read weakest topic READMEs |
+| **15** | Concurrency & Systems | [C Miner project](archive/algorithms/12-concurrency-systems/miner/) | [Thread pools, producer-consumer, lock-free structures](archive/algorithms/12-concurrency-systems/README.md) |
+| **16** | Functional Programming | [BST](archive/algorithms/13-functional-programming/bst.scm), [Visitors](archive/algorithms/13-functional-programming/list-visitor.scm), [Iterators](archive/algorithms/13-functional-programming/new-sqrt-iterator.scm), [Primes](archive/algorithms/13-functional-programming/IsPrime.scm) | [Immutable data, higher-order functions, recursion schemes](archive/algorithms/13-functional-programming/README.md) |
+| **17** | ML & Statistics (models) | [Linear Regression](archive/algorithms/14-ml-statistics/linear-regression.py), [Logistic Reg & NNs](archive/algorithms/14-ml-statistics/ml-logistic-regression-and-neural-nets.py), [PyTorch](archive/algorithms/14-ml-statistics/learn-pytorch.py) | [Gradient descent, loss functions, backprop](archive/algorithms/14-ml-statistics/README.md) |
+| **18** | ML (unsupervised) + Probabilistic | [Clustering](archive/algorithms/14-ml-statistics/clustering.py), [Naive Bayes & GMM](archive/algorithms/14-ml-statistics/ml-naive-bayes-and-gmm.py), [CNN & RNN](archive/algorithms/14-ml-statistics/ml-clustering-cnn-rnn.py), [Bloom Filter](algorithms/15-probabilistic-structures/bloom.py) | [Clustering, probabilistic models](archive/algorithms/14-ml-statistics/README.md), [Bloom filters, HyperLogLog, skip lists](algorithms/15-probabilistic-structures/README.md) |
+| **19** | Practice: implement from scratch | [K-Means](archive/algorithms/14-ml-statistics/k-means.py), [TF-IDF Vector Search](archive/algorithms/14-ml-statistics/tf-idf-vector-search.py) | Re-read weakest topic READMEs |
 | **20** | Company-targeted review | Pick 2-3 companies from [interviews/](interviews/README.md) and study their guides | [Shared concepts across companies](interviews/shared-concepts/README.md) |
 | **21** | Mock interview day | Revisit 1 problem from each of topics 01-11 under timed conditions (45 min each) | Review all pattern READMEs as quick reference |
 

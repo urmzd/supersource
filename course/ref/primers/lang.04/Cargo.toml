@@ -1,0 +1,10 @@
+# primers/lang.04: a Cargo workspace with two members (lang.04 section 4).
+#
+#   lineproto/  library: parse one request line, answer it (no I/O)
+#   echo/       binary:  the TCP server that feeds lines to lineproto
+#
+# `cargo build` and `cargo test` here build both; one Cargo.lock and one
+# target/ serve the whole workspace.
+[workspace]
+resolver = "2"
+members = ["lineproto", "echo"]

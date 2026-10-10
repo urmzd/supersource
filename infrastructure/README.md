@@ -2,7 +2,7 @@
 
 How distributed systems *actually run*: the containers and orchestration that schedule them, the messaging and coordination layers that move and order their data, the workers that process it, and the search and storage engines underneath -- the operational substrate beneath every application.
 
-> **Prerequisites**: Some professional experience shipping software, plus [Concurrency & Systems](../algorithms/12-concurrency-systems/). Pairs with [Cloud Native](../systems/03-cloud-native/) (orchestration depth), [Batch & Streaming](../data-engineering/03-batch-streaming/) (the data-engineering view of the same Kafka), and [Diagramming & Documentation](../diagramming-and-documentation/) (you cannot draw a deployment or a consumer topology honestly until you understand its operational caveats).
+> **Prerequisites**: Some professional experience shipping software, plus [Concurrency & Systems](../archive/algorithms/12-concurrency-systems/). Pairs with [Cloud Native](../systems/03-cloud-native/) (orchestration depth), [Batch & Streaming](../data-engineering/03-batch-streaming/) (the data-engineering view of the same Kafka), and [Diagramming & Documentation](../software-craftsmanship/) (you cannot draw a deployment or a consumer topology honestly until you understand its operational caveats).
 
 ## Why this track exists
 
@@ -15,7 +15,7 @@ Topics 01-03 stay anchored to one running example -- **Streamflow**, an event-dr
 ```mermaid
 graph LR
     K8S[01 Containers, Kubernetes & Workloads] --> MSG[02 Messaging & Distributed Queueing]
-    MSG --> WRK[03 Distributed Workers]
+    MSG --> WRK[03 Distributed Workers: merged into AI Platform 05]
     K8S --> WRK
     MSG --> SRCH[04 Search & Indexing]
     SRCH --> APACHE[05 The Apache Stack]
@@ -28,7 +28,7 @@ graph LR
 |---|-------|------------------|------|
 | 01 | [Containers, Kubernetes & Workloads](01-containers-kubernetes/) | [Kubernetes docs](https://kubernetes.io/docs/) (free) + [12-Factor App](https://12factor.net/) (free) | 1-2 weeks |
 | 02 | [Messaging & Distributed Queueing](02-messaging-and-queueing/) | [Kafka docs](https://kafka.apache.org/documentation/) (free) + DDIA Ch 11 | 1-2 weeks |
-| 03 | [Distributed Workers](03-distributed-workers/) | [Kafka consumer docs](https://kafka.apache.org/documentation/#consumerapi) (free) + [Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/) | 1 week |
+| 03 | [Distributed Workers](../ai-platform-engineering/05-durable-orchestration-and-workers/#depth-partitioned-consumers) | merged into AI Platform 05 as *Depth: partitioned consumers*, with the Kafka consumers in its [side quest](../ai-platform-engineering/05-durable-orchestration-and-workers/side-quests/kafka-consumers/) | 1-2 weeks |
 | 04 | [Search & Indexing](04-search-and-indexing/) | [Apache Lucene docs](https://lucene.apache.org/core/) (free) + [Elasticsearch: The Definitive Guide](https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html) (free) | 1-2 weeks |
 | 05 | [The Apache Stack](05-apache-stack/) | [Apache project docs](https://apache.org/) (free) + DDIA | 1 week |
 

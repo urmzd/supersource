@@ -258,3 +258,22 @@ randomized algorithms and hashing to machine learning, A/B testing, and queueing
 | ML/AI Startups | Bayesian inference, probabilistic models, evaluation metrics | Hard |
 | Any Data Science role | Hypothesis testing, regression, confidence intervals daily | Medium |
 | Gaming (Riot, Blizzard) | Matchmaking algorithms use Bayesian rating systems (TrueSkill, Elo) | Medium |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `M07.0` | [Random variables, expectation, variance, and normal draws by Box-Muller](00-random-variables-and-the-normal.md) | build | 2 |
+| 2 | `M07.1` | [Categorical sampling: inverse CDF, Gumbel-max, alias method](01-categorical-sampling.md) | build | 3 |
+| 3 | `M07.2` | [MLE, Laplace, absolute discounting](02-mle-laplace-absolute-discounting.md) | build | 3 |
+| 4 | `M07.3` | [Variance propagation and initialization](03-variance-propagation-and-initialization.md) | build | 2 |
+| 5 | `M07.4` | [LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md) | build | 4 |
+| 6 | `M07.5` | [Hypothesis tests: paired and two-sample permutation, McNemar, Holm](05-hypothesis-tests.md) | build | 5 |
+| 7 | `M07.6` | [Rejection sampling and residual distributions](06-rejection-sampling-and-residual-distributions.md) | build | 6 |
+| 8 | `M07.7` | [Logistic regression (IRLS), ROC-AUC, calibration (ECE)](07-logistic-regression-roc-auc-calibration.md) | build | 5 |
+| 9 | `S-M07a` | [Probability problem set, part a: axioms, Bayes, random variables, Box-Muller](90-problem-set-a.md) | solve | 2 |
+| 10 | `S-M07b` | [Solve set: joint and covariance, MLE](91-problem-set-b.md) | solve | 3 |
+| 11 | `S-M07c` | [Solve set: LLN/CLT, confidence intervals](92-problem-set-c.md) | solve | 4 |
+| 12 | `S-M07d` | [Solve set: hypothesis tests, regression, queueing and Little's law, balls into bins](93-problem-set-d.md) | solve | 5 |
+<!-- /ss:chapters -->

@@ -1,0 +1,118 @@
+// contracts/proto/tl/engine/v1/engine.proto: internal engine control
+// chapter: ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md
+// (DESIGN 2.7). Served by every engine on :50051 in Kubernetes
+// ({grpc_port} locally). The data plane is HTTP (openapi/openai-subset.v1.yaml);
+// this service carries only control and the disaggregated prefill hand-off.
+//
+// owners: tl-serve/src/control.rs (L10.6) serves it; go/gateway/route (gw.05)
+// calls it. Generated code: contracts/go/gen/tl/engine/v1 and the tl-proto
+// crate. Every message is at most 4 MiB.
+//
+// modules: L10.6 (serves), gw.05 (calls)
+syntax = "proto3";
+
+package tl.engine.v1;
+
+option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/engine/v1;enginev1";
+
+service EngineControl {
+  // Prefill role only. Runs prefill over prompt_ids, samples the first token
+  // from the last prompt position with the request's seeded generator
+  // (spec/sampling.md), pushes the prompt's KV to decode_target over
+  // tl.kv.v1 (HasBlocks first, then PushKv with only the missing full blocks
+  // plus the unhashed tail block), and returns the handle the decode worker
+  // resumes from. Errors: FAILED_PRECONDITION when this engine's role is not
+  // prefill or the decode worker refuses the kv_format; RESOURCE_EXHAUSTED
+  // when no KV blocks are free before the deadline; DEADLINE_EXCEEDED;
+  // UNAVAILABLE when decode_target cannot be reached (nothing is leaked: the
+  // prefill side frees its blocks).
+  rpc Prefill(PrefillRequest) returns (PrefillResponse);
+  // Model id, roles, KV format, maximum context, ABI version.
+  rpc Info(InfoRequest) returns (InfoResponse);
+  // Aborts a running request by its request_id. found is false when no such
+  // request runs (already finished, or never seen). Its KV blocks return to
+  // the pool within one decode step.
+  rpc Cancel(CancelRequest) returns (CancelResponse);
+  // Stops admitting new requests (HTTP 503 no_capacity from then on, and
+  // WorkerStatus.draining = true), lets in-flight requests finish until
+  // deadline_ms, then aborts the rest. Returns when nothing is in flight.
+  rpc Drain(DrainRequest) returns (DrainResponse);
+}
+
+// Sampling parameters, as in spec/sampling.md. Proto3 scalars have no
+// presence, so 0 is a real value (temperature 0 is greedy): the gateway
+// always sends every field, with the openai-subset.v1.yaml defaults applied
+// to the fields the client omitted.
+message SamplingParams {
+  float temperature = 1;        // 0 = greedy
+  float top_p = 2;              // 1 = off
+  int32 top_k = 3;              // 0 = off
+  float min_p = 4;              // 0 = off
+  float repetition_penalty = 5; // 1 = off
+  float presence_penalty = 6;
+  float frequency_penalty = 7;
+  uint64 seed = 8;
+  int32 max_new_tokens = 9;     // includes first_token
+  repeated string stop = 10;
+  int32 logprobs = 11;          // number of top logprobs per token, 0..20
+}
+
+message PrefillRequest {
+  string request_id = 1;        // the gateway's X-Request-Id
+  string model = 2;
+  repeated uint32 prompt_ids = 3; // already templated and tokenized by the gateway
+  SamplingParams sampling = 4;
+  string decode_target = 5;     // host:port of the decode worker's KvTransferService
+  int64 deadline_unix_ms = 6;
+  int32 priority = 7;           // mirrors X-TL-Priority; higher runs first
+}
+
+message PrefillResponse {
+  KvHandle handle = 1;
+  uint32 first_token = 2;       // equal to handle.first_token
+  float first_logprob = 3;
+  int32 prompt_tokens = 4;
+  int32 cached_prompt_tokens = 5; // prompt tokens served from the prefill side's prefix cache
+  double ttft_ms = 6;           // time from receipt to first_token sampled
+}
+
+// What a decode worker needs to resume a request whose prompt KV it holds.
+// The gateway passes handle_id to the decode worker in X-TL-KV-Handle.
+message KvHandle {
+  string handle_id = 1;         // unique per request; the decode side keys the pushed blocks by it
+  string decode_target = 2;
+  uint32 n_tokens = 3;          // == prompt_tokens: the transferred KV covers the prompt only
+  repeated uint64 block_hashes = 4; // full blocks only (formats/kv-block.md); the partial tail block is sent unhashed
+  uint32 kv_format = 5;         // 1 until the craft.13 migration
+  uint32 first_token = 6;       // sampled by P; D feeds it as its first decode input
+  uint32 prompt_tokens = 7;
+  uint32 rng_draws_consumed = 8; // uniform_f64 draws P used: 1 when sampled, 0 when greedy; D advances its PCG32 by this many
+}
+
+message InfoRequest {}
+
+message InfoResponse {
+  string model = 1;
+  repeated string roles = 2;    // "unified" | "prefill" | "decode"
+  uint32 kv_format = 3;         // the KV format this engine writes; it reads every format listed in kv_formats_read
+  int32 max_context = 4;
+  int32 block_size = 5;         // tokens per KV block
+  uint32 abi = 6;               // engine protocol revision; no native library ABI
+  repeated uint32 kv_formats_read = 7; // from craft.13: [1, 2] during a migration window
+}
+
+message CancelRequest {
+  string request_id = 1;
+}
+
+message CancelResponse {
+  bool found = 1;
+}
+
+message DrainRequest {
+  int64 deadline_ms = 1;        // relative: how long in-flight requests may still run
+}
+
+message DrainResponse {
+  int32 aborted = 1;            // requests aborted at the deadline
+}
