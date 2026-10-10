@@ -21,7 +21,7 @@ The eight terms below describe ordering, not guaranteed completion dates. Budget
 | 5 | Databases with [Berkeley CS186](https://cs186berkeley.net/); theory with [MIT 6.045J](https://ocw.mit.edu/courses/6-045j-automata-computability-and-complexity-spring-2011/); [Calculus 3](math/04-calculus-3/) | Algorithms, proofs, OS; Calculus 2 and linear algebra | SQL and query-plan analysis; transaction anomaly reproduction; automata and reduction proofs; gradient checking |
 | 6 | [Programming Languages](software-craftsmanship/), including parsing, interpreters and type checking; [Software Craftsmanship](software-craftsmanship/); security with [Berkeley CS161](https://textbook.cs161.org/) | Programming, theory, OS and networks | Small interpreter and type checker; team review and CI; threat model and security regression cases |
 | 7 | HCI with [MIT 6.831](https://ocw.mit.edu/courses/6-831-user-interface-design-and-implementation-spring-2011/); graphics with [Berkeley CS184](https://cs184.eecs.berkeley.edu/sp26/); introductory [AI/ML](ml/01-statistical-learning/) plus search in [graphs](algorithms/06-graphs/) | Programming and software engineering; linear algebra, calculus and statistics for graphics/ML | Usability study; transformed and rendered scene; search baseline and supervised model with held-out evaluation |
-| 8 | [Distributed systems](systems/), [data engineering](data-engineering/), specialization and capstone | OS, networking, databases, software engineering; specialization-specific math | Failure-injection report; reproducible pipeline; defended capstone with results and limitations |
+| 8 | [Distributed systems](systems/), [data engineering](data-engineering/), specialization, and the [Build Your Own LLM System course](paths/course/) as one possible systems capstone | OS, networking, databases, software engineering; specialization-specific math | Failure-injection report; reproducible pipeline; defended capstone with results and limitations. The course provides a staged Python, Rust, and Go build; optional C exercises are standalone and outside the core gates |
 
 Practice technical writing, accessibility, privacy, attribution, and professional responsibility throughout. Include a stakeholder-impact analysis in each substantial project. Study concurrency on one machine before distributed execution. A type-systems survey alone does not complete a programming-languages course.
 
@@ -35,7 +35,7 @@ These are **coverage judgments**, not certification of CS2023 learning outcomes.
 | Algorithmic foundations | Local algorithms + Erickson + MIT theory | Formal computability/complexity supplied externally |
 | Mathematical and statistical foundations | Seven local math topics + applied labs below | Add numerical optimization for data/ML depth |
 | Architecture and organization | Nand to Tetris | External course; no dedicated local architecture track |
-| Systems fundamentals | Architecture, OS, and local C/C++ practice | Cross-course route; no dedicated local sequence |
+| Systems fundamentals | Architecture, OS, local C/C++ practice, and the [end-to-end LLM systems course](paths/course/) | Cross-course route; the course is a specialization project, not a complete OS or architecture sequence |
 | Operating systems | OSTEP + local concurrency practice | Full OS course supplied externally |
 | Networking and communication | Dordal + local RPC/streaming | Network fundamentals supplied externally |
 | Data management | CS186 + local data engineering | Database internals supplied externally |

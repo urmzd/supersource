@@ -15,7 +15,7 @@ First stable release of the TinyLLM learning platform and reference implementati
 
 ### Compatibility
 
-- This release establishes the v1 API and KV envelope compatibility windows described in [the deprecation policy](docs/DEPRECATION.md).
+- This release establishes the v1 API and KV envelope compatibility windows described in [the deprecation policy](../docs/DEPRECATION.md).
 
 ### Verification
 

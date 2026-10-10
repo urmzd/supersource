@@ -229,10 +229,10 @@ The contracts carry the exact rules: which errors are `ValueError`, that `sample
 | `test_worked_example_bytes` | unit | the 120-byte file of section 3 | header length, padding, byte order |
 | `test_matches_library_bytes` | golden | six files byte-identical to the pinned `safetensors` library | any reader, including your engine, loads your checkpoint |
 | `test_bytes_are_little_endian_row_major` | boundary | a transposed view and a `>f4` array write row-major little-endian bytes | arrays in memory are not always in file order |
-| `test_save_rejects_non_f32` | boundary | float64, int32, float16, a `__metadata__` tensor, a non-string value | v0 writes F32 only |
+| `test_save_rejects_non_f32` | boundary | float64, int64, and bool arrays are not silently reinterpreted; L0.6-supported dtypes stay valid | unsupported arrays fail before writing |
 | `test_load_reads_library_files` | golden | every library file loads to the exact inputs | `generate` loads the checkpoint |
 | `test_roundtrip` | property | `load(save(x)) == x`, writable float32 | checkpoints survive a round trip |
-| `test_load_rejects_bad_files` | boundary | gap, trailing bytes, wrong size, short file, duplicate key, F16, a JSON array header, a non-string `__metadata__` value | a reader never trusts the header |
+| `test_load_rejects_bad_files` | boundary | gap, trailing bytes, wrong element size, short file, duplicate key, unknown F64, malformed supported F16, a JSON array header, a non-string `__metadata__` value | a reader never trusts the header |
 | `test_load_caps_the_header_length` | boundary | an otherwise valid file with $N = 100{,}000{,}001$ | a corrupt length cannot make the reader parse gigabytes |
 
 ## 5. Pitfalls

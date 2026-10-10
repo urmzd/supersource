@@ -1,0 +1,44 @@
+name: Oracle fixture drift
+
+on:
+  schedule:
+    - cron: "31 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-drift-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  oracle-drift:
+    name: Regenerate and compare oracle fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: course/ref/go/go.mod
+          cache: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Set up Python
+        run: uv python install
+      - name: Install harness dependencies
+        run: uv sync --project course/harness
+      - name: Check deterministic oracle fixtures
+        run: |
+          set -euo pipefail
+          uv run --project course/harness python course/oracle/MS-L1/synth_corpus.py --check
+          uv run --project course/harness python course/oracle/data.02/golden_corpus.py --check
+          uv run --script course/oracle/contracts/pcg32_vectors.py --check
+          uv run --script course/oracle/M06.3/vectors.py --check
+          uv run --project course/harness python course/oracle/L8.4/radix_trace.py --check
+          uv run --project course/harness python course/oracle/ds.08/bloom_golden.py --check
+          uv run --project course/harness python course/oracle/parity/kv_wire_v1_golden.py --check
+          uv run --project course/harness python course/oracle/solve/sync_chapters.py --check
+      - name: Compare parity goldens within declared tolerances
+        run: practice/bin/ss parity --ref

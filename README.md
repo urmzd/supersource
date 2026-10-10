@@ -222,12 +222,23 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 
 ## Course: Build Your Own LLM System
 
-One system, built end to end in Python, C, Rust, and Go and graded by the harness: a byte-level language model trained on your own numerics, C kernels behind a stable ABI, a Rust engine streaming completions, a Go gateway, and the containers, traces, and runbooks that run it on Kubernetes. Each chapter teaches one module from first principles; `ss check <ID>` grades your code against course tests, and a milestone at the end of every pass runs your whole system.
+One system, built end to end in Python, Rust, and Go and graded by the harness: a byte-level language model trained on your own numerics, a Rust engine streaming completions, a Go gateway, and the containers, traces, and runbooks that run it on Kubernetes. Python and Rust exchange safetensors, `tokenizer.json`, and fixtures at file boundaries. Optional C modules are standalone exercises with their own test binaries. Each chapter teaches one module from first principles; `ss check <ID>` grades your code against course tests, and each built pass ends at a milestone that runs your system. Pass 12 is currently a design plan.
 
 | Pass | Path | Gate |
 |---|---|---|
 | P0 | [Setup](paths/course-p00-setup/): Python and numpy, shell and make, your repo and its CI gate | MS-P0 |
-| P1 | [The tracer](paths/course-p01-tracer/): C ABI and matmul, byte bigram, Rust engine, Go gateway, kind, one trace, one drill, one ADR | MS-P1 |
+| P1 | [The tracer](paths/course-p01-tracer/): byte bigram, Rust engine, Go gateway, kind, one trace, one drill, one ADR | MS-P1 |
+| P2 | [Foundations](paths/course-p02-foundations/): autograd, gradient checking, and the training loop | MS-P2 |
+| P3 | [Tokens and data](paths/course-p03-tokens-and-data/): tokenizers, text corpora, and n-gram models | MS-P3 |
+| P4 | [Sequence models](paths/course-p04-sequence-models/): recurrent models, sequence-to-sequence, and beam search | MS-P4 |
+| P5 | [Transformer](paths/course-p05-transformer/): transformer variants, fine-tuning, and model loading | MS-P5 |
+| P6 | [Inference and kernels](paths/course-p06-inference-and-kernels/): Python inference stack and optional standalone C exercises | MS-P6 |
+| P7 | [Serving platform](paths/course-p07-serving-platform/): Rust engine, Go gateway, routing, load, deployment, and observability | MS-P7 |
+| P8 | [Durable workflows](paths/course-p08-durable/): durable data and training workflows | MS-P8 |
+| P9 | [Capstone training](paths/course-p09-capstone-training/): train, evaluate, release, and serve a small model | MS-P9 |
+| P10 | [Agents](paths/course-p10-agents/): agent SDK, retrieval, evaluation, and usage policy | MS-P10 |
+| P11 | [Operate](paths/course-p11-operate/): migrations, upgrades, chaos, security, and release readiness | MS-P11 |
+| P12 | [Multimodal plan](paths/course-p12-multimodal/): planned image and audio extensions; module chapters and implementation are not built yet | planned, not built |
 
 Start at [paths/course](paths/course/) and its [system map](paths/course/SYSTEM.md):
 
@@ -260,7 +271,7 @@ The whole curriculum builds into one PDF -- every track and topic in learning
 order, with the C4 architecture diagrams and Mermaid diagrams rendered inline.
 
 - **From CI**: every run produces a `supersource-curriculum-pdf` build artifact.
-- **From a release**: `supersource-curriculum.pdf` is attached to each GitHub Release, alongside one `supersource-<path>.pdf` per [role path](paths/).
+- **From a release**: `supersource-curriculum.pdf` and the generated `supersource-<path>.pdf` files are attached to each GitHub Release for every course pass and role path in `paths/`.
 - **Locally**:
 
   ```bash

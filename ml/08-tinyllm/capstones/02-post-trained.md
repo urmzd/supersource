@@ -11,7 +11,7 @@
 | **Tests** | `course/tests/C2/` (why: records run provenance and prevents unsupported model-card claims) |
 | **Needs** | `C1`, `L12.1`, `L12.2`, `L12.3`, `L12.4` |
 | **Used by** | `MS-C2` checks held-out reward improvement |
-| **Milestone** | [MS-C2](../../../../course/milestones/MS-C2.toml) |
+| **Milestone** | [MS-C2](../../../course/milestones/MS-C2.toml) |
 | **Optional depth** | `L12.4` distillation, or compare all three adaptation methods |
 
 ## Key Takeaways

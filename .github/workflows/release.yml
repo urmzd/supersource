@@ -34,13 +34,14 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
 
       # The CI "Book PDF" job (run via the reusable workflow above) built the
-      # PDF in this same run. Place it on disk so sr can upload it as a release
-      # asset (declared in sr.yaml packages[].artifacts).
-      - name: Download curriculum PDF
+      # curriculum and every path PDF. Place all of them on disk so sr can upload
+      # the declared artifacts in sr.yaml packages[].artifacts.
+      - name: Download curriculum and path PDFs
         uses: actions/download-artifact@v8
         with:
-          name: supersource-curriculum-pdf
+          pattern: supersource-curriculum-pdf
           path: outputs
+          merge-multiple: true
 
       - uses: urmzd/sr@v8
         id: sr

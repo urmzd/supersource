@@ -11,7 +11,7 @@
 | **Tests** | `course/tests/ethics.05/` (why: policy ordering, classifier decisions, red-team coverage, and audit privacy) |
 | **Needs** | `gw.08` usage policy enforcement, `L6.5` linear head, `data.05` privacy detectors |
 | **Used by** | `MS-agent` checks the policy matrix and red-team prompts |
-| **Milestone** | [MS-agent](../../paths/course-p10-agents/milestone.md) |
+| **Milestone** | [MS-agent](../../course/milestones/MS-agent.toml) |
 | **Optional depth** | NIST AI Risk Management Framework, Govern and Measure functions |
 
 ## Key takeaways

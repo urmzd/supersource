@@ -9,9 +9,9 @@
 | **You build** | `go/gateway/policy/policy.go` |
 | **Contract** | [`policy.v1.schema.json`](../../course/contracts/formats/policy.v1.schema.json), [`linear-head.schema.json`](../../course/contracts/formats/linear-head.schema.json) |
 | **Tests** | `course/tests/go/gw_08/` (why: ordered rules, linear-head parity, audit, and fail-closed behavior) |
-| **Needs** | [`gw.01`](01-gateway-architecture.md) middleware chain, [`gw.02`](02-authentication-and-tenants.md) principal, [`ethics.05`](../../../responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md) policy, [`data.05`](../../../data/05-privacy/05-pii-scrubbing.md) detector list |
+| **Needs** | [`gw.01`](01-server-skeleton.md) middleware chain, [`gw.02`](../08-authorization-and-access-control/01-api-keys-and-scopes.md) principal, [`ethics.05`](../../responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md) policy, [`data.05`](../../data-engineering/05-corpus-pipeline/05-pii-scrub.md) detector list |
 | **Used by** | `gw.07` route layer consumes policy decisions; `MS-agent` exercises the policy fixtures |
-| **Milestone** | [MS-agent](../../paths/course-p10-agents/milestone.md) |
+| **Milestone** | [MS-agent](../../course/milestones/MS-agent.toml) |
 | **Optional depth** | OPA and Cedar policy evaluation |
 
 ## Key takeaways

@@ -7,11 +7,11 @@
 |---|---|
 | **Module** | `L12.3` · optional build · Python · Pass 10 · 3 to 4 h |
 | **You build** | `tinyllm/post/grpo.py`: grouped advantages, clipped objective, rollout client |
-| **Contract** | [`grpo.pyi`](../../../../course/contracts/py/tinyllm/post/grpo.pyi) |
+| **Contract** | [`grpo.pyi`](../../../course/contracts/py/tinyllm/post/grpo.pyi) |
 | **Tests** | `course/tests/L12.3/` (why: hand objective, zero-advantage gradient, and toy reward improvement) |
 | **Needs** | `M11.1` KL, `M07.4` uncertainty, `L8.1` sampling, `L10.5` engine API |
 | **Used by** | `C2` post-trained capstone |
-| **Milestone** | [MS-C2](../../../../course/milestones/MS-C2.toml) |
+| **Milestone** | [MS-C2](../../../course/milestones/MS-C2.toml) |
 | **Optional depth** | Policy gradients and PPO in `ml/03-reinforcement-learning` |
 
 ## Key Takeaways

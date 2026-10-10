@@ -119,15 +119,15 @@ def test_bytes_are_little_endian_row_major(tmp_path):
 
 
 def test_save_rejects_non_f32(tmp_path):
-    # WHY: contract v0 writes F32 only (L0.6 adds the rest). Writing a float64
-    #      array's 8-byte elements under "F32" would corrupt the file silently.
+    # WHY: contract v0 writes F32 only. L0.6 adds supported numeric types, so
+    #      int64 and bool check that unknown arrays are not silently relabeled.
     # KIND: boundary
     # CATCHES: s19
     # CHAPTER: L0.0 section 4, The interface
     for bad in (
         np.zeros(2, dtype=np.float64),
-        np.zeros(2, dtype=np.int32),
-        np.zeros(2, dtype=np.float16),
+        np.zeros(2, dtype=np.int64),
+        np.zeros(2, dtype=np.bool_),
     ):
         with pytest.raises(ValueError):
             save_safetensors(str(tmp_path / "x.safetensors"), {"t": bad}, {})
@@ -195,8 +195,8 @@ def test_load_rejects_bad_files(tmp_path):
     # WHY: a reader that trusts the header reads garbage or out of bounds.
     #      Each file breaks one rule of formats/safetensors.md: a gap between
     #      tensors, trailing bytes, a size that disagrees with the shape, a
-    #      header longer than the file, a duplicate key, and a dtype that
-    #      contract v0 does not read.
+    #      header longer than the file, a duplicate key, an unknown dtype, and
+    #      supported F16 with offsets inconsistent with its declared shape.
     # KIND: boundary
     # CATCHES: s20, s21
     # CHAPTER: L0.0 section 5, Pitfalls, item 8
@@ -221,8 +221,11 @@ def test_load_rejects_bad_files(tmp_path):
             b'"a":{"dtype":"F32","shape":[1],"data_offsets":[0,4]}}',
             four,
         ),
-        "f16": raw_file(
-            {"a": {"dtype": "F16", "shape": [2], "data_offsets": [0, 4]}}, four
+        "f64": raw_file(
+            {"a": {"dtype": "F64", "shape": [1], "data_offsets": [0, 8]}}, four * 2
+        ),
+        "f16_bad_size": raw_file(
+            {"a": {"dtype": "F16", "shape": [2], "data_offsets": [0, 2]}}, four
         ),
         "array_header": raw_file(b"[]", b""),
         "metadata_not_str": raw_file(

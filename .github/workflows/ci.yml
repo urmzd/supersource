@@ -204,10 +204,18 @@ jobs:
         env:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: |
+          set -euo pipefail
           for tsv in paths/*/path.tsv; do
             name="$(basename "$(dirname "$tsv")")"
             ./scripts/build-book.sh --path "$name" --manifest "outputs/build-manifest-$name.json"
           done
+
+          # sr.yaml lists the release PDFs explicitly. Fail here if a listed
+          # course path or role path was omitted from the generated artifact.
+          while IFS= read -r artifact; do
+            [[ -z "$artifact" ]] && continue
+            test -s "$artifact"
+          done < <(sed -n '/^    artifacts:/,/^[^ ]/s/^      - //p' sr.yaml)
 
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v7

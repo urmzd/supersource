@@ -193,6 +193,14 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
             (v / "rust" / "ss-tests" / "tests").mkdir(parents=True, exist_ok=True)
             shutil.copy2(rs, v / "rust" / "ss-tests" / "tests" / rs.name)
             rust_ids.append(mid)
+        # Course tests run with SS_COURSE_TREE pointed at the vendor root,
+        # so preserve each passed module's declared contracts at that path.
+        for contract in m.contract:
+            src = course / contract
+            if src.is_file():
+                target = v / contract
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, target)
         fx = course / "fixtures" / mid
         if fx.is_dir():
             _copy_tree(fx, v / "fixtures" / mid)
@@ -242,8 +250,12 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         ]
         (v / "fixtures").mkdir(parents=True, exist_ok=True)
         (v / "fixtures" / "MANIFEST.tsv").write_text("\n".join(keep) + "\n")
-    if (course / "fixtures" / "ASSETS.tsv").is_file():
-        shutil.copy2(course / "fixtures" / "ASSETS.tsv", v / "ASSETS.tsv")
+    assets = course / "fixtures" / "ASSETS.tsv"
+    if assets.is_file():
+        shutil.copy2(assets, v / "ASSETS.tsv")
+        fixtures_assets = v / "fixtures" / "ASSETS.tsv"
+        fixtures_assets.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(assets, fixtures_assets)
 
     c_units = [
         u

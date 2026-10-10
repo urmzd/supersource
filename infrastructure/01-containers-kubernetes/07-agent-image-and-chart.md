@@ -11,7 +11,7 @@
 | **Tests** | `course/tests/dep.07/` (why: image hardening, schema, queue configuration, and secret references) |
 | **Needs** | `dep.06` worker chart, `ag.05` durable agent runs |
 | **Used by** | `MS-agent` deploys the worker on the `agent` queue |
-| **Milestone** | [MS-agent](../../paths/course-p10-agents/milestone.md) |
+| **Milestone** | [MS-agent](../../course/milestones/MS-agent.toml) |
 | **Optional depth** | Separate agent and tool sandbox workloads |
 
 ## Key takeaways

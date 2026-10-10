@@ -7,11 +7,11 @@
 |---|---|
 | **Module** | `L12.4` · optional build · Python · Pass 10 · 2 to 3 h |
 | **You build** | `tinyllm/post/distill.py`: forward and reverse KL objectives |
-| **Contract** | [`distill.pyi`](../../../../course/contracts/py/tinyllm/post/distill.pyi) |
+| **Contract** | [`distill.pyi`](../../../course/contracts/py/tinyllm/post/distill.pyi) |
 | **Tests** | `course/tests/L12.4/` (why: hand distributions, divergence direction, and on-policy samples) |
 | **Needs** | `M11.1` entropy and KL |
 | **Used by** | `C2` alternative training recipe |
-| **Milestone** | [MS-C2](../../../../course/milestones/MS-C2.toml) |
+| **Milestone** | [MS-C2](../../../course/milestones/MS-C2.toml) |
 | **Optional depth** | On-policy sequence-level distillation |
 
 ## Key Takeaways

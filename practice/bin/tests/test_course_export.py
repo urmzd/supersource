@@ -50,6 +50,21 @@ def test_refusals(ss):
 
 
 def test_python_and_c_vendored_and_run_natively(ss):
+    # These active tests read a course contract and the asset catalog through
+    # SS_COURSE_TREE. Export must preserve those paths in the vendored tree.
+    module = ss.course / "modules" / "M90.2.toml"
+    text = module.read_text()
+    text = text.replace(
+        'contract  = ["contracts/py/tinyllm/demo/norm.pyi"]',
+        'contract  = ["contracts/py/tinyllm/demo/norm.pyi", "contracts/formats/policy.v1.schema.json"]',
+    )
+    module.write_text(text)
+    policy = ss.course / "contracts" / "formats" / "policy.v1.schema.json"
+    policy.parent.mkdir(parents=True, exist_ok=True)
+    policy.write_text('{"type":"object","properties":{"rules":{"type":"array"}}}\n')
+    assets = ss.course / "fixtures" / "ASSETS.tsv"
+    assets.write_text("asset\tpath\turl\trevision\tbytes\tsha256\tlicense\tsource\n")
+    ss.commit_site("fixture: policy schema and assets catalog")
     ss.init()
     ss.install_system()
     _pass(ss, "M90.1", "python/tinyllm/demo/scale.py", owner="M90.1")
@@ -71,6 +86,8 @@ def test_python_and_c_vendored_and_run_natively(ss):
         "tests/conftest.py",
         "fixtures/M90.2/vectors.json",
         "fixtures/MANIFEST.tsv",
+        "fixtures/ASSETS.tsv",
+        "contracts/formats/policy.v1.schema.json",
         "VERSION",
         "NOTICE",
         "STATUS.md",

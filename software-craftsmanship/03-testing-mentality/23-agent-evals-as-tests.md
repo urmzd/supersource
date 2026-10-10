@@ -11,7 +11,7 @@
 | **Tests** | `course/tests/craft.23/` (why: repeatability, scorer failures, and semantic mutant detection) |
 | **Needs** | `ag.09` runner, `ag.10` scorers, `ag.11` judge, `ag.12` experiments |
 | **Used by** | `MS-agent` gates citation quality, tool safety, and A/B behavior |
-| **Milestone** | [MS-agent](../../paths/course-p10-agents/milestone.md) |
+| **Milestone** | [MS-agent](../../course/milestones/MS-agent.toml) |
 | **Optional depth** | Online shadow evaluation and human preference review |
 
 ## Key takeaways

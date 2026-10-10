@@ -25,8 +25,10 @@ practice/bin/ss check lang.01                  # grade it
 |---|---|---|---|
 | P0 | [course-p00-setup](../course-p00-setup/) | an empty repo whose CI lints commits, runs native tests, and runs `ss check --all --ci` | MS-P0 |
 | P1 | [course-p01-tracer](../course-p01-tracer/) | a byte bigram trained by your CLI, served by your Rust engine, behind your Go gateway, on kind, with one trace and one runbook | MS-P1 |
+| P2-P11 | [pass paths](../course-p02-foundations/) through [operate](../course-p11-operate/) | autograd, data, model architecture, inference, serving, durable workflows, agents, and operations | MS-P2 to MS-P11 |
+| P12 | [course-p12-multimodal](../course-p12-multimodal/) | multimodal extension planned in B14 | MS-P12, after Step C |
 
-Passes 2 to 11 (autograd, tokenizers and data, sequence models, the transformer, inference and kernels, the serving platform, durable workflows, the capstone training run, agents, operations) arrive batch by batch; their pass paths are added to [`path.tsv`](path.tsv) as they land.
+Passes 2 to 11 take the system from autograd through operations. Pass 12 is the multimodal extension in the B14 design. Each pass has its own staged path and check column in [`path.tsv`](path.tsv).
 
 ## Reading order
 

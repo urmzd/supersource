@@ -7,11 +7,11 @@
 |---|---|
 | **Module** | `L12.2` · optional build · Python · Pass 10 · 2 to 3 h |
 | **You build** | `tinyllm/post/dpo.py`: DPO and IPO objectives |
-| **Contract** | [`dpo.pyi`](../../../../course/contracts/py/tinyllm/post/dpo.pyi) |
+| **Contract** | [`dpo.pyi`](../../../course/contracts/py/tinyllm/post/dpo.pyi) |
 | **Tests** | `course/tests/L12.2/` (why: closed-form preference odds, reference equality, and IPO scaling) |
 | **Needs** | `S-M10b` KL-regularized objective, `M11.1` KL |
 | **Used by** | `C2` post-trained capstone |
-| **Milestone** | [MS-C2](../../../../course/milestones/MS-C2.toml) |
+| **Milestone** | [MS-C2](../../../course/milestones/MS-C2.toml) |
 | **Optional depth** | IPO and odds-ratio preference optimization |
 
 ## Key Takeaways

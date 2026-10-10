@@ -7,11 +7,11 @@
 |---|---|
 | **Module** | `L12.1` · optional build · Python · Pass 10 · 2 to 3 h |
 | **You build** | `tinyllm/post/sft.py`: rendering, assistant masks, and document packing |
-| **Contract** | [`sft.pyi`](../../../../course/contracts/py/tinyllm/post/sft.pyi) |
+| **Contract** | [`sft.pyi`](../../../course/contracts/py/tinyllm/post/sft.pyi) |
 | **Tests** | `course/tests/L12.1/` (why: renderer parity, loss masks, and isolation between packed examples) |
 | **Needs** | `L6.6` LoRA, `L0.3` cross-entropy, `L10.5` chat template |
 | **Used by** | `C2` post-trained capstone |
-| **Milestone** | [MS-C2](../../../../course/milestones/MS-C2.toml) |
+| **Milestone** | [MS-C2](../../../course/milestones/MS-C2.toml) |
 | **Optional depth** | Hugging Face TRL supervised fine-tuning |
 
 ## Key Takeaways
