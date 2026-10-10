@@ -125,3 +125,26 @@ def export_q4(model: Module) -> tuple[dict[str, NDArray], dict[str, str]]:
     "P.bias" when it has one; every parameter of the model under its own
     name; metadata {"format": "tinyllm", "quant": "int4-g<group>-sym"}.
     ValueError when the model holds no Q4Tensor or mixes group sizes."""
+
+def output_error_bound(w: ArrayLike, q: Any, x: ArrayLike, dtype: str = "f32") -> NDArray:
+    """float64 [n, out]: the elementwise error budget of QuantLinear(q) on
+    the rows of x [n, in] against the exact x @ w^T (no bias): M09.3's
+    matmul_error_bound(w, x^T, dtype, dA)^T with dA = |w - dequantize(q)|,
+    the perturbation the quantization made (at most scale / 2 per element
+    for int8 and int4), plus the rounding of the in-term dot products in
+    dtype. ValueError unless w is a finite 2-D [out, in], x is [n, in], and
+    q dequantizes to w's shape."""
+
+def quant_ppl(
+    model: Module,
+    scheme: str,
+    ids: ArrayLike,
+    ctx_len: int,
+    stride: int,
+    skip: Sequence[str] = ("lm_head",),
+) -> dict[str, float]:
+    """The perplexity cost of a scheme: L6.7's eval_ppl(model, ids, ctx_len,
+    stride) before and after quantize_model(scheme, skip) of a deep copy
+    (`model` itself is left unquantized): {"ppl", "ppl_quant", "delta" =
+    ppl_quant - ppl, "ratio" = ppl_quant / ppl}, the numbers MS-L8's
+    budgets read. ValueError as eval_ppl and quantize_model raise it."""

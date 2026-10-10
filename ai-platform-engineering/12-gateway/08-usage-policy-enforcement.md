@@ -9,7 +9,7 @@
 | **You build** | `go/gateway/policy/policy.go` |
 | **Contract** | [`policy.v1.schema.json`](../../course/contracts/formats/policy.v1.schema.json), [`linear-head.schema.json`](../../course/contracts/formats/linear-head.schema.json) |
 | **Tests** | `course/tests/go/gw_08/` (why: ordered rules, linear-head parity, audit, and fail-closed behavior) |
-| **Needs** | [`gw.01`](01-server-skeleton.md) middleware chain, [`gw.02`](../08-authorization-and-access-control/01-api-keys-and-scopes.md) principal, [`ethics.05`](../../responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md) policy, [`data.05`](../../data-engineering/05-corpus-pipeline/05-pii-scrub.md) detector list |
+| **Needs** | [`gw.01`](01-server-skeleton.md) middleware chain, [`gw.02`](../08-authorization-and-access-control/01-api-keys-and-scopes.md) principal, [`gw.05`](05-routing.md) `route.InferenceRequest`, [`ethics.05`](../../responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md) policy, [`data.05`](../../data-engineering/05-corpus-pipeline/05-pii-scrub.md) detector list |
 | **Used by** | `gw.07` route layer consumes policy decisions; `MS-agent` exercises the policy fixtures |
 | **Milestone** | [MS-agent](../../course/milestones/MS-agent.toml) |
 | **Optional depth** | OPA and Cedar policy evaluation |
@@ -73,6 +73,7 @@ Implement the middleware consumed by `server.Deps.Policy`. Use the exchange's pa
 |---|---|---|
 | Back | `gw.01` | Places the policy middleware in the authenticated request chain. |
 | Back | `gw.02` | Supplies the principal used for tenant and model matching. |
+| Back | `gw.05` | `route.InferenceRequest` is the parsed request the policy matches on. |
 | Forward | `gw.07` | Consumes policy decisions in the route layer. |
 | Forward | `MS-agent` | Checks usage restrictions through the public gateway interface. |
 

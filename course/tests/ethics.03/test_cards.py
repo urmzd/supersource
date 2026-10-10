@@ -299,16 +299,23 @@ def test_datasheet_sources_are_allowed():
     # WHY: every source the datasheet lists carries a license your ethics.01
     #      allowlist permits for training. A source under a refused or unknown
     #      license is a release blocker (dur.12, data.08), so it is one here.
+    #      The verdict is your data.08 permitted_uses over the allowlist as an
+    #      {spdx: uses} mapping: the rule data.08's verify applies to the
+    #      ledger rows the datasheet was generated from.
     # KIND: unit
+    from corpus.ledger import permitted_uses
+
     assert ALLOWLIST.is_file(), (
         "docs/data/license-allowlist.toml is missing: finish ethics.01 first"
     )
     allow = tomllib.loads(ALLOWLIST.read_text(encoding="utf-8")).get("allow", [])
-    ok = {e.get("spdx") for e in allow if "train" in e.get("uses", [])}
+    policy = {e.get("spdx"): e.get("uses", []) for e in allow if e.get("spdx")}
     body = sections(SHEET.read_text(encoding="utf-8"))["Collection"]
     found = SPDX.findall(body)
     assert found, "Collection must give each source's license as an SPDX id"
-    bad = sorted(set(found) - ok)
+    bad = sorted(
+        lic for lic in set(found) if "train" not in (permitted_uses(lic, policy) or ())
+    )
     assert not bad, (
         f"Collection lists {', '.join(bad)}, which your allowlist does not allow for train"
     )

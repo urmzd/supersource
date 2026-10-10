@@ -11,9 +11,11 @@ deps      = ["M03.5", "M01.1"]
 # Concepts only: the unit roundoff and float formats (M09.1), summation
 # order (M09.2), and the pen-and-paper set S-M09a.
 reading   = ["M09.1", "M09.2", "S-M09a"]
-# Optional C modules use Python-generated fixture vectors; M09.3 supplies the
-# error bound used to derive and document their numerical tolerances.
-used_by   = []
+# L8.5's output_error_bound is matmul_error_bound with the quantization step
+# as dA (the quantization error budget). Optional C modules use
+# Python-generated fixture vectors; M09.3 supplies the error bound used to
+# derive and document their numerical tolerances.
+used_by   = ["L8.5"]
 units     = ["python/tinyllm/num/tolerance.py"]
 upgrades  = []
 milestone = "MS-P6"

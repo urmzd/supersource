@@ -6,10 +6,10 @@
 | | |
 |---|---|
 | **Module** | `M07.7` · build · Python · Pass 5 · 3 to 4 h |
-| **You build** | `python/tinyllm/prob/metrics.py`: `logistic_regression_fit`, `logistic_predict_proba`, `roc_curve`, `roc_auc`, `reliability_bins`, `ece` |
+| **You build** | `python/tinyllm/prob/metrics.py`: `logistic_regression_fit`, `logistic_predict_proba`, `roc_curve`, `roc_auc`, `reliability_bins`, `ece`, `fit_temperature` |
 | **Contract** | [`course/contracts/py/tinyllm/prob/metrics.pyi`](../../course/contracts/py/tinyllm/prob/metrics.pyi) · the head it fits: [`formats/linear-head.schema.json`](../../course/contracts/formats/linear-head.schema.json) |
 | **Tests** | `course/tests/M07.7/test_metrics.py` (what they check: section 4), golden values from scipy 1.17.1 in `course/fixtures/M07.7/scipy_golden.json` |
-| **Needs** | [`M03.2` LU](../03-linear-algebra/02-gaussian-elimination-and-lu.md) (`lu`, `lu_solve`: one solve per Newton step) · [`M01.4` trapezoid](../01-calculus-1/04-definite-integrals-trapezoid-simpson.md) (the area under the ROC curve) · reading: [`M01.2` Newton's method](../01-calculus-1/02-newtons-method.md), [`M07.5` hypothesis tests](05-hypothesis-tests.md) |
+| **Needs** | [`M03.2` LU](../03-linear-algebra/02-gaussian-elimination-and-lu.md) (`lu`, `lu_solve`: one solve per Newton step) · [`M01.4` trapezoid](../01-calculus-1/04-definite-integrals-trapezoid-simpson.md) (the area under the ROC curve) · [`M01.2` Newton's method](../01-calculus-1/02-newtons-method.md) (`newton`: the temperature's root) · reading: [`M07.5` hypothesis tests](05-hypothesis-tests.md) |
 | **Used by** | later: `L6.5` fits the usage-policy linear head and reports its AUC and ECE (D33) · `L3.5` scores probes · `ethics.04` puts both numbers in the safety report |
 | **Milestone** | `MS-P5` (the Pass 5 gate) |
 | **Optional depth** | Hastie, Tibshirani, Friedman, *The Elements of Statistical Learning* (free), section 4.4 (logistic regression and IRLS); Fawcett, "An introduction to ROC analysis" (2006); Guo, Pleiss, Sun, Weinberger, "On Calibration of Modern Neural Networks" (2017) |
@@ -89,6 +89,14 @@ $$\text{ECE} = \sum_{b} \frac{n_b}{n}\,\lvert \text{acc}_b - \text{conf}_b \rver
 
 For a binary probability $p$ the prediction is 1 when $p \ge 0.5$ and the confidence is $\max(p, 1 - p)$; with class probabilities, the top class and its probability (the "top-label" ECE of Guo et al.). Even a perfectly calibrated classifier has an ECE of a few hundredths from sampling noise in each bin, which is why the test compares calibrated against overconfident rather than against 0.
 
+### 2.7 Temperature scaling
+
+A model that ranks well but is overconfident has one cheap fix (Guo et al. 2017): divide every logit row by one temperature $T > 0$ fitted on held-out data. The argmax cannot change, so accuracy stays; only the confidences move. With $\beta = 1/T$ and $p = \operatorname{softmax}(\beta z_i)$, the mean NLL is
+
+$$\ell(\beta) = \frac1n \sum_i \Bigl[\log \textstyle\sum_c e^{\beta z_{ic}} - \beta z_{i y_i}\Bigr], \qquad \ell'(\beta) = \frac1n \sum_i \bigl(\mathbb{E}_p[z_i] - z_{i y_i}\bigr), \qquad \ell''(\beta) = \frac1n \sum_i \operatorname{Var}_p[z_i] \ge 0 .$$
+
+So $\ell$ is convex in $\beta$, and its minimum is the root of a scalar function whose derivative is known in closed form: exactly what `M01.2`'s `newton(f, df, x0)` solves. `fit_temperature` calls it with $f = \ell'$, $df = \ell''$, and $x_0 = 0$. The start matters: at $\beta = 0$ the softmax is uniform and the curvature is largest, so the steps climb to the root; from $\beta = 1$ a peaked softmax has almost no curvature, and for a model three times too confident the first step lands thousands of units away. A root at $\beta \le 0$ means the logits rank the labels no better than chance, and there is no temperature to report.
+
 ## 3. Worked example by hand
 
 **One Newton step.** One feature, no intercept: $x = (1, -1)$, $y = (1, 0)$, $\lambda = 1$. At $w = 0$ both $p_i = \frac{1}{2}$.
@@ -111,6 +119,8 @@ The area is $\frac12 \cdot \frac13 + \frac12 \cdot 1 = \frac23$. Check by pairs:
 
 **ECE.** Probabilities $(0.9, 0.8, 0.3, 0.6)$, labels $(1, 0, 0, 1)$, $B = 5$. Predictions $(1, 1, 0, 1)$, confidences $(0.9, 0.8, 0.7, 0.6)$, correct $(\text{yes}, \text{no}, \text{yes}, \text{yes})$. Bin indices $\lceil 5c \rceil - 1$: $4, 3, 3, 2$. Bin 4: conf 0.9, acc 1, gap 0.1; bin 3: conf 0.75, acc 0.5, gap 0.25; bin 2: conf 0.6, acc 1, gap 0.4. ECE $= \frac14 (0.1) + \frac24 (0.25) + \frac14 (0.4) = 0.25$. These three examples are the first three tests.
 
+**Temperature.** Three items with logits $(0, 1)$, labels $(1, 1, 0)$. Here $\mathbb{E}_p[z] = \sigma(\beta)$, so $\ell'(\beta) = \sigma(\beta) - \frac23$: the calibrated confidence is the observed $\frac23$, $\beta = \ln 2$, and $T = 1/\ln 2 = 1.4427$. With logits $(0, 2)$ the same confidence needs $2\beta = \ln 2$, so $T$ doubles. This is `test_hand_example_temperature`.
+
 ## 4. The interface
 
 ```python
@@ -120,6 +130,7 @@ def roc_curve(scores: ArrayLike, labels: ArrayLike) -> tuple[NDArray, NDArray, N
 def roc_auc(scores: ArrayLike, labels: ArrayLike) -> float: ...
 def reliability_bins(probs: ArrayLike, labels: ArrayLike, n_bins: int = 15) -> tuple[NDArray, NDArray, NDArray]: ...
 def ece(probs: ArrayLike, labels: ArrayLike, n_bins: int = 15) -> float: ...
+def fit_temperature(logits: ArrayLike, labels: ArrayLike, max_iter: int = 50) -> float: ...  # T, by M01.2's newton
 ```
 
 The intercept is the **last** weight, the layout `L6.5` writes into the linear head's `b`. `roc_curve` starts at $(0, 0)$ with threshold $+\infty$ and has one more point per distinct score; `roc_auc` is `trapezoid(tpr, fpr)`. Bins are $(b/B, (b+1)/B]$ with index $\operatorname{clip}(\lceil cB \rceil - 1, 0, B - 1)$.
@@ -146,6 +157,9 @@ The intercept is the **last** weight, the layout `L6.5` writes into the linear h
 | `test_bin_edges` | boundary | 0.5, 0.75, 1.0, and 0 land in the right bins | cross-language agreement |
 | `test_multiclass_top_label` | unit | first argmax, row max confidence | `L6.5`'s multi-class heads |
 | `test_rejects_bad_arguments` | boundary | bad labels, shapes, penalties, one-class ROC, bad probabilities raise | bugs surface at the call |
+| `test_hand_example_temperature` | unit, smoke | $T = 1/\ln 2$ for gap 1, twice that for gap 2 | section 3 |
+| `test_temperature_calibrates_an_overconfident_model` | property | logits 3 times too sharp give $T$ near 3, a true NLL minimum, the same argmax, half the ECE | section 2.7 |
+| `test_temperature_rejects_bad_input` | boundary | 1-D logits, bad classes, NaN, worse than chance raise | no negative temperatures |
 
 ## 5. Pitfalls
 
@@ -162,6 +176,8 @@ The intercept is the **last** weight, the layout `L6.5` writes into the linear h
 | 9. binary confidence $p$ instead of $\max(p, 1 - p)$ | confident negatives counted as unconfident | `test_hand_example_ece` (mutant `s09`) |
 | 10. bins $[\text{lo}, \text{hi})$ by floor | edge values one bin up; another number than Go and the paper | `test_bin_edges` (mutant `s10`) |
 | 11. the intercept column first | the head's `b` holds a feature weight | `test_predict_proba_intercept_last` (mutant `s11`) |
+| 12. returning $\beta$ instead of $T = 1/\beta$ | an overconfident model gets sharper, not softer | `test_hand_example_temperature` (mutant `s12`) |
+| 13. $\ell'$ without the label's logit | the root no longer depends on the labels | `test_hand_example_temperature` (mutant `s13`) |
 
 ## 6. Where it's used next
 
@@ -169,7 +185,7 @@ The intercept is the **last** weight, the layout `L6.5` writes into the linear h
 |---|---|---|
 | Back | `M03.2` | `lu` and `lu_solve` solve $H \delta = g$ each Newton step |
 | Back | `M01.4` | `trapezoid(tpr, fpr)` is the AUC |
-| Back | `M01.2` | Newton's method, here on a gradient (reading) |
+| Back | `M01.2` | `newton(f, df, 0.0)` finds the root of $\ell'(\beta)$ for `fit_temperature`; IRLS is the same method on a gradient vector |
 | Forward | `L6.5` | fits the usage-policy head on embeddings and exports it as `linear-head.schema.json` with its AUC and ECE |
 | Forward | `L3.5` | probing classifiers over frozen representations |
 | Forward | `ethics.04` | the safety report's ROC and reliability diagram |

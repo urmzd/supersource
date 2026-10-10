@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/ema.pyi`](../../course/contracts/py/tinyllm/num/ema.pyi) |
 | **Tests** | `course/tests/M02.2/test_ema.py` (what they check: section 4) |
 | **Needs** | `M00.3` `geometric` and `geometric_sum`, which give the weights and their total (or `--ref-deps`) |
-| **Used by** | later `L0.5` smooths the training-loss curve with `EMA`, `C1` keeps an EMA of the weights, and `M10.3` (Adam) applies the same bias correction to its moments (section 6) |
+| **Used by** | `L0.5`'s `train_step` smooths the training-loss curve with `EMA` (`ema=`, reported as `loss_ema`), `C1` keeps an EMA of the weights, and `M10.3` (Adam) applies the same bias correction to its moments (section 6) |
 | **Milestone** | `MS-P2` (the Pass 2 gate) |
 | **Optional depth** | OpenStax, *Calculus Volume 2* (free), sections 5.2 and 5.3 (infinite series, the geometric series, divergence); Kingma and Ba, "Adam" (2015), section 3 (initialization bias correction) |
 
@@ -147,11 +147,9 @@ A number in gives a Python `float` out; an array in gives a new float64 array, a
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M00.3` | `geometric(1 - beta, beta, t)` gives the weights and `geometric_sum(1 - beta, beta, t)` the correction total $1 - \beta^t$ |
-| Forward | `L0.5` | the training loop's smoothed loss curve: an `EMA` over per-step losses, debiased |
+| Forward | `L0.5` | `train_step(..., ema=EMA(beta))` feeds each step's loss to `update` and reports `value_debiased()` as `loss_ema`, the smoothed loss curve |
 | Forward | `M10.3` | Adam's first and second moments are EMAs of the gradient and its square, divided by $1 - \beta_1^t$ and $1 - \beta_2^t$ |
 | Forward | `C1` | an EMA of the model weights, evaluated alongside the raw weights |
-
-`L0.5` is not authored yet, and `M10.3` lists this module as reading (it re-derives the correction on its moments), so `ss verify course M02.2` reports no call site (check 9) until `L0.5` lands with `M02.2` in its `deps`; see `course/DEVIATIONS.md` row B31-03.
 
 ## Going further
 

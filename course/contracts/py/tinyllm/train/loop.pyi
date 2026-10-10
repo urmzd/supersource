@@ -19,6 +19,7 @@ from typing import Any, Callable, Iterator, Mapping, Optional
 from numpy.typing import NDArray
 
 from tinyllm.nn.module import Module
+from tinyllm.num.ema import EMA
 
 class DataLoader:
     def __init__(
@@ -48,13 +49,17 @@ def train_step(
     loss_fn: Callable[..., Any],
     opt: Any,
     clip: Optional[float] = None,
+    ema: Optional[EMA] = None,
 ) -> dict[str, float]:
     """opt.zero_grad(); loss = loss_fn(model, batch); loss.backward(); with
     clip, clip_grad_norm_(model.parameters(), clip) (M10.4); opt.step().
     Returns {"loss": float, plus "grad_norm" (the norm before clipping) when
-    clip is set, plus the extra metrics}. A loss that is not finite raises
-    FloatingPointError before any parameter changes; a loss with more than
-    one element is a ValueError."""
+    clip is set, plus the extra metrics, plus "loss_ema" when an M02.2 EMA
+    is passed: the step's loss goes into ema.update and "loss_ema" is
+    ema.value_debiased(), the smoothed curve a training log plots}. A loss
+    that is not finite raises FloatingPointError before any parameter
+    changes (and before the EMA sees it); a loss with more than one element
+    is a ValueError."""
 
 def evaluate(model: Module, loader: Any, loss_fn: Callable[..., Any]) -> dict[str, float]:
     """Run loss_fn over every batch of loader in eval mode and under no_grad,

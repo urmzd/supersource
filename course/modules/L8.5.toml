@@ -6,11 +6,13 @@ pass      = 6
 chapter   = "ml/08-tinyllm/p08-inference/05-quantization.md"
 contract  = ["contracts/py/tinyllm/infer/quant.pyi"]
 # FP8 and MX codes from M09.4's lowp; QuantLinear is an L0.4 Module over
-# L0.1 Tensors and quantize_model finds L0.4 Linears.
-deps      = ["M09.4", "L0.4", "L0.1"]
-# Concepts only: float16 (M09.1), tolerance budgets (M09.3), confidence
-# intervals for the perplexity verdicts (M07.4). quant.py calls none of them.
-reading   = ["M09.1", "M09.3", "M07.4"]
+# L0.1 Tensors and quantize_model finds L0.4 Linears. output_error_bound is
+# M09.3's matmul_error_bound with the quantization step as dA; quant_ppl
+# reads the perplexity cost of a scheme with L6.7's eval_ppl.
+deps      = ["M09.4", "L0.4", "L0.1", "M09.3", "L6.7"]
+# Concepts only: float16 (M09.1), confidence intervals for the perplexity
+# verdicts (M07.4, which eval_ppl's ppl_lo and ppl_hi come from).
+reading   = ["M09.1", "M07.4"]
 # Call sites (DESIGN 4.3): L9.5's int4 and int8 kernels take these bytes
 # (parity quant.int4); L10.1's *.q4.safetensors runner and craft.13's KV v2
 # oracle join with their batches.

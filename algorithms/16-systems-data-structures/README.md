@@ -79,7 +79,7 @@ The engine flag `--prefix-cache=hash|radix` gives both `ds.02` (hash index in C)
 | 5 | `ds.05` | [Robin Hood hash map with backward-shift deletion](05-robin-hood-hash-map.md) | build | 3 |
 | 6 | `ds.06` | [Binary heap with lazy deletion](06-binary-heap-lazy-deletion.md) | build | 3 |
 | 7 | `ds.07` | [Radix tree over token ids with index-linked LRU leaf list](07-radix-tree.md) | build | 6 |
-| 8 | `ds.08` | [Bloom filter](08-bloom-filter.md) | build | 3 |
+| 8 | `ds.08` | [Bloom filter](08-bloom-filter.md) | side | 3 |
 | 9 | `ds.09` | [Consistent hash ring with bounded loads](09-consistent-hash-ring.md) | build | 7 |
 <!-- /ss:chapters -->
 

@@ -8,7 +8,7 @@
 id       = "MS-P3"
 title    = "Tokens and data: deterministic corpus, tokenizers, and language models"
 requires = ["M05.2", "M06.2", "S-M06b", "M11.2", "M07.1", "M07.2", "S-M07b",
-            "ethics.01", "ethics.02", "ds.08", "lang.08", "M03.5", "M03.6",
+            "ethics.01", "ethics.02", "lang.08", "M03.5", "M03.6",
             "S-M03b", "M11.4", "S-M11b"]
 includes = ["MS-L1", "MS-corpus", "MS-L2"]
 pass     = 3

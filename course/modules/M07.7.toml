@@ -6,11 +6,12 @@ pass      = 5
 chapter   = "math/07-probability-statistics/07-logistic-regression-roc-auc-calibration.md"
 contract  = ["contracts/py/tinyllm/prob/metrics.pyi"]
 # metrics.py: each IRLS step is one lu + lu_solve (M03.2); roc_auc is
-# trapezoid(tpr, fpr) (M01.4).
-deps      = ["M03.2", "M01.4"]
-# Newton's method (M01.2) is the idea behind IRLS; M07.5 tests compare the
-# classifiers this module scores. No code of theirs is called.
-reading   = ["M01.2", "M07.5"]
+# trapezoid(tpr, fpr) (M01.4); fit_temperature finds the root of the NLL's
+# derivative in 1/T with M01.2's scalar newton.
+deps      = ["M03.2", "M01.4", "M01.2"]
+# M07.5 tests compare the classifiers this module scores. No code of theirs
+# is called.
+reading   = ["M07.5"]
 # L6.5 fits the classifier heads and the linear policy head (D33) with
 # logistic_regression_fit and reports roc_auc and ece. L3.5 (probes) and
 # ethics.04 (safety report) join when they list M07.7 in deps.

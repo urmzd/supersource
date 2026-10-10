@@ -5,13 +5,13 @@
 
 | | |
 |---|---|
-| **Module** | `ds.08` · build · Rust · Pass 3 · 4 to 5 h |
+| **Module** | `ds.08` · side · Rust · Pass 3 · 4 to 5 h (optional) |
 | **You build** | `rust/crates/tl-ds/src/bloom.rs`: `fnv1a64`, `mix64`, `optimal_m`, `optimal_k`, `predicted_fp_rate`, `Bloom` (`with_rate`, `new`, `bit_positions`, `insert`, `contains`, `union`, `count_ones`, `to_bytes`, `from_bytes`) |
 | **Contract** | byte layout and hashing: [`formats/bloom.md`](../../course/contracts/formats/bloom.md) |
 | **Tests** | `course/tests/rust/ds_08.rs`; what they check: section 4 · parity suite `bloom` · your own tests in `rust/crates/tl-ds/tests/ds08_bloom.rs`, rung R4 (proptest), graded by mutation (threshold 0.80, `s01` to `s10` required) |
 | **Needs** | reading: `S-M06b` the [false-positive rate and the optimal k](../../math/06-discrete-math-2/91-problem-set-b.md), `M06.3` [FNV-1a and the SplitMix finalizer](../../math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) |
-| **Used by** | No runtime module; `data.03` has an independent Python Bloom screen. |
-| **Milestone** | `MS-corpus` (the dedup stage of your corpus pipeline) |
+| **Used by** | No runtime module. This optional Rust module is checked on its own and against the shared golden bit arrays (`ss parity bloom`); `data.03` writes an independent Python Bloom screen to the same format. |
+| **Milestone** | none (optional module: MS-corpus runs the Python screen of data.03; `ss parity bloom` compares the two) |
 | **Optional depth** | Bloom, *Space/Time Trade-offs in Hash Coding with Allowable Errors* (1970); Kirsch and Mitzenmacher, *Less Hashing, Same Performance: Building a Better Bloom Filter* (2006); Broder and Mitzenmacher, *Network Applications of Bloom Filters: A Survey* (2004) |
 
 ## Key Takeaways
@@ -31,7 +31,7 @@ ss check ds.08              # Rust tests, then grades your tests
 ss parity bloom             # compare the Rust filter with the golden bit arrays
 ```
 
-The `tl-ds` crate exposes Bloom to other Rust modules. Write the hashing and sizing first and check them on the worked example, then bytes and round trips.
+No other module calls this code: languages meet only over processes and files, and the one Bloom filter on the serving path, the Python screen of `data.03`, is written in Python. The byte format is what the two share, and `ss parity bloom` holds both to it. Write the hashing and sizing first and check them on the worked example, then bytes and round trips.
 
 ---
 
@@ -163,9 +163,9 @@ impl Bloom {
 |---|---|---|
 | Back | `S-M06b` | the false-positive rate, the optimal $k$, and the bits-per-item bound of section 2.2 |
 | Back | `M06.3` | FNV-1a and the SplitMix64 finalizer |
-| Forward | `data.03` | `exact_dedup` sizes a screen at about 10 bits per paragraph, inserts each paragraph hash, and confirms every positive exactly, so a false positive costs only a lookup |
+| Forward | `data.03` | reading, not a call: its Python `exact_dedup` sizes its own screen at about 10 bits per paragraph with these formulas, inserts each paragraph hash, and confirms every positive exactly; `ss parity bloom` checks that both screens write the same bytes |
 
-If you skip this module, `ss check data.03` stops with `needs ds.08: build it, or pass --ref-deps`.
+This module is optional: skipping it blocks no other module, since `data.03` never calls Rust.
 
 ## Going further
 

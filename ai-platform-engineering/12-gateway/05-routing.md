@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/proto/tl/control/v1/control.proto`](../../course/contracts/proto/tl/control/v1/control.proto) (served) · [`engine.proto`](../../course/contracts/proto/tl/engine/v1/engine.proto) and [`kv.proto`](../../course/contracts/proto/tl/kv/v1/kv.proto) (called) · `Route`, `Worker`, and the routes and drain rules of [`admin.v1.yaml`](../../course/contracts/openapi/admin.v1.yaml) · `[gateway]` `route_policy`, `affinity_load_factor`, `heartbeat_miss_limit`, `routes` in [`runtime.schema.json`](../../course/contracts/config/runtime.schema.json) |
 | **Tests** | `course/tests/go/gw_05/` (what they check: section 4) |
 | **Needs** | [`ds.09` consistent hash ring](../../algorithms/16-systems-data-structures/09-consistent-hash-ring.md) · [`gw.01` server skeleton](01-server-skeleton.md) · [`gw.02` API keys](../08-authorization-and-access-control/01-api-keys-and-scopes.md) (the debug scope) · [`gw.04` streaming proxy](04-sse-streaming-proxy.md) (`Forward` and the commitment boundary) · `L10.6` (the Rust engine's Prefill and Release gRPC endpoints) · reading: `S-M07d` [queueing and balls into bins](../../math/07-probability-statistics/93-problem-set-d.md), [model routing and cascades](../11-model-routing-and-cascades/) |
-| **Used by** | your composition root's `Router` and `Proxy` slots and the gRPC registry listener (no library module calls it yet: DEVIATIONS B93-05); `load.01`, `ops.01`, and `dur.12`'s canary reach it over HTTP |
+| **Used by** | `gw.08` (its policy reads `route.InferenceRequest`); `gw.07`'s `gateway.Deps` and `gateway.Admin` (the `Router` slot, the workers, routes, and drain handlers, the cache revision); your composition root passes `route.Proxy` and serves the gRPC registry; `load.01`, `ops.01`, and `dur.12`'s canary reach it over HTTP |
 | **Milestone** | MS-gateway |
 | **Optional depth** | Chen et al., *FrugalGPT* (2023, cascades); Zhong et al., *DistServe* (OSDI 2024) and Patel et al., *Splitwise* (ISCA 2024) on disaggregated prefill and decode; Mitzenmacher, *The Power of Two Choices in Randomized Load Balancing* (2001) |
 
@@ -208,7 +208,8 @@ func DrainHandler(reg *Registry) http.Handler              // POST /admin/v1/mod
 | Back | `gw.02` | the `debug` scope gates `X-TL-Route` |
 | Back | `gw.04` | every attempt goes through `Forward`; only uncommitted failures are retried |
 | Back | `L10.6` | Prefill and Release gRPC endpoints implement disaggregated decode routing |
-| Forward | `gw.07` | the admin API mounts `WorkersHandler`, `RoutesHandler`, and `DrainHandler` (through HTTP handlers, not a code call) |
+| Forward | `gw.07` | `gateway.Admin` builds `WorkersHandler`, `RoutesHandler`, and `DrainHandler`; `gateway.Deps` puts `Middleware` in the chain and keys the cache by `ETag(epoch)` |
+| Forward | `gw.08` | the usage policy matches on the parsed `route.InferenceRequest` (model, prompt) |
 | Forward | `load.01`, `ops.01`, `dur.12` | the load generator, the kill-decode drill, and the canary release exercise routing over HTTP |
 
 ## Going further

@@ -30,6 +30,7 @@ from tinyllm.infer.quant import (
     dequantize,
     export_q4,
     nbytes,
+    output_error_bound,
     pack_int4,
     quantize_fp8_per_channel,
     quantize_int4_group,
@@ -37,6 +38,7 @@ from tinyllm.infer.quant import (
     quantize_kv_fp8,
     quantize_model,
     quantize_mx,
+    quant_ppl,
     unpack_int4,
 )
 from tinyllm.nn.layers import Linear
@@ -414,3 +416,67 @@ def test_export_q4_names_and_metadata():
     assert nbytes(m.up.q) == 128 * 32 + 128 * 2 * 2
     with pytest.raises(ValueError):
         export_q4(TinyLM(g))
+
+
+def test_output_error_stays_within_the_budget():
+    # WHY: M09.3's budget, applied to a quantized layer: the output of
+    #      QuantLinear differs from the exact x @ W^T by at most
+    #      |W - W'| @ |x| (the quantization step) plus gamma_k of the f32
+    #      dot products. Every element of every scheme stays inside it, and
+    #      the budget is not vacuous: the worst element uses more than 1%
+    #      of it. Rounding alone (dA = 0) would not cover the error.
+    # KIND: property
+    # CATCHES: s21
+    # CHAPTER: L8.5 section 2
+    g = PCG32(SEED, 40)
+    w = weights(g, (24, 64))
+    x = weights(g, (5, 64))
+    exact = x.astype(np.float64) @ w.astype(np.float64).T
+    for q in (
+        Q8Tensor(*quantize_int8_per_channel(w)),
+        quantize_int4_group(w, 32),
+        quantize_fp8_per_channel(w),
+        quantize_mx(w),
+    ):
+        y = QuantLinear(q)(Tensor(x)).data.astype(np.float64)
+        bound = output_error_bound(w, q, x, "f32")
+        assert bound.shape == (5, 24) and bound.dtype == np.float64
+        r = float(np.max(np.abs(y - exact) / bound))
+        assert 0.01 < r <= 1.0, (type(q).__name__, r)
+    with pytest.raises(ValueError):
+        output_error_bound(w, quantize_int4_group(w, 32), x[:, :32])
+
+
+class TokenLM(Module):
+    """ids [1, T] -> logits [1, T, V]: a fixed embedding row per token, then
+    TinyLM's Linears (a context-free LM, enough for perplexity)."""
+
+    def __init__(self, g: PCG32, d=64, v=40):
+        super().__init__()
+        self.emb = weights(g, (v, d))
+        self.body = TinyLM(g, d=d, v=v)
+
+    def forward(self, ids):
+        return self.body(Tensor(self.emb[np.asarray(ids)]))
+
+
+def test_quant_ppl_reports_the_cost_and_keeps_the_model():
+    # WHY: MS-L8's perplexity budgets are read from L6.7's evaluator: the
+    #      strided perplexity of the float model, then of a quantized copy.
+    #      int8 costs less than q4, both cost something, and the caller's
+    #      model is still the float one afterwards (quantize_model works in
+    #      place, so quant_ppl must quantize a copy).
+    # KIND: property
+    # CATCHES: s22
+    # CHAPTER: L8.5 section 2
+    g = PCG32(SEED, 41)
+    m = TokenLM(g)
+    ids = np.array([g.below(40) for _ in range(48)], dtype=np.int64)
+    r8 = quant_ppl(m, "int8", ids, ctx_len=16, stride=8)
+    r4 = quant_ppl(m, "q4_g32", ids, ctx_len=16, stride=8)
+    assert set(r8) == {"ppl", "ppl_quant", "delta", "ratio"}
+    assert r8["ppl"] == r4["ppl"] > 1.0
+    assert_close(r8["delta"], r8["ppl_quant"] - r8["ppl"], rtol=1e-12, atol=0)
+    assert_close(r8["ratio"], r8["ppl_quant"] / r8["ppl"], rtol=1e-12, atol=0)
+    assert 0 < abs(r8["ratio"] - 1) < abs(r4["ratio"] - 1) < 0.2
+    assert isinstance(m.body.up, Linear) and not isinstance(m.body.up, QuantLinear)

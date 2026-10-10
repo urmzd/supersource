@@ -6,11 +6,11 @@
 | | |
 |---|---|
 | **Module** | `L10.7` · build · Rust · Pass 7 · 6 to 9 h |
-| **You build** | `rust/crates/tl-serve/src/metrics.rs`: counters, gauges, and cumulative histograms, the Prometheus text exposition, and `EngineMetrics` with every engine instrument of the contract · `rust/crates/tl-serve/src/telemetry.rs`: W3C trace context, the engine's span tree, OTLP/HTTP JSON export, JSON log lines with the trace |
+| **You build** | `rust/crates/tl-serve/src/metrics.rs`: counters, gauges, and cumulative histograms, the Prometheus text exposition, and `EngineMetrics` with every engine instrument of the contract · `rust/crates/tl-serve/src/telemetry.rs`: W3C trace context, the engine's span tree, OTLP/HTTP JSON export, JSON log lines with the trace · `rust/crates/tl-serve/src/server.rs`, taken over from `L10.5`: the serve loop records every request in `EngineMetrics` and ends it with one JSON log line and its span tree |
 | **Contract** | [`otel/metrics.yaml`](../../../course/contracts/otel/metrics.yaml) (names, types, buckets, labels) · [`otel/semconv.md`](../../../course/contracts/otel/semconv.md) (spans, attributes, propagation, logs) · [`otel/slo.schema.json`](../../../course/contracts/otel/slo.schema.json) (what the histograms feed) |
-| **Tests** | `course/tests/rust/l10_7.rs`, 16 tests (what they check: section 4) |
+| **Tests** | `course/tests/rust/l10_7.rs`, 17 tests (what they check: section 4); `L10.5`'s tests run as the regression of the server you take over |
 | **Needs** | `L10.5` the engine loop's `EngineStats` and the `/metrics` route ([chapter](05-openai-server-on-tokio.md)) · reading: `M07.4` quantiles and intervals ([chapter](../../../math/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md)), `obs.00` the Pass 1 trace ([chapter](../../../systems/04-observability/00-one-trace.md)) · or `--ref-deps` |
-| **Used by** | `obs.01` to `obs.04` scrape and trace it; `load.01` cross-checks its numbers; the drills grade burn-rate alerts computed from it |
+| **Used by** | `L10.9` takes the serve loop over next and keeps recording through it; `obs.02` runs your engine and scrapes these histograms from its `/metrics`; `obs.01`, `obs.03`, `obs.04` trace and alert on them; `load.01` cross-checks its numbers; the drills grade burn-rate alerts computed from it |
 | **Milestone** | `MS-L10` (and `MS-prod`, where Prometheus scrapes it) |
 | **Optional depth** | [Prometheus exposition formats](https://prometheus.io/docs/instrumenting/exposition_formats/) (free); [W3C Trace Context](https://www.w3.org/TR/trace-context/) (free); [OTLP JSON encoding](https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding) (free); [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) (free); *Site Reliability Engineering*, ch. 6 "Monitoring Distributed Systems" (free online) |
 
@@ -32,7 +32,7 @@ ss check L10.7 --ref-deps    # only if L10.5 is not passing yet
 ss diff  L10.7
 ```
 
-Declare `pub mod metrics; pub mod telemetry;` in `tl-serve/src/lib.rs`. Your server keeps one `EngineMetrics` behind a mutex: `record_http` for every request, `record_request` when a generation ends, `set_engine(&EngineGauges::from_stats(&engine.stats(), spec_rate))` before rendering `/metrics`. It builds `request_spans` at the end of each request and posts `otlp_json` to `$OTEL_EXPORTER_OTLP_ENDPOINT/v1/traces` off the request path.
+Declare `pub mod metrics; pub mod telemetry;` in `tl-serve/src/lib.rs`. This module takes over `server.rs` from `L10.5` (`upgrades`), so `ss check L10.7` also runs every `L10.5` test as a regression. Your server keeps one `EngineMetrics` behind a mutex: `record_http` for every request, `record_request` when a generation ends (early errors too, with their `code` as `error_type`), `set_engine(&EngineGauges::from_stats(&engine.stats(), spec_rate))` before rendering `/metrics`. The engine thread stamps when it takes a request and when it samples each token; at the end of each request the server builds `request_spans` from those times, writes one `log_line` inside the SERVER span to stderr, and posts `otlp_json` to `$OTEL_EXPORTER_OTLP_ENDPOINT/v1/traces` on a thread of its own.
 
 ---
 
@@ -137,6 +137,10 @@ pub fn otlp_json(resource: &[(String, AttrValue)], scope: &str, spans: &[Span]) 
 pub fn engine_resource(system: &str, version: &str, role: &str) -> Vec<(String, AttrValue)>;
 pub fn export(endpoint: &str, body: &str, timeout: Duration) -> Result<u16, String>;
 pub fn log_line(ts: &str, level: &str, msg: &str, service: &str, ctx: Option<&TraceContext>) -> String;
+
+// rust/crates/tl-serve/src/server.rs, taken over from L10.5: its public API is unchanged
+// (ServeConfig, spawn, run, ServerHandle); /metrics renders EngineMetrics, and every request
+// is recorded, logged, and traced as above.
 ```
 
 ### What the tests check
@@ -161,6 +165,7 @@ The exposition is parsed by the test's own Prometheus text reader and compared w
 | `otlp_json_shape` | conformance | hex ids, parent only on children, numeric kind, string times and ints, arrays, status | the collector accepts it |
 | `export_posts_to_a_collector` | fault | one POST `/v1/traces`, JSON content type, the body unchanged; a dead collector errors in time | export never hangs a request |
 | `propagation_and_log_correlation` | unit | `traceparent` injected and extracted; log lines carry trace and span ids; seeded ids | `grep <trace_id>` over `kubectl logs` |
+| `serve_loop_records_metrics_and_spans` | conformance | a live server: TTFT, TPOT, and request duration per generation (stream or not), a failure with its `error_type`, the HTTP histogram per route and status, the KV gauges, and the exported span tree continuing the caller's trace | `obs.02` scrapes these from your engine; `obs.01` joins its trace |
 
 ## 5. Pitfalls
 
@@ -184,9 +189,10 @@ The exposition is parsed by the test's own Prometheus text reader and compared w
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `L10.5` | `EngineStats` from the step loop feeds the gauges; the server's `/metrics` route renders the registry |
+| Back | `L10.5` | `EngineStats` from the step loop feeds the gauges; you take over its `server.rs`, whose `/metrics` route now renders the registry |
 | Forward | `obs.01` | the collector receives these spans; the span tree of a request crosses gateway, prefill, transfer, decode |
-| Forward | `obs.02` | `promscrape` checks names, types, buckets, labels against `metrics.yaml` on a live engine |
+| Forward | `L10.9` | takes `server.rs` over next: tool requests are recorded and traced through the same calls |
+| Forward | `obs.02` | runs your engine and checks its `/metrics` (names, types, buckets, labels against `metrics.yaml`) and its JSON log lines |
 | Forward | `obs.03` | the SLO burn-rate rules are written over `gen_ai_server_time_to_first_token_seconds_bucket` and friends |
 | Forward | `load.01` | the load generator's client-side TTFT and TPOT are compared with these server-side numbers |
 

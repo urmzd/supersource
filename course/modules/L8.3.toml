@@ -10,7 +10,8 @@ contract  = ["contracts/py/tinyllm/infer/paged.pyi"]
 deps      = ["L8.2"]
 reading   = []
 # The engine reimplements this behavior in Rust; L9.4 consumes file fixtures
-# and is not a runtime call site.
+# and is not a runtime call site. The CLI entry layer (`generate --cache
+# paged`) is the only caller, so check 9 fails (course/deviations/L8.3.md).
 used_by   = []
 units     = ["python/tinyllm/infer/paged.py"]
 upgrades  = []

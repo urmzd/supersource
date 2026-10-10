@@ -6,10 +6,10 @@
 | | |
 |---|---|
 | **Module** | `L8.5` · build · Python · Pass 6 · 5 to 7 h |
-| **You build** | `python/tinyllm/infer/quant.py`: `quantize_int8_per_channel`, `pack_int4`, `unpack_int4`, `quantize_int4_group`, `quantize_fp8_per_channel`, `quantize_mx`, `quantize_kv_fp8`, `dequantize`, `nbytes`, `QuantLinear`, `quantize_model`, `export_q4`, and the dataclasses `Q8Tensor`, `Q4Tensor`, `FP8Tensor`, `MXTensor`, `KVQuant` |
+| **You build** | `python/tinyllm/infer/quant.py`: `quantize_int8_per_channel`, `pack_int4`, `unpack_int4`, `quantize_int4_group`, `quantize_fp8_per_channel`, `quantize_mx`, `quantize_kv_fp8`, `dequantize`, `nbytes`, `QuantLinear`, `quantize_model`, `export_q4`, `output_error_bound`, `quant_ppl`, and the dataclasses `Q8Tensor`, `Q4Tensor`, `FP8Tensor`, `MXTensor`, `KVQuant` |
 | **Contract** | [`course/contracts/py/tinyllm/infer/quant.pyi`](../../../course/contracts/py/tinyllm/infer/quant.pyi); the int4 bytes in [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md); KV format v2 in [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md) |
-| **Tests** | `course/tests/L8.5/test_quant.py`, 15 tests (what they check: section 4) · golden `course/fixtures/parity/quant_int4.json` · your own tests in `python/tests/l8-5-quant/`, rung R4, graded by mutation (threshold 0.80) · parity suite `ss parity quant.int4` |
-| **Needs** | `M09.4` [FP8 and microscaling formats](../../../math/09-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md) (`tinyllm.num.lowp`) · `L0.4` [modules and `Linear`](../p00-foundations/04-module-system-and-layers.md) · `L0.1` [the `Tensor`](../p00-foundations/01-tensor-and-broadcasting-backward.md) · reading: `M09.1` [IEEE 754 and float16](../../../math/09-numerical-methods-and-floating-point/01-ieee-754.md), `M09.3` [tolerance budgets](../../../math/09-numerical-methods-and-floating-point/03-error-analysis-condition-numbers-and-tolerance-budgets.md), `M07.4` [confidence intervals](../../../math/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md) |
+| **Tests** | `course/tests/L8.5/test_quant.py`, 17 tests (what they check: section 4) · golden `course/fixtures/parity/quant_int4.json` · your own tests in `python/tests/l8-5-quant/`, rung R4, graded by mutation (threshold 0.80) · parity suite `ss parity quant.int4` |
+| **Needs** | `M09.4` [FP8 and microscaling formats](../../../math/09-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md) (`tinyllm.num.lowp`) · `L0.4` [modules and `Linear`](../p00-foundations/04-module-system-and-layers.md) · `L0.1` [the `Tensor`](../p00-foundations/01-tensor-and-broadcasting-backward.md) · `M09.3` [tolerance budgets](../../../math/09-numerical-methods-and-floating-point/03-error-analysis-condition-numbers-and-tolerance-budgets.md) (`matmul_error_bound`) · `L6.7` [the evaluation harness](../p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) (`eval_ppl`) · reading: `M09.1` [IEEE 754 and float16](../../../math/09-numerical-methods-and-floating-point/01-ieee-754.md), `M07.4` [confidence intervals](../../../math/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md) |
 | **Used by** | later: `L9.5` (the C int4 and int8 kernels read these bytes), `L10.1` (the Rust runner loads `*.q4.safetensors`), `craft.13` (KV format v2 uses `quantize_kv_fp8` as its oracle) |
 | **Milestone** | `MS-L8` (step 2: perplexity under `--quant int8, q4_g32, fp8_e4m3` within budget) |
 | **Optional depth** | Dettmers et al., [*LLM.int8()*](https://arxiv.org/abs/2208.07339); Frantar et al., [*GPTQ*](https://arxiv.org/abs/2210.17323); Lin et al., [*AWQ*](https://arxiv.org/abs/2306.00978); OCP, [*Microscaling Formats (MX) v1.0*](https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf) |
@@ -67,6 +67,10 @@ Your inference stack decodes one token at a time, and each token reads every wei
 
 **Quantized layers.** `QuantLinear(q, bias)` holds a quantized weight, dequantizes it once, and computes `x @ W^T + b` on `L0.1` Tensors; it has no parameters (it is for inference). `quantize_model(model, scheme)` replaces every `L0.4` `Linear` except those named in `skip` (default `lm_head`, which a model often ties to its embeddings) in place. `export_q4` writes the tensors of a `*.q4.safetensors` file for the Rust runner (`L10.1`).
 
+**The error budget.** A quantized layer computes $x \hat W^T$ instead of $x W^T$. Each output is a dot product of $k$ = `in` terms, so `M09.3`'s bound applies with the weight perturbed by $\Delta = |W - \hat W|$ (at most $s/2$ per element for int8 and int4): $|y' - y| \le \Delta |x|^T + \gamma_k (|W| + \Delta) |x|^T$ elementwise, in the format the product ran in. `output_error_bound(w, q, x)` returns exactly `M09.3`'s `matmul_error_bound(w, x^T, dtype, dA=Δ)^T`. The first term is the quantization, the second the float32 rounding; for every scheme here the first dominates by three orders of magnitude, which is why a test with rounding-only tolerances fails a correct quantizer.
+
+**The perplexity cost.** A layer's error budget does not say what a model loses. `quant_ppl(model, scheme, ids, ctx_len, stride)` measures it: `L6.7`'s `eval_ppl` on the float model, then on a quantized **copy** (`quantize_model` works in place, and the caller still needs the float model), and returns `ppl`, `ppl_quant`, their difference `delta`, and `ratio`. MS-L8's budgets read these numbers.
+
 ## 3. Worked example by hand
 
 int4 with one group of 4 per row:
@@ -104,6 +108,8 @@ def nbytes(q) -> int
 class QuantLinear(Module): def __init__(self, q, bias=None); def forward(self, x: Tensor) -> Tensor
 def quantize_model(model: Module, scheme: str, skip=("lm_head",)) -> Module   # "int8" "q4_g32" "fp8_e4m3" "mxfp4"
 def export_q4(model: Module) -> tuple[dict[str, NDArray], dict[str, str]]
+def output_error_bound(w, q, x, dtype: str = "f32") -> NDArray      # [n, out], M09.3's matmul_error_bound
+def quant_ppl(model, scheme, ids, ctx_len, stride, skip=("lm_head",)) -> dict[str, float]  # L6.7's eval_ppl
 ```
 
 The design sketch's optional `awq_search_scales` and `gptq_quantize` are not part of this module; section "Going further" points at them.
@@ -127,6 +133,8 @@ The design sketch's optional `awq_search_scales` and `gptq_quantize` are not par
 | `test_quant_linear_is_the_dequantized_matmul` | differential | `QuantLinear(x)` equals `x @ dequantize(q)^T + b` for int4, int8, fp8; no parameters | L10.1's q4 runner is checked against it |
 | `test_quantize_model_within_budget` | property | every Linear but `lm_head` swapped; logits within the scheme's relative error budget (int8 0.02, q4_g32 0.2, fp8 0.08, mxfp4 0.35) | the stand-in for MS-L8's perplexity budgets |
 | `test_export_q4_names_and_metadata` | unit | `<name>.qweight` uint8, `<name>.scales` float16, biases and `lm_head` kept, metadata `int4-g32-sym` | the file the Rust runner loads |
+| `test_output_error_stays_within_the_budget` | property | for int8, int4, fp8, and mxfp4, every output of `QuantLinear` is within `output_error_bound`, which uses more than 1% of itself | `M09.3`'s budget turned into a test tolerance that a wrong quantizer cannot pass |
+| `test_quant_ppl_reports_the_cost_and_keeps_the_model` | property | `eval_ppl` before and after; int8 costs less than q4; the caller's model stays float | MS-L8's perplexity budgets |
 
 **Your tests (rung R4).** Write `python/tests/l8-5-quant/test_*.py`, importing only names from `contracts/py`, with properties in prose turned into code (Hypothesis is allowed): "every element is within half its group's stored scale", "pack then unpack is the identity on $[-8, 7]$", "the even column is the low nibble", "QuantLinear equals the dequantized matmul". The planted bugs "the nibbles are swapped" (`s01`) and "codes are chosen against the float32 scale" (`s07`) are required; overall 80%.
 
@@ -158,6 +166,8 @@ The design sketch's optional `awq_search_scales` and `gptq_quantize` are not par
 | Wrong tensor names in the export | the Rust runner cannot find the weights | `test_export_q4_names_and_metadata` (mutant `s20`) |
 | Repeating group scales along the wrong axis | shapes fail on dequantize | `test_hand_example_int4_group` (mutant `m01`) |
 | Counting a byte per fp4 code | memory budgets double-count MX weights | `test_mxfp4_blocks` (mutant `m02`) |
+| A budget with rounding only ($\Delta = 0$) | every quantized output fails its tolerance by a factor of a thousand | `test_output_error_stays_within_the_budget` (mutant `s21`) |
+| Quantizing the caller's model in `quant_ppl` | the float model the caller compares against is gone | `test_quant_ppl_reports_the_cost_and_keeps_the_model` (mutant `s22`) |
 
 ## 6. Where it's used next
 
@@ -166,6 +176,8 @@ The design sketch's optional `awq_search_scales` and `gptq_quantize` are not par
 | Back | `M09.4` | `quantize_fp8`, `dequantize_fp8`, `fp8_max`, `mx_quantize`, `mx_dequantize` |
 | Back | `L0.4` | `QuantLinear` is a `Module`; `quantize_model` walks `named_modules` and finds `Linear`s |
 | Back | `L0.1` | `QuantLinear.forward` runs on `Tensor` |
+| Back | `M09.3` | `output_error_bound` is `matmul_error_bound` with the quantization step as `dA` |
+| Back | `L6.7` | `quant_ppl` runs `eval_ppl` on the float model and on its quantized copy |
 | Forward | `L9.5` | `tl_matmul_q4_f32` and `tl_matmul_q8_f32` multiply these bytes without expanding them; `parity/quant.int4` |
 | Forward | `L10.1` | the Rust runner loads `export_q4`'s tensors and checks its logits against `QuantLinear` |
 | Forward | `craft.13` | KV format v2's fp8 payload follows `quantize_kv_fp8` |

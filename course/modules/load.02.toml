@@ -10,8 +10,8 @@ contract  = ["contracts/formats/loadgen-report.schema.json"]
 deps      = ["load.01"]   # Report, Histogram buckets, and rng.Stream's Shuffle
 reading   = ["M07.5"]     # the two-sample permutation test, re-implemented in Go
 # Catalog call sites: dep.05 (the CI perf job) and ops.07 (git bisect run).
-# Not registered yet, so verify check 9 fails until dep.05 lists load.02 in
-# deps (DEVIATIONS B92-01).
+# Both run the learner's `{loadgen} compare` entry point, not this package,
+# so verify check 9 fails: no module calls it (course/deviations/load.02.md).
 used_by   = []
 units     = ["go/loadgen/compare/compare.go"]
 upgrades  = []

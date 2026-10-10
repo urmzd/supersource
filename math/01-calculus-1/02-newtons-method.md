@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/newton.pyi`](../../course/contracts/py/tinyllm/num/newton.pyi) |
 | **Tests** | `course/tests/M01.2/test_newton.py` (what they check: section 4) |
 | **Needs** | `M01.1` `central_diff`, the slope Newton uses when you pass no derivative (or `--ref-deps`) |
-| **Used by** | later `M09.5` ports `rsqrt_newton` to C as the reciprocal square root inside `L9.6`'s RMSNorm kernel and checks it against your Python · optional `M10.6` uses Newton-Schulz iterations for Muon (neither is authored yet: section 6) |
+| **Used by** | `M07.7`'s `fit_temperature` (temperature scaling) solves for $1/T$ with `newton` · optional `M09.5` ports `rsqrt_newton` to C as the reciprocal square root inside `L9.6`'s RMSNorm kernel and checks it against your Python · optional `M10.6` uses Newton-Schulz iterations for Muon (section 6) |
 | **Milestone** | `MS-P2` (the Pass 2 gate) |
 | **Optional depth** | OpenStax, *Calculus Volume 1* (free), section 4.9 (Newton's method); Sauer, *Numerical Analysis*, sections 1.4 and 1.5 (convergence order, when Newton fails); Lomont, "Fast inverse square root" (2003) for the magic constant |
 
@@ -173,8 +173,9 @@ def rsqrt_newton(x: ArrayLike, y0: ArrayLike, iters: int) -> NDArray: ...
 | Forward | `L9.6` | `tl_rmsnorm_f32` multiplies by that reciprocal square root for every token |
 | Forward | `M10.6` | optional: Muon orthogonalizes momentum with Newton-Schulz, Newton's method for a matrix function |
 | Forward | `M09.3` | convergence order and error propagation, generalized |
+| Forward | `M07.7` | `fit_temperature` calls `newton(g, dg, 0.0)` on the derivative of the NLL in $1/T$, with the variance of the logits as `dg` |
 
-`M09.5` and `M10.6` are not authored yet, so `ss verify course M01.2` reports no call site (check 9) until one of them lands; see `course/DEVIATIONS.md` row B31-03.
+`M07.7` is the registered call site; `M09.5` is an optional C side quest and `M10.6` is not authored yet.
 
 ## Going further
 

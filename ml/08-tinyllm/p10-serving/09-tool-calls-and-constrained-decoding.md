@@ -6,11 +6,11 @@
 | | |
 |---|---|
 | **Module** | `L10.9` · build · Rust · Pass 7 · 12 to 16 h |
-| **You build** | `rust/crates/tl-engine/src/constrain.rs`: the regex subset to a canonical byte DFA (Thompson NFA, subset construction over byte classes, dead states removed, Moore minimization, breadth-first numbering), the JSON-schema subset to a regex, token masks over a byte trie, `constrained_sample`, an order-keeping JSON reader that writes Python's compact JSON · `rust/crates/tl-serve/src/tools.rs`: `tools`, `tool_choice`, `response_format` validated, tools rendered into the prompt, the grammar per `tool_choice`, a streaming tool-call parser, and the OpenAI `tool_calls` message and deltas |
+| **You build** | `rust/crates/tl-engine/src/constrain.rs`: the regex subset to a canonical byte DFA (Thompson NFA, subset construction over byte classes, dead states removed, Moore minimization, breadth-first numbering), the JSON-schema subset to a regex, token masks over a byte trie, `constrained_sample`, an order-keeping JSON reader that writes Python's compact JSON · `rust/crates/tl-serve/src/tools.rs`: `tools`, `tool_choice`, `response_format` validated, tools rendered into the prompt, the grammar per `tool_choice`, a streaming tool-call parser, and the OpenAI `tool_calls` message and deltas · `rust/crates/tl-serve/src/server.rs`, taken over from `L10.7`: the chat route reads the tool fields, decodes a request with a grammar under its `Constraint`, and answers with `tool_calls` |
 | **Contract** | the Python specification you port: [`py/tinyllm/infer/constrain.pyi`](../../../course/contracts/py/tinyllm/infer/constrain.pyi) (L8.7) · HTTP: [`openapi/openai-subset.v1.yaml`](../../../course/contracts/openapi/openai-subset.v1.yaml) (`tools`, `tool_choice`, `response_format`, `tool_calls` deltas, `finish_reason: tool_calls`) · conformance `tools.call`, `tools.stream`, `tools.choice` |
-| **Tests** | `course/tests/rust/l10_9.rs`, 19 tests (what they check: section 4) |
-| **Needs** | `L8.7` your Python constrained decoding, the specification ([chapter](../p08-inference/07-constrained-decoding.md)) · `L10.1` the sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.5` the chat template and the API error shape ([chapter](05-openai-server-on-tokio.md)) · `L1.5` the `Tokenizer` trait ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · reading: `M06.1` graphs and reachability ([chapter](../../../math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md)) · or `--ref-deps` |
-| **Used by** | the serve loop: `ag.01` and `MS-agent` read `tool_calls` from your engine over HTTP |
+| **Tests** | `course/tests/rust/l10_9.rs`, 20 tests (what they check: section 4); the `L10.5` and `L10.7` tests run as the regression of the server you take over |
+| **Needs** | `L8.7` your Python constrained decoding, the specification ([chapter](../p08-inference/07-constrained-decoding.md)) · `L10.1` the sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.5` the chat template and the API error shape ([chapter](05-openai-server-on-tokio.md)) · `L1.5` the `Tokenizer` trait ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · `L10.7` the serve loop you take over, which records metrics and spans ([chapter](07-serving-metrics-and-tracing.md)) · reading: `M06.1` graphs and reachability ([chapter](../../../math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md)) · or `--ref-deps` |
+| **Used by** | the serve loop you take over, and so its call site `obs.02`, which runs your engine; `ag.01` and `MS-agent` read `tool_calls` from it over HTTP |
 | **Milestone** | `MS-L10` (and `MS-agent`, where SmolLM2-135M-Instruct calls your agent's tools through it) |
 | **Optional depth** | Hopcroft, Motwani, Ullman, *Introduction to Automata Theory*, ch. 2 to 4; [Willard and Louf, Efficient Guided Generation](https://arxiv.org/abs/2307.09702) (free); [XGrammar](https://arxiv.org/abs/2411.15100) (free); [OpenAI function calling guide](https://platform.openai.com/docs/guides/function-calling) (free) |
 
@@ -33,7 +33,7 @@ ss diff  L10.9
 ss conform openapi:v1 --target engine   # tools.* turn from pending to checked once L10.9 passes
 ```
 
-Declare `pub mod constrain;` in `tl-engine/src/lib.rs` and `pub mod tools;` in `tl-serve/src/lib.rs`. Your chat handler calls `parse_tool_request` on the raw body (before the generic parser, so property order survives), renders with `render_prompt`, builds one `TokenIndex` per (grammar, model) and caches it, runs each sequence through a `Constraint` (from the first token, or from the trigger in `auto` mode), and turns the text through `ToolParser` into `delta_json` chunks or `message_json`.
+Declare `pub mod constrain;` in `tl-engine/src/lib.rs` and `pub mod tools;` in `tl-serve/src/lib.rs`. This module takes over `server.rs` from `L10.7` (`upgrades`), so `ss check L10.9` also runs the `L10.5` and `L10.7` tests as regressions; one of `L10.5`'s error cases is `response_format` `json_schema`, which stays 422 here. Your chat handler calls `parse_tool_request` on the raw body (before the generic parser, so property order survives), renders with `render_prompt`, builds one `TokenIndex` per (grammar, model) and caches it, runs each sequence through a `Constraint` (from the first token, or from the trigger in `auto` mode), and turns the text through `ToolParser` into `delta_json` chunks or `message_json`. A request with a grammar runs on the engine thread outside the batch, as the speculative path does: its own KV blocks through `spec::RunnerTarget`, `constrained_sample` per token, and the request's own generator; a grammar that is complete with no token left to allow (a vocabulary without EOS) ends the answer with `stop`.
 
 ---
 
@@ -137,6 +137,10 @@ pub fn collect(events: &[ToolEvent]) -> (Option<String>, Vec<ToolCall>);
 pub fn finish_reason(calls: usize, engine: &str) -> String;
 pub fn message_json(content: Option<&str>, calls: &[ToolCall]) -> String;
 pub fn delta_json(e: &ToolEvent) -> String;
+
+// rust/crates/tl-serve/src/server.rs, taken over from L10.7: its public API is unchanged
+// (ServeConfig, spawn, run, ServerHandle); POST /v1/chat/completions accepts tools,
+// tool_choice, response_format, and parallel_tool_calls.
 ```
 
 ### What the tests check
@@ -164,6 +168,7 @@ pub fn delta_json(e: &ToolEvent) -> String;
 | `parser_is_split_invariant` | property | every 2-way split and 200 random splits fold to the same answer | tokens cut text anywhere |
 | `message_and_delta_json_shapes` | conformance | the message and both delta shapes, arguments as a string | what `ag.01` and the `openai` client parse |
 | `forced_call_from_a_random_model_is_valid` | property | 40 random walks under a named choice give one valid `get_weather` call | MS-L10's PR check on a tiny random model |
+| `serve_loop_routes_tool_calls` | conformance | a live server: a forced call comes back as schema-valid `tool_calls` with `finish_reason` `tool_calls`, from the prompt `render_prompt` builds; streamed deltas reassemble to the same call; `tool_choice` none calls nothing; tool-field errors keep the OpenAI shape | `ag.01` and the `tools.*` conformance cases read exactly this |
 
 ## 5. Pitfalls
 
@@ -194,6 +199,8 @@ pub fn delta_json(e: &ToolEvent) -> String;
 | Back | `L10.1` | `sample` on the masked logits |
 | Back | `L10.5` | `Template::render_messages` and `ApiError` |
 | Back | `L1.5` | `Tokenizer::token_bytes` for the vocabulary's bytes |
+| Back | `L10.7` | the serve loop you take over: tool requests are recorded and traced through its calls |
+| Forward | `obs.02` | runs your engine, whose serve loop is now this module's `server.rs` (the call site an upgrade inherits, DESIGN 3.4) |
 
 `ag.01` parses your `tool_calls` deltas; `MS-agent` runs SmolLM2-135M-Instruct through your engine with tool calls; the conformance cases `tools.call`, `tools.stream`, `tools.choice` turn from pending to checked once this module passes.
 

@@ -19,5 +19,7 @@ s17	python/tinyllm/infer/quant.py	semantic	pitfall-17	228	n	QuantLinear multipli
 s18	python/tinyllm/infer/quant.py	semantic	pitfall-18	261	n	lm_head is quantized too	skip is ignored
 s19	python/tinyllm/infer/quant.py	semantic	pitfall-19	264	n	quantize_model loses the bias	QuantLinear built without it
 s20	python/tinyllm/infer/quant.py	semantic	pitfall-20	279	n	export uses the wrong tensor names	P.qweight instead of P.weight.qweight
+s21	python/tinyllm/infer/quant.py	semantic	budget	313	n	the output budget leaves out the quantization step	dA = 0: rounding alone
+s22	python/tinyllm/infer/quant.py	semantic	aliasing	327	n	quant_ppl quantizes the caller's model	no deep copy before quantize_model
 m01	python/tinyllm/infer/quant.py	auto	constant-replacement	184	n	group scales repeat along the wrong axis	np.repeat axis 0
 m02	python/tinyllm/infer/quant.py	auto	arithmetic	218	n	fp4 sizes count a byte per code	the packed halving is gone

@@ -10,7 +10,7 @@
 | **Contract** | `X-TL-Cache: hit\|miss` on cacheable requests in [`course/contracts/openapi/openai-subset.v1.yaml`](../../course/contracts/openapi/openai-subset.v1.yaml) · `POST /admin/v1/cache:purge` in [`course/contracts/openapi/admin.v1.yaml`](../../course/contracts/openapi/admin.v1.yaml) · `[gateway]` `cache_entries`, `cache_ttl_s` in [`course/contracts/config/runtime.schema.json`](../../course/contracts/config/runtime.schema.json) |
 | **Tests** | `course/tests/go/gw_06/` (what they check: section 4); the singleflight test runs under the race detector |
 | **Needs** | [`gw.01` server skeleton](../12-gateway/01-server-skeleton.md) (the chain, the `Exchange`) · [`gw.02` API keys](../08-authorization-and-access-control/01-api-keys-and-scopes.md) (the tenant) · reading: this topic's [README](README.md), the [practice drill go/02](../../practice/build/cloud/go/README.md) |
-| **Used by** | your composition root's `Cache` slot (no library module calls it yet: DEVIATIONS B93-05); `gw.07`'s admin API mounts `PurgeHandler` |
+| **Used by** | `gw.07`'s `gateway.Deps` (the `Cache` slot, `Rev` from the route epoch) and `gateway.Admin` (`PurgeHandler`) |
 | **Milestone** | MS-gateway |
 | **Optional depth** | the Go team's `golang.org/x/sync/singleflight` source (free); Megiddo and Modha, *ARC: A Self-Tuning, Low Overhead Replacement Cache* (FAST 2003) |
 
@@ -162,7 +162,7 @@ Use only the standard library. The stage caches `POST /v1/chat/completions` and 
 |---|---|---|
 | Back | `gw.01` | the `Cache` slot, the `Exchange` (`tl.cache.hit`), `ex.Request` for the body |
 | Back | `gw.02` | `Principal.Tenant` scopes every key |
-| Forward | `gw.07` | the admin API mounts `PurgeHandler` (an HTTP handler, not a code call) |
+| Forward | `gw.07` | `gateway.Deps` calls `Middleware` with `Rev` set to the route table's ETag; `gateway.Admin` builds `PurgeHandler` |
 | Forward | `load.01` | the load report's `X-TL-Cache: hit` ratio |
 
 ## Going further

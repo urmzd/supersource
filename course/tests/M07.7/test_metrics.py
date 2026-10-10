@@ -16,6 +16,9 @@ The chapter's worked example (section 3):
   * probabilities (0.9, 0.8, 0.3, 0.6), labels (1, 0, 0, 1), 5 bins:
     confidences 0.9 | 0.8, 0.7 | 0.6 in bins 4 | 3 | 2, ECE =
     1/4 * 0.1 + 2/4 * 0.25 + 1/4 * 0.4 = 0.25.
+  * temperature: three items with logits (0, 1), two labelled 1 and one 0.
+    The calibrated confidence is 2/3, so sigmoid(1 / T) = 2/3, 1 / T = ln 2,
+    T = 1 / ln 2 = 1.4427; with logits (0, 2), T doubles.
 
 Golden values come from scipy 1.17.1 (course/fixtures/M07.7/scipy_golden.json,
 written by course/oracle/M07.7/scipy_golden.py: BFGS for the fit,
@@ -35,6 +38,7 @@ from _lib.close import assert_close
 from _lib.pcg32 import PCG32
 from tinyllm.prob.metrics import (
     ece,
+    fit_temperature,
     logistic_predict_proba,
     logistic_regression_fit,
     reliability_bins,
@@ -413,3 +417,72 @@ def test_rejects_bad_arguments():
             reliability_bins(p, lab, b)
         with pytest.raises(ValueError):
             ece(p, lab, b)
+
+
+# --- temperature scaling -------------------------------------------------------------
+
+
+def softmax_rows(z):
+    a = np.asarray(z, dtype=np.float64)
+    e = np.exp(a - a.max(axis=1, keepdims=True))
+    return e / e.sum(axis=1, keepdims=True)
+
+
+def mean_nll(z, y, T):
+    p = softmax_rows(np.asarray(z) / T)
+    return float(-np.mean(np.log(p[np.arange(len(y)), y])))
+
+
+def test_hand_example_temperature():
+    # WHY: section 3: two of three items with logit gap 1 are right, so the
+    #      calibrated confidence is 2/3: sigmoid(1 / T) = 2/3 gives
+    #      1 / T = ln 2. Newton (M01.2) on the NLL's derivative lands there,
+    #      and a gap of 2 needs twice the temperature.
+    # KIND: unit, smoke
+    # CATCHES: s12, s13
+    # CHAPTER: M07.7 section 3, Worked example by hand
+    z, y = [[0.0, 1.0]] * 3, [1, 1, 0]
+    assert_close(fit_temperature(z, y), 1.0 / math.log(2.0), rtol=1e-12, atol=0)
+    assert_close(
+        fit_temperature([[0.0, 2.0]] * 3, y), 2.0 / math.log(2.0), rtol=1e-12, atol=0
+    )
+
+
+def test_temperature_calibrates_an_overconfident_model():
+    # WHY: labels drawn from softmax(z0), logits reported as 3 z0: the model
+    #      is right as often as before but three times too sure. The fitted
+    #      T is near 3, it is the NLL's minimum (nudging it either way only
+    #      raises the NLL), the argmax never changes, and ECE falls.
+    # KIND: property
+    # CHAPTER: M07.7 section 2
+    g = PCG32(seed(), 77)
+    n, c = 3000, 4
+    z0 = np.array([[g.normal() for _ in range(c)] for _ in range(n)])
+    p0 = softmax_rows(z0)
+    y = np.array([int(np.searchsorted(np.cumsum(p), g.uniform())) for p in p0])
+    y = np.minimum(y, c - 1)
+    z = 3.0 * z0
+    T = fit_temperature(z, y)
+    assert 2.6 < T < 3.4, T
+    best = mean_nll(z, y, T)
+    assert best <= mean_nll(z, y, T * 1.01) and best <= mean_nll(z, y, T / 1.01)
+    cal = softmax_rows(z / T)
+    assert (cal.argmax(axis=1) == z.argmax(axis=1)).all()
+    assert ece(cal, y) < 0.5 * ece(softmax_rows(z), y)
+
+
+def test_temperature_rejects_bad_input():
+    # WHY: a temperature only exists when the logits beat chance; logits
+    #      that rank the labels worse must fail loudly, not return a
+    #      negative T, and malformed input is refused before any Newton
+    #      step.
+    # KIND: boundary
+    # CHAPTER: M07.7 section 4
+    with pytest.raises(ValueError):
+        fit_temperature([0.0, 1.0], [1, 0])  # 1-D logits
+    with pytest.raises(ValueError):
+        fit_temperature([[0.0, 1.0]] * 2, [1, 2])  # class out of range
+    with pytest.raises(ValueError):
+        fit_temperature([[0.0, np.nan]], [1])
+    with pytest.raises(ValueError):
+        fit_temperature([[0.0, 1.0]] * 3, [1, 0, 0])  # worse than chance: 1/T < 0

@@ -10,7 +10,7 @@
 | **Contract** | 429 `rate_limit_error` / `rate_limit_exceeded`, `Retry-After`, and the `x-ratelimit-*` headers in [`course/contracts/openapi/openai-subset.v1.yaml`](../../course/contracts/openapi/openai-subset.v1.yaml); `rpm` and `tpm` of `KeyCreate` in [`course/contracts/openapi/admin.v1.yaml`](../../course/contracts/openapi/admin.v1.yaml) |
 | **Tests** | `course/tests/go/gw_03/` (what they check: section 4); the concurrency test runs under the race detector |
 | **Needs** | [`gw.01` server skeleton](../12-gateway/01-server-skeleton.md) (the chain and the `Exchange`), [`gw.02` API keys](01-api-keys-and-scopes.md) (the `Principal` and its limits) · reading: `S-M07d` [queueing and Little's law](../../math/07-probability-statistics/93-problem-set-d.md), the [practice drill go/07](../../practice/build/cloud/go/README.md) (a token bucket warm-up) |
-| **Used by** | your composition root's `Limiter` slot (no library module calls it yet: DEVIATIONS B93-05) |
+| **Used by** | `gw.07`'s `gateway.Deps`, which puts `limit.Middleware` in the chain's `Limiter` slot; your composition root builds the `Limiter` and calls it |
 | **Milestone** | MS-gateway |
 | **Optional depth** | Tanenbaum, *Computer Networks*, the token bucket; the GCRA in the ATM Forum's traffic management spec; Stripe's *Scaling your API with rate limiters* (free) |
 
@@ -32,7 +32,7 @@ ss check gw.03 --ref-deps   # only if your gw.01 or gw.02 is not passing yet
 ss diff  gw.03          # after passing: your code against the reference
 ```
 
-Then plug `limit.Middleware(limit.New(clock), limit.TokenizeCounter{BaseURL: engineURL})` into the `Limiter` slot of your composition root.
+Then build `limit.New(clock)` and `limit.TokenizeCounter{BaseURL: engineURL}` in your composition root; until `gw.07`'s `gateway.Deps` assembles the chain, plug `limit.Middleware(limiter, counter)` into the `Limiter` slot yourself.
 
 ---
 
@@ -163,6 +163,7 @@ The catalog sketched `Reserve(ctx, key, c)`; this one also takes the key's `Limi
 |---|---|---|
 | Back | `gw.01` | the `Limiter` slot of the chain; the usage the proxy records on the `Exchange` |
 | Back | `gw.02` | buckets are keyed by `Principal.KeyID` with the key's `RPM` and `TPM` |
+| Forward | `gw.07` | `gateway.Deps` calls `limit.Middleware` between policy and cache, so a cached answer still spends the key's RPM |
 | Forward | `load.01` | `{loadgen} --rate 50` against a low-tier key shows 429s at the configured rate |
 | Forward | `ops.09` | the noisy-neighbor drill floods one tenant; your limits keep the others inside their SLO |
 

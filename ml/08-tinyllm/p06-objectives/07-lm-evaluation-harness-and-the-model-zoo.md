@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/eval/lm.pyi`](../../../course/contracts/py/tinyllm/eval/lm.pyi), [`course/contracts/py/tinyllm/eval/zoo.pyi`](../../../course/contracts/py/tinyllm/eval/zoo.pyi); the report: [`formats/eval-results.schema.json`](../../../course/contracts/formats/eval-results.schema.json) |
 | **Tests** | `course/tests/L6.7/test_eval.py` (what they check: section 4); the perplexity oracle is Hugging Face's GPT-2; your tests are graded by mutation, threshold 0.80 with every required pitfall fault killed |
 | **Needs** | [`M11.2` NLLAccumulator](../../../math/11-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md) · [`M07.4` intervals](../../../math/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md) · [`M07.5` paired permutation test](../../../math/07-probability-statistics/05-hypothesis-tests.md) · every family: `L0.5` bigram, `L2.1` n-gram, `L2.2` NPLM, `L2.3` word2vec, `L3.6` RNN LM, `L4.1` seq2seq, `L5.5` Transformer, `L6.1` GPT, `L6.2` BERT, `L6.3` ELECTRA, `L6.5` classifiers · `L4.4` beam search · `L4.5` exact match · `L0.1` · `L0.6` · `M06.3` (or `--ref-deps`) |
-| **Used by** | later: `L7.9` parity, `L8.5`, `C1` (the baseline table), `dur.11` `EvalSuite` (execs `{tinyllm} eval --suite zoo`), `L12.1` |
+| **Used by** | `L8.5` (`quant_ppl` reads a scheme's perplexity cost with `eval_ppl`) · later: `L7.9` parity, `C1` (the baseline table), `dur.11` `EvalSuite` (execs `{tinyllm} eval --suite zoo`), `L12.1` |
 | **Milestone** | `MS-L6` (`eval ppl` reports an interval; `eval --suite zoo` reports one row per family) |
 | **Optional depth** | Hugging Face, "Perplexity of fixed-length models" (docs); Gao et al., EleutherAI lm-evaluation-harness (2021 onward); Biderman et al., "Lessons from the Trenches on Reproducible Evaluation of Language Models" (2024); Dror et al., "The Hitchhiker's Guide to Testing Statistical Significance in NLP" (2018) |
 
@@ -197,10 +197,11 @@ Your oracles: a toy model whose NLL encodes its context length, hand-computed lo
 | Back | `L6.3` | `load_electra` and `rtd_accuracy` for the ELECTRA row |
 | Back | `L6.5` | `load_classifier` and `predict` for classifier rows |
 | Forward | `L7.9` | SmolLM2 parity reports bpb through `eval_ppl` |
+| Forward | `L8.5` | `quant_ppl` runs `eval_ppl` on a float model and its quantized copy: the perplexity cost MS-L8 budgets |
 | Forward | `C1` | the capstone's baseline table is `run_zoo` over every family trained so far |
 | Forward | `dur.11` | the `EvalSuite` workflow execs `{tinyllm} eval --suite zoo` and keeps the report |
 
-None of these call sites is registered yet, so `used_by` is empty until they land (DEVIATIONS B73-08). If you skip this module, the capstone's evaluation step fails: build it, or pass `--ref-deps`.
+`L8.5` is the registered call site; the others join with their batches. If you skip this module, the capstone's evaluation step fails: build it, or pass `--ref-deps`.
 
 ## Going further
 

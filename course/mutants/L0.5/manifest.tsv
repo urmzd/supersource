@@ -20,7 +20,8 @@ s18	python/tinyllm/lm/bigram.py	semantic	detach	172	n	(hidden until pass)	forwar
 s19	python/tinyllm/lm/bigram.py	semantic	aliasing	175	n	(hidden until pass)	to_lm shares the training table
 s20	python/tinyllm/lm/bigram.py	semantic	pitfall-5	129	n	(hidden until pass)	a fresh generator for every token
 s21	python/tinyllm/lm/bigram.py	semantic	pitfall-5	122	n	(hidden until pass)	a different PCG32 stream than the engine's
+s22	python/tinyllm/train/loop.py	semantic	debias	103	n	(hidden until pass)	loss_ema reports the biased EMA
 m01	python/tinyllm/train/loop.py	auto	cond_negate	69	n	tuple results changed	a (loss, metrics) pair is not unpacked
 m02	python/tinyllm/train/loop.py	auto	cond_negate	64	n	__len__ changed	len counts the partial batch
 m03	python/tinyllm/train/loop.py	auto	stmt_delete	42	n	shuffle rng check deleted	shuffle without an rng accepted
-m04	python/tinyllm/train/loop.py	auto	stmt_delete	96	n	extras dropped	train_step drops loss_fn's metrics
+m04	python/tinyllm/train/loop.py	auto	stmt_delete	98	n	extras dropped	train_step drops loss_fn's metrics

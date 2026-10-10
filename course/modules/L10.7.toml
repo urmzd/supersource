@@ -13,21 +13,23 @@ deps      = ["L10.5"]
 # Confidence intervals and quantiles (M07.4); the Pass 1 hand-written trace
 # export this replaces (obs.00).
 reading   = ["M07.4", "obs.00"]
-# Catalog call site: obs.01 (the serving-path tracing setup lists L10.7 in
-# its prerequisites). Not registered yet, so verify check 9 fails until it
-# lists L10.7 in deps (DEVIATIONS B92-01).
-used_by   = []
+# Call sites: L10.9 takes server.rs over next and keeps recording through
+# EngineMetrics and request_spans; obs.02's local tier runs the engine and
+# scrapes the histograms this module's serve loop records (DEVIATIONS L10.7).
+used_by   = ["L10.9", "obs.02"]
 units     = [
   "rust/crates/tl-serve/src/metrics.rs",
   "rust/crates/tl-serve/src/telemetry.rs",
 ]
-upgrades  = []
+# The serve loop (L10.5's server.rs) records every request in
+# EngineMetrics and exports its span tree (DEVIATIONS L10.7).
+upgrades  = ["rust/crates/tl-serve/src/server.rs"]
 milestone = "MS-L10"
 ci        = "pr"
 
 [tests]
 dir       = "course/tests/rust/l10_7.rs"
-smoke     = ["hand_example_histogram", "names_and_buckets_match_the_contract", "traceparent_hand_example"]
+smoke     = ["hand_example_histogram", "names_and_buckets_match_the_contract", "traceparent_hand_example", "serve_loop_records_metrics_and_spans"]
 timeout_s = 60
 determinism_runs = 2
 

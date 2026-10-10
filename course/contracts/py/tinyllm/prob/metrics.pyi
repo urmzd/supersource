@@ -5,7 +5,8 @@
 # regression fitted by Newton's method (iteratively reweighted least squares,
 # IRLS, each step one linear solve with M03.2's LU), the area under the ROC
 # curve (M01.4's trapezoid over the curve's corners), and the expected
-# calibration error. L6.5 fits the usage-policy head (D33,
+# calibration error, with the one-parameter fix for a miscalibrated model:
+# temperature scaling, fitted by M01.2's scalar newton. L6.5 fits the usage-policy head (D33,
 # formats/linear-head.schema.json) with logistic_regression_fit and reports
 # roc_auc and ece; ethics.04 puts them in the safety report.
 #
@@ -76,3 +77,20 @@ def ece(probs: ArrayLike, labels: ArrayLike, n_bins: int = 15) -> float:
     (counts[b] / n) * |accuracy[b] - confidence[b]|, with the bins of
     reliability_bins. 0 for a perfectly calibrated classifier.
     ValueError as reliability_bins."""
+
+def fit_temperature(logits: ArrayLike, labels: ArrayLike, max_iter: int = 50) -> float:
+    """Temperature scaling (Guo et al. 2017): the T > 0 minimizing the mean
+    NLL of softmax(logits / T) on held-out (logits [n, C], labels [n]).
+    With beta = 1 / T, NLL(beta) = mean_i(logsumexp(beta z_i) - beta z_i,y_i)
+    is convex; its derivative g(beta) = mean_i(E_p[z_i] - z_i,y_i) and second
+    derivative g'(beta) = mean_i Var_p[z_i] (p = softmax(beta z_i)) go to
+    M01.2's newton(g, g', 0.0, tol=1e-12, max_iter=max_iter), started at
+    beta = 0 (uniform p, the largest curvature), and the result is 1 / beta. Dividing by T never changes the argmax, so accuracy stays
+    and only the confidences move (ECE falls).
+    ValueError unless logits is finite [n, C] with n >= 1, C >= 2, and
+    labels are [n] classes in [0, C); ValueError when the root has beta <= 0
+    (the logits rank the labels no better than chance); newton's
+    RuntimeError when it does not converge in max_iter steps. Held-out data
+    that the logits separate perfectly has no minimum (the NLL keeps falling
+    as T -> 0): fit on data with errors in it."""
+

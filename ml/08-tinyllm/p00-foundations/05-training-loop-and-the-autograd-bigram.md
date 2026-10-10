@@ -9,7 +9,7 @@
 | **You build** | `python/tinyllm/train/loop.py`: `DataLoader`, `train_step`, `evaluate`; and you take over `python/tinyllm/lm/bigram.py` from `L0.0`: `BigramLogits` (the table as a trainable `Module`) and `BigramLM.sample` on PCG32 |
 | **Contract** | [`course/contracts/py/tinyllm/train/loop.pyi`](../../../course/contracts/py/tinyllm/train/loop.pyi) · [`course/contracts/py/tinyllm/lm/bigram.pyi`](../../../course/contracts/py/tinyllm/lm/bigram.pyi) |
 | **Tests** | `course/tests/L0.5/` (what they check: section 4); `L0.0`'s tests keep running against `bigram.py` as your regression suite |
-| **Needs** | `L0.1` `no_grad` · `L0.2` `F.embedding` · `L0.3` the losses the tests train with · `L0.4` `Module`, `Linear` · `M06.3` PCG32 · `M10.2` SGD · `M10.3` AdamW · `M10.4` `clip_grad_norm_` · `rt.01` and `M03.1` (`BigramLM.logits` still runs your C matmul) · reading: `L0.0` (or `--ref-deps`) |
+| **Needs** | `L0.1` `no_grad` · `L0.2` `F.embedding` · `L0.3` the losses the tests train with · `L0.4` `Module`, `Linear` · `M06.3` PCG32 · `M10.2` SGD · `M10.3` AdamW · `M10.4` `clip_grad_norm_` · `M02.2` `EMA` (the smoothed loss) · `rt.01` and `M03.1` (`BigramLM.logits` still runs your C matmul) · reading: `L0.0` (or `--ref-deps`) |
 | **Used by** | `L10.0` your engine serves the table this module trains (inherited from `L0.0` with `bigram.py`) · `L0.6` runs `L0.0`'s suite, `bigram.py` included, as its regression · later: `L2.2`, `L3.6`, `L6.1`, and the capstone train with this loop · later: `L5.5`, `L6.7` |
 | **Milestone** | `MS-L0` (step 2: the autograd bigram reaches the count MLE; step 3: the digits MLP) |
 | **Optional depth** | Karpathy, "A Recipe for Training Neural Networks" (2019, free); Goodfellow, Bengio, Courville, *Deep Learning*, ch. 8 |
@@ -67,6 +67,7 @@ Your CLI gains two verbs, fixed by `course/milestones/MS-L0.toml`: `train bigram
 4. `loss.backward()`.
 5. With `clip`, `clip_grad_norm_(parameters, c)` (`M10.4`) rescales all gradients together when $\lVert g \rVert > c$; report the norm **before** clipping, because that is the number that tells you training is unstable.
 6. `opt.step()`, then return `{"loss": ..., "grad_norm": ...}` plus the extra metrics.
+7. With `ema` (an `M02.2` `EMA`), feed the loss to `ema.update` and report `ema.value_debiased()` as `"loss_ema"`. One batch's loss is noise; the debiased EMA is the curve a training log plots, and without the correction its first steps sit near zero. A non-finite loss raised in step 3, so it never reaches the average.
 
 **Evaluation.** `evaluate(model, loader, loss_fn)` switches the model to eval mode (dropout off, `L0.4`), runs every batch under `no_grad` (no graph, no stored activations, `L0.1`), and averages the loss and metrics **weighted by rows**: a last batch of 2 rows counts as 2 rows, not as a full batch. It puts the model back in the mode it found it, in a `finally`, so an exception in a batch cannot leave a training run with dropout silently off.
 
@@ -105,7 +106,8 @@ These are `test_hand_example_train_step`, `test_zero_grad_every_step`, `test_cli
 class DataLoader:
     def __init__(self, arrays: Mapping[str, NDArray], batch_size: int, shuffle: bool, rng, drop_last: bool = True)
     def __iter__(self) -> Iterator[dict[str, NDArray]]; def __len__(self) -> int
-def train_step(model, batch, loss_fn, opt, clip: Optional[float] = None) -> dict[str, float]
+def train_step(model, batch, loss_fn, opt, clip: Optional[float] = None,
+               ema: Optional[EMA] = None) -> dict[str, float]   # EMA from tinyllm.num.ema (M02.2)
 def evaluate(model, loader, loss_fn) -> dict[str, float]          # mean loss, mean metrics, "n"
 
 # python/tinyllm/lm/bigram.py (taken over from L0.0; BigramLM keeps its v0 API)
@@ -122,6 +124,7 @@ class BigramLogits(Module):
 | `test_clip_reports_the_norm_and_clips` | unit | `grad_norm` is $\sqrt{13}$, the update uses clipped gradients | long runs stay stable (`M10.4`) |
 | `test_nonfinite_loss_stops_before_the_update` | boundary | a `nan` loss raises and no weight moves | one bad batch cannot poison the run |
 | `test_loss_fn_extras_and_shape` | boundary | `(loss, metrics)` pairs are reported; a vector loss is an error | accuracy beside the loss |
+| `test_loss_ema_is_the_debiased_average` | unit | with $\beta = 0.9$ the losses 1 and 0.145 report `loss_ema` 1.0 and 0.55; a `nan` loss never reaches the EMA | the smoothed curve every later training log plots (`M02.2`) |
 | `test_dataloader_batches_in_order` | unit | in-order batches, `drop_last`, `len` | evaluation sees every row once |
 | `test_dataloader_shuffle_is_the_spec_permutation` | property | the order is the spec's Fisher-Yates, new each epoch | the Go and Rust ports shuffle the same way |
 | `test_dataloader_rejects_bad_input` | boundary | unequal lengths, shuffle without a generator | silent mispairing |
@@ -165,6 +168,7 @@ The two learning tests compare against bars in `course/fixtures/ref-thresholds.t
 | Back | `M10.2` | `SGD` steps the hand example |
 | Back | `M10.3` | `AdamW` trains the MLPs and the bigram |
 | Back | `M10.4` | `clip_grad_norm_` in `train_step` |
+| Back | `M02.2` | `EMA.update` and `value_debiased` give `train_step`'s `loss_ema` |
 | Back | Python reference | This model has no native library boundary. |
 | Back | `M03.1` | `tl_matmul_f32` computes `BigramLM.logits` |
 | Forward | `L10.0` | your Rust engine serves the table `to_lm()` produces, unchanged (`tl_arch = bigram`) |

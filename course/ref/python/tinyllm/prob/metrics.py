@@ -22,6 +22,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from tinyllm.linalg.lu import lu, lu_solve
 from tinyllm.num.integrate import trapezoid
+from tinyllm.num.newton import newton
 
 
 def _sigmoid(z: NDArray) -> NDArray:
@@ -175,4 +176,51 @@ def ece(probs: ArrayLike, labels: ArrayLike, n_bins: int = 15) -> float:
     counts, conf, acc = reliability_bins(probs, labels, n_bins)
     n = float(np.sum(counts))
     return float(np.sum(counts / n * np.abs(acc - conf)))
+    # SOLUTION-END
+
+
+def fit_temperature(logits: ArrayLike, labels: ArrayLike, max_iter: int = 50) -> float:
+    # SOLUTION-BEGIN M07.7
+    z = np.asarray(logits, dtype=np.float64)
+    if z.ndim != 2 or z.shape[0] == 0 or z.shape[1] < 2:
+        raise ValueError(
+            f"logits must be [n, C] with n >= 1 and C >= 2, got shape {z.shape}"
+        )
+    if not np.all(np.isfinite(z)):
+        raise ValueError("logits must be finite")
+    y = np.asarray(labels)
+    yf = y.astype(np.float64) if y.ndim == 1 else np.zeros(0)
+    if (
+        y.ndim != 1
+        or y.shape[0] != z.shape[0]
+        or not np.all((yf == np.round(yf)) & (yf >= 0) & (yf < z.shape[1]))
+    ):
+        raise ValueError(f"labels must be [{z.shape[0]}] classes in [0, {z.shape[1]})")
+    zy = z[np.arange(z.shape[0]), yf.astype(np.int64)]
+
+    def moments(beta: float) -> tuple[NDArray, NDArray]:
+        a = beta * z
+        p = np.exp(a - a.max(axis=1, keepdims=True))
+        p /= p.sum(axis=1, keepdims=True)
+        mean = (p * z).sum(axis=1)
+        return mean, (p * z * z).sum(axis=1) - mean * mean
+
+    # NLL(beta) = mean(logsumexp(beta z) - beta z_y) is convex in beta = 1/T:
+    # its derivative is the mean of E_p[z] - z_y, its second derivative the
+    # mean variance of z under p. Newton (M01.2) finds the derivative's root.
+    # It starts at beta = 0 (p uniform), where the variance is largest: from
+    # beta = 1 a peaked softmax has almost no curvature and the first step
+    # overshoots far past the root.
+    beta, _ = newton(
+        lambda b: float(np.mean(moments(b)[0] - zy)),
+        lambda b: float(np.mean(moments(b)[1])),
+        0.0,
+        tol=1e-12,
+        max_iter=max_iter,
+    )
+    if not beta > 0:
+        raise ValueError(
+            f"no positive temperature: the NLL is smallest at 1/T = {beta}"
+        )
+    return 1.0 / beta
     # SOLUTION-END

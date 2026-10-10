@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/tolerance.pyi`](../../course/contracts/py/tinyllm/num/tolerance.pyi) |
 | **Tests** | `course/tests/M09.3/` (what they check: section 4) |
 | **Needs** | `M03.5` (`svd`: `cond` takes its singular values) · `M01.1` (`central_diff`: the tests measure a real difference against your step) · reading: `M09.1` the unit roundoff, `M09.2` summation order, `S-M09a` |
-| **Used by** | `L8.5` budgets quantization error with `matmul_error_bound(..., dA=scale/2)` · optional `L9.1` checks its standalone C matmul against fixture values within `matmul_error_bound` · your own differential tests from rung R5 on |
+| **Used by** | `L8.5`'s `output_error_bound` budgets quantization error with `matmul_error_bound(W, x^T, dtype, dA=abs(W - dequantize(q)))` (at most `scale/2`) · optional `L9.1` checks its standalone C matmul against fixture values within `matmul_error_bound` · your own differential tests from rung R5 on |
 | **Milestone** | `MS-P6` (Pass 6 gate: every math module of the pass checks green) |
 | **Optional depth** | Higham, *Accuracy and Stability of Numerical Algorithms* (SIAM, 2nd ed.), ch. 2 to 4 and 7; Trefethen and Bau, *Numerical Linear Algebra*, lectures 12 to 15; Higham and Mary, "A New Approach to Probabilistic Rounding Error Analysis" (SIAM J. Sci. Comput., 2019) |
 
@@ -192,7 +192,7 @@ def optimal_fd_step(order, dtype, f_scale=1.0, deriv_scale=1.0) -> float
 | Back | `M03.5` | `svd` gives the singular values `cond` divides |
 | Back | `M01.1` | `central_diff` is the difference whose step section 2.6 optimizes |
 | Back | `M09.1` | $u$ and the formats |
-| Forward | `L8.5` | quantization error budget: `matmul_error_bound(W, x, "f32", dA=scale/2)` |
+| Forward | `L8.5` | `output_error_bound(w, q, x)`: `matmul_error_bound(W, x^T, "f32", dA=abs(W - dequantize(q)))`, the quantization step (at most `scale/2`) plus the f32 rounding |
 | Forward | `L9.1` | standalone C matmul checked against fixture values within `matmul_error_bound` |
 | Forward | `L9.1` | the tiled matmul's own differential test, if you write it with these bounds |
 

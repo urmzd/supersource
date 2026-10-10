@@ -9,10 +9,10 @@ contract  = ["contracts/py/corpus/ledger.pyi"]   # formats/ledger.schema.json is
 # data.05's PII kinds and reads data.07's token manifest.
 deps      = ["data.05", "data.06", "data.07"]
 reading   = ["data.01", "ethics.01"]   # fetch appends the rows; ethics.01 sets the allowlist policy
-# dur.12 (license gate), ops.08 (data-incident drill), and ethics.03 (the
-# model card cites the datasheet) are the catalog call sites, in B10, B11,
-# and B13: until one registers with data.08 in deps, verify check 9 fails.
-used_by   = []
+# ethics.03's check judges the datasheet's licenses with permitted_uses.
+# dur.12 (license gate, a Go port of the row checks) and ops.08 (the
+# data-incident drill) read this module without calling it.
+used_by   = ["ethics.03"]
 units     = ["python/corpus/ledger.py"]
 upgrades  = []
 milestone = "MS-corpus"

@@ -9,7 +9,7 @@
 | **You build** | `docs/MODEL_CARD.md` (your capstone model), `docs/DATASHEET.md` (its corpus), and `docs/models/smollm2-135m-instruct.md` (the third-party agent model, labelled as such) |
 | **Contract** | the templates [`templates/MODEL_CARD.md`](../../course/contracts/templates/MODEL_CARD.md) and [`templates/DATASHEET.md`](../../course/contracts/templates/DATASHEET.md); the release layout in [`formats/checkpoint.md`](../../course/contracts/formats/checkpoint.md); the third-party card's sections are defined in section 4 of this chapter |
 | **Tests** | `course/tests/ethics.03/check` runs `test_cards.py` against your three files (what each test checks: section 4) |
-| **Needs** | nothing to build first · reading: `ethics.01` your license allowlist (the datasheet's sources are checked against it), `data.08` the ledger and the generated datasheet counts, `ethics.04` the safety and bias rows, `L6.7` the quality rows |
+| **Needs** | `data.08` your `permitted_uses` (`python/corpus/ledger.py`) judges the datasheet's licenses, and `{corpus} datasheet` gives its counts · reading: `ethics.01` your license allowlist (the datasheet's sources are checked against it), `ethics.04` the safety and bias rows, `L6.7` the quality rows |
 | **Used by** | no code call site (documents): `dur.12`'s `ModelRelease` refuses a release without `MODEL_CARD.md`, and `ethics.05` turns the card's out-of-scope list into gateway policy |
 | **Milestone** | `MS-C1` (artifact 4: the capstone's model card and data ledger) |
 | **Optional depth** | Mitchell et al., [*Model Cards for Model Reporting*](https://arxiv.org/abs/1810.03993) (FAT* 2019); Gebru et al., [*Datasheets for Datasets*](https://arxiv.org/abs/1803.09010) (CACM 2021); Hugging Face, [model card guide](https://huggingface.co/docs/hub/model-cards); Pushkarna et al., [*Data Cards*](https://arxiv.org/abs/2204.01075) (2022) |
@@ -106,7 +106,7 @@ Write three files in your repo:
 | `docs/DATASHEET.md` | `contracts/templates/DATASHEET.md`, title `# Datasheet: <dataset> <version>` | Motivation · Composition · Collection · Preprocessing · Uses · Distribution and maintenance |
 | `docs/models/smollm2-135m-instruct.md` | this table, title `# Third-party model card: SmolLM2-135M-Instruct` | Provenance · License · Intended use · Evaluation · Limitations |
 
-In the model card, Model details keeps the template's six bullets (`- **Developer:** ...`, Architecture, Training, Release, Third-party components, License with an SPDX id); Intended use keeps `- **Primary uses:**` and `- **Out of scope:**`; Evaluation keeps the table `| Suite | Metric | Value (95% CI) | Release threshold |` with at least a quality row (bpb, perplexity, or loss), a `safety` row, and a `bias` row, each value written `value (lo, hi)`; Data links `[DATASHEET.md](DATASHEET.md)` and names the data's license. Delete the template's angle-bracket placeholders as you fill them in. `ss check ethics.03` runs `course/tests/ethics.03/check`, which needs your `ethics.01` allowlist at `docs/data/license-allowlist.toml`.
+In the model card, Model details keeps the template's six bullets (`- **Developer:** ...`, Architecture, Training, Release, Third-party components, License with an SPDX id); Intended use keeps `- **Primary uses:**` and `- **Out of scope:**`; Evaluation keeps the table `| Suite | Metric | Value (95% CI) | Release threshold |` with at least a quality row (bpb, perplexity, or loss), a `safety` row, and a `bias` row, each value written `value (lo, hi)`; Data links `[DATASHEET.md](DATASHEET.md)` and names the data's license. Delete the template's angle-bracket placeholders as you fill them in. `ss check ethics.03` runs `course/tests/ethics.03/check`, which needs your `ethics.01` allowlist at `docs/data/license-allowlist.toml` and your `data.08` ledger module: it runs in your `python/` project's environment and imports `permitted_uses` from `corpus.ledger`.
 
 ### What the tests check
 
@@ -120,7 +120,7 @@ In the model card, Model details keeps the template's six bullets (`- **Develope
 | `test_limitations_cite_measurements` | unit | a measured interval, bias and safety both discussed | limitations a reader can act on |
 | `test_card_links_the_datasheet` | unit | a link to `DATASHEET.md` and the data's license | the model traces to its sources |
 | `test_datasheet_sections` | unit | Gebru's six sections, personal data, deduplication, decontamination | the corpus is documented |
-| `test_datasheet_sources_are_allowed` | unit | every source license is allowed for `train` by your allowlist | `dur.12`'s license gate |
+| `test_datasheet_sources_are_allowed` | unit | every source license is allowed for `train` by your allowlist, judged by your `data.08` `permitted_uses` | `dur.12`'s license gate |
 | `test_third_party_model_labelled` | unit | upstream repository, pinned revision, Apache-2.0, "did not train" | honest provenance for the agent model |
 
 ## 5. Pitfalls
@@ -141,7 +141,7 @@ In the model card, Model details keeps the template's six bullets (`- **Develope
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `ethics.01` | the allowlist the datasheet's sources are checked against |
-| Back | `data.08` | the ledger and `{corpus} datasheet`'s counts fill the datasheet |
+| Back | `data.08` | `permitted_uses` judges each license the datasheet lists against the allowlist; the ledger and `{corpus} datasheet`'s counts fill the datasheet |
 | Back | `ethics.04` | the safety and bias rows, with their intervals |
 | Back | `L6.7` | the quality rows (bits per byte with an interval) |
 | Forward | `dur.12` | `ModelRelease` refuses a release without `MODEL_CARD.md` |

@@ -19,6 +19,7 @@ from numpy.typing import NDArray
 from tinyllm.autograd.mode import no_grad
 from tinyllm.autograd.tensor import Tensor
 from tinyllm.nn.module import Module
+from tinyllm.num.ema import EMA
 from tinyllm.optim.schedule import clip_grad_norm_
 
 
@@ -88,6 +89,7 @@ def train_step(
     loss_fn: Callable[..., Any],
     opt: Any,
     clip: Optional[float] = None,
+    ema: Optional[EMA] = None,
 ) -> dict[str, float]:
     # SOLUTION-BEGIN L0.5
     # Zero first: gradients accumulate across backward calls (L0.1).
@@ -103,6 +105,11 @@ def train_step(
         stats["grad_norm"] = float(clip_grad_norm_(model.parameters(), clip))
     opt.step()
     stats.update(extra)
+    if ema is not None:
+        # One step's loss is noisy; the curve to read is its EMA (M02.2),
+        # debiased so the first steps are not pulled toward m_0 = 0.
+        ema.update(value)
+        stats["loss_ema"] = float(ema.value_debiased())
     return stats
     # SOLUTION-END
 

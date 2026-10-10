@@ -638,6 +638,179 @@ fn forced_call_from_a_random_model_is_valid() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// the serve loop (server.rs, which this module takes over from L10.7)
+
+/// A running v1 server over the succ bigram (after byte i comes byte i + 1,
+/// no EOS), spoken to with raw HTTP/1.1 and `Connection: close`. Drained
+/// when dropped.
+mod serve {
+    use std::io::{Read, Write};
+    use std::net::{SocketAddr, TcpStream};
+    use std::path::PathBuf;
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+    use tl_engine::runner::{KvConfig, PrefixCache};
+    use tl_serve::server::{self, ServeConfig, ServerHandle};
+
+    pub const TEMPLATE: &str = "{% for m in messages %}{{ m.content }}{% endfor %}";
+
+    pub struct Srv(Option<ServerHandle>);
+
+    impl Srv {
+        pub fn http(&self) -> SocketAddr {
+            self.0.as_ref().unwrap().http_addr
+        }
+    }
+
+    impl Drop for Srv {
+        fn drop(&mut self) {
+            if let Some(h) = self.0.take() {
+                h.drain();
+                let _ = h.join();
+            }
+        }
+    }
+
+    fn succ_model() -> PathBuf {
+        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let d = std::env::temp_dir().join(format!("ss-l10_9-{}-{nanos}", std::process::id())).join("succ");
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let mut w = vec![0.0f32; 256 * 256];
+        for i in 0..256 {
+            w[i * 256 + (i + 1) % 256] = 2.0;
+        }
+        let data: Vec<u8> = w.iter().flat_map(|x| x.to_le_bytes()).collect();
+        let header = format!(r#"{{"__metadata__":{{"format":"tinyllm"}},"bigram.weight":{{"dtype":"F32","shape":[256,256],"data_offsets":[0,{}]}}}}"#, data.len());
+        let mut h = header.into_bytes();
+        while h.len() % 8 != 0 {
+            h.push(b' ');
+        }
+        let mut st = (h.len() as u64).to_le_bytes().to_vec();
+        st.extend_from_slice(&h);
+        st.extend_from_slice(&data);
+        std::fs::write(d.join("model.safetensors"), st).unwrap();
+        std::fs::write(d.join("config.json"), r#"{"tl_arch":"bigram","tl_tokenizer":"bytes","vocab_size":256,"tl_format":1}"#).unwrap();
+        std::fs::write(d.join("generation_config.json"), format!(r#"{{"chat_template":"{TEMPLATE}"}}"#)).unwrap();
+        d
+    }
+
+    pub fn start() -> Srv {
+        let mut c = ServeConfig::for_model(&succ_model());
+        c.http_listen = "127.0.0.1:0".to_string();
+        c.health_listen = "127.0.0.1:0".to_string();
+        c.engine.kv = KvConfig { blocks: 64, block_size: 16 };
+        c.engine.prefix_cache = PrefixCache::None;
+        let h = server::spawn(c).expect("server::spawn");
+        let s = Srv(Some(h));
+        let t0 = Instant::now();
+        while TcpStream::connect(s.0.as_ref().unwrap().health_addr).is_err() {
+            assert!(t0.elapsed() < Duration::from_secs(5), "the health port never accepted");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        s
+    }
+
+    /// (status, body) of a POST; a chunked body is decoded.
+    pub fn post(addr: SocketAddr, body: &str) -> (u16, String) {
+        let mut s = TcpStream::connect(addr).unwrap();
+        s.set_read_timeout(Some(Duration::from_secs(30))).unwrap();
+        let head = format!("POST /v1/chat/completions HTTP/1.1\r\nHost: t\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+        s.write_all(head.as_bytes()).unwrap();
+        let mut out = Vec::new();
+        s.read_to_end(&mut out).expect("read until the server closes");
+        let split = out.windows(4).position(|w| w == b"\r\n\r\n").expect("header end");
+        let head = String::from_utf8_lossy(&out[..split]).to_ascii_lowercase();
+        let status = head.split(' ').nth(1).unwrap().parse().unwrap();
+        let mut raw = &out[split + 4..];
+        if !head.contains("transfer-encoding: chunked") {
+            return (status, String::from_utf8(raw.to_vec()).unwrap());
+        }
+        let mut body = Vec::new();
+        loop {
+            let nl = raw.windows(2).position(|w| w == b"\r\n").expect("chunk size line");
+            let size = usize::from_str_radix(std::str::from_utf8(&raw[..nl]).unwrap().trim(), 16).unwrap();
+            raw = &raw[nl + 2..];
+            if size == 0 {
+                return (status, String::from_utf8(body).unwrap());
+            }
+            body.extend_from_slice(&raw[..size]);
+            raw = &raw[size + 2..];
+        }
+    }
+}
+
+#[test]
+fn serve_loop_routes_tool_calls() {
+    // WHY: the pieces only help an agent once the chat route uses them: the
+    //      tool fields are read from the raw body, the prompt describes the
+    //      tools through the model's template, a forced call is decoded under
+    //      its grammar (so even a model that never saw a tool emits a valid
+    //      call), and the answer comes back as tool_calls with finish_reason
+    //      tool_calls, as a message or as stream deltas that reassemble to
+    //      the same call. tool_choice none calls nothing; invalid tool fields
+    //      are the OpenAI errors, not a 422 for the whole feature.
+    // KIND: conformance
+    // CHAPTER: L10.9 section 4
+    let s = serve::start();
+    let tools_json = r#"[{"type":"function","function":{"name":"count","parameters":{"type":"object","properties":{"n":{"type":"integer"}},"required":["n"]}}}]"#;
+    let messages = r#"[{"role":"user","content":"count"}]"#;
+    let body = |extra: &str| format!(r#"{{"model":"succ","messages":{messages},"tools":{tools_json},"max_tokens":64,"temperature":0{extra}}}"#);
+    let forced = r#","tool_choice":{"type":"function","function":{"name":"count"}}"#;
+
+    let (st, text) = serve::post(s.http(), &body(forced));
+    assert_eq!(st, 200, "{text}");
+    let doc = j::parse(&text);
+    let choice = &doc.get("choices").arr()[0];
+    assert_eq!(choice.get("finish_reason").str(), "tool_calls", "{text}");
+    let msg = choice.get("message");
+    assert_eq!(msg.get("content"), &j::V::Null, "a forced call has no content");
+    let calls = msg.get("tool_calls").arr();
+    assert_eq!(calls.len(), 1);
+    assert!(calls[0].get("id").str().starts_with("call_"));
+    assert_eq!(calls[0].get("function").get("name").str(), "count");
+    let args = j::parse(calls[0].get("function").get("arguments").str());
+    let _ = args.get("n").i64(); // the schema holds: {"n": <integer>}
+    let req = tools::parse_tool_request(&body(forced)).unwrap();
+    let want = tools::render_prompt(&tl_serve::template::Template::parse(serve::TEMPLATE).unwrap(), &Json::parse(messages).unwrap(), &req.tools, "", "").unwrap();
+    assert_eq!(doc.get("usage").get("prompt_tokens").i64() as usize, want.len(), "the prompt is render_prompt's (byte tokenizer)");
+
+    let (st, text) = serve::post(s.http(), &body(&format!(r#"{forced},"stream":true"#)));
+    assert_eq!(st, 200);
+    let events: Vec<&str> = text.split("\n\n").filter(|e| !e.is_empty()).map(|e| e.strip_prefix("data: ").unwrap_or(e)).collect();
+    assert_eq!(events.last(), Some(&"[DONE]"));
+    let (mut name, mut arguments, mut finish) = (String::new(), String::new(), String::new());
+    for e in &events[..events.len() - 1] {
+        let ev = j::parse(e);
+        let c = &ev.get("choices").arr()[0];
+        if let Some(j::V::Str(f)) = c.get_opt("finish_reason") {
+            finish = f.clone();
+        }
+        for d in c.get("delta").get_opt("tool_calls").map(|t| t.arr().clone()).unwrap_or_default() {
+            let f = d.get("function");
+            if let Some(j::V::Str(n)) = f.get_opt("name") {
+                name.push_str(n);
+            }
+            arguments.push_str(f.get("arguments").str());
+        }
+    }
+    assert_eq!((name.as_str(), arguments.as_str(), finish.as_str()), ("count", calls[0].get("function").get("arguments").str(), "tool_calls"));
+
+    let (st, text) = serve::post(s.http(), &body(r#","tool_choice":"none""#));
+    assert_eq!(st, 200, "{text}");
+    let none = j::parse(&text);
+    let choice = &none.get("choices").arr()[0];
+    assert!(choice.get("message").get_opt("tool_calls").is_none(), "tool_choice none: {text}");
+    assert_ne!(choice.get("finish_reason").str(), "tool_calls");
+
+    let (st, text) = serve::post(s.http(), &body(r#","tool_choice":{"type":"function","function":{"name":"nope"}}"#));
+    assert_eq!((st, j::parse(&text).get("error").get("param").str().to_string()), (400, "tool_choice".to_string()), "{text}");
+    let (st, text) = serve::post(s.http(), &body(r#","response_format":{"type":"json_schema"}"#));
+    let e = j::parse(&text);
+    assert_eq!((st, e.get("error").get("param").str(), e.get("error").get("code").str()), (422, "response_format", "unsupported_parameter"), "{text}");
+}
+
 /// A tiny JSON reader and a validator for the schema subset, independent of
 /// the code under test. Numbers keep their text.
 mod j {

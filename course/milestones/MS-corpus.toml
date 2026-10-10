@@ -58,7 +58,7 @@
 # milestone needs no services). Every later pass gate reruns them.
 id       = "MS-corpus"
 title    = "Your corpus pipeline cleans, shards, licenses, and tokenizes a corpus deterministically"
-requires = ["data.01", "data.02", "data.03", "ds.08", "data.04", "data.05", "data.06", "data.07", "data.08", "L0.6"]
+requires = ["data.01", "data.02", "data.03", "data.04", "data.05", "data.06", "data.07", "data.08", "L0.6"]
 pass     = 3
 ci       = "pr"
 

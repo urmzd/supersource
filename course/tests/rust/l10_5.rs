@@ -494,7 +494,8 @@ fn errors_use_the_openai_shape() {
         (chat(r#","temperature":-1"#), 400, Some("temperature"), None),
         (chat(r#","top_p":0"#), 400, Some("top_p"), None),
         (chat(r#","n":2"#), 422, Some("n"), Some("unsupported_parameter")),
-        (chat(r#","tools":[{"type":"function","function":{"name":"f"}}]"#), 422, Some("tools"), Some("unsupported_parameter")),
+        // a response_format this engine never serves: 422 before L10.9 and after it
+        (chat(r#","response_format":{"type":"json_schema"}"#), 422, Some("response_format"), Some("unsupported_parameter")),
         (chat(r#","max_tokens":0"#), 400, Some("max_tokens"), None),
         (chat(r#","max_tokens":100000"#), 400, None, Some("context_length_exceeded")),
         (post(s.http(), "/v1/chat/completions", &chat_body("nope", "a", "")), 404, Some("model"), Some("model_not_found")),
@@ -815,7 +816,7 @@ fn runtime_toml_and_env_overrides() {
 fn speculative_runtime_config_drives_the_serving_path() {
     // WHY: the optional runtime setting is parsed once and routes generation
     // through L10.8's runner-backed verifier without changing greedy output.
-    // KIND: integration
+    // KIND: conformance
     // CATCHES: s01
     // CHAPTER: L10.5 section 4
     let plain = start(&succ_model(), |_| {});

@@ -18,6 +18,7 @@ s18	go/gateway/ledger/meter.go	semantic	semantic	319	y	(hidden until pass)	serve
 s20	go/gateway/ledger/meter.go	semantic	pitfall-5	188	y	(hidden until pass)	the meter wraps the ResponseWriter and its Flush does nothing, so events wait in the 4 KiB buffer
 s21	go/gateway/ledger/ledger.go	semantic	boundary	315	y	(hidden until pass)	an empty window returns no row instead of one row of zeros
 s22	go/gateway/ledger/meter.go	semantic	semantic	174	y	(hidden until pass)	an error event in a stream is not recorded as an error
+s23	go/gateway/gateway.go	semantic	pitfall-13	58	y	(hidden until pass)	the cache revision is not the route epoch: answers cached under the old route table survive a PUT /admin/v1/routes
 m02	go/gateway/ledger/admin.go	auto	stmt_delete	122	n	statement deleted in UsageHandler	group_by default 'none' not applied
 m03	go/gateway/ledger/meter.go	auto	swap_args	220	n	arguments swapped in errorCode's switch	type preferred to code
 m04	go/gateway/ledger/admin.go	auto	cond_negate	67	n	condition changed in Admin's key routes	keys/{key_id} not routed
@@ -25,3 +26,4 @@ m05	go/gateway/ledger/ledger.go	auto	swap_args	241	n	arguments swapped in Record
 m06	go/gateway/ledger/ledger.go	auto	cond_negate	252	n	condition changed in Query's group_by lookup	any group_by string accepted as a column
 m07	go/gateway/ledger/ledger.go	auto	boundary	187	n	boundary changed in Open's version check	a newer schema version accepted
 m08	go/gateway/ledger/meter.go	auto	cond_negate	264	n	condition changed in Meter's route filter	every path metered
+m09	go/gateway/gateway.go	auto	stmt_delete	93	n	statement deleted in Admin	the cache purge handler not mounted

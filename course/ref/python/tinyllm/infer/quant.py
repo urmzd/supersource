@@ -15,6 +15,7 @@ step.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Sequence, Union
 
@@ -22,6 +23,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from tinyllm.autograd.tensor import Tensor
+from tinyllm.eval.lm import eval_ppl
 from tinyllm.nn.layers import Linear
 from tinyllm.nn.module import Module
 from tinyllm.num.lowp import (
@@ -31,6 +33,7 @@ from tinyllm.num.lowp import (
     mx_quantize,
     quantize_fp8,
 )
+from tinyllm.num.tolerance import matmul_error_bound
 
 
 @dataclass
@@ -318,4 +321,48 @@ def export_q4(model: Module) -> tuple[dict[str, NDArray], dict[str, str]]:
     for name, p in model.named_parameters():
         tensors[name] = np.asarray(p.data)
     return tensors, {"format": "tinyllm", "quant": f"int4-g{groups.pop()}-sym"}
+    # SOLUTION-END
+
+
+def output_error_bound(
+    w: ArrayLike, q: Any, x: ArrayLike, dtype: str = "f32"
+) -> NDArray:
+    # SOLUTION-BEGIN L8.5
+    a = _matrix(w, "output_error_bound").astype(np.float64)
+    xs = np.asarray(x, dtype=np.float64)
+    if xs.ndim != 2 or xs.shape[1] != a.shape[1]:
+        raise ValueError(
+            f"output_error_bound: want x [n, in = {a.shape[1]}], got shape {xs.shape}"
+        )
+    d = dequantize(q).astype(np.float64)
+    if d.shape != a.shape:
+        raise ValueError(
+            f"output_error_bound: q holds {d.shape}, the weight is {a.shape}"
+        )
+    # The quantization moved W by |W - W'| elementwise; M09.3 adds that
+    # perturbation to the rounding of the k-term dot products in dtype.
+    return matmul_error_bound(a, xs.T, dtype, np.abs(d - a)).T
+    # SOLUTION-END
+
+
+def quant_ppl(
+    model: Module,
+    scheme: str,
+    ids: ArrayLike,
+    ctx_len: int,
+    stride: int,
+    skip: Sequence[str] = ("lm_head",),
+) -> dict[str, float]:
+    # SOLUTION-BEGIN L8.5
+    base = eval_ppl(model, ids, ctx_len, stride)
+    # quantize_model works in place: quantize a copy, so the caller keeps
+    # the float model it passed in.
+    quant = quantize_model(copy.deepcopy(model), scheme, skip)
+    got = eval_ppl(quant, ids, ctx_len, stride)
+    return {
+        "ppl": float(base["ppl"]),
+        "ppl_quant": float(got["ppl"]),
+        "delta": float(got["ppl"] - base["ppl"]),
+        "ratio": float(got["ppl"] / base["ppl"]),
+    }
     # SOLUTION-END

@@ -6,10 +6,10 @@
 | | |
 |---|---|
 | **Module** | `gw.07` · build · Go · Pass 7 · 4 to 6 h |
-| **You build** | `go/gateway/ledger/`: `ledger.go` (the SQLite store: `Open`, `Record`, `Query`), `meter.go` (the `Meter` stage of the chain), `admin.go` (`Admin`, the whole `/admin/v1` surface, and `UsageHandler`); then the `usage` verb of your `<system>` CLI (learner territory) |
+| **You build** | `go/gateway/ledger/`: `ledger.go` (the SQLite store: `Open`, `Record`, `Query`), `meter.go` (the `Meter` stage of the chain), `admin.go` (`Admin`, the whole `/admin/v1` surface, and `UsageHandler`); `go/gateway/gateway.go` (`Deps` and `Admin`: the stages assembled into the chain and the admin API); then the `usage` verb of your `<system>` CLI (learner territory) |
 | **Contract** | the schema [`course/contracts/formats/usage.v1.sql`](../../course/contracts/formats/usage.v1.sql) (applied verbatim) and the server side of [`course/contracts/openapi/admin.v1.yaml`](../../course/contracts/openapi/admin.v1.yaml); the Go API is section 4 |
 | **Tests** | `course/tests/go/gw_07/` (what they check: section 4) |
-| **Needs** | `gw.01` server skeleton (the chain, `Exchange`, `WriteError`), `gw.02` API keys and scopes (the `Principal`), [`lang.11` SQL and SQLite](../../software-craftsmanship/12-language-and-tool-primers/11-sql-and-sqlite.md) (reading) |
+| **Needs** | `gw.01` server skeleton (the chain, `Exchange`, `WriteError`), `gw.02` API keys and scopes (the `Principal`), `gw.03` rate limiting, `gw.05` routing (the route stage and its admin handlers), `gw.06` response cache (the stage and its purge handler), [`lang.11` SQL and SQLite](../../software-craftsmanship/12-language-and-tool-primers/11-sql-and-sqlite.md) (reading) |
 | **Used by** | `dep.01` gateway image (pure-Go SQLite, so the image needs no C toolchain) · later `ag.04` the agent's `query_usage` tool, `craft.14` per-version usage, `ops.09` per-tenant usage |
 | **Milestone** | MS-gateway (the ledger reconciles with the engine's usage) |
 | **Optional depth** | [SQLite: write-ahead logging](https://www.sqlite.org/wal.html) (free), [SQLite: atomic commit](https://www.sqlite.org/atomiccommit.html) (free), [SQLite: the query planner](https://www.sqlite.org/queryplanner.html) (free), [OpenAI: streaming usage](https://platform.openai.com/docs/api-reference/chat/create#chat-create-stream_options) (free) |
@@ -22,18 +22,19 @@
 - SQLite in **WAL mode** with one statement per row makes a `SIGKILL` leave every row complete or absent; `busy_timeout` makes concurrent writers wait instead of failing; `request_id` makes a retried write a no-op.
 - Queries are **half-open** windows `[since, until)` with **bound parameters**; a `GROUP BY` column comes from a whitelist, because a column name cannot be a parameter.
 - The admin API **fails closed**: no principal is a 401, no `admin` scope a 403, and a path whose module is not built yet is a well-formed 404.
+- `gateway.Deps` and `gateway.Admin` **assemble** the stages, so the chain's wiring is code a test can call; the cache keys answers by the **route epoch**, so a new route table never serves an old answer.
 
 ## How to work this chapter
 
 ```bash
-ss start gw.07          # writes go/gateway/ledger/{ledger,meter,admin}.go with stub bodies
+ss start gw.07          # writes go/gateway/ledger/{ledger,meter,admin}.go and go/gateway/gateway.go with stub bodies
 ss tests gw.07          # read the test catalog first
 cd go && go get modernc.org/sqlite@v1.39.1   # the one third-party package (contracts/allowed-deps.toml)
 ss check gw.07          # exit code is the verdict
 ss diff  gw.07          # after passing: your code against the reference
 ```
 
-Then wire `ledger.Meter` and `ledger.Admin` into your `go/cmd/gateway` composition root and add `usage` to your `<system>` CLI (section 4, "Your entry points"). MS-gateway reconciles your ledger with your engine's usage.
+Then call `gateway.Deps` and `gateway.Admin` from your `go/cmd/gateway` composition root and add `usage` to your `<system>` CLI (section 4, "Your entry points"). MS-gateway reconciles your ledger with your engine's usage.
 
 ---
 
@@ -168,16 +169,33 @@ func WithIncludeUsage(body []byte) ([]byte, bool, error)
 func Meter(l Ledger, o MeterOptions) server.Middleware   // MeterOptions{Clock, WriteTimeout, Logger}
 func Admin(d AdminDeps) http.Handler         // AdminDeps{Usage Ledger; Keys, Workers, Routes, Drain, Policy, Cache http.Handler}
 func UsageHandler(l Ledger) http.Handler     // GET /admin/v1/usage
+
+package gateway // import "tinyllm/gateway"
+
+type Stages struct {
+	Keys *auth.Store; Logger *slog.Logger                  // gw.02
+	Policy server.Middleware; PolicyAdmin http.Handler     // gw.08
+	Limiter *limit.Limiter; Counter limit.Counter          // gw.03
+	Cache *cache.LRU; CacheOptions cache.Options           // gw.06
+	Registry *route.Registry; Router *route.Router         // gw.05
+	Proxy http.Handler                                     // route.Proxy, or gw.04's proxy
+	Ledger ledger.Ledger; Meter ledger.MeterOptions        // this module
+}
+func Deps(s Stages) server.Deps          // a nil stage is left out; the cache's Rev defaults to route.ETag(epoch)
+func Admin(s Stages) ledger.AdminDeps    // KeysHandler, WorkersHandler, RoutesHandler, DrainHandler, PurgeHandler
 ```
 
-`ss start gw.07` writes the three files with every function body stubbed (`panic("todo: gw.07")`); types, constants, and `Schema` stay. The unexported helpers (`meterWriter`, `inspect`, `errorCode`, `traceID`, ...) are a suggested decomposition.
+`gateway.go` is the part of the composition root a test can call. `Deps` calls each module's middleware constructor (`auth.Middleware`, `limit.Middleware`, `cache.Middleware`, `route.Middleware`, `ledger.Meter`) and leaves a nil stage out; gw.01's `Handler` puts them in contract order. One wiring decision is made here and nowhere else: with a `Router` and no `CacheOptions.Rev`, the cache revision is the route table's `ETag`, so a `PUT /admin/v1/routes` makes every answer cached under the old table unreachable. `Admin` builds each admin path's handler from the module that owns it.
 
-**Your entry points.** In `go/cmd/gateway`, open the ledger at `[gateway].usage_db`, pass `ledger.Meter(db, ledger.MeterOptions{})` as `server.Deps.Ledger`, and serve the admin API through a second, short chain that has only authn in front of it, so admin calls never reach the router:
+`ss start gw.07` writes the four files with every function body stubbed (`panic("todo: gw.07")`); types, constants, and `Schema` stay. The unexported helpers (`meterWriter`, `inspect`, `errorCode`, `traceID`, ...) are a suggested decomposition.
+
+**Your entry points.** In `go/cmd/gateway`, open the ledger at `[gateway].usage_db`, build the stages into a `gateway.Stages`, and serve the admin API through a second, short chain that has only authn in front of it, so admin calls never reach the router:
 
 ```go
-inference := server.New(cfg, server.Deps{Keys: authn, Limiter: limiter, Cache: cache, Router: router, Proxy: proxy,
-	Ledger: ledger.Meter(db, ledger.MeterOptions{})}).Handler()
-admin := server.New(cfg, server.Deps{Keys: authn, Proxy: ledger.Admin(ledger.AdminDeps{Usage: db, Keys: keysAdmin})}).Handler()
+st := gateway.Stages{Keys: keys, Limiter: limiter, Counter: counter, Cache: lru, CacheOptions: cache.Options{TTL: ttl},
+	Registry: reg, Router: router, Proxy: route.Proxy(router, route.Options{}), Ledger: db}
+inference := server.New(cfg, gateway.Deps(st)).Handler()
+admin := server.New(cfg, server.Deps{Keys: auth.Middleware(keys, nil), Proxy: ledger.Admin(gateway.Admin(st))}).Handler()
 mux := http.NewServeMux()
 mux.Handle("/admin/v1/", admin)
 mux.Handle("/", inference)
@@ -212,6 +230,7 @@ and add `usage` to your `<system>` CLI: `<system> usage --tenant acme --since 1h
 | `TestAdminUsageRejectsBadParameters` | boundary | bad `since`, `until`, `group_by`, an empty window: 400 naming the param; POST is 405 | the CLI can name the bad flag |
 | `TestAdminRequiresAdminScope` | unit | no principal 401, an `infer` key 403 | billing data stays private |
 | `TestAdminMountsEveryPath` | unit | each path reaches its module's handler; nil handlers and unknown paths are 404 `not_found` | `gw.02`, `gw.05`, `gw.06`, `gw.08` mount here |
+| `TestGatewayAssemblesTheStages` | unit | real keys, limits, cache, router, and ledger through `gateway.Deps` and `gateway.Admin`: a repeat is a hit, a route PUT makes it a miss, the 4th request of an RPM-3 key is a 429 before the cache, purge, workers, routes, drain, keys, and usage reach their handlers | your `go/cmd/gateway` is these two calls |
 
 ## 5. Pitfalls
 
@@ -229,6 +248,7 @@ and add `usage` to your `<system>` CLI: `<system> usage --tenant acme --since 1h
 | 10. forwarding the usage chunk you asked for | clients that never asked for usage receive a chunk with `choices: []` | `TestStreamUsageIsRequestedAndHidden` (mutant `s03`) |
 | 11. `until` inclusive | the request at exactly 11:00 is in two hourly windows | `TestQueryWindowIsHalfOpen` (mutant `s07`) |
 | 12. recording only successes, or a TTFT for refusals | refused traffic is invisible; error rows show a latency they never had | `TestRefusedRequestsAreRecordedWithTheirCode` (mutants `s15`, `s12`, `s22`) |
+| 13. a cache revision that ignores the route table | after a `PUT /admin/v1/routes` the cache keeps serving answers from the old route's model | `TestGatewayAssemblesTheStages` (mutant `s23`) |
 
 ## 6. Where it's used next
 
@@ -236,6 +256,9 @@ and add `usage` to your `<system>` CLI: `<system> usage --tenant acme --since 1h
 |---|---|---|
 | Back | `gw.01` | the chain the meter closes, the `Exchange` it reads, `WriteError` for the admin errors |
 | Back | `gw.02` | the `Principal`: tenant and key id per row, the `admin` scope `Admin` checks |
+| Back | `gw.03` | `gateway.Deps` puts `limit.Middleware` in the `Limiter` slot |
+| Back | `gw.05` | `gateway.Deps` puts `route.Middleware` in the chain and keys the cache by `route.ETag`; `gateway.Admin` builds the workers, routes, and drain handlers |
+| Back | `gw.06` | `gateway.Deps` puts `cache.Middleware` in the chain; `gateway.Admin` builds `PurgeHandler` |
 | Back | `lang.11` | the SQL: transactions, WAL, indexes, aggregates, and the same usage table |
 | Forward | `dep.01` | builds the gateway image with `CGO_ENABLED=0` around the pure-Go driver, the usage DB on a volume |
 | Forward | MS-gateway | reconciles your ledger against your engine's usage through the admin API |

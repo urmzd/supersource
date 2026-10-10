@@ -9,7 +9,7 @@
 | **You build** | `/metrics` on the health port (9464) of your gateway (in `go/cmd/gateway`, recording the gateway's instruments) and engine (`L10.5` gauges, `L10.7` histograms); JSON logs with `trace_id` and `span_id` (`otelx.LogHandler`); `deploy/observability/monitors.yaml` (what Prometheus scrapes) and `deploy/observability/collector.yaml` (the OpenTelemetry Collector) |
 | **Contract** | [`otel/metrics.yaml`](../../course/contracts/otel/metrics.yaml) (names, types, buckets, labels), [`otel/semconv.md`](../../course/contracts/otel/semconv.md) (log fields), [`helm/observability.md`](../../course/contracts/helm/observability.md) (the selector label, the collector Service) |
 | **Tests** | `course/tests/obs.02/` (`check` runs `artifacts.py`; what each test checks: section 4) |
-| **Needs** | `obs.01` (`go/otelx`: `LogHandler`, `Setup`, the server span), `dep.03` (the charts whose pods are scraped); reading: `obs.00`, `L10.5`, `L10.7`, and `gw.01` (the services it scrapes) |
+| **Needs** | `obs.01` (`go/otelx`: `LogHandler`, `Setup`, the server span), `dep.03` (the charts whose pods are scraped), `L10.7` (the engine's serve loop that records the GenAI and HTTP histograms and logs each request in its span); reading: `obs.00`, `L10.5`, and `gw.01` (the other code it scrapes) |
 | **Used by** | `obs.03` turns these series into SLOs; `obs.04` draws them; `ops.01` reads them during the drill |
 | **Milestone** | MS-prod (contract metrics scraped on kind) |
 | **Optional depth** | [Prometheus exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/) (free), [Histograms and summaries](https://prometheus.io/docs/practices/histograms/) (free), *Observability Engineering*, ch. 8 and 9 |
@@ -163,6 +163,7 @@ The last two are the **cluster tier**; `SS_SMOKE=1` skips them with the reason.
 |---|---|---|
 | Back | `obs.01` | `LogHandler` stamps the ids; `Setup` and the SERVER span give each log line its span |
 | Back | `dep.03` | the charts whose pods and container ports the monitors select |
+| Back | `L10.7` | the local tier runs your engine: its serve loop records the TTFT, TPOT, duration, and HTTP histograms this module scrapes, and writes the JSON log line with the trace id |
 | Forward | `obs.03` | SLIs over the TTFT and TPOT histograms and the 5xx ratio, selected by `job` |
 | Forward | `obs.04` | heatmaps of the same buckets, KV usage, per-tenant usage |
 | Forward | `ops.01` | the drill's detection and resolution queries read these series |

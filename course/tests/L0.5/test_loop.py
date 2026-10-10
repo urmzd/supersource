@@ -28,6 +28,7 @@ from tinyllm.autograd import functional as F
 from tinyllm.autograd.losses import bce_with_logits, cross_entropy, mse
 from tinyllm.autograd.tensor import Tensor
 from tinyllm.nn.layers import Dropout, Linear, Sequential, Tanh
+from tinyllm.num.ema import EMA
 from tinyllm.optim.adamw import AdamW
 from tinyllm.optim.sgd import SGD
 from tinyllm.train.loop import DataLoader, evaluate, train_step
@@ -175,6 +176,32 @@ def test_loss_fn_extras_and_shape():
             lambda mod, b: mod(Tensor(b["x"])) * 1.0,
             SGD(m.parameters(), lr=0.1),
         )
+
+
+def test_loss_ema_is_the_debiased_average():
+    # WHY: a training log plots the EMA of the step losses (M02.2), not the
+    #      raw, noisy values. With beta = 0.9 the hand example's losses 1 and
+    #      0.145 give m_1 = 0.1 and m_2 = 0.1045; debiased by 1 - 0.9^t that
+    #      is 1.0 and 0.55. The biased m_t would start ten times too low. A
+    #      non-finite loss never reaches the EMA.
+    # KIND: unit
+    # CATCHES: s22
+    # CHAPTER: L0.5 section 4, The interface
+    m = hand_model()
+    opt = SGD(m.parameters(), lr=0.1)
+    ema = EMA(0.9)
+    first = train_step(m, HAND, mse_fn, opt, ema=ema)
+    assert_close(first["loss_ema"], 1.0, dtype="float32")
+    second = train_step(m, HAND, mse_fn, opt, ema=ema)
+    assert_close(second["loss"], 0.145, dtype="float32")
+    assert_close(second["loss_ema"], 0.55, dtype="float32")
+    bad = {
+        "x": np.array([[np.nan]], dtype=np.float32),
+        "y": np.array([[1.0]], dtype=np.float32),
+    }
+    with pytest.raises(FloatingPointError):
+        train_step(m, bad, mse_fn, opt, ema=ema)
+    assert ema.t == 2
 
 
 # --- the loader ----------------------------------------------------------------------------
