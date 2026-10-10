@@ -1,6 +1,6 @@
 --- a/primers/craft.06/kernels.c
 +++ b/primers/craft.06/kernels.c
-@@ -22,7 +22,7 @@
+@@ -31,7 +31,7 @@
  }
  
  float kata_sum(const float *x, int n) {

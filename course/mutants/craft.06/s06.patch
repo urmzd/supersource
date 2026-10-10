@@ -1,6 +1,6 @@
 --- a/primers/craft.06/kernels.c
 +++ b/primers/craft.06/kernels.c
-@@ -37,7 +37,7 @@
+@@ -46,7 +46,7 @@
          float s[8] = {0};
          int i = 0;
          for (; i + 8 <= d; i += 8)

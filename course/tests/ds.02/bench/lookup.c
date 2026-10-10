@@ -12,11 +12,11 @@
  * stops at the first group with an EMPTY control byte after one 16-byte
  * scan. Hits cost about the same in both (one compare each).
  */
+#include "ss_bench.h" /* first: it sets the POSIX feature macros clock_gettime needs */
 #include <stdint.h>
 #include <stdlib.h>
 
 #include "tinyllm.h"
-#include "ss_bench.h"
 #include "../_baseline_lp.h"
 
 #define N_KEYS 3071u

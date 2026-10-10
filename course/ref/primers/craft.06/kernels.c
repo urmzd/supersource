@@ -9,6 +9,12 @@ enum { BK = 64, BJ = 256 };
 
 static int min_i(int a, int b) { return a < b ? a : b; }
 
+/* c[0..BJ) += a * b[0..BJ): a fixed trip count and restrict (no alias check
+ * needed) are what let gcc vectorize at -O2, as clang already does. */
+static void axpy_tile(float *restrict c, const float *restrict b, float a) {
+    for (int j = 0; j < BJ; j++) c[j] += a * b[j];
+}
+
 void kata_matmul(const float *A, const float *B, float *C, int n) {
 /* SOLUTION-BEGIN craft.06 */
     for (int i = 0; i < n * n; i++) C[i] = 0.0f;
@@ -17,8 +23,11 @@ void kata_matmul(const float *A, const float *B, float *C, int n) {
             for (int i = 0; i < n; i++)
                 for (int k = k0; k < min_i(k0 + BK, n); k++) {
                     float a = A[i * n + k];
-                    /* unit stride over j: the compiler vectorizes this loop */
-                    for (int j = j0; j < min_i(j0 + BJ, n); j++) C[i * n + j] += a * B[k * n + j];
+                    if (j0 + BJ <= n) { /* a whole tile: unit stride over j, vectorized */
+                        axpy_tile(C + i * n + j0, B + k * n + j0, a);
+                        continue;
+                    }
+                    for (int j = j0; j < n; j++) C[i * n + j] += a * B[k * n + j];
                 }
 /* SOLUTION-END */
 }

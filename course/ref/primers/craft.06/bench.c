@@ -8,10 +8,14 @@
  * fast kernels run in microseconds to a millisecond and a slow one still
  * finishes in well under a second. Every result goes to a volatile sink so
  * the compiler cannot delete the work. */
+/* ss_bench.h comes first: it defines _POSIX_C_SOURCE for clock_gettime, and
+ * glibc ignores that once any other system header is in (under -std=c11 a
+ * later define leaves CLOCK_MONOTONIC undeclared on Linux). */
+#include "ss_bench.h"
+
 #include <stdlib.h>
 
 #include "kernels.h"
-#include "ss_bench.h"
 
 #define NM 256        /* matmul: 256^3 = 16.8M multiply-adds */
 #define NS (1 << 20)  /* sum: 4 MiB of floats */

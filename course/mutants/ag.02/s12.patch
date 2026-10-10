@@ -1,11 +1,11 @@
 --- a/go/agent/tool/registry.go
 +++ b/go/agent/tool/registry.go
-@@ -86,7 +86,7 @@
+@@ -83,7 +83,7 @@
  	for n := range r.tools {
  		out = append(out, n)
  	}
 -	sort.Strings(out)
 +	sort.Sort(sort.Reverse(sort.StringSlice(out)))
  	return out
- 	// SOLUTION-END
  }
+ 

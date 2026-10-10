@@ -1,6 +1,6 @@
 --- a/go/agent/rag/source/crawler.go
 +++ b/go/agent/rag/source/crawler.go
-@@ -172,9 +172,7 @@
+@@ -163,9 +163,7 @@
  	if len(via) >= 5 {
  		return errors.New("source: too many redirects")
  	}
@@ -9,5 +9,5 @@
 -	}
 +	_ = c.hostAllowed(req.URL)
  	return nil
- 	// SOLUTION-END
  }
+ 

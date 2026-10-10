@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"net/http"
 	"os"
 	"strconv"
@@ -607,7 +606,7 @@ func TestExactlyOnceEffectsUnderChaos(t *testing.T) {
 	}
 	defer sink.Close()
 	seed, _ := strconv.ParseUint(os.Getenv("SS_SEED"), 10, 64)
-	rng := rand.New(rand.NewPCG(seed, 3))
+	rng := newPCG32(seed, 3)
 	q, clk := newQueue(t, queue.Options{Visibility: 10 * time.Second, MaxAttempts: 1000})
 	var keys []string
 	for i := 0; i < 60; i++ {
@@ -627,7 +626,7 @@ func TestExactlyOnceEffectsUnderChaos(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Poll: %v", err)
 		}
-		switch r := rng.IntN(10); {
+		switch r := rng.intN(10); {
 		case r < 2: // dies before the effect
 		case r < 4: // applies the effect, then dies before Complete
 			post(t, sink.URL(), l.Task.ID)
@@ -640,7 +639,7 @@ func TestExactlyOnceEffectsUnderChaos(t *testing.T) {
 				acks[l.Task.ID]++
 			}
 		}
-		if len(stale) > 0 && rng.IntN(4) == 0 { // a slow worker finally answers
+		if len(stale) > 0 && rng.intN(4) == 0 { // a slow worker finally answers
 			s := stale[0]
 			stale = stale[1:]
 			if err := q.Complete(ctx, s); err == nil {
@@ -664,3 +663,39 @@ func post(t *testing.T, url, key string) {
 	}
 	resp.Body.Close()
 }
+
+// -- frozen PCG32 ---------------------------------------------------------------------
+
+// pcg32 transcribes course/tests/_lib/pcg32.py (spec/pcg32.md): PCG-XSH-RR
+// 64/32, seeded as pcg32_srandom_r(seed, seq). Course tests never import
+// math/rand (D35).
+type pcg32 struct{ state, inc uint64 }
+
+func newPCG32(seed, seq uint64) *pcg32 {
+	p := &pcg32{inc: seq<<1 | 1}
+	p.next()
+	p.state += seed
+	p.next()
+	return p
+}
+
+func (p *pcg32) next() uint32 {
+	old := p.state
+	p.state = old*6364136223846793005 + p.inc
+	xs := uint32(((old >> 18) ^ old) >> 27)
+	rot := uint32(old >> 59)
+	return xs>>rot | xs<<((-rot)&31)
+}
+
+// below is the unbiased draw of spec/pcg32.md: uniform in [0, n).
+func (p *pcg32) below(n uint32) uint32 {
+	t := -n % n
+	for {
+		if r := p.next(); r >= t {
+			return r % n
+		}
+	}
+}
+
+// intN is uniform in [0, n).
+func (p *pcg32) intN(n int) int { return int(p.below(uint32(n))) }

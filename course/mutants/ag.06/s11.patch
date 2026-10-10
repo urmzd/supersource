@@ -1,6 +1,6 @@
 --- a/go/agent/rag/embed/embed.go
 +++ b/go/agent/rag/embed/embed.go
-@@ -148,11 +148,8 @@
+@@ -143,11 +143,8 @@
  		return nil, fmt.Errorf("embed: %d embeddings for %d inputs", len(out.Data), n)
  	}
  	vecs := make([][]float32, n)
@@ -13,4 +13,4 @@
 +		vecs[i] = d.Embedding
  	}
  	return vecs, nil
- 	// SOLUTION-END
+ }

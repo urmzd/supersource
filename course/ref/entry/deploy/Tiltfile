@@ -6,6 +6,7 @@
 # Paths are relative to this file (deploy/). The graph:
 #   gateway-compile (local go build) -> forge-gateway image (live update)
 #   forge-engine image (full rebuild) -> forge-engine -> forge-gateway
+#   forge-durable, forge-worker images (full rebuild) -> forge-durable -> forge-worker
 load('ext://restart_process', 'docker_build_with_restart')
 
 SYSTEM = 'forge'
@@ -32,6 +33,24 @@ docker_build(
     dockerfile='docker/engine.Dockerfile',
     only=['contracts', 'c', 'rust'],
     ignore=['rust/target', 'c/build'],
+)
+
+# -- durable and worker (dep.06): plain image rebuilds ---------------------------
+# The durable server and the worker change far less often than the gateway, so
+# they rebuild their dep.06 images from the repo root on a Go change.
+docker_build(
+    SYSTEM + '-durable',
+    '..',
+    dockerfile='docker/durable.Dockerfile',
+    only=['contracts', 'go'],
+    ignore=['go/bin'],
+)
+docker_build(
+    SYSTEM + '-worker',
+    '..',
+    dockerfile='docker/worker.Dockerfile',
+    only=['contracts', 'go', 'python'],
+    ignore=['go/bin', 'python/.venv'],
 )
 
 # -- gateway (Go): compile on the host, sync the binary, restart in place --------
@@ -67,6 +86,10 @@ else:
     k8s_yaml(helm('helm/%s-engine' % SYSTEM, name=SYSTEM + '-engine', namespace=SYSTEM))
     ENGINES = [SYSTEM + '-engine']
 k8s_yaml(helm('helm/%s-gateway' % SYSTEM, name=SYSTEM + '-gateway', namespace=SYSTEM))
+# The durable server and its workers (dep.06). KEDA is not part of the dev
+# loop, so the workers run at their fixed replicaCount instead.
+k8s_yaml(helm('helm/%s-durable' % SYSTEM, name=SYSTEM + '-durable', namespace=SYSTEM))
+k8s_yaml(helm('helm/%s-worker' % SYSTEM, name=SYSTEM + '-worker', namespace=SYSTEM, set=['autoscaling.enabled=false']))
 
 # -- the resource graph ---------------------------------------------------------
 # The gateway's readiness waits on the engines; starting it first only
@@ -75,5 +98,7 @@ for e in ENGINES:
     k8s_resource(e, labels=['serving'])
 k8s_resource(SYSTEM + '-gateway', resource_deps=ENGINES + ['gateway-compile'],
              port_forwards=['8080:8080'], labels=['serving'])
-# From dep.06: durable before the workers, e.g.
-#   k8s_resource(SYSTEM + '-worker', resource_deps=[SYSTEM + '-durable'])
+# The workers poll the durable server: started first, they only back off and
+# report not ready.
+k8s_resource(SYSTEM + '-durable', labels=['durable'])
+k8s_resource(SYSTEM + '-worker', resource_deps=[SYSTEM + '-durable'], labels=['durable'])

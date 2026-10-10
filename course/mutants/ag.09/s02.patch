@@ -1,8 +1,8 @@
 --- a/go/agent/eval/eval.go
 +++ b/go/agent/eval/eval.go
-@@ -151,11 +151,6 @@
+@@ -150,11 +150,6 @@
+ // name, or a non-finite value into a Score with Error set.
  func scoreOne(ctx context.Context, s Scorer, o Observation) (out Score) {
- 	// SOLUTION-BEGIN ag.09
  	name := s.Name()
 -	defer func() {
 -		if p := recover(); p != nil {

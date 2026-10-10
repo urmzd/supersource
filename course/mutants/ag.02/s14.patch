@@ -1,8 +1,8 @@
 --- a/go/agent/tool/registry.go
 +++ b/go/agent/tool/registry.go
-@@ -34,7 +34,7 @@
+@@ -33,7 +33,7 @@
+ // not "object" (the model always sends an object).
  func (r *Registry) Register(t Tool) error {
- 	// SOLUTION-BEGIN ag.02
  	d := t.Definition()
 -	if !NamePattern.MatchString(d.Name) {
 +	if d.Name == "" {

@@ -119,14 +119,20 @@ func obsOperation(route string) string {
 }
 
 // wrap puts the SERVER span, the metrics, and one log line around every API
-// request. The proxy library reads traceparent from the request headers, so
-// the span's own context is written back into them: the proxy's
-// gateway.proxy span then hangs under this SERVER span.
+// request. The proxy library reads traceparent from the request headers; when
+// the caller sent none, the span's own context is written into them, so the
+// proxy's gateway.proxy span hangs under this SERVER span in one trace.
 func (t *obsTelemetry) wrap(next http.Handler) http.Handler {
 	return otelx.Middleware(t.tp, func(r *http.Request) string { return obsRoute(r.URL.Path) },
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			otelx.Inject(r.Context(), r.Header)
+			// A caller's traceparent is kept: obs.00's contract makes the
+			// gateway.proxy span the direct child of the caller's span. Only
+			// an untraced request gets this span's context, so the proxy and
+			// the engine join this span's trace instead of starting another.
+			if r.Header.Get("traceparent") == "" {
+				otelx.Inject(r.Context(), r.Header)
+			}
 			route := obsRoute(r.URL.Path)
 			model := ""
 			if r.Body != nil && r.Method == http.MethodPost {

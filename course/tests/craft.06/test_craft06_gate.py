@@ -229,14 +229,22 @@ def test_perf_faults_trip_your_gate():
     # WHY: the grade. Each planted slowdown keeps the results correct and
     #      costs at least 2x on one kernel. Your gate must exit 1 on at least
     #      90% of them and always on s01, s02, s04, and s09; exit 2 (cannot
-    #      decide) is not a catch. A survivor prints its description.
+    #      decide) is not a catch. A fault your gate passes gets one rerun
+    #      (CI runners are shared); one it passes twice survives and prints
+    #      its description.
     # KIND: fault
     # CATCHES: s01, s02, s03, s04, s05, s06, s07, s08, s09, s10
     # CHAPTER: craft.06 section 5, Pitfalls
     rows = faults()
     killed, survivors = 0, []
     for mid, required, public in rows:
-        rc, out = gate(reference(), faulty(mid))
+        head = faulty(mid)
+        rc, out = gate(reference(), head)
+        if rc == 0:
+            # Noise only ever slows a run, so a stall on the base side can
+            # hide a real slowdown once; a gate that truly misses it misses
+            # it again. Exit 2 is deterministic and is not retried.
+            rc, out = gate(reference(), head)
         if rc == 1:
             killed += 1
         else:

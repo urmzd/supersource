@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: build every image from the repo root
         run: |
-          for part in engine gateway; do
+          for part in engine gateway durable worker agent; do
             docker build -f deploy/docker/$part.Dockerfile -t "$SYSTEM-$part:ci" .
             user="$(docker image inspect -f '{{.Config.User}}' "$SYSTEM-$part:ci")"
             case "${user%%:*}" in ''|0|root) echo "$part runs as root" >&2; exit 1 ;; esac

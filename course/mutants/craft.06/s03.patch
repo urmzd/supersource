@@ -1,7 +1,7 @@
 --- a/primers/craft.06/kernels.c
 +++ b/primers/craft.06/kernels.c
-@@ -10,6 +10,12 @@
- static int min_i(int a, int b) { return a < b ? a : b; }
+@@ -16,6 +16,12 @@
+ }
  
  void kata_matmul(const float *A, const float *B, float *C, int n) {
 +    static int again = 0;

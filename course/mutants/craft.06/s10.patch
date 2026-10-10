@@ -8,7 +8,7 @@
  
  #include "kernels.h"
  
-@@ -46,13 +48,17 @@
+@@ -55,13 +57,17 @@
  }
  
  int kata_count_below(const float *sorted, int n, float t) {

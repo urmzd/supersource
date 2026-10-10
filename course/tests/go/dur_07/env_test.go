@@ -64,6 +64,7 @@ type env struct {
 	tsDone  chan struct{}
 	firedMu sync.Mutex
 	fired   []server.TimerKey // every FireTimer call, across restarts
+	tclk    *armClock         // the timer service's view of clk
 }
 
 func newEnv(t *testing.T) *env {
@@ -106,7 +107,8 @@ func (e *env) start() *env {
 	if e.q, err = queue.Open(bg, queue.Options{Log: e.log, Clock: clk}); err != nil {
 		t.Fatalf("queue.Open: %v", err)
 	}
-	var tclk timer.Clock = e.clk
+	e.tclk = &armClock{Fake: e.clk, armed: map[int64]bool{}}
+	var tclk timer.Clock = e.tclk
 	if e.real {
 		tclk = wallClock{}
 	}
@@ -180,6 +182,40 @@ func (e *env) crash() {
 }
 
 func (e *env) restart() *env { e.crash(); return e.start() }
+
+// armClock is the timer service's view of the fake clock. It records every
+// deadline the service waits on, so a test advances time only once the
+// service waits on the deadline it expects. BlockUntil cannot tell: the shared
+// fake clock also holds the waiters of crashed instances and of finished
+// polls, and a service that read Now just before an Advance and calls After
+// just after it would wait d past the new time.
+type armClock struct {
+	*clock.Fake
+	mu    sync.Mutex
+	armed map[int64]bool // absolute deadlines, UnixNano
+}
+
+func (c *armClock) After(d time.Duration) <-chan time.Time {
+	at := c.Fake.Now().Add(d)
+	ch := c.Fake.After(d)
+	c.mu.Lock()
+	c.armed[at.UnixNano()] = true
+	c.mu.Unlock()
+	return ch
+}
+
+func (c *armClock) has(at time.Time) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.armed[at.UnixNano()]
+}
+
+// waitArmed blocks until the current timer service waits on the clock for
+// exactly at.
+func (e *env) waitArmed(at time.Time) {
+	e.t.Helper()
+	e.eventually(fmt.Sprintf("the timer service to wait for +%v", at.Sub(t0)), func() bool { return e.tclk.has(at) })
+}
 
 type wallClock struct{}
 

@@ -1,6 +1,6 @@
 --- a/primers/craft.06/kernels.c
 +++ b/primers/craft.06/kernels.c
-@@ -46,6 +46,9 @@
+@@ -55,6 +55,9 @@
  }
  
  int kata_count_below(const float *sorted, int n, float t) {

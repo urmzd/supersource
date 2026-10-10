@@ -1,7 +1,7 @@
 --- a/python/tinyllm/train/loop.py
 +++ b/python/tinyllm/train/loop.py
-@@ -82,7 +82,6 @@
-     clip: Optional[float] = None,
+@@ -84,7 +84,6 @@
+     ema: Optional[EMA] = None,
  ) -> dict[str, float]:
      # Zero first: gradients accumulate across backward calls (L0.1).
 -    opt.zero_grad()

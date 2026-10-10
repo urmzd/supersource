@@ -1,6 +1,6 @@
 --- a/primers/craft.06/kernels.c
 +++ b/primers/craft.06/kernels.c
-@@ -31,6 +31,12 @@
+@@ -40,6 +40,12 @@
  }
  
  void kata_rmsnorm(const float *x, const float *w, float *y, int rows, int d, float eps) {

@@ -1,6 +1,6 @@
 --- a/primers/craft.06/kernels.c
 +++ b/primers/craft.06/kernels.c
-@@ -41,7 +41,12 @@
+@@ -50,7 +50,12 @@
          for (; i < d; i++) s[0] += xr[i] * xr[i];
          float ss = ((s[0] + s[1]) + (s[2] + s[3])) + ((s[4] + s[5]) + (s[6] + s[7]));
          float inv = 1.0f / sqrtf(ss / (float)d + eps);

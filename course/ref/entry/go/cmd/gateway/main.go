@@ -7,7 +7,9 @@
 //
 // The key is read from the environment variable named by --api-key-env
 // (default TL_API_KEY, the `[endpoints].api_key_env` default). Spans go to
-// OTEL_EXPORTER_OTLP_ENDPOINT through proxy.Config.OnSpan (otlp.go, obs.00).
+// OTEL_EXPORTER_OTLP_ENDPOINT through proxy.Config.OnSpan (otlp.go, obs.00);
+// telemetry.go adds the SERVER span, /metrics on the health port, and JSON
+// logs with trace_id and span_id (obs.02).
 package main
 
 import (
@@ -40,15 +42,27 @@ func main() {
 	if key == "" {
 		log.Printf("gateway: %s is empty, so every request is rejected with 401", *keyEnv)
 	}
+	// obs.02: SERVER span, metrics.yaml instruments on /metrics, JSON logs
+	// with trace_id and span_id. Spans leave through a batch processor, so a
+	// hanging collector never blocks a request.
+	tel, err := newObsTelemetry()
+	if err != nil {
+		log.Fatalf("gateway: telemetry: %v", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		tel.shutdown(ctx)
+	}()
 
 	api := &http.Server{
 		Addr:              fmt.Sprintf(":%d", *port),
-		Handler:           proxy.NewProxy(proxy.Config{Upstream: *upstream, APIKey: key, OnSpan: newSpanExporter()}),
+		Handler:           tel.wrap(proxy.NewProxy(proxy.Config{Upstream: *upstream, APIKey: key, OnSpan: newSpanExporter()})),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	health := &http.Server{
 		Addr:              fmt.Sprintf(":%d", *healthPort),
-		Handler:           healthMux(strings.TrimRight(*upstream, "/")),
+		Handler:           tel.withMetrics(healthMux(strings.TrimRight(*upstream, "/")), *upstream),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

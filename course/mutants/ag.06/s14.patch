@@ -1,8 +1,8 @@
 --- a/go/agent/rag/source/crawler.go
 +++ b/go/agent/rag/source/crawler.go
-@@ -65,7 +65,7 @@
+@@ -64,7 +64,7 @@
+ // addresses are checked as IPv4.
  func PublicAddr(a netip.Addr) bool {
- 	// SOLUTION-BEGIN ag.06
  	a = a.Unmap()
 -	return a.IsValid() && !a.IsLoopback() && !a.IsPrivate() && !a.IsLinkLocalUnicast() &&
 +	return a.IsValid() && !a.IsLoopback() && !a.IsPrivate() &&

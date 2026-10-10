@@ -1,8 +1,9 @@
 --- a/go/gateway/policy/policy.go
 +++ b/go/gateway/policy/policy.go
-@@ -340,19 +340,4 @@
+@@ -326,21 +326,6 @@
+ )
+ 
  func Redact(text string) string {
- 	// SOLUTION-BEGIN gw.08
 -	text = emailPattern.ReplaceAllString(text, "<EMAIL>")
 -	text = phonePattern.ReplaceAllString(text, "$1<PHONE>")
 -	text = cardPattern.ReplaceAllStringFunc(text, func(candidate string) string {
@@ -19,4 +20,5 @@
 -	})
 -	text = keyPattern.ReplaceAllString(text, "<KEY>")
  	return text
- 	// SOLUTION-END
+ }
+ 

@@ -1,7 +1,7 @@
 --- a/go/agent/gate/gate.go
 +++ b/go/agent/gate/gate.go
-@@ -185,7 +185,8 @@
- 	// SOLUTION-BEGIN ag.04
+@@ -176,7 +176,8 @@
+ func Marker(c types.ToolCall) string {
  	canon := []byte("{}")
  	if args, err := decodeArgs(c.Args); err == nil {
 -		canon, _ = json.Marshal(args) // encoding/json sorts map keys

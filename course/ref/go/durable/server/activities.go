@@ -22,7 +22,10 @@ import (
 
 // RecordHeartbeat extends a live attempt's lease by its heartbeat timeout and
 // stores details, which a later attempt receives as last_heartbeat_details.
-// A stale lease token is FAILED_PRECONDITION.
+// A stale lease token is FAILED_PRECONDITION. cancel_requested is true once
+// this activity was asked to stop (ActivityTaskCancelRequested, dur.08), not
+// merely because its run has a cancel request: compensations scheduled after
+// the cancel must run to the end.
 func (s *Server) RecordHeartbeat(ctx context.Context, req *durablev1.HeartbeatRequest) (*durablev1.HeartbeatResponse, error) {
 	// SOLUTION-BEGIN dur.05
 	tok, err := decodeToken(req.GetTaskToken())
@@ -37,7 +40,7 @@ func (s *Server) RecordHeartbeat(ctx context.Context, req *durablev1.HeartbeatRe
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	r, a, err := s.pendingActivity(tok)
+	_, a, err := s.pendingActivity(tok)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +53,7 @@ func (s *Server) RecordHeartbeat(ctx context.Context, req *durablev1.HeartbeatRe
 	}
 	a.lastHeartbeat, a.lastHeartbeatMs = req.GetDetails(), s.o.Clock.Now().UnixMilli()
 	return &durablev1.HeartbeatResponse{
-		CancelRequested: a.cancelRequested || r.cancelRequested,
+		CancelRequested: a.cancelRequested,
 		DeadlineUnixMs:  l.Deadline.UnixMilli(),
 	}, nil
 	// SOLUTION-END

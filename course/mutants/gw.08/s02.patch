@@ -1,10 +1,12 @@
 --- a/go/gateway/policy/policy.go
 +++ b/go/gateway/policy/policy.go
-@@ -193,5 +193,6 @@
+@@ -191,7 +191,8 @@
+ }
+ 
  func (p *Evaluator) Check(ctx context.Context, principal auth.Principal, req *route.InferenceRequest, maxTokens int, text, requestID string) (Decision, error) {
- 	// SOLUTION-BEGIN gw.08
 -	for _, rule := range p.Document.Rules {
 +	for i := len(p.Document.Rules) - 1; i >= 0; i-- {
 +		rule := p.Document.Rules[i]
  		if !matches(rule.Match, principal, req, maxTokens) {
  			continue
+ 		}

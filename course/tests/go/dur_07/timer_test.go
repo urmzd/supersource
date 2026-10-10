@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -147,14 +146,14 @@ func TestHeapMatchesSortedModel(t *testing.T) {
 	// CHAPTER: dur.07 section 2, the heap
 	seed := uint64(1)
 	for round := 0; round < 20; round++ {
-		rng := rand.New(rand.NewPCG(seed, uint64(round)))
+		rng := newPCG32(seed, uint64(round))
 		var h timer.Heap[int]
 		var model []*timer.Entry[int]
 		next := 0
 		for op := 0; op < 300; op++ {
-			switch r := rng.IntN(10); {
+			switch r := rng.intN(10); {
 			case r < 5 || len(model) == 0:
-				e := &timer.Entry[int]{Key: next, At: at(rng.IntN(20))}
+				e := &timer.Entry[int]{Key: next, At: at(rng.intN(20))}
 				next++
 				h.Push(e)
 				model = append(model, e)
@@ -171,7 +170,7 @@ func TestHeapMatchesSortedModel(t *testing.T) {
 					}
 				}
 			default:
-				i := rng.IntN(len(model))
+				i := rng.intN(len(model))
 				if h.Remove(model[i]) != model[i] {
 					t.Fatalf("round %d op %d: Remove of a member failed", round, op)
 				}
@@ -360,7 +359,7 @@ func TestStartTimerHand(t *testing.T) {
 	if ts == nil || ts.TimerId != "1" || ts.DurationMs != 30000 || ts.FireAtUnixMs != t0.Add(30*time.Second).UnixMilli() || ts.WorkflowTaskCompletedEventId != 4 {
 		t.Fatalf("event 5: %v", h[4])
 	}
-	waitTimer(t, e.clk)
+	e.waitArmed(t0.Add(30 * time.Second))
 	e.clk.Advance(30*time.Second - time.Millisecond)
 	if n := len(e.firedKeys()); n != 0 {
 		t.Fatalf("fired %d timers before the deadline", n)
@@ -396,7 +395,7 @@ func TestTimerCommandsValidated(t *testing.T) {
 	if err := e.complete(wt, startTimerCmd("1", 10*time.Second), startTimerCmd("2", 60*time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	waitTimer(t, e.clk)
+	e.waitArmed(t0.Add(10 * time.Second))
 	e.clk.Advance(10 * time.Second) // timer 1 fires and wakes the workflow
 	e.eventually("timer 1", func() bool { return strings.Contains(kinds(e.mustHistory("t")), "timer_fired") })
 	wt2 := e.pollWT()
@@ -447,7 +446,7 @@ func TestFireTimerRetriesWhenAppendFails(t *testing.T) {
 	e.startWF("lost", "SleepDemo", "")
 	e.complete(e.pollWT(), startTimerCmd("1", time.Minute))
 	e.log.Close() // every append fails from now on
-	waitTimer(t, e.clk)
+	e.waitArmed(t0.Add(time.Minute))
 	e.clk.Advance(time.Minute)
 	e.eventually("the fire attempt", func() bool { return len(e.firedKeys()) == 1 })
 	e.eventually("the timer to be armed again", func() bool { return e.ts.Len() == 1 })
@@ -473,14 +472,14 @@ func TestRestartWithPendingTimers(t *testing.T) {
 	if e.ts.Len() != 3 {
 		t.Fatalf("after restart %d timers armed; want 3", e.ts.Len())
 	}
-	waitTimer(t, e.clk)
+	e.waitArmed(t0.Add(10 * time.Second))
 	e.clk.Advance(15 * time.Second)
 	e.eventually("the 10 s timer", func() bool { return len(e.firedKeys()) == 1 })
 	e.restart()
 	if e.ts.Len() != 2 {
 		t.Fatalf("after the second restart %d timers armed; want 2 (the fired one stays fired)", e.ts.Len())
 	}
-	waitTimer(t, e.clk)
+	e.waitArmed(t0.Add(20 * time.Second))
 	e.clk.Advance(20 * time.Second)
 	e.eventually("the rest", func() bool { return len(e.firedKeys()) == 3 })
 	var order []string
@@ -531,7 +530,7 @@ func TestSleepWorkflowSurvivesRestart(t *testing.T) {
 	e.startWF("demo", "SleepDemo", "30000")
 	e.eventually("the timer to start", func() bool { return strings.Contains(kinds(e.mustHistory("demo")), "timer_started") })
 	e.restart()
-	waitTimer(t, e.clk)
+	e.waitArmed(t0.Add(30 * time.Second))
 	e.clk.Advance(30 * time.Second)
 	e.eventually("the run to complete", func() bool {
 		inf, err := e.wf.DescribeWorkflow(bg, &durablev1.DescribeWorkflowRequest{WorkflowId: "demo"})
@@ -547,3 +546,39 @@ func TestSleepWorkflowSurvivesRestart(t *testing.T) {
 		t.Fatalf("woke at %v, before the deadline", time.UnixMilli(woke).Sub(t0))
 	}
 }
+
+// -- frozen PCG32 ---------------------------------------------------------------------
+
+// pcg32 transcribes course/tests/_lib/pcg32.py (spec/pcg32.md): PCG-XSH-RR
+// 64/32, seeded as pcg32_srandom_r(seed, seq). Course tests never import
+// math/rand (D35).
+type pcg32 struct{ state, inc uint64 }
+
+func newPCG32(seed, seq uint64) *pcg32 {
+	p := &pcg32{inc: seq<<1 | 1}
+	p.next()
+	p.state += seed
+	p.next()
+	return p
+}
+
+func (p *pcg32) next() uint32 {
+	old := p.state
+	p.state = old*6364136223846793005 + p.inc
+	xs := uint32(((old >> 18) ^ old) >> 27)
+	rot := uint32(old >> 59)
+	return xs>>rot | xs<<((-rot)&31)
+}
+
+// below is the unbiased draw of spec/pcg32.md: uniform in [0, n).
+func (p *pcg32) below(n uint32) uint32 {
+	t := -n % n
+	for {
+		if r := p.next(); r >= t {
+			return r % n
+		}
+	}
+}
+
+// intN is uniform in [0, n).
+func (p *pcg32) intN(n int) int { return int(p.below(uint32(n))) }

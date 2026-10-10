@@ -1,6 +1,6 @@
 --- a/go/agent/rag/assemble/tool.go
 +++ b/go/agent/rag/assemble/tool.go
-@@ -79,7 +79,7 @@
+@@ -78,7 +78,7 @@
  		return "", fmt.Errorf("search_docs: %w", err)
  	}
  	if out.Text == "" {
@@ -8,4 +8,4 @@
 +		return "", fmt.Errorf("search_docs: %s", NoResults)
  	}
  	return out.Text, nil
- 	// SOLUTION-END
+ }

@@ -1,6 +1,6 @@
 --- a/python/tinyllm/train/loop.py
 +++ b/python/tinyllm/train/loop.py
-@@ -91,7 +91,7 @@
+@@ -93,7 +93,7 @@
      loss.backward()
      stats = {"loss": value}
      if clip is not None:
@@ -8,4 +8,4 @@
 +        stats["grad_norm"] = float(np.sqrt(sum(float((p.grad.astype(np.float64) ** 2).sum()) for p in model.parameters() if p.grad is not None)))
      opt.step()
      stats.update(extra)
-     return stats
+     if ema is not None:

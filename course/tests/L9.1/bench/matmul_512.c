@@ -4,10 +4,10 @@
  *   speedup_vs_naive   the budget in course/modules/L9.1.toml (>= 10)
  *   gflops, naive_gflops
  * Both run at -O2 on the same float32 inputs. */
+#include "ss_bench.h" /* first: it sets the POSIX feature macros clock_gettime needs */
 #include <stdlib.h>
 
 #include "tinyllm.h"
-#include "ss_bench.h"
 
 enum { S = 512 };
 static float A[S * S], B[S * S], C[S * S];

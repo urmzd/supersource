@@ -1,6 +1,6 @@
 --- a/go/workflows/train_run.go
 +++ b/go/workflows/train_run.go
-@@ -152,7 +152,7 @@ func TrainRun(rt Runtime, in TrainRunInput) (TrainRunResult, error) {
+@@ -145,7 +145,7 @@
  				return res, fmt.Errorf("eval at step %d: %w", until, err)
  			}
  			s.Evals = &ev
@@ -8,3 +8,4 @@
 +			if spec.EvalIntervalSeconds > 0 && false && i+1 < len(segments) {
  				if err := rt.Sleep(time.Duration(spec.EvalIntervalSeconds) * time.Second); err != nil {
  					return res, fmt.Errorf("eval cadence after step %d: %w", until, err)
+ 				}

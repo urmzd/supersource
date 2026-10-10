@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"strings"
 	"testing"
 	"time"
@@ -45,13 +44,17 @@ func (e *env) pollAT() *durablev1.ActivityTask {
 }
 
 // noActivityTask: nothing is pollable now (the fake clock does not move, so
-// a waiting poll is cut by a 50 ms real-time deadline).
+// a waiting poll is cut by a 50 ms real-time deadline). The client gives up
+// at the deadline, but the server's handler sees its cancel a moment later;
+// a clock Advance in that window would wake the abandoned poll, which would
+// lease the task for a caller that is gone. So wait for the handler to end.
 func (e *env) noActivityTask() {
 	e.t.Helper()
 	at, err := e.tasks.PollActivityTask(guard(e.t, 50*time.Millisecond), &durablev1.PollRequest{TaskQueue: "default", Identity: "wk"})
 	if err == nil && len(at.TaskToken) > 0 {
 		e.t.Fatalf("an activity task was pollable: attempt %d", at.Attempt)
 	}
+	eventually(e.t, "the abandoned poll to end", func() bool { return e.polls.Load() == 0 })
 }
 
 func (e *env) failAT(at *durablev1.ActivityTask, f *durablev1.Failure) error {
@@ -114,12 +117,12 @@ func TestJitterBoundsAndMean(t *testing.T) {
 	// KIND: statistical
 	// CATCHES: s04
 	// CHAPTER: dur.05 section 2, jitter
-	rng := rand.New(rand.NewPCG(7, 7))
+	rng := newPCG32(7, 7)
 	d := 10 * time.Second
 	var sum float64
 	const n = 20000
 	for i := 0; i < n; i++ {
-		u := rng.Float64()
+		u := rng.unit()
 		j := activity.Jitter(d, u)
 		if j < 0 || j >= d {
 			t.Fatalf("Jitter(%v, %.4f) = %v, outside [0, d)", d, u, j)
@@ -342,3 +345,39 @@ func TestStaleLeaseHeartbeatAndFailRefused(t *testing.T) {
 		t.Fatalf("stale calls appended events: %q", kinds(h))
 	}
 }
+
+// -- frozen PCG32 ---------------------------------------------------------------------
+
+// pcg32 transcribes course/tests/_lib/pcg32.py (spec/pcg32.md): PCG-XSH-RR
+// 64/32, seeded as pcg32_srandom_r(seed, seq). Course tests never import
+// math/rand (D35).
+type pcg32 struct{ state, inc uint64 }
+
+func newPCG32(seed, seq uint64) *pcg32 {
+	p := &pcg32{inc: seq<<1 | 1}
+	p.next()
+	p.state += seed
+	p.next()
+	return p
+}
+
+func (p *pcg32) next() uint32 {
+	old := p.state
+	p.state = old*6364136223846793005 + p.inc
+	xs := uint32(((old >> 18) ^ old) >> 27)
+	rot := uint32(old >> 59)
+	return xs>>rot | xs<<((-rot)&31)
+}
+
+// below is the unbiased draw of spec/pcg32.md: uniform in [0, n).
+func (p *pcg32) below(n uint32) uint32 {
+	t := -n % n
+	for {
+		if r := p.next(); r >= t {
+			return r % n
+		}
+	}
+}
+
+// unit is uniform in [0, 1) on a 2^-32 grid.
+func (p *pcg32) unit() float64 { return float64(p.next()) / (1 << 32) }

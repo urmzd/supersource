@@ -1,7 +1,7 @@
 --- a/go/agent/gate/gate.go
 +++ b/go/agent/gate/gate.go
-@@ -88,7 +88,7 @@
- 	// SOLUTION-BEGIN ag.04
+@@ -85,7 +85,7 @@
+ func (g *PolicyGate) Check(ctx context.Context, c types.ToolCall) (types.Verdict, error) {
  	class, ok := g.class[c.Name]
  	if !ok {
 -		return types.Verdict{Kind: types.Deny, Reason: fmt.Sprintf("tool %q is not in the policy", c.Name)}, nil

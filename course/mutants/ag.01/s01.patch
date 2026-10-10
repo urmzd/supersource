@@ -1,6 +1,6 @@
 --- a/go/agent/provider/sse.go
 +++ b/go/agent/provider/sse.go
-@@ -67,7 +67,7 @@
+@@ -66,7 +66,7 @@
  		}
  		if v, ok := bytes.CutPrefix(line, []byte("data:")); ok {
  			v, _ = bytes.CutPrefix(v, []byte(" "))
@@ -8,4 +8,4 @@
 +			data = [][]byte{append([]byte(nil), v...)}
  		}
  	}
- 	// SOLUTION-END
+ }

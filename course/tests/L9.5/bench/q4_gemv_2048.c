@@ -4,10 +4,10 @@
  * both serial. Reports
  *   q4_speedup_vs_f32   the budget in course/modules/L9.5.toml (>= 2)
  *   q8_speedup_vs_f32, f32_ms, q4_ms, q8_ms */
+#include "ss_bench.h" /* first: it sets the POSIX feature macros clock_gettime needs */
 #include <stdlib.h>
 
 #include "tinyllm.h"
-#include "ss_bench.h"
 
 enum { N = 2048, K = 2048, G = 32 };
 static float x[K], w[N * K], y[N];

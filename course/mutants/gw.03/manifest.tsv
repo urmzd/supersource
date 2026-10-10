@@ -5,7 +5,7 @@ s03	go/gateway/limit/limit.go	semantic	pitfall-3	229	y	(hidden until pass)	Settl
 s04	go/gateway/limit/limit.go	semantic	pitfall-3	229	y	(hidden until pass)	an overrun is never charged
 s05	go/gateway/limit/limit.go	semantic	pitfall-3	234	y	(hidden until pass)	Settle and Cancel both take effect
 s06	go/gateway/limit/limit.go	semantic	pitfall-2	353	y	(hidden until pass)	Retry-After rounded down
-s07	go/gateway/limit/limit.go	semantic	pitfall-4	174	y	(hidden until pass)	a zero limit means a zero budget
+s07	go/gateway/limit/limit.go	semantic	pitfall-4	180	y	(hidden until pass)	a zero limit means a zero budget
 s08	go/gateway/limit/limit.go	semantic	pitfall-6	169	y	(hidden until pass)	Reserve without the lock
 s09	go/gateway/limit/limit.go	semantic	pitfall-7	398	y	(hidden until pass)	no x-ratelimit headers on an admitted request
 s10	go/gateway/limit/limit.go	semantic	pitfall-4	415	y	(hidden until pass)	a 5xx without usage is settled, not cancelled
