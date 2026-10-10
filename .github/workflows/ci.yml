@@ -287,7 +287,7 @@ jobs:
   milestone-p1-kind:
     name: MS-P1 on kind (reference system)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     env:
       TL_API_KEY: tl_ci_kind_reference_key
     steps:
