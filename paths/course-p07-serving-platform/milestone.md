@@ -6,9 +6,9 @@ The path includes the milestone stages below. Run each component milestone after
 
 | Gate | Specification | What it covers |
 |---|---|---|
-| `MS-L10` | [`MS-L10.toml`](../../course/milestones/MS-L10.toml) | Your inference engine: conformant, concurrent, observable, speculative, tool-calling. Requires `L10.1`, `L10.2`, `L10.3`, `L10.4`, `L10.5`, `L10.6`, `L10.7`, `L10.8`, `L10.9`, `load.01`, `load.02`. |
+| `MS-L10` | [`MS-L10.toml`](../../course/milestones/MS-L10.toml) | Your inference engine: conformant, concurrent, observable, speculative, tool-calling. Requires `L10.1`, `L10.2`, `L10.3`, `L10.4`, `L10.5`, `L10.6`, `L10.7`, `L10.8`, `L10.9`, `load.01`. |
 | `MS-gateway` | [`MS-gateway.toml`](../../course/milestones/MS-gateway.toml) | Your gateway passes conformance and its usage ledger reconciles with the engine. Requires `lang.11`, `ds.09`, `gw.01`, `gw.02`, `gw.03`, `gw.04`, `gw.05`, `gw.06`, `gw.07`, `craft.20`. |
-| `MS-prod` | [`MS-prod.toml`](../../course/milestones/MS-prod.toml) | Production on kind: your gateway, disaggregated engines, and observability hold the SLOs. Requires `load.01`, `load.02`, `dep.01`, `dep.02`, `dep.03`, `dep.04`, `dep.05`, `obs.01`, `obs.02`, `obs.03`, `obs.04`, `ops.01`, `craft.08`, `review.01`. |
+| `MS-prod` | [`MS-prod.toml`](../../course/milestones/MS-prod.toml) | Production on kind: your gateway, disaggregated engines, and observability hold the SLOs. Requires `load.01`, `dep.01`, `dep.02`, `dep.03`, `dep.04`, `dep.05`, `obs.01`, `obs.02`, `obs.03`, `obs.04`, `ops.01`, `craft.08`, `review.01`. |
 | `MS-P7` | [`MS-P7.toml`](../../course/milestones/MS-P7.toml) | Serving platform: inference engine, gateway, and production operations. Requires `lang.09`, `lang.10`. |
 
 
@@ -42,9 +42,8 @@ Your system.toml must declare (spec/cli-roles.md, DESIGN 2.16):
                         --prompt <text> --max-tokens <n> --mode burst
                         --burst <n> --duration <d> --out <report.json>:
                         writes the report (formats/loadgen-report.schema.json)
-                        to --out and prints it as the final stdout line;
-                        {loadgen} compare <base> <head> --metric <m>
-                        --max-regress <pct> exits 1 on a regression (load.02)
+                        to --out and prints it as the final stdout line
+                        (`{loadgen} compare` belongs to the optional load.02)
 
 Covered elsewhere, so not repeated here: Rust and Python samplers agree on
 fixture logits (L10.1's course tests, parity/sampler); the engine's greedy

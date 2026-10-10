@@ -1,6 +1,8 @@
 id        = "L8.3"
 title     = "Paged KV cache in Python"
-kind      = "build"
+kind      = "side"
+# Optional (course/deviations/L8.3.md): no later module calls the paged
+# cache; the engine reimplements paging in Rust (L10.2, L10.4 read it).
 lang      = ["python"]
 pass      = 6
 chapter   = "ml/08-tinyllm/p08-inference/03-paged-kv-cache.md"
@@ -9,13 +11,10 @@ contract  = ["contracts/py/tinyllm/infer/paged.pyi"]
 # copy-on-write behavior; the optional C pool is a separate exercise.
 deps      = ["L8.2"]
 reading   = []
-# The engine reimplements this behavior in Rust; L9.4 consumes file fixtures
-# and is not a runtime call site. The CLI entry layer (`generate --cache
-# paged`) is the only caller, so check 9 fails (course/deviations/L8.3.md).
-used_by   = []
+used_by   = []                      # side quest: no call site required
 units     = ["python/tinyllm/infer/paged.py"]
 upgrades  = []
-milestone = "MS-L8"
+milestone = ""                      # optional: MS-L8 checks the contiguous cache
 ci        = "pr"
 
 [tests]

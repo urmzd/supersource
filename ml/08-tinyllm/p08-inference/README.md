@@ -33,7 +33,7 @@ Generating text fast and exactly. The sampler and logit processors in the course
 |---|---|---|---|---|
 | 1 | `L8.1` | [Sampling and logit processors](01-sampling-and-logit-processors.md) | build | 6 |
 | 2 | `L8.2` | [KV cache, incremental decode, incremental UTF-8 detokenizer, generate](02-kv-cache-and-generate.md) | build | 6 |
-| 3 | `L8.3` | [Paged KV cache in Python](03-paged-kv-cache.md) | build | 6 |
+| 3 | `L8.3` | [Paged KV cache in Python](03-paged-kv-cache.md) | side | 6 |
 | 4 | `L8.4` | [Radix prefix cache (block-granular, LRU leaf eviction, locks)](04-radix-prefix-cache.md) | build | 6 |
 | 5 | `L8.5` | [Quantization: int8, int4 group (packed), fp8, KV quant](05-quantization.md) | build | 6 |
 | 6 | `L8.6` | [Speculative decoding: n-gram, prompt-lookup, and model drafts](06-speculative-decoding.md) | build | 6 |

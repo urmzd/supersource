@@ -6,10 +6,10 @@
 | | |
 |---|---|
 | **Module** | `dep.05` · practice · ops · Pass 7 · 3 to 5 h |
-| **You build** | `.github/workflows/platform.yml`: jobs `lint`, `unit`, `images`, `kind-e2e`, and `perf-gate`, next to `craft.01`'s `ci.yml` (which keeps commit-lint, native-tests, and course-check); `craft.11` adds `release.yml` |
+| **You build** | `.github/workflows/platform.yml`: jobs `lint`, `unit`, `images`, and `kind-e2e` (plus `perf-gate` if you did the optional `load.02`), next to `craft.01`'s `ci.yml` (which keeps commit-lint, native-tests, and course-check); `craft.11` adds `release.yml` |
 | **Contract** | [GitHub Actions workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions); the CI recipe of DESIGN 5.13 (supersource at `contracts/VERSION`) |
 | **Tests** | `course/tests/dep.05/` (`check` runs `artifacts.py`, which reads the workflow statically; section 4) |
-| **Needs** | `craft.01` (the gate this extends), `dep.04` (`tilt ci` is the kind job); `load.02`'s `compare` is the perf gate |
+| **Needs** | `craft.01` (the gate this extends), `dep.04` (`tilt ci` is the kind job) · optional: `load.02`'s `compare` is the perf gate |
 | **Used by** | MS-prod and every later milestone run against what this pipeline keeps green; `ops.06` (dependency upgrade) and `ops.07` (perf regression) are graded by it going red |
 | **Milestone** | MS-prod |
 | **Optional depth** | [GitHub Actions security hardening](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions) (free), *Continuous Delivery* (Humble and Farley), ch. 5 |
@@ -19,7 +19,7 @@
 - Each job answers one question and has a fixed id, so branch protection can require it by name: does it lint, do the unit tests pass, do the images build, does the system deploy and pass its smoke milestone, is main slower than before.
 - Pin what runs: actions by release tag or commit sha, downloaded tools by release URL; `permissions: contents: read` by default.
 - The kind job builds the cluster from **your** `deploy/kind/cluster.yaml` and deploys with **your** `tilt ci`: CI and your laptop run the same loop.
-- The perf gate runs **on main only**: each green run uploads its load report, the next run compares against it with `load.02`'s statistics, and the commit that regressed is the one that turns red.
+- The perf gate (optional, with `load.02`) runs **on main only**: each green run uploads its load report, the next run compares against it with `load.02`'s statistics, and the commit that regressed is the one that turns red.
 - Every job has a timeout; a hung cluster costs minutes, not six hours.
 
 ## How to work this chapter
@@ -69,7 +69,7 @@ A workflow is code that runs with write access to your repository unless you say
 
 ### 2.4 A perf gate needs a baseline
 
-A load report is noisy: two identical runs differ by a few percent. `load.02`'s `compare` decides whether a difference is a regression with a permutation test and a threshold (`--max-regress 5%`). The baseline must be a run of the same code path on the same kind of machine: the report of the last green run on main. So the job runs only on pushes to main, downloads that report (`gh run download`), compares, and uploads its own report for the next run. On a pull request there is no stable baseline, and a gate that compares against a different runner type blocks good changes at random.
+This job is optional: it needs `load.02`, an optional module, and the check reads it only when your workflow has it. A load report is noisy: two identical runs differ by a few percent. `load.02`'s `compare` decides whether a difference is a regression with a permutation test and a threshold (`--max-regress 5%`). The baseline must be a run of the same code path on the same kind of machine: the report of the last green run on main. So the job runs only on pushes to main, downloads that report (`gh run download`), compares, and uploads its own report for the next run. On a pull request there is no stable baseline, and a gate that compares against a different runner type blocks good changes at random.
 
 ## 3. Worked example by hand
 
@@ -137,7 +137,7 @@ GitHub Actions cannot run inside `ss check`, so the check reads the workflow; MS
 | `test_unit_runs_every_suite` | unit | pytest, `go test -race`, cargo test, `make -C c` | your own tests on every push |
 | `test_images_job_builds_every_dockerfile` | conformance | each `deploy/docker/*.Dockerfile` is built | a broken image fails its own pull request |
 | `test_kind_e2e_job` | conformance | kind from `deploy/kind/cluster.yaml`, `tilt ci`, `ss milestone MS-prod --smoke` at `contracts/VERSION`, `needs: images` | the deployed system on every pull request |
-| `test_perf_gate_runs_on_main_against_the_last_report` | conformance | `if:` restricted to main; `compare ... --metric ... --max-regress ...`; the report uploaded | regressions fail the commit that made them |
+| `test_perf_gate_runs_on_main_against_the_last_report` | conformance | if the job exists: `if:` restricted to main; `compare ... --metric ... --max-regress ...`; the report uploaded | regressions fail the commit that made them |
 | `test_least_privilege_and_no_echoed_secrets` | boundary | top-level `permissions:`; no step echoes a secret | a compromised step can do less |
 
 ## 5. Pitfalls

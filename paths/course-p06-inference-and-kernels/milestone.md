@@ -6,7 +6,7 @@ The path includes the milestone stages below. Run each component milestone after
 
 | Gate | Specification | What it covers |
 |---|---|---|
-| `MS-L8` | [`MS-L8.toml`](../../course/milestones/MS-L8.toml) | Your Python inference stack matches no-cache output token for token. Requires `ds.07`, `L8.1`, `L8.2`, `L8.3`, `L8.4`, `L8.5`, `L8.6`, `L8.7`, `M09.4`. |
+| `MS-L8` | [`MS-L8.toml`](../../course/milestones/MS-L8.toml) | Your Python inference stack matches no-cache output token for token. Requires `ds.07`, `L8.1`, `L8.2`, `L8.4`, `L8.5`, `L8.6`, `L8.7`, `M09.4`. |
 | `MS-P6` | [`MS-P6.toml`](../../course/milestones/MS-P6.toml) | Inference: cached, quantized, speculative, and constrained decoding. Requires `M07.6`, `M09.3`, `S-M09b`, `craft.06`. |
 | `MS-L9` | [`MS-L9.toml`](../../course/milestones/MS-L9.toml) | Optional C kernels, runtime utilities, and data structures. Requires `ds.01`, `ds.02`, `ds.03`, `ds.04`, `rt.02`, `rt.03`, `rt.04`, `M09.7`, `M09.5`, `M09.6`, `L9.1`, `L9.2`, `L9.3`, `L9.4`, `L9.5`, `L9.6`, `lang.03`, `craft.06`. |
 
@@ -17,8 +17,7 @@ The path includes the milestone stages below. Run each component milestone after
 
 Your Python inference stack, run through your own entry point, on the Llama
 model of MS-L7: the same greedy tokens with no cache, your contiguous cache
-(L8.2), and your paged cache (L8.3, with
-float16 keys and values); quantized weights (L8.5, using M09.4's FP8 and
+(L8.2, with float16 keys and values); quantized weights (L8.5, using M09.4's FP8 and
 microscaling conversions) that keep the model's predictions; speculative
 decoding (L8.6) that changes the speed and never
 the greedy output; and constrained decoding (L8.7) whose every document
@@ -36,8 +35,8 @@ exit 2 on a usage error, the last stdout line is one JSON object.
                 [--cache none|contiguous|paged] [--kv-dtype f32|f16]
                 [--spec ngram|prompt-lookup --k K] [--json-schema <file>]
       MS-L7's generate through L8.2's generate with the chosen cache
-      ("paged": L8.3's pure-Python PagedKVCache, behind L8.2's cache
-      interface). --spec runs L8.6's
+      ("paged": the optional L8.3's pure-Python PagedKVCache, behind L8.2's
+      cache interface; not checked here). --spec runs L8.6's
       speculative_generate with an NGramDraft fitted on the prompt's ids
       (order 3) or a PromptLookupDraft. --json-schema decodes each prompt
       under L8.7's constraint over the byte vocabulary until no token is

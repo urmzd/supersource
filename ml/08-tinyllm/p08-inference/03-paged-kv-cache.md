@@ -5,13 +5,13 @@
 
 | | |
 |---|---|
-| **Module** | `L8.3` · build · Python · Pass 6 · 4 to 6 h |
+| **Module** | `L8.3` · side · Python · Pass 6 · 4 to 6 h (optional) |
 | **You build** | `python/tinyllm/infer/paged.py`: `PagedKVCache` (`add_seq`, `fork`, `append`, `block_table`, `seq_len`, `gather`, `free`, `stats`, `num_free_blocks`, `close`) and `OutOfBlocks` |
 | **Contract** | [`course/contracts/py/tinyllm/infer/paged.pyi`](../../../course/contracts/py/tinyllm/infer/paged.pyi); the implementation owns its NumPy blocks |
 | **Tests** | `course/tests/L8.3/test_paged.py`, 10 tests (what they check: section 4) · your own tests in `python/tests/l8-3-paged/`, rung R4, graded by mutation (threshold 0.80) |
 | **Needs** | `L8.2` [the contiguous KV cache](02-kv-cache-and-generate.md) (the oracle) |
-| **Used by** | `L8.2`'s `generate(cache="paged")` uses this cache directly |
-| **Milestone** | `MS-L8` (step 1: `generate --cache paged` equals `--cache contiguous` with `--kv-dtype f16`) |
+| **Used by** | no module: the Rust engine (`L10.2`, `L10.4`) reimplements paging and reads this module as its behavioral reference; your `generate --cache paged` can run on it |
+| **Milestone** | none (optional; `MS-L8` checks the contiguous cache) |
 | **Optional depth** | Kwon et al., [*Efficient Memory Management for LLM Serving with PagedAttention*](https://arxiv.org/abs/2309.06180), section 4; Silberschatz et al., *Operating System Concepts*, chapter 9 (paging) |
 
 ## Key Takeaways
@@ -38,7 +38,7 @@ Start with `add_seq`, `append` for one token at a time, and `gather`; then multi
 
 ## 1. Why now
 
-`L8.2`'s `KVCache` preallocates `max_len` positions per sequence and layer. With a 2,048-token context and SmolLM2's 30 layers, 3 KV heads, and 64 dimensions, that is $2048 \cdot 30 \cdot 2 \cdot 3 \cdot 64 \cdot 2 = 47$ MB per sequence in float16, whether the sequence ends after 20 tokens or 2,000; and beam search with 4 beams copies the whole prompt 4 times. You now build fixed-size blocks in Python, with reference counts and copy on write. This module matches the contiguous cache, so `generate` can switch to paged memory and the Rust engine (`L10.4`) has a clear behavioral reference.
+`L8.2`'s `KVCache` preallocates `max_len` positions per sequence and layer. With a 2,048-token context and SmolLM2's 30 layers, 3 KV heads, and 64 dimensions, that is $2048 \cdot 30 \cdot 2 \cdot 3 \cdot 64 \cdot 2 = 47$ MB per sequence in float16, whether the sequence ends after 20 tokens or 2,000; and beam search with 4 beams copies the whole prompt 4 times. You now build fixed-size blocks in Python, with reference counts and copy on write. This module matches the contiguous cache, so `generate` can switch to paged memory and the Rust engine (`L10.4`) has a clear behavioral reference. It is optional: no later Python module calls it, because the engine reimplements paging in Rust. Do it to see block tables and copy on write in a few hundred lines before you meet them in `L10.2` and `L10.4`.
 
 ## 2. Principles
 
@@ -107,7 +107,7 @@ Shapes have no batch axis: one sequence per call. The Python allocator owns its 
 | `test_free_restores_the_pool` | unit | a forked block returns only when both holders free it; freeing all restores every block | KV usage back to baseline after each request |
 | `test_out_of_blocks_changes_nothing` | fault | a multi-block append that cannot be satisfied leaves length, values, and allocation counts as they were | the scheduler preempts and retries safely |
 | `test_bad_arguments` | boundary | bad shapes, empty chunks, unknown or reused ids, bad layers, sizes below 1 | engine bugs fail loudly |
-| `test_paged_matches_contiguous_decoding` | differential | a 2-layer toy decoder: logits within 1e-5 and the same greedy ids from the paged cache and from your `L8.2` `KVCache(dtype=float16)`, through a prompt and two forked branches | the equivalence MS-L8 checks on a real model |
+| `test_paged_matches_contiguous_decoding` | differential | a 2-layer toy decoder: logits within 1e-5 and the same greedy ids from the paged cache and from your `L8.2` `KVCache(dtype=float16)`, through a prompt and two forked branches | the equivalence `generate --cache paged` relies on |
 | `test_random_ops_conserve_blocks` | property | $10^4$ seeded add, fork, append, free operations against a numpy oracle; allocated and free block counts add up after each; freeing all restores every block | no refcount drifts or leaks over a long run |
 
 **Your tests (rung R4).** Write `python/tests/l8-3-paged/test_*.py`, importing only names from `contracts/py` (`tinyllm.infer.paged`), with properties in prose turned into code (Hypothesis is allowed): "gather after any sequence of appends equals the concatenation of what was appended, in float16", "a fork then an append to the child never changes the parent", "freeing every sequence returns every block", "an `OutOfBlocks` append changes nothing". The planted bugs "a fork copies the table without references" (`s06`) and "a shared block is written in place" (`s07`) are required; overall 80%.

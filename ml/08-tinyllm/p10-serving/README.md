@@ -20,5 +20,5 @@ The Rust engine: an OpenAI-compatible HTTP server that streams completions from 
 | 9 | `L10.8` | [Speculative decoding in the engine](08-speculative-decoding-in-the-engine.md) | build | 7 |
 | 10 | `L10.9` | [Tool calls and constrained JSON decoding in the engine](09-tool-calls-and-constrained-decoding.md) | build | 7 |
 | 11 | `load.01` | [Open-loop load generator, log-linear histogram, Go PCG32 port](10-load-generator.md) | build | 7 |
-| 12 | `load.02` | [Run comparison and regression gate](11-run-comparison-and-regression-gate.md) | build | 7 |
+| 12 | `load.02` | [Run comparison and regression gate](11-run-comparison-and-regression-gate.md) | side | 7 |
 <!-- /ss:chapters -->

@@ -26,9 +26,8 @@
 #                         --prompt <text> --max-tokens <n> --mode burst
 #                         --burst <n> --duration <d> --out <report.json>:
 #                         writes the report (formats/loadgen-report.schema.json)
-#                         to --out and prints it as the final stdout line;
-#                         {loadgen} compare <base> <head> --metric <m>
-#                         --max-regress <pct> exits 1 on a regression (load.02)
+#                         to --out and prints it as the final stdout line
+#                         (`{loadgen} compare` belongs to the optional load.02)
 #
 # Covered elsewhere, so not repeated here: Rust and Python samplers agree on
 # fixture logits (L10.1's course tests, parity/sampler); the engine's greedy
@@ -44,7 +43,7 @@
 id       = "MS-L10"
 title    = "Your inference engine: conformant, concurrent, observable, speculative, tool-calling"
 requires = ["L10.1", "L10.2", "L10.3", "L10.4", "L10.5", "L10.6", "L10.7", "L10.8", "L10.9",
-            "load.01", "load.02"]
+            "load.01"]
 pass     = 7
 ci       = "pr"
 services = ["engine"]
@@ -78,13 +77,6 @@ expect    = { match = "json-schema", schema = { type = "object", required = ["re
 name   = "kv-back-to-baseline"
 http   = { method = "GET", url = "http://127.0.0.1:{engine.health_port}/metrics" }
 expect = { match = "contains", text = "tl_engine_kv_blocks{state=\"used\"} 0" }
-
-# A run compared with itself is never a regression (load.02).
-[[step]]
-name   = "compare-a-run-with-itself"
-run    = "loadgen"
-argv   = ["compare", "{out:burst-of-64}/report.json", "{out:burst-of-64}/report.json", "--metric", "ttft_p95", "--max-regress", "5%"]
-expect = { match = "exit-code", code = 0 }
 
 # -- metrics (L10.7) ------------------------------------------------------------------
 

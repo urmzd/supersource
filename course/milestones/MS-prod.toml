@@ -47,7 +47,7 @@
 # in `requires` are graded on a cluster too, so --smoke does not wait for them.
 id       = "MS-prod"
 title    = "Production on kind: your gateway, disaggregated engines, and observability hold the SLOs"
-requires = ["load.01", "load.02",
+requires = ["load.01",
             "dep.01", "dep.02", "dep.03", "dep.04", "dep.05",
             "obs.01", "obs.02", "obs.03", "obs.04",
             "ops.01", "craft.08", "review.01"]

@@ -5,13 +5,13 @@
 
 | | |
 |---|---|
-| **Module** | `load.02` · build · Go · Pass 7 · 3 to 5 h |
+| **Module** | `load.02` · side · Go · Pass 7 · 3 to 5 h (optional) |
 | **You build** | `go/loadgen/compare/compare.go`: metric and budget parsing, histogram reports expanded into samples, nearest-rank statistics by selection, a seeded one-sided two-sample permutation test, and the gate that fails a head run only when it is worse beyond the budget AND significantly so |
 | **Contract** | the input: [`formats/loadgen-report.schema.json`](../../../course/contracts/formats/loadgen-report.schema.json) · the role `{loadgen} compare`: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) |
 | **Tests** | `course/tests/go/load_02/`, 10 tests (what they check: section 4) |
 | **Needs** | `load.01` your report, histograms, and `rng.Stream` ([chapter](10-load-generator.md)) · reading: `M07.5` permutation tests ([chapter](../../../math/07-probability-statistics/05-hypothesis-tests.md)), re-implemented here in Go |
-| **Used by** | `dep.05`'s CI perf job and drill `ops.07` (`git bisect run` over `{loadgen} compare`) |
-| **Milestone** | `MS-L10` |
+| **Used by** | no module: your `{loadgen} compare` entry point runs it, in `dep.05`'s optional perf-gate job and in drill `ops.07` (`git bisect run`) |
+| **Milestone** | none (optional; not part of `MS-L10`) |
 | **Optional depth** | Good, *Permutation, Parametric, and Bootstrap Tests of Hypotheses*, ch. 3; [Kalibera and Jones, Rigorous Benchmarking in Reasonable Time](https://kar.kent.ac.uk/33611/) (free); [Mytkowicz et al., Producing Wrong Data Without Doing Anything Obviously Wrong](https://dl.acm.org/doi/10.1145/1508244.1508275) |
 
 ## Key Takeaways
@@ -38,7 +38,7 @@ Your `{loadgen} compare <base.json> <head.json> --metric ttft_p95 --max-regress 
 
 ## 1. Why now
 
-`load.01` turns a run into numbers; nothing yet turns two runs into a decision. CI (`dep.05`) must fail a pull request that makes TTFT worse, and drill `ops.07` hands you twenty commits and asks which one did it, which `git bisect run` can answer only if one command exits 0 for "fine" and 1 for "regressed". Latency is noisy: two runs of the same build differ by several percent, so "head p95 > base p95" fails half of all pull requests, and "head p95 > 1.05 base p95" still fails a few percent of identical builds and misses real regressions hidden in noise. This module writes the gate: an effect-size budget plus a significance test.
+`load.01` turns a run into numbers; nothing yet turns two runs into a decision. CI (`dep.05`) must fail a pull request that makes TTFT worse, and drill `ops.07` hands you twenty commits and asks which one did it, which `git bisect run` can answer only if one command exits 0 for "fine" and 1 for "regressed". Latency is noisy: two runs of the same build differ by several percent, so "head p95 > base p95" fails half of all pull requests, and "head p95 > 1.05 base p95" still fails a few percent of identical builds and misses real regressions hidden in noise. This module writes the gate: an effect-size budget plus a significance test. It is optional: only your `{loadgen} compare` entry point calls it, so no milestone requires it, and `dep.05` checks its perf-gate job only when your workflow has one.
 
 ## 2. Principles
 
@@ -128,7 +128,7 @@ Samples come from `math/rand/v2` with fixed seeds (lognormal latencies); the sta
 |---|---|---|
 | Back | `load.01` | `Report`, its histograms, and `rng.Stream` for the shuffles |
 
-`dep.05`'s CI runs `{loadgen} compare` on main against the last good run; drill `ops.07` bisects a perf regression with it; `MS-L10` checks a run compared with itself passes.
+`dep.05`'s optional perf-gate job runs `{loadgen} compare` on main against the last good run; drill `ops.07` bisects a perf regression with it.
 
 ## Going further
 

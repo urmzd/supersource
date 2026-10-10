@@ -14,8 +14,9 @@ Jobs (ids fixed, so branch protection can require each by name):
   kind-e2e   helm/kind-action with deploy/kind/cluster.yaml, `tilt ci`, and
              `ss milestone MS-prod --smoke` through the supersource checkout
              at contracts/VERSION
-  perf-gate  on main only: `{loadgen} compare <base> <head> --metric ...
-             --max-regress ...` (load.02), the head report kept as an artifact
+  perf-gate  optional, with the optional load.02: on main only,
+             `{loadgen} compare <base> <head> --metric ... --max-regress ...`,
+             the head report kept as an artifact. Checked when present.
 
 craft.01's ci.yml (commit-lint, native-tests, course-check) stays as it is.
 """
@@ -31,7 +32,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _lib.practice import Ctx, Fail, run  # noqa: E402
 
 WORKFLOW = ".github/workflows/platform.yml"
-JOBS = ("lint", "unit", "images", "kind-e2e", "perf-gate")
+JOBS = ("lint", "unit", "images", "kind-e2e")
+OPTIONAL_JOBS = ("perf-gate",)  # needs the optional load.02's `compare`
 MAX_MINUTES = 60
 MOVING_REFS = {
     "main",
@@ -96,7 +98,7 @@ def test_required_jobs(c: Ctx) -> None:
     # CHAPTER: dep.05 section 5, Pitfall 5
     jobs = _wf(c).get("jobs") or {}
     errs = [f"missing job {j!r} (have {sorted(jobs)})" for j in JOBS if j not in jobs]
-    for j in JOBS:
+    for j in JOBS + OPTIONAL_JOBS:
         job = jobs.get(j)
         if not isinstance(job, dict):
             continue
@@ -261,9 +263,13 @@ def test_perf_gate_runs_on_main_against_the_last_report(c: Ctx) -> None:
     # WHY: a perf gate compares two load reports with load.02's statistics. On
     #      main only: each green main run uploads its report, and the next one
     #      compares against it, so a regression fails the commit that made it.
-    #      On pull requests it would compare against nothing stable.
+    #      On pull requests it would compare against nothing stable. The job
+    #      is optional (it needs the optional load.02); a job that is there
+    #      must be wired right.
     # KIND: conformance
     # CHAPTER: dep.05 section 5, Pitfall 6
+    if "perf-gate" not in (_wf(c).get("jobs") or {}):
+        return
     job = _job(c, "perf-gate")
     cond = str(job.get("if", ""))
     errs = []

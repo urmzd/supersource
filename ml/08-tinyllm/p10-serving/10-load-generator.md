@@ -10,7 +10,7 @@
 | **Contract** | the report: [`formats/loadgen-report.schema.json`](../../../course/contracts/formats/loadgen-report.schema.json) · the generator: [`spec/pcg32.md`](../../../course/contracts/spec/pcg32.md) (conformance `parity/rng`) · the stream you measure: [`openapi/openai-subset.v1.yaml`](../../../course/contracts/openapi/openai-subset.v1.yaml) · the role `{loadgen}`: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) |
 | **Tests** | `course/tests/go/load_01/`, 21 tests (what they check: section 4) |
 | **Needs** | nothing to call: reading `lang.06` Go ([primer](../../../software-craftsmanship/12-language-and-tool-primers/06-go.md)), `M07.1` inverse-CDF sampling ([chapter](../../../math/07-probability-statistics/01-categorical-sampling.md)), `M06.3` PCG32 ([chapter](../../../math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md)); both are re-implemented here in Go |
-| **Used by** | `load.02` compares two of its reports; your `{loadgen}` main drives `MS-L10`, `MS-gateway`, `MS-prod`, and the drills · later: `ag.07`, `ag.09`, `ag.12` |
+| **Used by** | your `{loadgen}` main drives `MS-L10`, `MS-gateway`, `MS-prod`, and the drills · later: `ag.07`, `ag.09`, `ag.12` |
 | **Milestone** | `MS-L10` |
 | **Optional depth** | Gil Tene, [How NOT to Measure Latency](https://www.youtube.com/watch?v=lJ8ydIuPFeU) (free talk); [HdrHistogram](http://hdrhistogram.org/) (free); [O'Neill, PCG](https://www.pcg-random.org/paper.html) (free); [Schroeder, Wierman, Harchol-Balter, Open Versus Closed](https://www.usenix.org/legacy/event/nsdi06/tech/full_papers/schroeder/schroeder.pdf) (free) |
 
@@ -179,7 +179,7 @@ Runs use the course testkit's fake clock: the test moves time and waits for the 
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Forward | `load.02` | compares two reports: the histograms become samples for its permutation test, and `rng.Stream` shuffles them |
+| Forward | `load.02` | optional: compares two reports: the histograms become samples for its permutation test, and `rng.Stream` shuffles them |
 
 Your `{loadgen}` main is the load in `MS-L10` (a burst of 64), `MS-gateway`, `MS-prod` (the SLO rate on kind), and drills `ops.01` and `ops.09`; `L10.7`'s server-side histograms are the other side of the same measurement.
 

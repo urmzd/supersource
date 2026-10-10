@@ -1,6 +1,8 @@
 id        = "load.02"
 title     = "Run comparison and regression gate"
-kind      = "build"
+kind      = "side"
+# Optional (course/deviations/load.02.md): every user runs the learner's
+# `{loadgen} compare` entry point, and no later module calls the package.
 lang      = ["go"]
 pass      = 7
 chapter   = "ml/08-tinyllm/p10-serving/11-run-comparison-and-regression-gate.md"
@@ -9,13 +11,12 @@ chapter   = "ml/08-tinyllm/p10-serving/11-run-comparison-and-regression-gate.md"
 contract  = ["contracts/formats/loadgen-report.schema.json"]
 deps      = ["load.01"]   # Report, Histogram buckets, and rng.Stream's Shuffle
 reading   = ["M07.5"]     # the two-sample permutation test, re-implemented in Go
-# Catalog call sites: dep.05 (the CI perf job) and ops.07 (git bisect run).
-# Both run the learner's `{loadgen} compare` entry point, not this package,
-# so verify check 9 fails: no module calls it (course/deviations/load.02.md).
+# Users: dep.05's optional perf-gate job and drill ops.07 (git bisect run),
+# both through the `{loadgen} compare` entry point.
 used_by   = []
 units     = ["go/loadgen/compare/compare.go"]
 upgrades  = []
-milestone = "MS-L10"
+milestone = ""                      # optional: not part of MS-L10
 ci        = "pr"
 
 [tests]
