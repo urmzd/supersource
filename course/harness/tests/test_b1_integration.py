@@ -78,7 +78,11 @@ def test_reference_entry_roles_match_cli_roles():
     raw = tomllib.loads((COURSE / "ref" / "system.toml").read_text())
     entry = raw["entry"]
     assert {"tinyllm", "engine", "gateway"} <= set(entry)
-    assert "{port}" in entry["engine"] and "{health_port}" in entry["engine"]
+    # The engine runs the v1 server from a runtime.toml template whose listen
+    # keys the harness fills with allocated ports ({config}).
+    assert entry["engine"][-2:] == ["--config", "{config}"]
+    template = raw["services"]["engine"]["config"]
+    assert (COURSE / "ref" / "entry" / template).is_file()
     assert "http://127.0.0.1:{engine.port}" in entry["gateway"]
     assert raw["services"]["gateway"]["after"] == ["engine"]
     trained = [s for s in raw["build"]["steps"] if "train" in s]

@@ -23,6 +23,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import secrets
 import time
 import shutil
@@ -336,12 +337,21 @@ def run(
     import tomllib
 
     declared = tomllib.loads((lr / "system.toml").read_text()).get("services", {})
+    # The versions a milestone or drill grades (`suite = "openapi:v1:..."`):
+    # v2 is the api-v2-migration drill's target on a cluster, not a PR gate.
+    graded = {
+        m.group(1)
+        for f in list((course / "milestones").glob("*.toml"))
+        + list((course / "drills").glob("*/drill.toml"))
+        for m in re.finditer(r"openapi:(v\d+)", f.read_text())
+    }
     versions = sorted(
         {
             v
             for c in conform.load_cases(course)
             for v in c.versions
-            if (lr / "contracts" / "openapi" / f"openai-subset.{v}.yaml").is_file()
+            if v in graded
+            and (lr / "contracts" / "openapi" / f"openai-subset.{v}.yaml").is_file()
         }
     )
     for tier in [t for t in conform.TIERS if t in declared]:

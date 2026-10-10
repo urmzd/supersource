@@ -1112,7 +1112,21 @@ def main(argv: list[str]) -> int:
         "the learning tests' ref-thresholds.tsv rows (_lib.thresholds.check)",
     )
     ap.add_argument("--seeds", type=int, default=5)
+    ap.add_argument(
+        "--shard",
+        help="I/N: verify every N-th target from the I-th (0-based); the global "
+        "checks run in shard 0 only. CI splits a large --changed set this way.",
+    )
     a = ap.parse_args(argv[1:])
+    a.shard_i, a.shard_n = 0, 1
+    if a.shard:
+        try:
+            i, n = (int(x) for x in a.shard.split("/"))
+        except ValueError:
+            raise HarnessError(f"--shard {a.shard}: want I/N, e.g. 0/4") from None
+        if not (n >= 1 and 0 <= i < n):
+            raise HarnessError(f"--shard {a.shard}: want 0 <= I < N")
+        a.shard_i, a.shard_n = i, n
     if a.keep and not (a.e2e or a.kind):
         raise HarnessError("--keep goes with --e2e or --kind")
     ct = tree.resolve(None)
@@ -1222,6 +1236,11 @@ def _verify(a, reg, course, ct, work: Path, runs: int) -> int:
         targets, glob = [reg.get(i).id for i in a.ids], False
     else:
         targets, glob = [m.id for m in reg.ordered()], True
+    if a.shard_n > 1:
+        targets = [t for k, t in enumerate(targets) if k % a.shard_n == a.shard_i]
+        smoke_only = [t for k, t in enumerate(smoke_only) if k % a.shard_n == a.shard_i]
+        glob = glob and a.shard_i == 0
+        ctx.say(f"shard {a.shard_i}/{a.shard_n}: {', '.join(targets) or 'no modules'}")
     if glob:
         verify_global(reg, course, work, rep)
     for mid in targets:

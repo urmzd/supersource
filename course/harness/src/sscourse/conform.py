@@ -711,6 +711,7 @@ def check_cancel_disconnect(c: Client, p: dict) -> list[str]:
     """Close the client socket mid-stream; within 2 s the engine's
     tl.engine.active_sequences (Prometheus name below) is back to baseline."""
     import http.client
+    import socket
     import urllib.parse
 
     name = p.get("metric", "tl_engine_active_sequences")
@@ -737,10 +738,18 @@ def check_cancel_disconnect(c: Client, p: dict) -> list[str]:
     resp = conn.getresponse()
     if resp.status != 200:
         return [f"stream request: HTTP {resp.status}"]
-    first = resp.fp.readline()
+    # resp.readline() decodes chunked transfer encoding; the raw socket file
+    # would hand back the chunk-size line instead of the first event.
+    first = resp.readline()
+    while first in (b"\r\n", b"\n"):
+        first = resp.readline()
     peak = _metric(c, name) or 0.0
-    resp.fp.close()
-    conn.sock.close() if conn.sock else None
+    sock = conn.sock
+    if sock is not None:
+        try:
+            sock.shutdown(socket.SHUT_RDWR)  # the client hangs up mid-stream
+        except OSError:
+            pass
     conn.close()
     if not first.startswith(b"data:"):
         return [f"the stream's first line is {first[:80]!r}"]

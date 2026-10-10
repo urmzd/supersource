@@ -231,10 +231,43 @@ jobs:
   # The course harness and its reference system. Every job runs the harness
   # through practice/bin/ss exactly as a maintainer does locally.
 
-  course-verify-changed:
-    name: Course verify (changed modules)
+  harness-unit:
+    name: Course harness self-tests and lint
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Harness self-tests
+        run: uv run --project course/harness --quiet pytest -q -p no:cacheprovider course/harness/tests practice/bin/tests
+
+      - name: Chapter, registry, and link lint
+        run: practice/bin/ss lint && practice/bin/ss lint --links
+
+      - name: Paths
+        run: practice/bin/ss learn --verify
+
+  # The changed modules (checks 1 to 14) and their dependents' smoke tests,
+  # split into shards so a PR that touches many modules still fits; the
+  # global checks run in shard 0. An ordinary PR leaves most shards empty.
+  course-verify-changed:
+    name: Course verify (changed modules, shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -256,16 +289,8 @@ jobs:
       - name: Toolchain
         run: practice/bin/ss doctor && cargo --version && helm version --short
 
-      - name: Harness self-tests
-        run: uv run --project course/harness --quiet pytest -q -p no:cacheprovider course/harness/tests practice/bin/tests
-
-      - name: Chapter, registry, and link lint
-        run: practice/bin/ss lint && practice/bin/ss lint --links
-
-      # Changed modules in full (checks 1 to 14), the smoke tests of their
-      # reverse dependents, and the global checks.
       - name: Verify changed modules
-        run: practice/bin/ss verify course --changed origin/main
+        run: practice/bin/ss verify course --changed origin/main --shard ${{ matrix.shard }}/16
 
   reference-learner-e2e:
     name: Reference learner end to end (smoke)

@@ -18,7 +18,7 @@ steps = [
 
 [entry]
 tinyllm = ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py"]
-# The v1 server (L10.5) on the trained bigram; `--model-dir` (the tracer form)
+# The v1 server (L10.5) with its runtime.toml template; `--model-dir` (the tracer form)
 # is still accepted for the Pass 1 entry point.
 engine  = ["rust/target/release/tl-serve", "--config", "{config}"]
 gateway = ["go/bin/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
