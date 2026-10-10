@@ -47,7 +47,6 @@ import functools
 import hashlib
 import http.server
 import json
-import platform
 import shutil
 import subprocess
 import threading
@@ -57,47 +56,6 @@ from urllib.parse import urlsplit
 
 STAGES = ("fetch", "filter", "dedup_exact", "dedup_near", "pii", "shard", "tokenize")
 EX_DATAERR, EX_TEMPFAIL = 65, 75
-
-
-def rust_module():
-    """tinyllm_rs (data.03's Bloom screen, data.07's BPE): importable as is,
-    or built from rust/crates/tl-py into artifacts/pyext/ on first use."""
-    try:
-        import tinyllm_rs  # noqa: PLC0415
-
-        return tinyllm_rs
-    except ImportError:
-        pass
-    root = Path(__file__).resolve().parents[2]
-    dest = root / "artifacts" / "pyext"
-    if not (dest / "tinyllm_rs.so").is_file():
-        env = dict(os.environ, PYO3_PYTHON=sys.executable)
-        cmd = [
-            "cargo",
-            "rustc",
-            "--release",
-            "--quiet",
-            "--manifest-path",
-            str(root / "rust" / "Cargo.toml"),
-            "-p",
-            "tl-py",
-            "--lib",
-            "--crate-type",
-            "cdylib",
-        ]
-        if platform.system() == "Darwin":
-            cmd += ["--", "-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
-        p = subprocess.run(cmd, env=env, capture_output=True, text=True)
-        if p.returncode != 0:
-            raise RuntimeError("building tinyllm_rs failed:\n" + p.stderr[-2000:])
-        target = Path(env.get("CARGO_TARGET_DIR", root / "rust" / "target"))
-        ext = "dylib" if platform.system() == "Darwin" else "so"
-        dest.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(target / "release" / f"libtl_py.{ext}", dest / "tinyllm_rs.so")
-    sys.path.insert(0, str(dest))
-    import tinyllm_rs  # noqa: PLC0415
-
-    return tinyllm_rs
 
 
 class Fail(Exception):
@@ -220,7 +178,6 @@ def cmd_run(a) -> dict:
     out = {"dataset": cfg["dataset"], "version": cfg["version"], "stage": until}
     if until == "fetch":
         return out
-    rust_module()  # after fetch: only the later stages need tinyllm_rs
     from corpus.dedup import exact_dedup
     from corpus.filter import (
         gopher_rules,
@@ -386,7 +343,6 @@ def cmd_run(a) -> dict:
 def tokenize_only(cfg: dict, art: Path, base: Path) -> dict:
     """The tokenize stage alone, over the manifest the shard stage wrote
     (data.09's tokenize activity: the shards are not rebuilt)."""
-    rust_module()
     from corpus.tokenize import tokenize_shards
 
     cdir = art / "corpus" / cfg["dataset"] / cfg["version"]

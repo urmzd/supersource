@@ -56,21 +56,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 os.environ.setdefault("TINYLLM_FIXTURES", str(HERE.parent / "fixtures"))
-# Your ctypes loader (rt.01) reads TINYLLM_LIB; default it to your own build.
-for ext in ("dylib", "so"):
-    lib = ROOT / "c" / "build" / f"libtinyllm.{ext}"
-    if lib.is_file():
-        os.environ.setdefault("TINYLLM_LIB", str(lib))
-        os.environ.setdefault("TINYLLM_C_LIB_DIR", str(lib.parent))
-        break
 for p in (str(HERE.parent / "testkit" / "python"), str(HERE), str(ROOT / "python")):
     if p not in sys.path and Path(p).is_dir():
         sys.path.insert(0, p)
-# Tests that start a child Python (a fresh interpreter for the ctypes loader)
-# need the same path.
-os.environ["PYTHONPATH"] = os.pathsep.join(
-    [str(ROOT / "python"), *filter(None, [os.environ.get("PYTHONPATH")])]
-)
 
 try:
     from hypothesis import settings
@@ -168,12 +156,7 @@ def _crates(lr: Path) -> list[tuple[str, str]]:
         except tomllib.TOMLDecodeError:
             continue
         name = doc.get("package", {}).get("name")
-        # tl-py is a Python extension (DESIGN 2.5), never a test dependency.
-        if (
-            name
-            and name != "tl-py"
-            and ("lib" in doc or (man.parent / "src" / "lib.rs").is_file())
-        ):
+        if name and ("lib" in doc or (man.parent / "src" / "lib.rs").is_file()):
             out.append((man.parent.relative_to(root).as_posix(), name))
     return out
 
@@ -268,20 +251,8 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         if markers.lang_of(u) == "c" and u.endswith(".c") and (s.learner / u).is_file()
     ]
     if py_ids:
-        # Python reaches C through ctypes: build YOUR libtinyllm first (your Makefile when you have one).
-        if (s.learner / "c" / "Makefile").is_file():
-            build = "make -C c && "
-        elif c_units:
-            ext = "dylib" if platform.system() == "Darwin" else "so"
-            build = (
-                f"mkdir -p c/build && cc -std=c11 -D_POSIX_C_SOURCE=200809L -O2 -fPIC -shared -Icontracts/c/include {' '.join(c_units)} "
-                f"-o c/build/libtinyllm.{ext} -lm && "
-            )
-        else:
-            build = ""
         langs["python"] = [
-            build
-            + "uv run --project python --with pytest --with hypothesis --with numpy pytest -q "
+            "uv run --project python --with pytest --with hypothesis --with numpy pytest -q "
             + " ".join(f"{VENDOR}/tests/{mid}" for mid in py_ids)
         ]
     if go_ids:

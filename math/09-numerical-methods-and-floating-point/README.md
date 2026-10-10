@@ -44,7 +44,7 @@ Real numbers do not fit in 32 bits, so every computation is an approximation, an
 **Key ideas**:
 - **Unit roundoff** $u$ and $\gamma_k = k u / (1 - k u)$ bound the error of $k$ accumulated operations.
 - **Condition number** $\kappa(A) = \|A\| \|A^{-1}\|$ separates a bad problem from a bad algorithm.
-- **Call sites**: `M09.3` gives the learner's own differential tests their bounds, `L8.5` the quantization error budget, `L9.7` the load-time op check.
+- **Call sites**: `M09.3` gives the learner's own differential tests their bounds, `L8.5` the quantization error budget, and optional `L9.1` the standalone C matmul parity bound.
 
 ## 4. Low-precision formats and kernels in C
 
@@ -75,11 +75,12 @@ Real numbers do not fit in 32 bits, so every computation is an approximation, an
 | 1 | `M09.1` | [IEEE 754 anatomy, ulp, round to nearest even, and bf16 and fp16 emulation](01-ieee-754.md) | build | 2 |
 | 2 | `M09.2` | [Stable numerics: logsumexp, softmax, compensated sums](02-stable-numerics.md) | build | 2 |
 | 3 | `M09.3` | [Error analysis, condition numbers, tolerance budgets](03-error-analysis-condition-numbers-and-tolerance-budgets.md) | build | 6 |
-| 4 | `M09.4` | [FP8 E4M3/E5M2, MXFP4/MXFP8 with E8M0 scales, and the C conversions](04-fp8-and-microscaling-formats.md) | build | 6 |
-| 5 | `M09.5` | [Fixed-point iteration and a fast inverse square root in C](05-fixed-point-iteration-and-rsqrt.md) | build | 6 |
-| 6 | `M09.6` | [Polynomial approximation and range reduction: expf in C](06-polynomial-approximation-and-expf.md) | build | 6 |
-| 7 | `S-M09a` | [Floating point problem set, part a: representation, rounding, cancellation](90-problem-set-a.md) | solve | 2 |
-| 8 | `S-M09b` | [Floating point problem set, part b: condition numbers, error bounds, Newton, polynomial approximation, low precision](91-problem-set-b.md) | solve | 6 |
+| 4 | `M09.4` | [FP8 E4M3/E5M2, MXFP4/MXFP8 with E8M0 scales](04-fp8-and-microscaling-formats.md) | build | 6 |
+| 5 | `M09.5` | [Fast inverse square root in standalone C (optional)](05-fixed-point-iteration-and-rsqrt.md) | side | 6 |
+| 6 | `M09.6` | [Polynomial approximation and range reduction: expf in C (optional)](06-polynomial-approximation-and-expf.md) | side | 6 |
+| 7 | `M09.7` | [Low-precision conversions in standalone C (optional)](07-low-precision-c-conversions.md) | side | 6 |
+| 8 | `S-M09a` | [Floating point problem set, part a: representation, rounding, cancellation](90-problem-set-a.md) | solve | 2 |
+| 9 | `S-M09b` | [Floating point problem set, part b: condition numbers, error bounds, Newton, polynomial approximation, low precision](91-problem-set-b.md) | solve | 6 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

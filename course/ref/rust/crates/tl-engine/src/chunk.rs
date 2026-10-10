@@ -11,10 +11,8 @@
 //! first token (TTFT) for the long prompt, which now needs several steps.
 //!
 //! Correctness rests on chunk invariance: the logits after the last chunk
-//! equal the logits of one whole prefill bit for bit, because positions are
-//! absolute, each chunk's K and V land in the same blocks, and the
-//! attention kernel reduces keys in tiles aligned to absolute positions
-//! (`q_offset`, tinyllm/attention.h; c/ABI.md rule 10).
+//! agree with a whole prefill within floating-point tolerance, because
+//! positions are absolute and each chunk's K and V land in the same blocks.
 //!
 //! This file holds the policy the scheduler consults ([`Chunked`]) and the
 //! assembly of one step's mixed batch from the scheduler's plan ([`plan`]),

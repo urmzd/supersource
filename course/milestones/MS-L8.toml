@@ -3,9 +3,10 @@
 #
 # Your Python inference stack, run through your own entry point, on the Llama
 # model of MS-L7: the same greedy tokens with no cache, your contiguous cache
-# (L8.2), and your paged cache over the C block pool (L8.3 over rt.04, with
-# float16 keys and values); quantized weights (L8.5) that keep the model's
-# predictions; speculative decoding (L8.6) that changes the speed and never
+# (L8.2), and your paged cache (L8.3, with
+# float16 keys and values); quantized weights (L8.5, using M09.4's FP8 and
+# microscaling conversions) that keep the model's predictions; speculative
+# decoding (L8.6) that changes the speed and never
 # the greedy output; and constrained decoding (L8.7) whose every document
 # parses and validates. PR CI runs it on the committed tiny model; the
 # nightly run uses SmolLM2-135M-Instruct pulled by MS-L7; the cache speedup
@@ -21,8 +22,8 @@
 #                 [--cache none|contiguous|paged] [--kv-dtype f32|f16]
 #                 [--spec ngram|prompt-lookup --k K] [--json-schema <file>]
 #       MS-L7's generate through L8.2's generate with the chosen cache
-#       ("paged": L8.3's PagedKVCache over the libtinyllm your loader finds,
-#       behind L8.2's cache interface). --spec runs L8.6's
+#       ("paged": L8.3's pure-Python PagedKVCache, behind L8.2's cache
+#       interface). --spec runs L8.6's
 #       speculative_generate with an NGramDraft fitted on the prompt's ids
 #       (order 3) or a PromptLookupDraft. --json-schema decodes each prompt
 #       under L8.7's constraint over the byte vocabulary until no token is
@@ -34,7 +35,8 @@
 #
 #   {tinyllm} eval ppl --model <llama dir> --data <text file> --quant int8|q4_g32|fp8_e4m3|mxfp4 [--tokens N]
 #       Next-token NLL over the first N tokens (windows of up to 128), once
-#       with the float32 model and once after L8.5's quantize_model. Final
+#       with the float32 model and once after L8.5's quantize_model, which uses
+#       M09.4's Python format conversions. Final
 #       line: {"tokens", "ppl_fp32", "ppl", "increase_pct", "top1_agree" (how
 #       often the quantized model's argmax equals the float32 model's),
 #       "nll_delta" (|mean NLL difference| in nats)}.
@@ -54,11 +56,11 @@
 # `ss milestone MS-L8 --smoke` runs the tiny-model steps (seconds).
 id       = "MS-L8"
 title    = "Your Python inference stack matches no-cache output token for token"
-requires = ["ds.01", "ds.02", "ds.03", "ds.07", "rt.04", "L8.1", "L8.2", "L8.3", "L8.4", "L8.5", "L8.6", "L8.7"]
+requires = ["ds.07", "L8.1", "L8.2", "L8.3", "L8.4", "L8.5", "L8.6", "L8.7", "M09.4"]
 pass     = 6
 ci       = "pr"
 
-# -- 1. cache equivalence on the committed tiny model (L8.2, L8.3, rt.04) -------------
+# -- 1. cache equivalence on the committed tiny model (L8.2, L8.3) --------------------
 [[step]]
 name      = "tiny-cache-equivalence"
 smoke     = true

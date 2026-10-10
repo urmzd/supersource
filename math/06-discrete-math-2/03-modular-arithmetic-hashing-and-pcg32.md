@@ -1,23 +1,23 @@
 <!-- ss:module M06.3 -->
-# Modular arithmetic, hashing, and PCG32 in C and Python
+# Modular arithmetic, hashing, and PCG32 in Python
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M06.3` · build · C and Python · Pass 2 · 4 to 5 h |
-| **You build** | `c/src/numerics/rng.c`: `tl_pcg32_seed`, `tl_pcg32_next`, `tl_pcg32_uniform`, `tl_fnv1a64` · `python/tinyllm/num/rng.py`: `PCG32` (`next_u32`, `uniform`, `uniforms`, `below`, `shuffle`, `substream`, `state`, `set_state`), `splitmix64`, `child_seed`, `fnv1a64`, `universal_hash` |
-| **Contract** | [`course/contracts/py/tinyllm/num/rng.pyi`](../../course/contracts/py/tinyllm/num/rng.pyi) · [`tinyllm/numerics.h`](../../course/contracts/c/include/tinyllm/numerics.h) (the M06.3 section) · the algorithm, to the bit: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
-| **Tests** | `course/tests/M06.3/`: `test_rng.py` (Python against the spec vectors), `test_rng.c` (C under ASan and UBSan), `test_rng_c_vs_python.py` (your C stream against your Python stream through ctypes); the cross-language suite is `ss parity rng` (what they check: section 4) |
+| **Module** | `M06.3` · build · Python · Pass 2 · 4 to 5 h |
+| **You build** | `python/tinyllm/num/rng.py`: `PCG32` (`next_u32`, `uniform`, `uniforms`, `below`, `shuffle`, `substream`, `state`, `set_state`), `splitmix64`, `child_seed`, `fnv1a64`, `universal_hash` |
+| **Contract** | [`course/contracts/py/tinyllm/num/rng.pyi`](../../course/contracts/py/tinyllm/num/rng.pyi) · the algorithm, to the bit: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
+| **Tests** | `course/tests/M06.3/test_rng.py` checks Python against published golden vectors (section 4) |
 | **Needs** | nothing to build first. Reading: `S-M05` (counting), `S-M06a` (modular arithmetic and hashing by hand) |
-| **Used by** | `M07.0` normal draws by Box-Muller · `L0.2` dropout masks · `L0.4` the default init and dropout streams · `L0.5` the bigram's sampler · `L0.6` the token stream's window starts · later `L8.1` the sampler, `rt.04` KV block hashes, `data.04` MinHash, and `ethics.04` reproducible bootstrap resampling; ported to Rust by `L10.1` and to Go by `load.01` · later: `L2.2`, `L2.3`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9` |
+| **Used by** | `M07.0` normal draws by Box-Muller · `L0.2` dropout masks · `L0.4` the default init and dropout streams · `L0.5` the bigram's sampler · `L0.6` the token stream's window starts · later `L8.1` the sampler, `rt.04` KV block hashes, `data.03` Bloom hashing, `data.04` MinHash, and `ethics.04` reproducible bootstrap resampling; ported to Rust by `L10.1` and to Go by `load.01` · later: `L2.2`, `L2.3`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9` |
 | **Milestone** | `MS-P2` (the foundations gate) |
 | **Optional depth** | O'Neill, "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation" (2014); Knuth, *TAOCP* vol. 2, ch. 3 (linear congruential generators, the spectral test); Steele, Lea, and Flood, "Fast Splittable Pseudorandom Number Generators" (2014); Carter and Wegman, "Universal Classes of Hash Functions" (1979); Noll's FNV page (isthe.com/chongo/tech/comp/fnv) |
 
 ## Key Takeaways
 
-- Unsigned arithmetic in C *is* arithmetic modulo $2^{64}$; in Python the same numbers need an explicit `& (2**64 - 1)` after every multiply and add (`test_first_1024_outputs_match_spec_vectors`).
-- **PCG32** is a 64-bit linear congruential generator whose state is hidden behind a permutation (an xorshift and a rotation chosen by the top bits); seeded the same way, C, Python, Rust, and Go produce the same stream bit for bit (`spec_vectors_three_seeds`, `test_c_stream_equals_python_stream_100k`).
+- Python integers are unbounded, so PCG's 64-bit state transition explicitly applies `& (2**64 - 1)` after each multiply and add (`test_first_1024_outputs_match_spec_vectors`).
+- **PCG32** is a 64-bit linear congruential generator whose state is hidden behind a permutation (an xorshift and a rotation chosen by the top bits); seeded the same way, Python, Rust, and Go produce the same stream bit for bit (`test_first_1024_outputs_match_spec_vectors`).
 - A **uniform double** with all 53 bits takes two 32-bit draws and only integer arithmetic, so it is bit-exact across languages and never equals 1.0 (`test_uniform_uses_53_bits_and_stays_below_one`).
 - `r mod n` is **biased** unless $n$ divides $2^{32}$; rejection removes the bias (`test_below_has_no_modulo_bias`).
 - **Sub-streams** derived with SplitMix64 keep initialization, dropout, shuffling, and sampling independent of each other (`test_substream_ignores_draws_already_made`); **FNV-1a** chains over buffers, which is how a KV block hash extends its parent's (`fnv1a64_chains_over_buffers`).
@@ -25,10 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start M06.3              # stubs c/src/numerics/rng.c and python/tinyllm/num/rng.py
+ss start M06.3              # stubs python/tinyllm/num/rng.py
 ss tests M06.3              # read the test catalog first: rung R0, you write no tests here
-ss check M06.3              # C tests under sanitizers, Python tests, then C against Python
-ss parity rng               # your C and Python against the golden vectors (later Rust, Go)
+ss check M06.3              # Python tests against published golden vectors
 ss diff  M06.3              # after passing: your code against the reference
 ```
 
@@ -36,7 +35,7 @@ ss diff  M06.3              # after passing: your code against the reference
 
 ## 1. Why now
 
-From Pass 2 on, your system makes random choices everywhere: initial weights, dropout masks, the order of training windows, the token the sampler picks. Every one of them has to be reproducible from one seed (P11), or a failing run cannot be replayed, a resumed checkpoint diverges from the run it continues, and a parity test between your Python sampler and your Rust engine (`L10.1`) has nothing to compare. numpy's generator, Rust's `rand`, and Go's `math/rand` all produce different streams for the same seed. So the course fixes one generator to the bit, PCG32 (`spec/pcg32.md`), and you implement it twice now, in Python for training and in C for the runtime, and check the two against each other. The same mathematics, arithmetic modulo a power of two, gives you the hash functions the system needs: FNV-1a for `rt.04`'s KV block hashes and universal hashing for the hash tables of `ds.*`.
+From Pass 2 on, your system makes random choices everywhere: initial weights, dropout masks, the order of training windows, the token the sampler picks. Every one of them has to be reproducible from one seed (P11), or a failing run cannot be replayed, a resumed checkpoint diverges from the run it continues, and a parity test between your Python sampler and your Rust engine (`L10.1`) has nothing to compare. numpy's generator, Rust's `rand`, and Go's `math/rand` all produce different streams for the same seed. So the course fixes one generator to the bit, PCG32 (`spec/pcg32.md`), and you implement it in Python for training. Published vectors give the later Rust and Go ports the same oracle. The same mathematics, arithmetic modulo a power of two, gives you the hash functions the system needs: FNV-1a for KV block hashes and universal hashing for hash tables.
 
 ## 2. Principles
 
@@ -150,16 +149,6 @@ That is the first entry of `next_u32["0"]` in `spec/pcg32.vectors.json`. The sec
 
 ## 4. The interface
 
-```c
-/* tinyllm/numerics.h (M06.3 section) */
-typedef struct { uint64_t state, inc; } tl_pcg32;            /* 16 bytes, no padding */
-void     tl_pcg32_seed(tl_pcg32 *r, uint64_t seed, uint64_t seq);
-uint32_t tl_pcg32_next(tl_pcg32 *r);
-double   tl_pcg32_uniform(tl_pcg32 *r);                       /* two draws, 53 bits */
-#define TL_FNV1A64_OFFSET 0xCBF29CE484222325ull
-uint64_t tl_fnv1a64(const void *data, size_t n, uint64_t h);  /* continues from h */
-```
-
 ```python
 # tinyllm/num/rng.py (contract: rng.pyi)
 class PCG32:
@@ -183,15 +172,10 @@ def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int: ...
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `test_worked_example_first_output_of_seed_0` | unit, smoke | section 3: the seeded state and `0x47C28B93` | you and the spec agree on seeding |
-| `worked_example_seed_0` | unit, smoke | the same in C, including `inc = 109` | the C runtime agrees too |
 | `test_oneill_demo_line` | golden | `PCG32(42)` gives O'Neill's published first six outputs | an oracle outside the course |
-| `oneill_demo_line` | golden | the same in C | |
 | `test_first_1024_outputs_match_spec_vectors` | golden | 1024 outputs for seeds 0, 1, $2^{63}$ | every language's stream (D10) |
-| `spec_vectors_three_seeds` | golden | the same in C under UBSan, which catches a shift by 32 | undefined behavior never ships |
 | `test_uniform_bit_exact` | golden | the spec's `uniform_f64` vectors, also through `uniforms` | the sampler's one draw per token |
-| `uniform_bit_exact` | golden | the same in C, as exact hex-float literals | |
 | `test_uniform_uses_53_bits_and_stays_below_one` | property | $u \cdot 2^{53}$ integral, $u < 1$, more than 32 bits used | inverse-CDF sampling in `L8.1` |
-| `uniform_in_unit_interval_with_53_bits` | property | the same over $10^5$ C draws | |
 | `test_below_and_shuffle_match_spec_vectors` | golden | `below(10)` and `shuffle([0..9])` vectors | `L0.5` replays its data order on resume |
 | `test_below_has_no_modulo_bias` | statistical | $n = 3 \cdot 2^{30}$: the share below $2^{30}$ is 1/3, not 1/2 | unbiased sampling of large ranges |
 | `test_below_rejects_bad_n` | boundary | $n = 0$, negative, or above $2^{32}$ raise | |
@@ -199,36 +183,28 @@ def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int: ...
 | `test_substream_ignores_draws_already_made` | property | a sub-stream depends on the seed only | adding dropout does not change init |
 | `test_splitmix64_published_outputs` | golden | SplitMix64 seeded 0 and 1234567, published outputs | the mixer is the standard one |
 | `test_fnv1a64_published_vectors` | golden, smoke | FNV-1a 64 reference vectors | the KV block hash in `rt.04` and the Rust engine |
-| `fnv1a64_published_vectors` | golden, smoke | the same in C, plus `NULL` with length 0 | |
 | `test_fnv1a64_chains` | property | `fnv(b, fnv(a)) == fnv(a + b)` on random bytes | chained block hashes |
-| `fnv1a64_chains_over_buffers` | property | the same in C, with bytes above 127 | |
 | `test_universal_hash_hand_example` | unit | section 3's universal hash | |
 | `test_universal_hash_collision_rate` | property | exhaustive over all $(a, b)$ for $p = 101$: collisions at most $1/m + 1/p$ | hash tables in `ds.*` |
 | `test_state_roundtrip_resumes_the_stream` | property | `set_state(state())` continues the stream; an even `inc` is rejected | checkpoints store the generator (`trainer_state.json`) |
 | `test_uniforms_rejects_negative_n` | boundary | `uniforms(-1)` raises, `uniforms(0)` is empty | |
-| `streams_differ_by_sequence` | property | two `seq` values give different streams, both `inc` odd | sub-streams are real streams |
-| `test_c_struct_is_16_bytes_and_seeds_like_python` | conformance, smoke | `sizeof(tl_pcg32) == 16`; C and Python hold the same state after seeding | Python and Rust can mirror the struct |
-| `test_c_matches_spec_vectors` | golden | the C library through ctypes against the vectors | two equally wrong ports still fail |
-| `test_c_stream_equals_python_stream_100k` | differential | $10^5$ draws, random seeds and streams, C == Python | the runtime and training see one stream |
-| `test_c_fnv_equals_python_fnv` | differential | 200 random buffers and starting hashes | `rt.04` (C) and `L8.3` (Python) agree on block hashes |
 
 ## 5. Pitfalls
 
 | Pitfall | Symptom | Caught by |
 |---|---|---|
-| permuting the new state instead of the old one | a plausible stream that matches no other language | `test_first_1024_outputs_match_spec_vectors` (mutants `s01`, `s13`) |
-| an even increment (`seq << 1` without `\| 1`) | short period; wrong from the first output | `test_worked_example_first_output_of_seed_0` (mutant `s02`), `streams_differ_by_sequence` (mutant `m04`) |
+| permuting the new state instead of the old one | a plausible stream that matches no other language | `test_first_1024_outputs_match_spec_vectors` (mutant `s01`) |
+| an even increment (`seq << 1` without `\| 1`) | short period; wrong from the first output | `test_worked_example_first_output_of_seed_0` (mutant `s02`) |
 | no `& MASK64` in Python | correct until the state first wraps, then wrong forever | `test_first_1024_outputs_match_spec_vectors` (mutant `s03`) |
-| a uniform from one 32-bit draw, or 32-bit arithmetic in C | only 32 random bits; C overflows in `a << 26` | `test_uniform_uses_53_bits_and_stays_below_one` (mutant `s04`), `uniform_bit_exact` (mutant `s15`) |
-| seeding in the wrong order (seed before the first step, or `=` instead of `+=`) | streams for nearby seeds look alike, and no vector matches | `test_oneill_demo_line` (mutant `s05`), `oneill_demo_line` (mutant `s17`) |
+| a uniform from one 32-bit draw | only 32 random bits, so the lower 21 bits of a double are always zero | `test_uniform_uses_53_bits_and_stays_below_one` (mutant `s04`) |
+| seeding in the wrong order (seed before the first step) | streams for nearby seeds look alike, and no vector matches | `test_oneill_demo_line` (mutant `s05`) |
 | `j = below(i)` in the shuffle (Sattolo) | only cyclic permutations; no element ever stays put | `test_below_and_shuffle_match_spec_vectors` (mutant `s06`) |
 | `r % n` without rejection | small values favoured: 1/2 instead of 1/3 for $n = 3 \cdot 2^{30}$ | `test_below_has_no_modulo_bias` (mutant `s07`) |
 | deriving a sub-stream from the current state | dropout masks change when the number of init draws changes | `test_substream_ignores_draws_already_made` (mutant `s08`) |
 | a different mixer (Murmur's `>> 33`) | child seeds differ from every other port | `test_splitmix64_published_outputs` (mutant `s09`) |
-| multiply before xor (FNV-1, not FNV-1a) | every KV block hash differs from the Rust engine's | `test_fnv1a64_published_vectors` (mutant `s10`), `fnv1a64_published_vectors` (mutant `s16`) |
+| multiply before xor (FNV-1, not FNV-1a) | every KV block hash differs from the Rust engine's | `test_fnv1a64_published_vectors` (mutant `s10`) |
 | reducing mod $m$ before mod $p$ | not universal; clustered buckets | `test_universal_hash_hand_example` (mutant `s11`) |
 | accepting an even `inc` in `set_state` | a corrupt checkpoint resumes a non-PCG sequence | `test_state_roundtrip_resumes_the_stream` (mutant `s12`) |
-| `xs << (32 - rot)` in C | undefined behavior when `rot == 0`; UBSan stops the tests | `spec_vectors_three_seeds` (mutant `s14`) |
 
 ## 6. Where it's used next
 | Forward | `L2.2` | Registered call site uses this module. |
@@ -265,8 +241,8 @@ def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int: ...
 | Forward | `L0.6` | `TokenStream` draws its window starts from a PCG32 and saves the generator's state in its cursor, so a resumed run reads the same batches |
 | Forward | `ethics.04` | bias-evaluation bootstrap intervals resample paired prompts with PCG32 so the reports are reproducible |
 | Forward | `L8.1` | the sampler: one `uniform()` per token on `stream(seed, sample)` (`spec/sampling.md`) |
-| Forward | `rt.04` | `tl_kv_block_hash` chains `tl_fnv1a64` over each block's token ids |
-| Forward | `L10.1`, `load.01` | the Rust and Go ports, held to the same vectors by `ss parity rng` |
+| Forward | `L10.1`, `load.01` | the Rust and Go ports, held to the same published vectors |
+| Forward | `data.03` | the Python Bloom screen derives stable bit positions from FNV-1a and SplitMix64 |
 
 ## Going further
 

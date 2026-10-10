@@ -1,12 +1,11 @@
 # MS-P1: Every Layer Is Yours
 
-**Spec**: [`course/milestones/MS-P1.toml`](../../course/milestones/MS-P1.toml). **Requires** a fresh pass of your own for every Pass 1 module: `lang.03` to `lang.07`, `rt.01`, `M03.1`, `L0.0`, `L10.0`, `gw.00`, `dep.00`, `obs.00`, `ops.00` (the drill, graded by `ss drill end`), and `craft.02`. MS-P1 also reruns the smoke steps of MS-P0.
+**Spec**: [`course/milestones/MS-P1.toml`](../../course/milestones/MS-P1.toml). **Requires** a fresh pass of your own for every core Pass 1 module: `M03.1`, `L0.0`, `lang.04` to `lang.07`, `L10.0`, `gw.00`, `dep.00`, `obs.00`, `ops.00` (the drill, graded by `ss drill end`), and `craft.02`. MS-P1 also reruns the smoke steps of MS-P0. The C primer `lang.03` is optional practice.
 
 ## What it runs
 
 | Step | Where | Passes when |
 |---|---|---|
-| native-library | local | `{tinyllm} info --native` loads your `libtinyllm` and reports ABI version 1 |
 | train-bigram | local | `{tinyllm} train bigram` on the fixture corpus reaches NLL at most 3.2004 nats per byte (the count model gives 3.199389) |
 | greedy-from-your-checkpoint | local | greedy generation of 32 tokens from "Once" equals the fixture ids exactly |
 | engine-conforms-openapi-v0 | local | `ss conform openapi:v0:engine` against your engine |
@@ -27,8 +26,7 @@ The runner first runs your `[build].steps`, then starts your engine and gateway 
 
 ```toml
 [build]
-steps = [["make", "-C", "c"],
-         ["cargo", "build", "--release", "--manifest-path", "rust/Cargo.toml", "-p", "tl-serve"],
+steps = [["cargo", "build", "--release", "--manifest-path", "rust/Cargo.toml", "-p", "tl-serve"],
          ["go", "build", "-C", "go", "-o", "bin/gateway", "./cmd/gateway"],
          ["uv", "run", "--project", "python", "python", "python/tinyllm/__main__.py",
           "train", "bigram", "--data", "{fixture:MS-P1/corpus.txt}", "--out", "artifacts/models/bigram"]]

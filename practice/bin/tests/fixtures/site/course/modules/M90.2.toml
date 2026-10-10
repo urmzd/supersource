@@ -1,11 +1,11 @@
 id        = "M90.2"
-title     = "L1 normalize through the C sum"
+title     = "L1 normalize"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
 chapter   = "chapters/m90-2-norm.md"
 contract  = ["contracts/py/tinyllm/demo/norm.pyi"]
-deps      = ["M90.1", "rt.91"]
+deps      = ["M90.1"]
 used_by   = ["craft.90"]
 units     = ["python/tinyllm/demo/norm.py"]
 

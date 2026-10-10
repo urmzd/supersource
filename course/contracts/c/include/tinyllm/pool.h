@@ -18,9 +18,6 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* Also forward-declared by matmul.h and attention.h; C11 allows the
  * identical typedef more than once. */
@@ -52,8 +49,5 @@ int tl_pool_threads(const tl_pool *p);
  * tl_parallel_for to finish first. NULL does nothing. */
 void tl_pool_destroy(tl_pool *p);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_POOL_H */

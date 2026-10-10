@@ -11,11 +11,21 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{anyhow, bail, Context, Result};
-use tl_sys::kernels::TL_F16;
-use tl_sys::kv::{KvCfg, KvPool, TL_KV_FORMAT_V1};
+use candle_core::Device;
+
+use crate::kv::{KvCfg, KvPool, TL_F16, TL_KV_FORMAT_V1};
 
 use crate::forward::{bigram_forward, llama_forward, rope_inv_freq, ForwardBatch, ForwardSeq, Logits};
 use crate::model::{load_weights, Arch, ModelConfig, SafeTensors, Weights};
+
+fn engine_device() -> Device {
+    // SOLUTION-BEGIN L10.1
+    #[cfg(target_os = "macos")]
+    { return Device::new_metal(0).unwrap_or(Device::Cpu); }
+    #[cfg(not(target_os = "macos"))]
+    { Device::Cpu }
+    // SOLUTION-END
+}
 
 /// `prefix_cache` of runtime.toml (L10.4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,6 +101,7 @@ pub struct ModelRunner {
     weights: Weights,
     inv_freq: Vec<f32>,
     pool: SharedPool,
+    device: Device,
 }
 
 /// Locks the pool; a poisoned lock (a panic while holding it) is an error.
@@ -108,7 +119,6 @@ impl ModelRunner {
     /// the same for every model.
     pub fn load(dir: &Path, cfg: &EngineConfig) -> Result<ModelRunner> {
         // SOLUTION-BEGIN L10.1
-        tl_sys::check_abi().context("libtinyllm")?;
         let mcfg = ModelConfig::load(dir).map_err(|e| anyhow!(e))?;
         let st = SafeTensors::open(&dir.join("model.safetensors")).map_err(|e| anyhow!(e))?;
         let group = cfg.quant.map(|Quant::Int4 { group }| group);
@@ -136,12 +146,12 @@ impl ModelRunner {
             dtype: TL_F16,
             format: TL_KV_FORMAT_V1,
         };
-        let pool = KvPool::new(kcfg).context("tl_kv_pool_create")?;
+        let pool = KvPool::new(kcfg).context("create Rust KV cache")?;
         let inv_freq = match mcfg.arch {
             Arch::Llama => rope_inv_freq(mcfg.rope_theta, mcfg.head_dim),
             Arch::Bigram => Vec::new(),
         };
-        Ok(ModelRunner { cfg: mcfg, weights, inv_freq, pool: Arc::new(Mutex::new(pool)) })
+        Ok(ModelRunner { cfg: mcfg, weights, inv_freq, pool: Arc::new(Mutex::new(pool)), device: engine_device() })
         // SOLUTION-END
     }
 
@@ -181,10 +191,10 @@ impl ModelRunner {
             return Ok(Logits { vocab: self.cfg.vocab_size, data: Vec::new() });
         }
         match &self.weights {
-            Weights::Bigram(w) => bigram_forward(w, batch).map_err(|e| anyhow!(e)),
+            Weights::Bigram(w) => bigram_forward(w, batch, &self.device).map_err(|e| anyhow!(e)),
             Weights::Llama(w) => {
                 let mut pool = lock(&self.pool)?;
-                llama_forward(w, &self.cfg, &self.inv_freq, &mut pool, batch, None).map_err(|e| anyhow!(e))
+                llama_forward(w, &self.cfg, &self.inv_freq, &self.device, &mut pool, batch, None).map_err(|e| anyhow!(e))
             }
         }
         // SOLUTION-END
@@ -218,7 +228,7 @@ impl ModelRunner {
         let out = match &self.weights {
             Weights::Llama(w) => {
                 let mut pool = lock(&self.pool)?;
-                llama_forward(w, &self.cfg, &self.inv_freq, &mut pool, &batch, Some(&mut hidden))
+                llama_forward(w, &self.cfg, &self.inv_freq, &self.device, &mut pool, &batch, Some(&mut hidden))
             }
             Weights::Bigram(_) => unreachable!("handled above"),
         };

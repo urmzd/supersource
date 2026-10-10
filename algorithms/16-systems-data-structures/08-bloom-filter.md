@@ -6,11 +6,11 @@
 | | |
 |---|---|
 | **Module** | `ds.08` · build · Rust · Pass 3 · 4 to 5 h |
-| **You build** | `rust/crates/tl-ds/src/bloom.rs`: `fnv1a64`, `mix64`, `optimal_m`, `optimal_k`, `predicted_fp_rate`, `Bloom` (`with_rate`, `new`, `bit_positions`, `insert`, `contains`, `union`, `count_ones`, `to_bytes`, `from_bytes`) · `rust/crates/tl-py/src/bloom.rs`: the Python class `tinyllm_rs.Bloom` |
-| **Contract** | byte layout and hashing: [`formats/bloom.md`](../../course/contracts/formats/bloom.md) · Python surface: [`py/tinyllm_rs.pyi`](../../course/contracts/py/tinyllm_rs.pyi) (`Bloom`) |
-| **Tests** | `course/tests/rust/ds_08.rs` (9 tests) and `course/tests/ds.08/test_bloom_py.py` (5 tests through `tinyllm_rs`); what they check: section 4 · parity suite `bloom` · your own tests in `rust/crates/tl-ds/tests/ds08_bloom.rs`, rung R4 (proptest), graded by mutation (threshold 0.80, `s01` to `s10` required) |
-| **Needs** | `L1.5` the `tl-py` crate root that registers `tinyllm_rs.Bloom` (or `--ref-deps`) · reading: `S-M06b` the [false-positive rate and the optimal k](../../math/06-discrete-math-2/91-problem-set-b.md), `M06.3` [FNV-1a and the SplitMix finalizer](../../math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) |
-| **Used by** | `data.03` screens paragraph hashes for exact dedup through `tinyllm_rs.Bloom` |
+| **You build** | `rust/crates/tl-ds/src/bloom.rs`: `fnv1a64`, `mix64`, `optimal_m`, `optimal_k`, `predicted_fp_rate`, `Bloom` (`with_rate`, `new`, `bit_positions`, `insert`, `contains`, `union`, `count_ones`, `to_bytes`, `from_bytes`) |
+| **Contract** | byte layout and hashing: [`formats/bloom.md`](../../course/contracts/formats/bloom.md) |
+| **Tests** | `course/tests/rust/ds_08.rs`; what they check: section 4 · parity suite `bloom` · your own tests in `rust/crates/tl-ds/tests/ds08_bloom.rs`, rung R4 (proptest), graded by mutation (threshold 0.80, `s01` to `s10` required) |
+| **Needs** | reading: `S-M06b` the [false-positive rate and the optimal k](../../math/06-discrete-math-2/91-problem-set-b.md), `M06.3` [FNV-1a and the SplitMix finalizer](../../math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) |
+| **Used by** | No runtime module; `data.03` has an independent Python Bloom screen. |
 | **Milestone** | `MS-corpus` (the dedup stage of your corpus pipeline) |
 | **Optional depth** | Bloom, *Space/Time Trade-offs in Hash Coding with Allowable Errors* (1970); Kirsch and Mitzenmacher, *Less Hashing, Same Performance: Building a Better Bloom Filter* (2006); Broder and Mitzenmacher, *Network Applications of Bloom Filters: A Survey* (2004) |
 
@@ -20,25 +20,24 @@
 - For $n$ items at rate $p$, $m = \lceil -n \ln p / (\ln 2)^2 \rceil$ bits and $k = \mathrm{round}(\frac{m}{n} \ln 2)$ hashes: 4 items at 10% need 20 bits and 3 hashes (`hand_example_sizing_and_bits`, `sizing_formulas`).
 - Two hashes are enough: $g_i = h_1 + i\,h_2 \bmod m$ (double hashing) with $h_1$ = FNV-1a 64 and $h_2$ = the SplitMix finalizer of $h_1$, forced odd (`hash_functions_hand_values`).
 - Union is bitwise OR of two filters with the same $m$ and $k$, which is exactly the filter of both sets (`union_is_the_filter_of_both_sets`).
-- A fixed byte layout makes the filter portable: Rust, Python, and the oracle produce the same 35 bytes for the worked example (`golden_bytes_match_the_format`, `test_py_matches_rust_golden`).
+- A fixed byte layout makes the filter portable: Rust and the oracle produce the same 35 bytes for the worked example (`golden_bytes_match_the_format`).
 
 ## How to work this chapter
 
 ```bash
-ss start ds.08              # stubs bloom.rs in tl-ds and tl-py
+ss start ds.08              # stubs bloom.rs in tl-ds
 ss tests ds.08              # read the test catalog first
-ss check ds.08              # Rust tests, then Python tests through tinyllm_rs; then grades your tests
-ss check ds.08 --ref-deps   # only if your L1.5 (the tl-py crate root) is not passing yet
-ss parity bloom             # your Rust and your binding against the golden bit arrays
+ss check ds.08              # Rust tests, then grades your tests
+ss parity bloom             # compare the Rust filter with the golden bit arrays
 ```
 
-The tl-py crate root (`L1.5`) already declares `pub mod bloom;` and adds `bloom::Bloom` to the module object, so `ss start` stubs only your two `bloom.rs` files. Write the hashing and sizing first and check them on the worked example, then bytes, then the binding.
+The `tl-ds` crate exposes Bloom to other Rust modules. Write the hashing and sizing first and check them on the worked example, then bytes and round trips.
 
 ---
 
 ## 1. Why now
 
-Your corpus pipeline (`data.01` to `data.08`, batch B5) must drop exact duplicate paragraphs from millions of documents. A `set` of paragraph hashes in Python is 8 bytes of hash plus about 60 bytes of overhead per entry; a Bloom filter answers "have I seen this?" in about 10 bits per paragraph, with no false negatives and a false-positive rate you choose. The dedup stage then confirms every "seen" answer exactly (a sort-merge on the full hashes), so a false positive costs time, never data. It must also work across processes and languages: the screen is built in Rust for speed, called from Python, and saved between runs. That needs a byte layout, which `formats/bloom.md` fixes and this module implements.
+Your corpus pipeline (`data.01` to `data.08`, batch B5) must drop exact duplicate paragraphs from millions of documents. A `set` of paragraph hashes in Python is 8 bytes of hash plus about 60 bytes of overhead per entry; a Bloom filter answers "have I seen this?" in about 10 bits per paragraph, with no false negatives and a false-positive rate you choose. The dedup stage then confirms every "seen" answer exactly (a sort-merge on the full hashes), so a false positive costs time, never data. The serialized format is useful across processes and implementations; `formats/bloom.md` fixes that layout.
 
 ## 2. Principles
 
@@ -80,11 +79,11 @@ $$h_1 = \text{fnv1a64}(x), \qquad h_2 = \text{mix64}(h_1) \lor 1, \qquad g_i = \
 
 The approximation of 2.2 assumes independent bits. Given an actual filter, the exact probability that a random fresh item is a false positive is $f^k$ with $f$ the measured fraction of set bits (each probe lands on a uniform bit). Over $N$ fresh items the count of false positives is then Binomial$(N, f^k)$, with mean $N f^k$ and standard deviation $\sqrt{N f^k (1 - f^k)}$: the statistical test asks the count to lie within 3 standard deviations, which a correct filter fails about 0.3% of the time (it passes seeds 0 to 30).
 
-### 2.5 Union, bytes, and the binding
+### 2.5 Union and bytes
 
 Two filters with the same $m$ and $k$ (and so the same hash positions) merge by bitwise OR: the result has exactly the bits that inserting both sets would set. `n_inserted` counts `insert` calls and a union adds the counts. `to_bytes` writes the 32-byte little-endian header (magic `TLBF`, version 1, $m$, $k$, a reserved zero, `n_inserted`) and then the $\lceil m/8 \rceil$ bytes of bits; `from_bytes` rejects anything else.
 
-`tinyllm_rs.Bloom` (`tl-py/src/bloom.rs`) wraps the same struct for Python. Two details are about the boundary, not the filter. Python ints are unbounded, so `with_rate` takes `n` as `i64` and refuses $n < 1$ before converting (`-5 as u64` is a huge number, not an error). And `b.union(b)` is legal Python: PyO3 checks borrows at run time, so the method copies the other filter's bits **before** it borrows `self` mutably, or the same object would be borrowed twice and the call would fail.
+The Python corpus pipeline has a separate implementation in `python/corpus/dedup.py`. This module focuses on the Rust filter and its serialized format.
 
 ## 3. Worked example by hand
 
@@ -100,7 +99,7 @@ Two filters with the same $m$ and $k$ (and so the same hash positions) merge by 
 09 68 02                                            the bits
 ```
 
-This is `hand_example_sizing_and_bits` in Rust and `test_py_hand_example` through Python.
+This is `hand_example_sizing_and_bits` in Rust.
 
 ## 4. The interface
 
@@ -128,25 +127,11 @@ impl Bloom {
 }
 ```
 
-```python
-# tinyllm_rs (contracts/py/tinyllm_rs.pyi), built from rust/crates/tl-py/src/bloom.rs
-class Bloom:
-    @staticmethod
-    def with_rate(n: int, p: float) -> "Bloom": ...     # ValueError unless n >= 1 and 0 < p < 1
-    def insert(self, item: bytes) -> None: ...
-    def contains(self, item: bytes) -> bool: ...
-    def union(self, other: "Bloom") -> None: ...        # ValueError when m or k differ; b.union(b) is fine
-    def to_bytes(self) -> bytes: ...
-    @staticmethod
-    def from_bytes(b: bytes) -> "Bloom": ...            # ValueError for anything but a version-1 filter
-```
-
 ### What the tests check
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `hand_example_sizing_and_bits` | unit | section 3: $m = 20$, $k = 3$, the positions of cat, dog, bird, the 35 bytes | you, the format page, and the tests agree |
-| `test_py_hand_example` | unit | the same 35 bytes through `tinyllm_rs.Bloom` | the binding is the same filter |
 | `hash_functions_hand_values` | golden | FNV-1a of "", "a", "cat"; mix64 of 0 and 1 | every implementation sets the same bits |
 | `sizing_formulas` | unit | $m$ and $k$ for five $(n, p)$, including the rounding of $k$; byte length | the screen is as small as the target allows |
 | `bad_parameters_are_errors` | boundary | $n = 0$, $p \notin (0, 1)$, NaN, $k = 0$, $m > 2^{40}$ are `BadParams` | a bad config fails at start, not with a 128 GiB allocation |
@@ -155,12 +140,7 @@ class Bloom:
 | `union_is_the_filter_of_both_sets` | unit | OR of two filters equals the filter of both; counts add; mismatched $m$ or $k$ refused | `data.03` merges per-shard screens |
 | `golden_bytes_match_the_format` | golden | 10 oracle cases (empty items, odd $m$, $p = 10^{-6}$): bytes and probe answers | the parity suite `bloom` |
 | `from_bytes_rejects_malformed_input` | boundary | bad magic, version, $m = 0$, $k = 0$, reserved, short, long, inconsistent length | a corrupt file is refused, not misread |
-| `test_py_matches_rust_golden` | golden | every oracle case through Python, and `from_bytes(to_bytes())` | a screen built in Rust is read in Python |
-| `test_py_union_including_itself` | boundary | `a.union(b)`; `a.union(a)` keeps the bits and doubles the count; mismatch is ValueError | no runtime borrow error on a legal call |
-| `test_py_errors_are_value_errors` | boundary | $n = 0$, $n = -5$, bad $p$, five malformed byte strings: all ValueError | the contract's exceptions |
-| `test_py_no_false_negatives_on_paragraph_hashes` | property | 2,000 paragraphs found; fewer than 60 of 2,000 fresh ones at $p = 0.008$ | how data.03 uses it |
-
-**Your tests (rung R4).** Write `rust/crates/tl-ds/tests/ds08_bloom.rs` with proptest (craft.04 teaches it): the worked example bytes, the sizing table, and the properties "every inserted item is present", "bytes round-trip", "union equals one filter of both sets", plus a check of a mismatched union and of malformed bytes. Use a fixed proptest seed and no failure files (`Config { rng_seed: RngSeed::Fixed(..), failure_persistence: None, .. }`). At least 80% of the planted bugs, and every planted bug in `bloom.rs` (`s01` to `s10`), must make one fail; the two in the binding are for the Python course tests.
+**Your tests (rung R4).** Write `rust/crates/tl-ds/tests/ds08_bloom.rs` with proptest (craft.04 teaches it): the worked example bytes, the sizing table, and the properties "every inserted item is present", "bytes round-trip", "union equals one filter of both sets", plus a check of a mismatched union and of malformed bytes. Use a fixed proptest seed and no failure files (`Config { rng_seed: RngSeed::Fixed(..), failure_persistence: None, .. }`). At least 80% of the planted bugs, and every planted bug in `bloom.rs` (`s01` to `s10`), must make one fail.
 
 ## 5. Pitfalls
 
@@ -168,22 +148,19 @@ class Bloom:
 |---|---|---|
 | Flooring $m$ instead of taking the ceiling | the filter is a bit short: the rate misses its target and bytes differ from every other implementation | `sizing_formulas`, `hand_example_sizing_and_bits` (mutant `s01`) |
 | Using `mix64(h1)` without forcing it odd | probes coincide when $m$ is a power of two; bits differ from the format | `hand_example_sizing_and_bits`, `golden_bytes_match_the_format` (mutant `s02`) |
-| Numbering bits from the most significant end | your bytes read back wrong in every other implementation | `hand_example_sizing_and_bits`, `test_py_hand_example` (mutant `s03`) |
+| Numbering bits from the most significant end | your bytes read back wrong in every other implementation | `hand_example_sizing_and_bits` (mutant `s03`) |
 | Truncating $k$ instead of rounding | 6.64 becomes 6 hashes; more false positives | `sizing_formulas` (mutant `s04`) |
-| Forgetting to add the counts in `union` | the header's `n_inserted` is wrong after a merge | `union_is_the_filter_of_both_sets`, `test_py_union_including_itself` (mutant `s05`) |
+| Forgetting to add the counts in `union` | the header's `n_inserted` is wrong after a merge | `union_is_the_filter_of_both_sets` (mutant `s05`) |
 | Setting fewer than $k$ bits on insert | false negatives: duplicates slip through dedup | `no_false_negatives` (mutant `s06`) |
 | Dropping the $i \cdot h_2$ term | all $k$ probes hit one bit: the rate is $f$, not $f^k$ | `fp_rate_within_three_sigma` (mutant `s07`) |
 | AND instead of OR in `union` | the union forgets members of both sets | `no_false_negatives`, `union_is_the_filter_of_both_sets` (mutant `s08`) |
 | Trusting the length in `from_bytes` | a truncated file loads and later panics on an out-of-range bit | `from_bytes_rejects_malformed_input` (mutant `s09`) |
 | FNV-1 (multiply, then XOR) instead of FNV-1a | every position differs from the format and from `kv-block.md` hashes | `hash_functions_hand_values` (mutant `s10`) |
-| Borrowing `self` mutably before reading `other` in the binding | `b.union(b)` raises a borrow error | `test_py_union_including_itself` (mutant `s11`) |
-| Mapping a format error to the wrong Python exception | callers that catch `ValueError` crash on a corrupt file | `test_py_errors_are_value_errors` (mutant `s12`) |
 
 ## 6. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `L1.5` | the `tl-py` crate and its `#[pymodule]`, which registers `bloom::Bloom` as `tinyllm_rs.Bloom` |
 | Back | `S-M06b` | the false-positive rate, the optimal $k$, and the bits-per-item bound of section 2.2 |
 | Back | `M06.3` | FNV-1a and the SplitMix64 finalizer |
 | Forward | `data.03` | `exact_dedup` sizes a screen at about 10 bits per paragraph, inserts each paragraph hash, and confirms every positive exactly, so a false positive costs only a lookup |

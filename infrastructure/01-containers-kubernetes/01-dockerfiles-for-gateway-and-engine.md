@@ -55,7 +55,7 @@ An image reference `name:tag` is a **mutable pointer**: the registry maps the ta
 
 ### 2.2 One static binary
 
-The gateway is Go. With `CGO_ENABLED=0` the linker produces a binary that needs no C library, so it runs on `alpine`, `distroless/static`, or even `scratch`. That is why `gw.07` uses `modernc.org/sqlite` (SQLite translated to Go) instead of `mattn/go-sqlite3` (a cgo binding): with cgo the binary would link the build stage's libc and fail at start-up on a different one. The engine links `libtinyllm` (C) through `tl-sys`, so it keeps a glibc base (`debian:bookworm-slim`) that matches its build stage.
+The gateway is Go. With `CGO_ENABLED=0` the linker produces a binary that needs no C library, so it runs on `alpine`, `distroless/static`, or even `scratch`. That is why `gw.07` uses `modernc.org/sqlite` (SQLite translated to Go) instead of `mattn/go-sqlite3` (a cgo binding): with cgo the binary would link the build stage's libc and fail at start-up on a different one. The Rust Candle engine is built without C bindings and uses `debian:bookworm-slim` for its runtime.
 
 ### 2.3 HEALTHCHECK
 

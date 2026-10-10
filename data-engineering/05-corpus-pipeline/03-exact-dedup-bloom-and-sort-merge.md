@@ -7,9 +7,9 @@
 |---|---|
 | **Module** | `data.03` · build · Python · Pass 3 · 3 to 4 h |
 | **You build** | `python/corpus/dedup.py`: `paragraphs`, `paragraph_hash`, `bloom_rate`, `exact_dedup` (a stage), `STATS_KEYS` |
-| **Contract** | [`course/contracts/py/corpus/dedup.pyi`](../../course/contracts/py/corpus/dedup.pyi) · the filter: [`tinyllm_rs.Bloom`](../../course/contracts/py/tinyllm_rs.pyi) and [`formats/bloom.md`](../../course/contracts/formats/bloom.md) |
+| **Contract** | [`course/contracts/py/corpus/dedup.pyi`](../../course/contracts/py/corpus/dedup.pyi) · the Bloom sizing and hash rules: [`formats/bloom.md`](../../course/contracts/formats/bloom.md) |
 | **Tests** | `course/tests/data.03/` (what they check: section 4); fixtures `course/fixtures/data.03/` (200 documents with planted duplicates) |
-| **Needs** | `data.02` `Doc` and `compose` · `ds.08` your Bloom filter, reached from Python as `tinyllm_rs.Bloom` (or `--ref-deps`) · reading: `S-M06b` (false-positive rate, optimal $k$) |
+| **Needs** | `data.02` `Doc` and `compose` · `M06.3` FNV-1a and SplitMix64 · reading: `S-M06b` (false-positive rate, optimal $k$) |
 | **Used by** | near dedup (`data.04`) runs on what this stage keeps; it joins the registry with its batch |
 | **Milestone** | `MS-corpus` |
 | **Optional depth** | Lee et al., *Deduplicating Training Data Makes Language Models Better* (2022, free); Wenzek et al., *CCNet* (2019), section 3.1 (paragraph-level dedup, free); Broder and Mitzenmacher, "Network Applications of Bloom Filters: A Survey" (2004, free); Kirsch and Mitzenmacher, "Less Hashing, Same Performance" (2006, free) |
@@ -27,17 +27,17 @@
 ```bash
 ss start data.03              # stubs python/corpus/dedup.py
 ss tests data.03              # read the test catalog first
-ss check data.03              # needs data.02 and ds.08 passing (or --ref-deps); builds tinyllm_rs first
+ss check data.03              # needs data.02 and M06.3 passing (or --ref-deps)
 ss diff  data.03              # after passing: your code against the reference
 ```
 
-`ss check` builds your `rust/crates/tl-py` into `tinyllm_rs.so` and puts it first on `PYTHONPATH`, so `import tinyllm_rs` in your unit reaches your own `ds.08` Bloom filter.
+The Python Bloom screen uses the hash functions from `M06.3` and follows the shared bit-sizing rules. The standalone Rust Bloom module has its own tests and does not cross into this stage.
 
 ---
 
 ## 1. Why now
 
-After `data.02` every document is clean, English, and plausibly prose, and many of them say the same thing. Web pages share navigation and license footers; dataset mirrors repeat whole files; story collections reuse an opening paragraph. A model trained on that sees the repeated text again and again: Lee et al. found that deduplicating C4 removed text that models otherwise reproduced verbatim, and trained faster to the same loss. Repeated rare strings are also the ones a model memorizes, which matters for privacy (`ethics.02`). The obvious fix, a Python set of every paragraph seen, costs about 90 bytes per paragraph (a 32-byte digest as a `bytes` object is 65 bytes, plus its slot in the set), so a billion paragraphs need 90 GB. Your `ds.08` Bloom filter does the screening in about 10 bytes each. This module is where that filter gets its call site, and where you learn what its false positives mean for correctness.
+After `data.02` every document is clean, English, and plausibly prose, and many of them say the same thing. Web pages share navigation and license footers; dataset mirrors repeat whole files; story collections reuse an opening paragraph. A model trained on that sees the repeated text again and again: Lee et al. found that deduplicating C4 removed text that models otherwise reproduced verbatim, and trained faster to the same loss. Repeated rare strings are also the ones a model memorizes, which matters for privacy (`ethics.02`). The obvious fix, a Python set of every paragraph seen, costs about 90 bytes per paragraph (a 32-byte digest as a `bytes` object is 65 bytes, plus its slot in the set), so a billion paragraphs need 90 GB. A compact Python Bloom screen does the screening in about 10 bytes each. This module defines its local use and shows what false positives mean for correctness.
 
 ## 2. Principles
 
@@ -127,7 +127,7 @@ def exact_dedup(docs: Iterable[Doc], bloom_bytes_per_item: float = 10, *,
                 stats: dict[str, Any] | None = None) -> Iterator[Doc]: ...
 ```
 
-In a pipeline, bind the options: `compose(build_filters(cfg["filters"]), functools.partial(exact_dedup, bloom_bytes_per_item=cfg["dedup"]["bloom_bytes_per_item"]))`. The filter is `tinyllm_rs.Bloom.with_rate(max(N, 1), bloom_rate(B))`; use its `insert` and `contains`, and read $m$ from bytes 8 to 16 of `to_bytes()` for the stats.
+In a pipeline, bind the options: `compose(build_filters(cfg["filters"]), functools.partial(exact_dedup, bloom_bytes_per_item=cfg["dedup"]["bloom_bytes_per_item"]))`. The private Python filter is sized for `max(N, 1)` at `bloom_rate(B)`. Use `insert` and `contains`; its `m` is the bit count reported in stats.
 
 ### What the tests check
 
@@ -163,7 +163,7 @@ In a pipeline, bind the options: `compose(build_filters(cfg["filters"]), functoo
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `data.02` | `Doc`, `compose`, and the normalized text whose paragraphs are separated by exactly one blank line |
-| Back | `ds.08` | `tinyllm_rs.Bloom`: `with_rate`, `insert`, `contains`, `to_bytes` |
+| Back | `M06.3` | FNV-1a and SplitMix64 supply the shared Bloom hash rules |
 | Forward | `data.04` | near dedup (MinHash, LSH) runs on what this stage keeps, so exact copies never reach the more expensive pass |
 | Forward | `data.06` | the manifest's `dedup.exact_dropped` comes from these stats |
 

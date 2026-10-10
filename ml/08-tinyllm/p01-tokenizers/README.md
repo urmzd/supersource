@@ -1,6 +1,6 @@
 # Part 1: Tokenizers
 
-From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives way to the `Tokenizer` protocol and three trained families: byte-level BPE (GPT-2 compatible, loading Hugging Face files), WordPiece (BERT), and the Unigram LM (EM, Viterbi, subword sampling). Then BPE moves to Rust (`tl-tok`) with a streaming UTF-8 decoder and a PyO3 binding, proven byte-for-byte against your Python, and the metrics that decide a vocabulary size for the capstone.
+From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives way to the `Tokenizer` protocol and three trained families: byte-level BPE (GPT-2 compatible, loading Hugging Face files), WordPiece (BERT), and the Unigram LM (EM, Viterbi, subword sampling). Then BPE is implemented independently in Rust (`tl-tok`) with a streaming UTF-8 decoder; Python and Rust compare behavior using `tokenizer.json` and shared fixtures. The part ends with metrics that decide a vocabulary size for the capstone.
 
 **Course passes**: 3 (L1.1 to L1.6, milestone MS-L1, part of gate MS-P3)
 
@@ -21,7 +21,7 @@ From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives
 | `L1.2` | Byte-level BPE (GPT-2 compatible): hand-written pre-tokenizer, trainer, HF loader | build | 3 |
 | `L1.3` | WordPiece (BERT basic tokenizer + greedy longest match) | build | 3 |
 | `L1.4` | Unigram LM tokenizer (EM, Viterbi, subword sampling) | build | 3 |
-| `L1.5` | Rust fast BPE (`tl-tok`) with a streaming UTF-8 decoder, the byte tokenizer, and PyO3 binding (`tl-py`) | build | 3 |
+| `L1.5` | Rust fast BPE (`tl-tok`) with a streaming UTF-8 decoder and fixture parity with Python | build | 3 |
 | `L1.6` | Tokenizer metrics | build | 3 |
 
 ## Chapters
@@ -33,7 +33,7 @@ From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives
 | 2 | `L1.2` | [Byte-level BPE (GPT-2 compatible): pre-tokenizer, trainer, HF loader](02-byte-level-bpe.md) | build | 3 |
 | 3 | `L1.3` | [WordPiece (BERT basic tokenizer + greedy longest match)](03-wordpiece.md) | build | 3 |
 | 4 | `L1.4` | [Unigram LM tokenizer (EM, Viterbi, subword sampling)](04-unigram-lm.md) | build | 3 |
-| 5 | `L1.5` | [Rust fast BPE (tl-tok), byte tokenizer, streaming decoder, PyO3 binding](05-rust-fast-bpe.md) | build | 3 |
+| 5 | `L1.5` | [Rust fast BPE (tl-tok), byte tokenizer, streaming decoder](05-rust-fast-bpe.md) | build | 3 |
 | 6 | `L1.6` | [Tokenizer metrics](06-tokenizer-metrics.md) | build | 3 |
 <!-- /ss:chapters -->
 

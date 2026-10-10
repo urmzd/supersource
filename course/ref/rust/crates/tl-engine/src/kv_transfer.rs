@@ -33,7 +33,7 @@ pub use tonic;
 use tl_proto::tl::kv::v1::kv_transfer_service_client::KvTransferServiceClient;
 use tl_proto::tl::kv::v1::kv_transfer_service_server::{KvTransferService, KvTransferServiceServer};
 use tl_proto::tl::kv::v1::{HasBlocksRequest, HasBlocksResponse, KvAck, KvChunk, ReleaseRequest, ReleaseResponse};
-use tl_sys::{KvCfg, KvPool};
+use crate::kv::{KvCfg, KvPool, TL_EFULL, TL_ENOMEM};
 use tonic::{Request, Response, Status, Streaming};
 
 use crate::sample::{stream, Pcg32, PURPOSE_SAMPLE};
@@ -45,8 +45,8 @@ pub const DTYPE_F16: u16 = 1;
 /// Envelope header bytes.
 pub const HEADER_BYTES: usize = 28;
 
-/// A pool shared by the step loop and the transfer tasks (the C pool is not
-/// thread-safe: one Mutex serializes every call, c/ABI.md).
+/// A pool shared by the step loop and the transfer tasks. One Mutex protects
+/// the pool while multiple async tasks use it.
 pub type SharedKv = Arc<Mutex<KvPool>>;
 
 /// Locks the pool, recovering it if a holder panicked (the pool's own state
@@ -395,7 +395,7 @@ impl KvReceiver {
             return Err(Status::data_loss("a hashed chunk must carry a full block"));
         }
         let ids = pool.import(&c.payload).map_err(|e| {
-            if e.status == tl_sys::TL_EFULL || e.status == tl_sys::TL_ENOMEM {
+            if e.status == TL_EFULL || e.status == TL_ENOMEM {
                 Status::resource_exhausted(e.to_string())
             } else {
                 Status::data_loss(e.to_string())

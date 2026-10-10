@@ -17,10 +17,10 @@ Generating text fast and exactly. The sampler and logit processors in the course
 
 | Module | Topic | Kind | Pass |
 |---|---|---|---|
-| `rt.04` | Paged KV block pool in C: refcount, copy on write, chained block hashes, prefix index, LRU, export and import (format v1) | build | 6 |
+| `rt.04` | Optional standalone C paged KV block pool: refcount, copy on write, chained block hashes, prefix index, LRU, export and import (format v1); parity via fixtures | optional | 6 |
 | `L8.1` | Sampling and logit processors (`spec/sampling.md`) | build | 6 |
 | `L8.2` | KV cache, incremental decode, incremental UTF-8 detokenizer, `generate` | build | 6 |
-| `L8.3` | Paged KV cache in Python over the C block pool (`rt.04` via ctypes) | build | 6 |
+| `L8.3` | Paged KV cache implemented in Python | build | 6 |
 | `L8.4` | Radix prefix cache (block-granular, LRU leaf eviction, locks) | build | 6 |
 | `L8.5` | Quantization: int8 per-channel, int4 group (packed), fp8, KV quant | build | 6 |
 | `L8.6` | Speculative decoding: n-gram, prompt-lookup, and model drafts | build | 6 |
@@ -33,12 +33,12 @@ Generating text fast and exactly. The sampler and logit processors in the course
 |---|---|---|---|---|
 | 1 | `L8.1` | [Sampling and logit processors](01-sampling-and-logit-processors.md) | build | 6 |
 | 2 | `L8.2` | [KV cache, incremental decode, incremental UTF-8 detokenizer, generate](02-kv-cache-and-generate.md) | build | 6 |
-| 3 | `L8.3` | [Paged KV cache in Python over the C block pool](03-paged-kv-cache.md) | build | 6 |
+| 3 | `L8.3` | [Paged KV cache in Python](03-paged-kv-cache.md) | build | 6 |
 | 4 | `L8.4` | [Radix prefix cache (block-granular, LRU leaf eviction, locks)](04-radix-prefix-cache.md) | build | 6 |
 | 5 | `L8.5` | [Quantization: int8, int4 group (packed), fp8, KV quant](05-quantization.md) | build | 6 |
 | 6 | `L8.6` | [Speculative decoding: n-gram, prompt-lookup, and model drafts](06-speculative-decoding.md) | build | 6 |
 | 7 | `L8.7` | [Constrained decoding: regex to DFA to token masks, JSON-schema subset](07-constrained-decoding.md) | build | 6 |
-| 8 | `rt.04` | [Paged KV block pool (format v1)](08-paged-kv-block-pool.md) | build | 6 |
+| 8 | `rt.04` | [Paged KV block pool (format v1, optional C)](08-paged-kv-block-pool.md) | side | 6 |
 <!-- /ss:chapters -->
 
 ## Going further

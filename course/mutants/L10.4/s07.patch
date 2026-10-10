@@ -1,13 +1,6 @@
 --- a/rust/crates/tl-engine/src/block_manager.rs
 +++ b/rust/crates/tl-engine/src/block_manager.rs
-@@ -242,9 +242,7 @@
-                         if i >= t.matched {
-                             // the block is full of computed K and V; only a
-                             // full block may be registered (rt.04)
+@@ -273,3 +272,0 @@
 -                            if pool.fill(b) < bt as u32 {
 -                                pool.set_fill(b, bt as u32).expect("an unregistered block of ours");
 -                            }
-+
-                             // Ok(false): another block already holds this
-                             // prefix; ours just goes back to the free list
-                             let _ = pool.register(b, h);

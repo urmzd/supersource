@@ -1,7 +1,7 @@
 //! Bloom filter (ds.08): sizing, double hashing, and the byte layout of
 //! contracts/formats/bloom.md, so a filter serialized here answers every
-//! `contains` identically in `tinyllm_rs.Bloom` (tl-py) and in any other
-//! implementation of that page.
+//! `contains` identically in the Python and Rust implementations of that
+//! page.
 //!
 //! A Bloom filter is `m` bits and `k` hash functions. Insert sets the `k`
 //! bits an item hashes to; `contains` answers yes when all `k` are set. An

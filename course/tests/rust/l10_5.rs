@@ -677,7 +677,7 @@ fn tokenize_models_health_and_request_id() {
     //      model, /healthz answers on both ports, /readyz on the health
     //      port, and X-Request-Id is echoed (or generated) on every response.
     // KIND: conformance
-    // CATCHES: s15
+    // CATCHES: s14
     // CHAPTER: L10.5 section 2
     let s = start(&succ_model(), |_| {});
     let t = post(s.http(), "/v1/tokenize", r#"{"model":"succ","text":"hé"}"#).json();
@@ -809,4 +809,25 @@ fn runtime_toml_and_env_overrides() {
         assert!(ServeConfig::from_toml(&format!("{base}{bad}\n"), &[]).is_err(), "should refuse {bad}");
     }
     assert!(ServeConfig::from_toml("[gateway]\nlisten = \":1\"\n", &[]).is_err(), "no [engine] table");
+}
+
+#[test]
+fn speculative_runtime_config_drives_the_serving_path() {
+    // WHY: the optional runtime setting is parsed once and routes generation
+    // through L10.8's runner-backed verifier without changing greedy output.
+    // KIND: integration
+    // CATCHES: s01
+    // CHAPTER: L10.5 section 4
+    let plain = start(&succ_model(), |_| {});
+    let body = chat_body("succ", "aba", r#", "max_tokens":6,"temperature":0"#);
+    let expected = post(plain.http(), "/v1/chat/completions", &body).json();
+    drop(plain);
+
+    let spec = start(&succ_model(), |c| {
+        c.speculative = Some(tl_engine::spec::SpecConfig::parse("prompt_lookup", 4).unwrap());
+    });
+    let got = post(spec.http(), "/v1/chat/completions", &body).json();
+    let choice = &got.get("choices").arr()[0];
+    assert_eq!(choice.get("message").get("content"), expected.get("choices").arr()[0].get("message").get("content"));
+    assert_eq!(choice.get("finish_reason").str(), "length");
 }

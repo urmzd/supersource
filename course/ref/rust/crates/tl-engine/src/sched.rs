@@ -55,7 +55,7 @@ pub struct Allocation {
 }
 
 /// Where KV blocks come from. The scheduler calls it; L10.4's
-/// `BlockManager` implements it over the C pool with a prefix cache.
+/// `BlockManager` implements it over the Rust pool with a prefix cache.
 pub trait BlockSpace {
     /// Token positions per block.
     fn block_tokens(&self) -> usize;

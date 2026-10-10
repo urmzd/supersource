@@ -17,9 +17,6 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct tl_pool tl_pool;
 
@@ -38,8 +35,5 @@ tl_status tl_matmul_q4_f32(const float *x, const uint8_t *wq, const uint16_t *sc
 tl_status tl_matmul_q8_f32(const float *x, const int8_t *wq, const float *scales,
                            float *y, int64_t M, int64_t N, int64_t K, tl_pool *tp);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_QMATMUL_H */

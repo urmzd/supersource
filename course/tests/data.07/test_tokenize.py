@@ -8,8 +8,8 @@ in course/mutants/data.07), and the chapter section it comes from.
 
 The corpora are written with data.06's write_shards. The GPT-2 oracle is
 course/fixtures/tok-gpt2 (tokenizer.json and the ids Hugging Face
-`tokenizers` gives for 300 strings, L1.2's fixture), read here through
-L1.5's tinyllm_rs. Headers are parsed with struct, not with your read_bin.
+`tokenizers` gives for 300 strings, L1.2's fixture), read here through the
+Python BPE. Headers are parsed with struct, not with your read_bin.
 
 The chapter's worked example (section 3), byte tokenizer, val_permille 100:
 
@@ -186,7 +186,7 @@ def test_gpt2_golden(tmp_path):
     cases = gpt2_cases()
     m = corpus(tmp_path, [c["text"] for c in cases], val_permille=0)
     tm = tokenize_shards(
-        m, GPT2, tmp_path / "t", tokenizer_id="gpt2", doc_sep_id=50256, threads=2
+        m, GPT2, tmp_path / "t", tokenizer_id="gpt2", doc_sep_id=50256
     )
     want = []
     for c in cases:  # ids a:0000 .. a:0299 sort in input order
@@ -387,19 +387,18 @@ def test_val_bytes_per_token(tmp_path):
 
 
 def test_output_is_deterministic(tmp_path):
-    # WHY: two runs, one with 1 encoding thread and one with 4, give
-    #      byte-identical files and manifest: batch encoding must keep
-    #      document order. A smoke test: dependents rerun it, because a
+    # WHY: repeated runs give byte-identical files and manifest. A smoke
+    #      test: dependents rerun it, because a
     #      nondeterministic stage breaks MS-corpus's output hash.
     # KIND: property
     # CHAPTER: data.07 section 2, Principles
     cases = gpt2_cases()
     m = corpus(tmp_path, [c["text"] for c in cases] * 4, val_permille=200)
     tokenize_shards(
-        m, GPT2, tmp_path / "a", tokenizer_id="gpt2", doc_sep_id=50256, threads=1
+        m, GPT2, tmp_path / "a", tokenizer_id="gpt2", doc_sep_id=50256
     )
     tokenize_shards(
-        m, GPT2, tmp_path / "b", tokenizer_id="gpt2", doc_sep_id=50256, threads=4
+        m, GPT2, tmp_path / "b", tokenizer_id="gpt2", doc_sep_id=50256
     )
     for p in sorted((tmp_path / "a").iterdir()):
         assert p.read_bytes() == (tmp_path / "b" / p.name).read_bytes(), p.name

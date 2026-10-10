@@ -11,7 +11,7 @@ outputs, then 64 `uniform()` doubles and 64 Box-Muller normals from a fresh
 generator. The normals follow spec/pcg32.md (pairs from two uniforms, cosine
 first, the sine kept as the spare), computed here from the frozen uniforms:
 the frozen `normal()` returns only the cosine half (DEVIATIONS K11, M063-03).
-Every implementation (Python and C M06.3, Rust L10.1, Go load.01) must
+Every implementation (Python M06.3, Rust L10.1, Go load.01) must
 reproduce them bit for bit.
 
     uv run --script course/oracle/parity/rng_golden.py

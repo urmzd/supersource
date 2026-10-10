@@ -3,7 +3,7 @@
 //!
 //! Annotated exemplars (DESIGN 5.12). The model here is a fake written in
 //! this file: it stores a deterministic f16 pattern per (token, position,
-//! layer, K/V, head, dim) in real rt.04 pools through tl-sys, and its logits
+//! layer, K/V, head, dim) in real Rust KV pools, and its logits
 //! are a hash of EVERY cached KV value, so a block that is lost, stale, or
 //! corrupted in transfer changes the next token. Prefill and decode run on
 //! two pools, connected by your EngineControl and tl.kv.v1 servers on
@@ -31,7 +31,7 @@ use tl_engine::kv_transfer::tonic::{self, Status};
 use tl_engine::kv_transfer::{self as kt, tokio, BlockRecord, EnvError, EnvHeader, GrpcTransport, KvReceiver, KvTransport, SharedKv, TransferError};
 use tl_engine::sample::{sample, stream, Pcg32, SamplingParams, PURPOSE_SAMPLE};
 use tl_serve::control::{self, ControlService, PrefillBackend, PrefillJob, PrefillOutcome};
-use tl_sys::{KvCfg, KvPool, TL_F16};
+use tl_engine::kv::{KvCfg, KvPool, TL_F16};
 
 fn fixtures() -> PathBuf {
     PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
@@ -326,9 +326,8 @@ fn envelope_reader_rules() {
 
 #[test]
 fn rust_writer_matches_the_golden_blobs() {
-    // WHY: parity/kv.wire.v1: the Rust writer, the C exporter (rt.04
-    //      through tl-sys), and the golden blobs agree byte for byte on six
-    //      sequences, including partial tails (zeros past the fill) and
+    // WHY: parity/kv.wire.v1: the Rust writer and the golden blobs agree byte
+    //      for byte on six sequences, including partial tails (zeros past the fill) and
     //      multi-layer, multi-head shapes; and the Rust reader takes all of
     //      them back.
     // KIND: differential
@@ -367,7 +366,7 @@ fn rust_writer_matches_the_golden_blobs() {
         }
         let rust = le_hex(&kt::write_envelope(&EnvHeader::v1(&kcfg, nb as u32), &recs));
         assert_eq!(rust, c.get("output").get("hex").str(), "{name}: Rust writer");
-        // C exporter: the same blocks written into a pool.
+        // Rust KV pool exporter: the same blocks written into a pool.
         let mut pool = KvPool::new(kcfg).unwrap();
         let ids = pool.alloc(nb).unwrap();
         for pos in 0..n {

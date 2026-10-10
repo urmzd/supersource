@@ -26,7 +26,7 @@ Contents:
 
 ### 1.1 What the learner builds
 
-The learner builds **one cohesive engineering system from scratch** and owns all of it at the end: a small LLM platform. It trains a language model on a corpus it cleaned itself, serves it from a native inference engine running its own C kernels, fronts it with a Go gateway, runs long jobs on a durable execution engine it wrote, drives it with an agent SDK it wrote, deploys it on a local Kubernetes cluster, observes it end to end, and keeps it alive through incident drills and interface migrations.
+The learner builds **one cohesive engineering system from scratch** and owns all of it at the end: a small LLM platform. It trains a language model on a corpus it cleaned itself, serves it from a native Rust inference engine built on `candle-core` and `candle-nn`, fronts it with a Go gateway, runs long jobs on a durable execution engine it wrote, drives it with an agent SDK it wrote, deploys it on a local Kubernetes cluster, observes it end to end, and keeps it alive through incident drills and interface migrations.
 
 The course principle is **deliver something meaningful**. Every module is a piece of that system with a real call site. Fundamentals with no call site become checked problem sets (`solve`) or optional side quests.
 
@@ -36,10 +36,10 @@ The course principle is **deliver something meaningful**. Every module is a piec
 |---|---|---|
 | P1 | **One system, owned end to end** | Every `build` module declares `used_by` call sites: other modules (never milestones or side quests) that call its code. A build module with no such call site fails `ss verify course` |
 | P2 | **The course ships no prebuilt system** | No CLI, server, API, run script, Dockerfile, chart, or CI file is given to the learner. The course ships contracts, chapters, tests, fixtures, and hidden references |
-| P3 | **Contracts at every boundary** | Every language crossing goes through a written contract (C header, `.pyi`, Rust trait, Go interface, `.proto`, OpenAPI, file format spec). Conformance suites test the contract, not an implementation |
-| P4 | **Four languages, one job each** | Python: math, models, training, data, model evals. C: kernels and runtime. Rust: inference engine and fast tokenizer. Go: control plane (gateway, durable engine, agent SDK, load generator) |
+| P3 | **Contracts at every boundary** | Language crossings use HTTP, gRPC, subprocess, or file contracts. C headers apply only within standalone C exercises. Conformance suites test the contract, not an implementation |
+| P4 | **Four languages, one job each** | Python: math, models, training, data, model evals. C: optional standalone kernels and systems exercises. Rust: candle inference engine and fast tokenizer. Go: control plane (gateway, durable engine, agent SDK, load generator) |
 | P5 | **Math becomes code** | Math modules with code have call sites: central differences become `gradcheck`, Newton becomes `rsqrt`, SVD becomes LoRA and MLA initialization, fp8 emulation becomes quantization, categorical sampling becomes the sampler. Pen-and-paper math is a `solve` set checked by SymPy |
-| P6 | **Python is the semantic source of truth** | Native ports (C, Rust) are proven by differential tests against the **learner's own Python**, never against a black box |
+| P6 | **Python is the semantic source of truth** | Optional C exercises and the Rust engine are compared with Python through shared fixture files, never through bindings or a shared process |
 | P7 | **Tracer bullet first, then spiral** | Pass 1 builds a thin version of every layer end to end. Each later module upgrades one component behind an unchanged contract, or changes a contract through an explicit migration chapter |
 | P8 | **Nothing left on its own** | Every chapter has the six beats: Why now, Principles, Worked example, Interface and tests, Pitfalls, Where it's used next |
 | P9 | **Every part ends in a milestone run through the learner's own entry points** | `ss milestone` launches the commands the learner declares in `system.toml`, never ours |
@@ -51,7 +51,7 @@ The course principle is **deliver something meaningful**. Every module is a piec
 
 | Artifact | Course provides | Learner builds |
 |---|---|---|
-| Contracts (`tinyllm.h`, `.pyi`, Rust traits, Go interfaces, `.proto`, OpenAPI, format specs) | yes, read-only, vendored | implements them |
+| Contracts (C headers, `.pyi`, Rust traits, Go interfaces, `.proto`, OpenAPI, format specs) | yes, read-only, vendored | implements them |
 | Chapters (guides) | yes, in the tracks | reads them |
 | Course tests, conformance and parity suites | yes, vendored at export | runs them via `ss` |
 | Fixtures and oracles | yes (small committed, large via `ss fetch`) | uses them |
@@ -70,7 +70,7 @@ The learner names the system once: `ss course init --name <system>`. The name is
 |---|---|---|
 | Repo directory, umbrella CLI binary, Helm release prefix, k8s namespace, kind context | yes | `forge/`, `forge`, `forge-gateway`, `ns/forge`, `kind-forge` |
 | Python packages | no | `tinyllm`, `corpus` |
-| Rust crates | no | `tl-ds`, `tl-tok`, `tl-py`, `tl-sys`, `tl-engine`, `tl-serve` |
+| Rust crates | no | `tl-ds`, `tl-tok`, `tl-engine`, `tl-serve` |
 | Go module | no | `tinyllm` (packages `tinyllm/gateway/...`); the vendored contracts are a separate module with a dotted path, `supersource.urmzd.com/tl/contracts`, required through a `replace` to `../contracts/go` in `go/go.mod` |
 | Helm values schemas | no | `contracts/helm/{gateway,engine,durable,worker,agent}.values.schema.json` |
 | C library, header, symbol prefix | no | `libtinyllm`, `tinyllm.h`, `tl_` |
@@ -86,17 +86,17 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 | D1 | **Ids**: math `Mcc.n`, spine `Lp.n`, capstones `C1`/`C2`, solve sets `S-Mcc` split into lettered parts by pass (`S-M07a`), systems, primers, and practices `<area>.NN` (`lang ds rt data dur gw ag load dep obs ops craft ethics review field iv`), side quests `sq.<slug>`, milestones `MS-<slug>` | `llm.p07.rope` (A), single-letter tracks `L8.3`/`W2.4`/`P1.3` (D), `tinyllm.p0.01`/`math.04.01` (E) | Short ids that read as the part or area; one grammar for the harness regex (5.2) |
 | D2 | **Learner repo top level** `python/ c/ rust/ go/ deploy/ docs/` (A), Python internals per the math/ML catalog, Go packages per the systems catalog, no Go `internal/` | `tinyllm/ kernels/ engine/ control/` (B, E); `py/ rs/` (C, D) | Course tests must import learner Go packages, which `internal/` forbids; language-named roots make the overlay a path mapping |
 | D3 | Harness manifest is **`system.toml`**; service runtime config is **`runtime.toml`** | `course.toml` (A, E), `supersource.toml` (C) | It describes the learner's system, not the course; two files with two jobs |
-| D4 | **Fixed contract names** (1.4): Go module `tinyllm`, contracts module `supersource.urmzd.com/tl/contracts`, crates `tl-ds tl-tok tl-py tl-sys tl-engine tl-serve` | Go `github.com/<you>/<system>/go` (A), crates `tl-tensor tl-sampler tl-kv` (D), `tl-tokenizer tl-server` (B) | Tests import fixed names; A's own rule said contract ids never carry the system name |
+| D4 | **Fixed contract names** (1.4): Go module `tinyllm`, contracts module `supersource.urmzd.com/tl/contracts`, crates `tl-ds tl-tok tl-engine tl-serve` | Go `github.com/<you>/<system>/go` (A), crates `tl-tensor tl-sampler tl-kv` (D), `tl-tokenizer tl-server` (B) | Tests import fixed names; no binding crates are needed because language boundaries use processes and files |
 | D5 | **Data plane is HTTP.** Every engine serves the OpenAI subset over HTTP+SSE; the gateway proxies SSE. gRPC is internal only: `tl.engine.v1.EngineControl` (Prefill, Info, Cancel, Drain), `tl.kv.v1`, `tl.control.v1`, `tl.durable.v1`, `tl.raft.v1` | Gateway to engine over gRPC `Generate` (A) | The Part 10 milestone can run OpenAI conformance against the engine before any gateway exists; the tracer engine is plain HTTP |
 | D6 | KV transfer is gRPC `tl.kv.v1` with content-hash dedup (`HasBlocks`, `PushKv`) | framed TCP `TLKV` (C), per-layer proto (B) | Dedup by hash reuses the prefix-cache hash; one RPC stack |
-| D7 | **Rust owns the model graph** (L10.1 forward over C kernels via `tl-sys`); C owns kernels and runtime | C full forward `tl_model_forward` in `model.c` (B) | Avoids a third copy of the model graph; the Rust engine is substantive. L9.7 becomes the Python `--backend c` dispatch that proves kernels before Rust exists |
-| D8 | Python reaches Rust through **PyO3** (`tl-py`, module `tinyllm_rs`); Python reaches C through **ctypes** | `tok.h` C ABI cdylib (A) | One binding per pair; PyO3 releases the GIL for batch encode |
+| D7 | **Rust owns the production model graph on candle** (`candle-core`, `candle-nn`); C modules are optional standalone exercises with their own binaries and fixture parity | Rust forward over C kernels through `tl-sys`; a C full forward in `model.c` | Rust owns production serving without FFI. `candle-transformers` is forbidden so the learner implements each model layer |
+| D8 | **No FFI anywhere**: no ctypes, PyO3, `extern "C"` calls between languages, or `tl-sys`. Python and Rust exchange weights through safetensors files; Python and Rust each own a tokenizer and compare output through shared fixtures | Python/Rust or Rust/C bindings | Languages meet only across HTTP, gRPC, subprocess, and file boundaries; no shared process image |
 | D9 | Python talks to the platform **only through the subprocess activity contract** (2.8). The Go worker execs Python. Two named exceptions: OTLP telemetry export (obs.05), and the optional L12 rollout client, which calls the engine's HTTP API | Python gRPC worker client (C dur.09); HTTP durable client API `durable.v1.yaml` (C) | Training and data stay testable without a cluster; no Python proto toolchain; one durable protocol (gRPC) |
 | D10 | **RNG**: PCG32 (XSH-RR 64/32), SplitMix64 for seed derivation, `uniform_f64` from two u32 draws (53 bits) | xoshiro256\*\* (D); 24-bit float (B); A's `<<21 ^` mix | One spec; `M06.3` moves to Pass 2 because `L0` APIs take `rng: PCG32` |
 | D11 | Sampling op order: penalties, temperature, top-k, top-p, min-p, f64 softmax, one uniform, inverse CDF; ties to the lowest id; `temperature == 0` is greedy | per-section variants | Bit-identical Python and Rust streams |
-| D12 | **C ABI**: umbrella `tinyllm.h` over per-unit headers; raw pointers plus explicit dims; constructors return `tl_status` with an out param; `_create`/`_destroy`; positive status codes; allocator hook and thread-local `tl_last_error` | `tl_tensor` struct API (A); negative codes (C) | ctypes-friendly, per-unit ownership, fault injection via the allocator hook |
-| D13 | KV block pool API from the systems catalog (`rt.04`), block hash = chained FNV-1a 64 over full blocks only, KV format v1 f16; v2 fp8 e4m3 with per-(layer, head) scales arrives only through the `craft.13` migration. Both share one export envelope (2.9) | xxh64 (C), int8 v2 (A) | FNV-1a is hand-implementable in every language; fp8 reuses `M09.4`; shipping v2 early would leave the migration nothing to migrate |
-| D14 | Runtime pieces: `L9.0` dissolves into `rt.01` to `rt.03`; `L8.3` is the Python paged cache over `rt.04` | three overlapping owners (B L9.0/L8.3, C rt.*, E p9.02/p9.06) | One owner per unit |
+| D12 | **Standalone C contract**: `tinyllm.h` contains only what optional C exercises require; per-unit headers, explicit dimensions, status codes, allocator hook, and thread-local `tl_last_error` | Rust/Python bindings to a broad C library | C headers remain C-only; standalone test binaries exercise each module and compare results with fixtures |
+| D13 | The production Rust engine owns its KV block manager and transfer format; optional C `rt.04` is standalone only. Block hash = chained FNV-1a 64 over full blocks; KV format v1 f16; v2 fp8 e4m3 with per-(layer, head) scales arrives through `craft.13`. Both formats share one export envelope (2.9) | xxh64 (C), int8 v2 (A) | FNV-1a is hand-implementable in every language; fp8 reuses `M09.4`; shipping v2 early would leave the migration nothing to migrate |
+| D14 | `rt.01` and `L9.7` are retired. `L8.3` is a pure-Python paged KV cache. `rt.02` to `rt.04` are optional standalone C exercises | C runtime or kernels called by Rust or Python | One owner per unit; optional C exercises do not select or back a production engine |
 | D15 | **Ownership unit is a source file** in every language. A later module may take over a unit with `upgrades = [...]`; the earlier module's tests become its smoke regression | crate- or package-level units (D) | All of `tl-engine` would otherwise be one module; `upgrades` is how the spiral works |
 | D16 | **Entry points are learner territory**: CLI mains, server mains, `go/cmd/*`, `deploy/`, `docs/`. They are never overlaid and are verified only by milestones, conformance suites, and artifact checks. `--ref-deps` substitutes library units only | `--ref-deps loadgen` substituting a binary (B) | Decision 2: no prebuilt system |
 | D17 | Data formats: parquet text shards and llm.c `.bin` token streams (A). Data modules renumbered `data.01` fetch to `data.09` workflow | tokens in parquet (C), `.bin + .idx` (E) | The training loader memory-maps a flat token stream |
@@ -121,6 +121,8 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 | D36 | **Model zoo**: every `tl_arch` family loads through the checkpoint contract and is evaluated by `L6.7`'s zoo suite, which the `EvalSuite` workflow (`dur.11`) runs. This is the call site of `L2.*`, `L3.*`, `L4.*`, `L5.5`, and `L6.1` to `L6.3` | "referenced by a milestone step" as a call site | Decision 1: a real call site in the final system, not a milestone |
 | D37 | **Engine scope**: speculative decoding (`L10.8`) and tool calls with constrained JSON decoding (`L10.9`) are core engine modules; multi-LoRA serving is `sq.multi-lora` | spec decoding only in Python; multi-LoRA as optional `L10.8` | `L8.6` and `L8.7` need a production call site; MS-agent needs `tool_calls` from the learner's engine |
 | D38 | **Language and tool primers** `lang.01` to `lang.11` precede the first module that uses each language or tool; chapters in `software-craftsmanship/12-language-and-tool-primers/` | assume prior fluency | A learner starting from high-school algebra meets C, Rust, Go, Docker, and Kubernetes in Pass 1 |
+| D39 | **Optional C modules stand alone**: `L9.1` to `L9.6`, `ds.01` to `ds.04`, `rt.02` to `rt.04`, and `M09.5` to `M09.7` are optional, skippable, and each has a C test binary. The Python reference generates parity fixtures | A runtime switch that links C kernels into Python or Rust | Optional C depth has no FFI and no pass-gate dependency |
+| D40 | **Retired FFI modules**: retire `rt.01`, `L9.7`, `tl-py`, and `tl-sys`. Rust owns serving with `candle-core` and `candle-nn`; Rust's `tl-tok` tokenizer serves the engine, while Python keeps its own BPE | PyO3 tokenizer bridge, ctypes backend, C kernel backend switch | Production engine remains Rust and all cross-language seams use process or file contracts |
 
 ---
 
@@ -130,25 +132,23 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 
 | # | Component | Lang | Learner path | Responsibilities | Built in |
 |---|---|---|---|---|---|
-| 1 | `tinyllm` | Python | `python/tinyllm/` | numerics, autograd, gradcheck, nn layers, tokenizers, every model family from Parts 2 to 7, training loop, optimizers, safetensors and checkpoints, HF loader, model evals, reference sampler and inference algorithms, ctypes backend, training at scale, post-training | math, L0 to L12 |
+| 1 | `tinyllm` | Python | `python/tinyllm/` | numerics, autograd, gradcheck, nn layers, tokenizers and BPE, every model family from Parts 2 to 7, training loop, optimizers, safetensors and checkpoints, HF loader, model evals, reference sampler and inference algorithms, training at scale, post-training | math, L0 to L12 |
 | 2 | `corpus` | Python | `python/corpus/` | fetch with license capture, normalize and filter, exact dedup (Bloom), MinHash LSH near-dup (union-find), PII scrub, parquet shards, tokenize to `.bin`, data ledger and datasheet | `data.*` |
-| 3 | `libtinyllm` | C | `c/` | runtime (ABI, arena, thread pool, KV block pool), numerics (Newton rsqrt, `expf`, fp8/bf16/fp16, PCG32), kernels (matmul, online softmax, FlashAttention forward, paged attention, fused int4 dequant matmul, RMSNorm, RoPE, SiLU-mul, top-k), data structures (vec, Swiss table, LRU) | `rt.*`, L9, `ds.01` to `ds.04`, math numerics |
+| 3 | standalone C exercises | C | `c/` | Optional runtime, numeric, kernel, and data-structure modules; each has a standalone C test binary and fixture-based parity with its Python reference. No production engine links this library | optional `rt.02` to `rt.04`, `L9.1` to `L9.6`, `ds.01` to `ds.04`, `M09.5` to `M09.7` |
 | 4 | `tl-ds` | Rust | `rust/crates/tl-ds/` | Robin Hood map, lazy binary heap, radix tree over token ids, Bloom filter | `ds.05` to `ds.08` |
 | 5 | `tl-tok` | Rust | `rust/crates/tl-tok/` | byte-level BPE (GPT-2 exact), `tokenizer.json` loader, streaming UTF-8 decoder, batch encode | L1.5 |
-| 6 | `tl-py` | Rust | `rust/crates/tl-py/` | PyO3 module `tinyllm_rs`: tokenizer and Bloom filter for Python | L1.5, `ds.08` |
-| 7 | `tl-sys` | Rust | `rust/crates/tl-sys/` | hand-written `extern "C"` bindings for `tinyllm.h`, RAII wrappers; links `c/build/libtinyllm.a` (honors `TINYLLM_C_LIB_DIR`) | L10.0, L10.1 |
-| 8 | `tl-engine` | Rust | `rust/crates/tl-engine/` (lib target) | mmap safetensors, Llama-family forward over C kernels (plus the tracer `bigram` arch), sampler (bit-identical with Python given the same logits), prefix cache, block manager, scheduler (continuous batching, chunked prefill, preemption), quantized weights, speculative decoding, constrained JSON decoding, KV transfer, heartbeat client, roles `unified`/`prefill`/`decode` | L8.4, L10.1 to L10.4, L10.6, L10.8, L10.9 |
-| 9 | `tl-serve` | Rust | `rust/crates/tl-serve/` (lib target plus the learner's `main.rs`) | OpenAI-compatible HTTP + SSE (tokio + hyper after the tracer), tool-call parsing, bounded admission, abort on disconnect, `EngineControl` gRPC, metrics and OTel | L10.0, L10.5 to L10.7, L10.9 |
-| 10 | gateway | Go | `go/gateway/...`, `go/cmd/gateway` | auth, rate limits, usage policy, response cache, SSE proxy, worker registry, routing (consistent hash with bounded loads, cascades, failover, disaggregated orchestration), usage ledger, admin API | `gw.*` |
-| 11 | durable | Go | `go/durable/...`, `go/cmd/durable` | Temporal-like server: segmented WAL event log, task queues with visibility timeout, fenced leases, retries, DLQ, durable timers, signals, history replay; optional Raft HA | `dur.*` |
-| 12 | durable SDK and worker | Go | `go/durable/{workflow,activity,worker}`, `go/workflows/`, `go/activities/`, `go/cmd/worker` | deterministic replay executor, `ExecuteActivity`, `Sleep`, signals, `SideEffect`, `GetVersion`, `ContinueAsNew`; workflows `CorpusBuild` (data.09), `TrainRun` and `EvalSuite` (dur.11), `ModelRelease` (dur.12), `AgentRun` (ag.05); subprocess activity runner for Python (dur.09); PromQL and route-update activities (dur.12) | `dur.*`, `data.09`, `ag.05` |
-| 13 | agent SDK | Go | `go/agent/...` | saige-shaped: `Provider` (OpenAI-compatible, pointed at the learner's gateway or a frontier API), streaming loop with typed deltas, tools, gates, durable runs, RAG (BM25 + vectors + RRF + MMR), eval (scorers, LLM judge, pairwise judge, A/B experiments) | `ag.*` |
-| 14 | loadgen | Go | `go/loadgen/`, `go/cmd/loadgen` | open-loop Poisson and closed-loop load, TTFT/TPOT/ITL/E2E histograms, run comparison gate | `load.*` |
-| 15 | `ds` (Go) | Go | `go/ds/ring/` | consistent hash ring with bounded loads | `ds.09` |
-| 16 | umbrella CLI | Go | `go/cmd/<system>` | `chat`, `complete`, `data build`, `train`, `eval`, `release`, `agent`, `keys`, `wf`, `usage`, `load` | learner-designed, throughout |
-| 17 | deploy | YAML, Docker | `deploy/` | Dockerfiles, Helm chart per component, kind cluster, Tiltfile, OTel collector, dashboards, SLO rules | `dep.*`, `obs.*` |
+| 6 | `tl-engine` | Rust | `rust/crates/tl-engine/` (lib target) | candle-based model forward (`candle-core`, `candle-nn`; no `candle-transformers`), mmap safetensors, sampler, prefix cache, block manager, scheduler (continuous batching, chunked prefill, preemption), quantized weights, speculative decoding, constrained JSON decoding, KV transfer, heartbeat client, roles `unified`/`prefill`/`decode` | L8.4, L10.1 to L10.4, L10.6, L10.8, L10.9 |
+| 7 | `tl-serve` | Rust | `rust/crates/tl-serve/` (lib target plus the learner's `main.rs`) | OpenAI-compatible HTTP + SSE (tokio + hyper after the tracer), tool-call parsing, bounded admission, abort on disconnect, `EngineControl` gRPC, metrics and OTel | L10.0, L10.5 to L10.7, L10.9 |
+| 8 | gateway | Go | `go/gateway/...`, `go/cmd/gateway` | auth, rate limits, usage policy, response cache, SSE proxy, worker registry, routing (consistent hash with bounded loads, cascades, failover, disaggregated orchestration), usage ledger, admin API | `gw.*` |
+| 9 | durable | Go | `go/durable/...`, `go/cmd/durable` | Temporal-like server: segmented WAL event log, task queues with visibility timeout, fenced leases, retries, DLQ, durable timers, signals, history replay; optional Raft HA | `dur.*` |
+| 10 | durable SDK and worker | Go | `go/durable/{workflow,activity,worker}`, `go/workflows/`, `go/activities/`, `go/cmd/worker` | deterministic replay executor, `ExecuteActivity`, `Sleep`, signals, `SideEffect`, `GetVersion`, `ContinueAsNew`; workflows `CorpusBuild` (data.09), `TrainRun` and `EvalSuite` (dur.11), `ModelRelease` (dur.12), `AgentRun` (ag.05); subprocess activity runner for Python (dur.09); PromQL and route-update activities (dur.12) | `dur.*`, `data.09`, `ag.05` |
+| 11 | agent SDK | Go | `go/agent/...` | saige-shaped: `Provider` (OpenAI-compatible, pointed at the learner's gateway or a frontier API), streaming loop with typed deltas, tools, gates, durable runs, RAG (BM25 + vectors + RRF + MMR), eval (scorers, LLM judge, pairwise judge, A/B experiments) | `ag.*` |
+| 12 | loadgen | Go | `go/loadgen/`, `go/cmd/loadgen` | open-loop Poisson and closed-loop load, TTFT/TPOT/ITL/E2E histograms, run comparison gate | `load.*` |
+| 13 | `ds` (Go) | Go | `go/ds/ring/` | consistent hash ring with bounded loads | `ds.09` |
+| 14 | umbrella CLI | Go | `go/cmd/<system>` | `chat`, `complete`, `data build`, `train`, `eval`, `release`, `agent`, `keys`, `wf`, `usage`, `load` | learner-designed, throughout |
+| 15 | deploy | YAML, Docker | `deploy/` | Dockerfiles, Helm chart per component, kind cluster, Tiltfile, OTel collector, dashboards, SLO rules | `dep.*`, `obs.*` |
 
-Python never speaks gRPC or HTTP to the platform. It reaches the rest of the system through files, ctypes, PyO3, and subprocess exit codes. That boundary is deliberate: the training stack is testable without a cluster. Two exceptions are named in D9: Python exports OTLP telemetry to the collector, and the optional L12 GRPO rollout client calls the engine's HTTP API.
+Languages meet only at HTTP, gRPC, subprocess, and file boundaries. Python and Rust exchange weights through safetensors files; the Rust tokenizer is used by the engine, while Python retains its own BPE implementation. Tokenizer parity and optional C exercise parity use shared fixture files. No language loads another language's library into its process.
 
 ### 2.2 Architecture diagram
 
@@ -228,10 +228,9 @@ All contract paths are relative to `course/contracts/` (vendored to the learner'
 
 | From | To | Mechanism | Contract | Conformance suite |
 |---|---|---|---|---|
-| Python | C | ctypes over `libtinyllm.{dylib,so}` | `c/include/tinyllm.h` | `abi/` (Python drives each function against numpy; struct layout via `ctypes.sizeof`) |
-| Python | Rust | PyO3 module `tinyllm_rs` | `py/tinyllm_rs.pyi` | `parity/tokenizer.bpe`, `parity/bloom` |
-| Rust engine | C | static link via `tl-sys` | `c/include/tinyllm.h` | same ABI suite, driven from Rust |
-| Python training | Rust engine | files | `formats/safetensors.md`, `formats/config.schema.json`, `formats/tokenizer.md` (including the `bytes` tokenizer, D32) | `formats/` |
+| Python training | Rust engine | safetensors and config files | `formats/safetensors.md`, `formats/config.schema.json`, `formats/tokenizer.md` | `formats/` and model-load fixtures |
+| Python tokenizer | Rust tokenizer | shared fixture files | `formats/tokenizer.md`, `spec/tokenizer-parity.md` | `parity/tokenizer.bpe` |
+| Python reference | standalone C module | fixture files consumed by the C test binary | per-module C header and `fixtures/` manifest | module-specific C tests plus Python-generated parity fixtures |
 | Python corpus | Python training | files | `formats/corpus-shard.md`, `formats/tokens-bin.md`, `formats/ledger.schema.json` | `formats/` |
 | Python sampler | Rust sampler | spec | `spec/pcg32.md`, `spec/sampling.md` | `parity/rng`, `parity/sampler` (golden ids from shared fixture logits) |
 | any client | engine | HTTP | `openapi/openai-subset.v1.yaml` (engine tier) | `openapi/` (`ss conform openapi:v1 --target engine`) |
@@ -248,33 +247,32 @@ All contract paths are relative to `course/contracts/` (vendored to the learner'
 | all services | config | TOML + env | `config/runtime.schema.json` | `config/` |
 | harness | learner | TOML | `config/system.schema.json` | `ss` validates `system.toml` on every milestone |
 
-### 2.4 C ABI: `tinyllm.h`
+### 2.4 C-only module headers: `tinyllm.h`
 
-`c/include/tinyllm.h` is an umbrella header. Each unit has its own header under `c/include/tinyllm/`, which is what makes per-file ownership (D15) possible. `c/ABI.md` holds the rules:
+`c/include/tinyllm.h` is the C-only contract for the optional standalone C exercises. Each unit has its own header under `c/include/tinyllm/`, which makes per-file ownership (D15) possible. No Python or Rust code loads or calls this library. `c/ABI.md` holds the rules:
 
 - The caller owns every buffer. No function allocates except `*_create`, and those allocate through the allocator hook.
 - No callbacks across the boundary except `tl_parallel_for`'s range function, which stays inside C.
 - Shapes and strides are `int64_t`. Matrices are row-major with explicit leading dimensions.
-- Every public struct's layout is asserted by `conformance/abi/layout_test.py` with `ctypes.sizeof` and `ctypes.offsetof`.
-- `nm` on `libtinyllm` exports only `tl_` symbols. The check normalizes names first (Mach-O prefixes a leading `_`).
-- **Enums never cross the boundary as C enum types.** `tl_status` and `tl_dtype` are `typedef int32_t` with named constants, and struct fields that carry them are `int32_t`, because a Rust `repr(C)` enum holding an unknown value is undefined behavior. Rust and Python map unknown values to an error.
-- **Thread safety.** Kernels are reentrant. Stateful objects (`tl_arena`, `tl_kv_pool`, `tl_map`, `tl_lru`) are **not thread-safe**: the caller serializes access (the Rust engine owns the pool behind one `Mutex` used by the step loop and the KV-transfer tasks). `tl_last_error` is `_Thread_local`.
+- C test binaries validate public struct layouts with C compile-time assertions and exercise the C API directly.
+- **Enums use fixed-width integer types** such as `int32_t` with named constants, so unknown values have defined handling inside C callers.
+- **Thread safety.** Kernels are reentrant. Stateful objects (`tl_arena`, `tl_kv_pool`, `tl_map`, `tl_lru`) are **not thread-safe**; each standalone caller serializes access. `tl_last_error` is `_Thread_local`.
 - Threads use **pthreads** only (`<threads.h>` is missing on macOS).
-- **Batch invariance** (L9.1, L9.3, L9.4): each output element's reduction over K (or over keys) uses one fixed order, independent of M, of the row's position in the batch, and of the query tile; key tiles are aligned to absolute key positions. Row `i` of a product computed with `M = 1` equals row `i` computed with `M = 37` bitwise. This is what makes batched and chunked greedy output equal the serial output.
-- Bindings resolve symbols **lazily**, on first use (the `rt.01` loader contract), and the harness always links a stub object (every function returns `TL_EUNSUPPORTED` or the type's zero value with `tl_last_error` set) for units not yet started, so a partial library always loads.
-- Bumping `TL_ABI_VERSION`'s major part is a migration (`craft.13` style); Python and Rust bindings refuse a mismatched major.
+- **Batch invariance** (optional L9 C exercises): each output element's reduction over K (or over keys) uses one fixed order, independent of M, of the row's position in the batch, and of the query tile; key tiles are aligned to absolute key positions. Row `i` of a product computed with `M = 1` equals row `i` computed with `M = 37` bitwise. The C tests compare against Python-generated fixtures.
+- A C exercise is compiled with its own test binary and the selected learner, reference, or stub object for its module. There is no shared C library requirement for Python or Rust.
+- Bumping `TL_ABI_VERSION`'s major part is a C contract migration (`craft.13` style); there are no Python or Rust bindings to it.
 
 ```c
 /* contracts/c/include/tinyllm.h  (ABI v1) */
 #ifndef TINYLLM_H
 #define TINYLLM_H
-#include "tinyllm/abi.h"         /* rt.01 */
+#include "tinyllm/abi.h"         /* shared C-only status and allocator declarations */
 #include "tinyllm/arena.h"       /* rt.02 */
 #include "tinyllm/pool.h"        /* rt.03 */
 #include "tinyllm/kv_pool.h"     /* rt.04 */
 #include "tinyllm/ds.h"          /* ds.01 to ds.03 */
 #include "tinyllm/topk.h"        /* ds.04 */
-#include "tinyllm/numerics.h"    /* M06.3, M09.4, M09.5, M09.6 */
+#include "tinyllm/numerics.h"    /* M06.3, M09.5, M09.6, M09.7 */
 #include "tinyllm/matmul.h"      /* M03.1 (v0), L9.1 */
 #include "tinyllm/softmax.h"     /* L9.2 */
 #include "tinyllm/attention.h"   /* L9.3, L9.4 */
@@ -284,7 +282,7 @@ All contract paths are relative to `course/contracts/` (vendored to the learner'
 ```
 
 ```c
-/* tinyllm/abi.h  (rt.01) */
+/* tinyllm/abi.h  (shared C-only declarations) */
 #include <stddef.h>
 #include <stdint.h>
 #define TL_ABI_VERSION 1
@@ -374,17 +372,17 @@ typedef struct { uint64_t state, inc; } tl_pcg32;                       /* M06.3
 void     tl_pcg32_seed(tl_pcg32 *r, uint64_t seed, uint64_t seq);
 uint32_t tl_pcg32_next(tl_pcg32 *r);
 double   tl_pcg32_uniform(tl_pcg32 *r);                                 /* two draws, 53-bit */
-uint8_t  tl_f32_to_e4m3(float x);  float tl_e4m3_to_f32(uint8_t b);      /* M09.4: RNE, saturating */
+uint8_t  tl_f32_to_e4m3(float x);  float tl_e4m3_to_f32(uint8_t b);      /* M09.7: RNE, saturating */
 uint8_t  tl_f32_to_e5m2(float x);  float tl_e5m2_to_f32(uint8_t b);
 uint16_t tl_f32_to_bf16(float x);  float tl_bf16_to_f32(uint16_t b);
 uint16_t tl_f32_to_f16(float x);   float tl_f16_to_f32(uint16_t b);
 float    tl_rsqrtf(float x);       void tl_rsqrt_f32(const float *x, float *y, int64_t n);   /* M09.5 */
 float    tl_expf(float x);         void tl_exp_f32(const float *x, float *y, int64_t n);     /* M09.6 */
 
-/* tinyllm/matmul.h  (M03.1 naive v0, upgraded by L9.1 tiled; same symbol and signature) */
+/* tinyllm/matmul.h (optional standalone L9.1 C exercise) */
 tl_status tl_matmul_f32(const float *A, const float *B, float *C, int64_t M, int64_t N, int64_t K,
                         int64_t lda, int64_t ldb, int64_t ldc, float alpha, float beta,
-                        int trans_b, tl_pool *tp);                       /* C = alpha*A@B(^T) + beta*C; batch-invariant from L9.1 */
+                        int trans_b, tl_pool *tp);                       /* C = alpha*A@B(^T) + beta*C */
 
 /* tinyllm/softmax.h  (L9.2) */
 tl_status tl_softmax_f32(const float *x, float *y, int64_t rows, int64_t cols);         /* 3-pass */
@@ -417,31 +415,11 @@ void    tl_add_f32(const float *a, const float *b, float *y, int64_t n);
 int32_t tl_argmax_f32(const float *x, int64_t n);                       /* ties: lowest index */
 ```
 
-CUDA variants (side quest `sq.cuda-kernels`, never in CI) keep the same signatures with a `_cuda` suffix.
 
-### 2.5 Python to Rust: `tinyllm_rs`
 
-```python
-# contracts/py/tinyllm_rs.pyi  (built by `cargo build -p tl-py`; maturin optional)
-class Bpe:
-    @staticmethod
-    def from_hf_json(path: str) -> "Bpe": ...
-    def encode(self, text: str) -> list[int]: ...
-    def encode_batch(self, texts: list[str], threads: int) -> list[list[int]]: ...   # releases the GIL
-    def decode(self, ids: list[int]) -> str: ...
-    def vocab_size(self) -> int: ...
-class Bloom:
-    @staticmethod
-    def with_rate(n: int, p: float) -> "Bloom": ...
-    def insert(self, item: bytes) -> None: ...
-    def contains(self, item: bytes) -> bool: ...
-    def union(self, other: "Bloom") -> None: ...
-    def to_bytes(self) -> bytes: ...
-    @staticmethod
-    def from_bytes(b: bytes) -> "Bloom": ...
-```
+### 2.5 Python and Rust file exchange
 
-Build contract for `tl-py` (checked by the contract pre-check): `crate-type = ["cdylib"]`, PyO3 features `abi3-py311` and `extension-module`, and on macOS the link argument `-undefined dynamic_lookup` (in `.cargo/config.toml` or `build.rs`). The harness sets `PYO3_PYTHON` to the interpreter of the learner's uv environment and copies `libtl_py.dylib` to `tinyllm_rs.so` in `TINYLLM_PYEXT_DIR`.
+Python and Rust exchange model weights through the safetensors file contract. The Python tokenizer and Rust `tl-tok` each implement BPE independently; a shared fixture records source text, expected token ids, and decoded bytes for parity checks. Tokenizer assets use `tokenizer.json`; the tracer's byte tokenizer uses the same file contract. Rust serves tokenization as part of the engine process. There is no `tinyllm_rs` module, Python extension, or cross-language library binding.
 
 ### 2.6 HTTP surface (OpenAPI)
 
@@ -813,14 +791,14 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
 
 | Structure | Module, lang, path | Call site |
 |---|---|---|
-| Growable array `tl_vec` | `ds.01`, C, `c/src/ds/vec.c` | `rt.04` per-sequence block tables |
-| Swiss table `tl_map` | `ds.02`, C, `c/src/ds/swiss.c` | `rt.04` prefix-hash index and KV-transfer dedup (`tl_kv_register/lookup`), engine `--prefix-cache=hash` |
-| Intrusive list + LRU | `ds.03`, C, `c/src/ds/{list,lru}.c` | `rt.04` evictable cached blocks |
-| Heap top-k | `ds.04`, C, `c/src/ds/topk.c` | Rust sampler top-k via `tl-sys` |
+| Growable array `tl_vec` | `ds.01`, C, `c/src/ds/vec.c` | Standalone C exercise only; the Rust engine owns its block tables |
+| Swiss table `tl_map` | `ds.02`, C, `c/src/ds/swiss.c` | Standalone C exercise only; production prefix caching uses the Rust radix tree (`ds.07`) |
+| Intrusive list + LRU | `ds.03`, C, `c/src/ds/{list,lru}.c` | Standalone C exercise only; the Rust engine owns its cache eviction |
+| Heap top-k | `ds.04`, C, `c/src/ds/topk.c` | Standalone C top-k exercise and fixture comparisons; no production Rust caller |
 | Robin Hood map | `ds.05`, Rust, `tl-ds/src/robin.rs` | `tl-tok` vocab `bytes -> id`, merge ranks `(u32,u32) -> rank` |
 | Lazy binary heap | `ds.06`, Rust, `tl-ds/src/heap.rs` | `tl-tok` O(n log n) merge queue; `L10.2` scheduler waiting queue (priority, then arrival) |
 | Radix tree over token ids | `ds.07`, Rust, `tl-ds/src/radix.rs` | `L8.4` prefix cache, engine `--prefix-cache=radix` |
-| Bloom filter | `ds.08`, Rust, `tl-ds/src/bloom.rs` (+ `tl-py/src/bloom.rs`) | `data.03` exact dedup |
+| Bloom filter | `ds.08`, Rust, `tl-ds/src/bloom.rs` | `data.03` exact dedup |
 | Consistent hash ring, bounded loads | `ds.09`, Go, `go/ds/ring/` | `gw.05` prefix-affinity routing |
 | Union-find | inside `data.04`, Python | MinHash LSH clusters |
 | Token bucket | inside `gw.03`, Go | per-key RPM and TPM |
@@ -829,11 +807,11 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
 | Segmented WAL | `dur.01`, Go | event log, Raft log |
 | Inverted index + varint postings | inside `ag.07`, Go | BM25 retrieval |
 | Trie | `M06.2`, Python | WordPiece, Unigram lattice |
-| Arena, thread pool | `rt.02`, `rt.03`, C | every kernel call |
+| Arena, thread pool | optional `rt.02`, `rt.03`, C | standalone C exercise calls only |
 
 ### 2.15 The learner's repo
 
-`ss course init --name <system>` creates it (default `.scratchpad/course/`, which supersource already gitignores; `SS_COURSE_HOME` points every command at an external repo). It writes only `system.toml`, `.gitignore`, and `contracts/`, then runs `git init`. Library manifests (`Cargo.toml` lib targets, `go.mod` with the `replace` for the contracts module, `pyproject.toml`) are written by `ss start` **only if absent** and are never rewritten afterwards, by `ss start`, `ss reset`, or anything else: the learner adds binaries and dependencies to them. The contract pre-check (5.4) verifies the required entries instead (lib targets, crate names, the contracts `replace`, the `tl-py` build contract). Binaries, servers, and deploy files are never written. Entry points are marked `(learner)` below.
+`ss course init --name <system>` creates it (default `.scratchpad/course/`, which supersource already gitignores; `SS_COURSE_HOME` points every command at an external repo). It writes only `system.toml`, `.gitignore`, and `contracts/`, then runs `git init`. Library manifests (`Cargo.toml` lib targets, `go.mod` with the `replace` for the contracts module, `pyproject.toml`) are written by `ss start` **only if absent** and are never rewritten afterwards, by `ss start`, `ss reset`, or anything else: the learner adds binaries and dependencies to them. The contract pre-check (5.4) verifies the required entries instead (lib targets, crate names, the contracts `replace`, and candle dependencies). Binaries, servers, and deploy files are never written. Entry points are marked `(learner)` below.
 
 ```
 <system>/
@@ -864,17 +842,15 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
       modern/     norm, mlp, rope, ctxext, gqa, mla, window, moe, llama
       infer/      sample, kvcache, generate, paged, quant, spec, constrain, beam
       eval/       seqmetrics, lm, zoo, safety, bias
-      ffi/        libtinyllm (ctypes loader)
-      backend/    c (per-op dispatch to C kernels)
       dist/       comm, zero (tp, pp only in side quests)
       post/       sft, dpo, grpo, distill
     corpus/                      # stage, fetch, filter, dedup, minhash, pii, shard, tokenize, ledger; __main__ (learner)
     tests/<module-slug>/         # learner's graded tests
   primers/<lang-id>/             # lang.* primer exercises (not part of the system)
   c/
-    Makefile                     # (learner) -> build/libtinyllm.{a,dylib,so}; SANITIZE=1 adds ASan+UBSan
+    Makefile                     # (learner) -> one standalone C test binary per optional module
     include/tinyllm.h, include/tinyllm/*.h   # identical copies of contracts (checked)
-    src/runtime/  abi.c arena.c pool.c kv_pool.c
+    src/runtime/  arena.c pool.c kv_pool.c
     src/numerics/ rng.c lowp.c rsqrt.c expf.c
     src/kernels/  matmul.c softmax.c flash_attn.c paged_attn.c qmatmul.c elementwise.c
     src/ds/       vec.c swiss.c list.c lru.c topk.c
@@ -884,12 +860,9 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
     Cargo.toml                   # workspace
     crates/tl-ds/     src/{robin,heap,radix,bloom}.rs
     crates/tl-tok/    src/{bpe,pretok,stream,hfjson}.rs
-    crates/tl-py/     src/{lib,tok,bloom}.rs
-    crates/tl-sys/    src/lib.rs, build.rs
     crates/tl-engine/ src/{lib,model,forward,runner,sample,quant,prefix,block_manager,sched,chunk,kv_transfer,heartbeat,spec,constrain}.rs
                                  # lora.rs only in sq.multi-lora
     crates/tl-serve/  src/{lib,http,sse,openai,template,tools,control,metrics,telemetry}.rs, src/main.rs (learner)
-    .cargo/config.toml           # macOS link args for tl-py (2.5)
   go/
     go.mod                       # module tinyllm; require supersource.urmzd.com/tl/contracts, replace => ../contracts/go
     ds/ring/  ds/rng/
@@ -910,7 +883,7 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
   .ss/                           # gitignored: verdicts.jsonl, overlay/, build/, cache/, drills/, milestones/, supersource/ (CI checkout)
 ```
 
-**Glue files** (crate roots like `tl-py/src/lib.rs`, Python `__main__`) belong to the first module that creates them. A crate root declares every submodule the contract lists; `ss start` writes stubs for submodules not yet started, so the crate always compiles. A stub keeps every contract signature and replaces only function bodies (5.2), and `ss start` never overwrites an existing learner file.
+**Glue files** (crate roots like `tl-engine/src/lib.rs`, Python `__main__`) belong to the first module that creates them. A crate root declares every submodule the contract lists; `ss start` writes stubs for submodules not yet started, so the crate always compiles. A stub keeps every contract signature and replaces only function bodies (5.2), and `ss start` never overwrites an existing learner file.
 
 **Cross-file seams.** Files of one crate or package reach each other only through names the contract declares (including crate-internal seams such as `tl_engine::sched::Scheduler` or `corpus.stage.Stage`). That is what lets a reference file sit next to learner files in the overlay; `ss verify course` enforces it with an AST lint over the references and by compiling each reference unit against stubbed neighbours.
 
@@ -923,7 +896,7 @@ version = "0.4.0"
 course_version = "1.0.0"
 
 [build]                         # run in order before any service starts; a failure aborts the milestone
-steps = [["make", "-C", "c"], ["cargo", "build", "--release", "--manifest-path", "rust/Cargo.toml"]]
+steps = [["cargo", "build", "--release", "--manifest-path", "rust/Cargo.toml"]]
 
 [entry]                         # argv templates for the roles in spec/cli-roles.md
 tinyllm  = ["uv", "run", "--project", "python", "python", "-m", "tinyllm"]
@@ -972,7 +945,7 @@ Everything runs on one kind cluster. Every hop carries `traceparent`, and every 
 2. **Corpus activities.** A worker replays the history and schedules `fetch`, `filter`, `dedup_exact`, `dedup_near`, `pii`, `shard`, and `tokenize`, each as `{corpus} run --stage <s>` under the subprocess contract. Fetch appends to `LEDGER.jsonl`. Exact dedup screens with the Bloom filter and confirms with SHA-256; near dedup uses MinHash LSH and union-find, then drops documents that share a 13-gram with any protected eval or validation set (decontamination). PII scrub counts redactions. Shard writes parquet plus `_MANIFEST.json`. Tokenize writes llm.c `.bin` files using the learner's Rust tokenizer. A poisoned shard exhausts its retries and lands in the DLQ (`ListDeadLetters`), which is what `ops.03` drills.
 3. **Train.** `<system> train --spec specs/tinystories-10m.json` starts `TrainRun`. The `train` activity execs `{tinyllm} train`, which memory-maps the token files, runs the learner's autograd, AdamW, and schedule, and writes atomic checkpoints. The worker tails `progress.jsonl` and heartbeats with the latest checkpoint. If the worker pod dies, the visibility timeout expires, another worker picks up the task with `attempt=2`, and it resumes from `LATEST`. A durable timer spaces periodic `eval` activities.
 4. **Release.** `ModelRelease` (dur.12) exports the checkpoint to `models/<id>/<ver>/` (optionally int4), runs `EvalSuite` (dur.11: quality, the model-zoo regression table, bias, safety), and gates on eval thresholds, `MODEL_CARD.md`, and ledger licenses that allow `train`. It waits on the signal `approve`, then calls `PUT /admin/v1/routes` with a canary weight, waits 10 minutes on a durable timer, checks the SLO burn rate through a Prometheus query activity, and promotes or rolls back.
-5. **Serve.** Engines mmap the released safetensors, load `tokenizer.json` in `tl-tok`, allocate the C KV pool, and heartbeat to the gateway. A request to `POST /v1/chat/completions` passes auth (HMAC key lookup), the usage policy (rules plus a linear head over the engine's `/v1/embeddings`, D33), the token bucket, and the response cache. It is routed by consistent hash on the first prompt block with bounded loads and queue depth. In unified mode the gateway proxies SSE from the engine. In disaggregated mode it runs the Prefill then resume flow of 2.7.
+5. **Serve.** Rust engines mmap the released safetensors, use `tl-tok` to load `tokenizer.json`, manage KV blocks in Rust, and heartbeat to the gateway. A request to `POST /v1/chat/completions` passes auth (HMAC key lookup), the usage policy (rules plus a linear head over the engine's `/v1/embeddings`, D33), the token bucket, and the response cache. It is routed by consistent hash on the first prompt block with bounded loads and queue depth. In unified mode the gateway proxies SSE from the engine. In disaggregated mode it runs the Prefill then resume flow of 2.7.
 6. **Agent.** `cmd/agent-docsqa` uses the learner's agent SDK. Its `Provider` points at their gateway, which serves SmolLM2-135M-Instruct on their engine with tool calls (L10.9), or at a frontier API. Its RAG index covers their own `docs/` and the course chapters, using gateway `/v1/embeddings` and BM25 fused with RRF. Run as `AgentRun` workflows, each LLM call and tool call is an activity, so a crashed agent replays to the step it reached.
 7. **Evaluate.** `<system> eval --suite docsqa --ab base=smol-135m,exp=tinystories-sft` runs deterministic scorers first (exact match, citation coverage, retrieval recall@k), then the LLM judge and the pairwise judge, and writes `results.jsonl` and `summary.json` with bootstrap CIs. The release gate in step 4 reads these numbers.
 8. **Observe.** Every component exports OTLP to the collector, which feeds Tempo and Prometheus. Grafana shows one trace from `<system> train` through workflow and activity spans to `train.step`, and another from an HTTP request through `gateway.route`, `kv.transfer`, and `engine.decode`. SLO dashboards drive the burn-rate alerts that `ss drill` scenarios are graded against.
@@ -1045,7 +1018,7 @@ course/
 | `L12` | `ml/08-tinyllm/p12-post-training/` |
 | `C1`, `C2` | `ml/08-tinyllm/capstones/{01-tinystories,02-post-trained}.md` |
 | `lang.*` | `software-craftsmanship/12-language-and-tool-primers/NN-<slug>.md` (new) |
-| `rt.01` to `rt.03` | `ml/08-tinyllm/p09-kernels/` |
+| optional `rt.02` and `rt.03` | `ml/08-tinyllm/p09-kernels/` |
 | `rt.04` | `ml/08-tinyllm/p08-inference/` |
 | `load.*` | `ml/08-tinyllm/p10-serving/` |
 | `ds.*` | `algorithms/16-systems-data-structures/` |
@@ -1118,10 +1091,10 @@ SOLVE  := "S-M" 2DIGIT [a-z]?                    # S-M08, S-M07a (lettered part,
 AREA   := ("lang"|"ds"|"rt"|"data"|"dur"|"gw"|"ag"|"load"|"dep"|"obs"|"ops"|"craft"|"ethics"|"review"|"field"|"iv") "." 2DIGIT   # ".00" = tracer v0
 SIDE   := "sq." [a-z0-9-]+
 MS     := "MS-" [A-Za-z0-9-]+                    # MS-L7, MS-gateway, MS-P1
-suffix := "+cuda"                                # optional CUDA variant (local only)
+
 ```
 
-Harness regex: `^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z]?|(lang|ds|rt|data|dur|gw|ag|load|dep|obs|ops|craft|ethics|review|field|iv)\.[0-9]{2}|sq\.[a-z0-9-]+|MS-[A-Za-z0-9-]+)(\+cuda)?$`. None of the practice kinds (`predict`, `build`, `reattempt`) match it, so `ss start build c 02` is unaffected.
+Harness regex: `^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z]?|(lang|ds|rt|data|dur|gw|ag|load|dep|obs|ops|craft|ethics|review|field|iv)\.[0-9]{2}|sq\.[a-z0-9-]+|MS-[A-Za-z0-9-]+)$`. None of the practice kinds (`predict`, `build`, `reattempt`) match it, so `ss start build c 02` is unaffected.
 
 ---
 
@@ -1224,7 +1197,7 @@ def euler(f: Callable[[float, NDArray], NDArray], y0: NDArray, t0: float, t1: fl
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
-| M03.1 | Vectors, matrices, row-major layout, naive matmul in C (`tl_matmul_f32` v0) | core, **tracer** | C | `c/src/kernels/matmul.c` | rt.01, lang.03 | L0.0 bigram logits via ctypes, L10.0 engine; upgraded by L9.1 | E (ctypes vs numpy within the frozen `close.py` dot-product bound), I, U (`TL_EINVAL` on bad dims) |
+| M03.1 | Vectors, matrices, row-major layout, naive matmul in Python | core, **tracer** | Py | `tinyllm/linalg/matmul.py` | lang.01 | L0.0 bigram logits via numpy | E (vs numpy within the frozen `close.py` dot-product bound), I |
 | M03.2 | Gaussian elimination, LU with partial pivoting | core | Py | `tinyllm/linalg/lu.py` | M03.1 | M07.7 IRLS, M10.5 | O (`np.linalg`), I (PA=LU) |
 | M03.3 | Orthogonality, Householder QR, orthogonal init | core | Py | `tinyllm/linalg/qr.py` | M03.2 | L0.4 init, L3.1/L3.2 recurrent init, M03.5 | I (QᵀQ=I, A=QR), O |
 | M03.4 | Eigenvalues, power iteration, spectral radius | core | Py | `tinyllm/linalg/eig.py` | M03.3 | L3.1 exploding-gradient diagnostic, M10.5, L0.5 training monitor | O, I |
@@ -1295,7 +1268,7 @@ def unicode_to_bytes() -> dict[str, int]
 |---|---|---|---|---|---|---|---|
 | M06.1 | Graphs, DAGs, iterative topological sort | core | Py | `tinyllm/autograd/graph.py` | M05.4 | L0.1 backward, M08.2, L8.7 | I (edges respect order; 10^5-deep chain, no RecursionError), O |
 | M06.2 | Trees and tries, longest-prefix match | core | Py | `tinyllm/tok/trie.py` | M06.1 | L1.2, L1.3 WordPiece, L1.4 Unigram lattice (generalized in Rust by ds.07) | I, O |
-| M06.3 | Modular arithmetic, hashing, **PCG32** (C and Python), SplitMix64, FNV-1a | core | C+Py | `c/src/numerics/rng.c`, `tinyllm/num/rng.py` | S-M05, S-M06a | **L8.1 sampler**, M07.0 normals, L0.2 dropout, L0.5 loaders and the bigram's sampler, L6.2 masking, data.04 MinHash, rt.04 block hash (re-implemented in Rust by L10.1 and in Go by load.01) | O (`spec/pcg32.md` vectors), E (C stream == Python stream, 10^5 draws) |
+| M06.3 | Modular arithmetic, hashing, **PCG32**, SplitMix64, FNV-1a | core | Py | `tinyllm/num/rng.py` | S-M05, S-M06a | **L8.1 sampler**, M07.0 normals, L0.2 dropout, L0.5 loaders and the bigram's sampler, L6.2 masking, data.04 MinHash, rt.04 fixture contract (Rust L10.1 and Go load.01 implement the documented stream) | O (`spec/pcg32.md` vectors), I (Python stream matches the frozen vectors) |
 | M06.4 | Recurrences, generating functions | solve only | | | | L4.4, L9.1 tiling cost, M10.1 rates | |
 
 ```python
@@ -1390,12 +1363,12 @@ def checkpoint_schedule(n_layers: int, mem_budget_layers: int) -> list[int]   # 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
 | M09.1 | IEEE-754 anatomy, ULP, RNE rounding, bf16/fp16 emulation | core | Py | `tinyllm/num/fp.py` | M00.1 | L7.9 bf16 load, L11.1 mixed precision, M09.4 | O (bitwise vs torch bf16 fixture), I (idempotent, monotone) |
-| M09.2 | Stable numerics: LSE, softmax, Kahan and pairwise sums | core | Py | `tinyllm/num/stable.py` | M09.1, M02.1 | L0.2, L0.3, L8.1, M08.3, M11.1, L6.7 ppl over 10^7 tokens, L9.2 (the same math in C) | O, I (shift invariance, finite at ±1e4, fully masked row gives zeros) |
-| M09.3 | Error analysis, condition numbers, **tolerance budgets** | core | Py | `tinyllm/num/tolerance.py` | M03.5, M01.1 | L8.5 quantization error budget, L9.7 load-time op check (`--backend c --check`), the learner's own differential tests (R5, R7) | I (bound holds on 1000 cases and is within 100x of observed), O |
-| M09.4 | FP8 E4M3/E5M2, MXFP4/MXFP8 with E8M0 block scales; C conversions | core | Py+C | `tinyllm/num/lowp.py`, `c/src/numerics/lowp.c` | M09.1 | L8.5 fp8/MX weights, L9.4 f16 KV reads, craft.13 KV format v2 | O (all 256 codes bitwise, saturation), E (C == Python on every code) |
-| M09.5 | Fixed-point iteration, fast inverse sqrt in C | core | C | `c/src/numerics/rsqrt.c` | M01.2, M09.1 | L9.6 `tl_rmsnorm_f32` | E (rel err <= 5e-6 on normals after 2 Newton steps), I |
-| M09.6 | Polynomial approximation and range reduction: `expf` in C | core | C | `c/src/numerics/expf.c` | M02.1, M00.4, M09.1 | L9.2, L9.3, L9.6 SiLU | E (<= 4 ulp on 10^6 samples in [-87, 88]; ±inf, NaN, underflow), I |
-| M09.7 | Iterative solvers: conjugate gradient | optional | Py | `tinyllm/linalg/iterative.py` | M03.4 | M10.5 Newton-CG | I |
+| M09.2 | Stable numerics: LSE, softmax, Kahan and pairwise sums | core | Py | `tinyllm/num/stable.py` | M09.1, M02.1 | L0.2, L0.3, L8.1, M08.3, M11.1, L6.7 ppl over 10^7 tokens, optional C exercise L9.2 | O, I (shift invariance, finite at ±1e4, fully masked row gives zeros) |
+| M09.3 | Error analysis, condition numbers, **tolerance budgets** | core | Py | `tinyllm/num/tolerance.py` | M03.5, M01.1 | L8.5 quantization error budget, optional C fixture parity tests, the learner's own differential tests (R5, R7) | I (bound holds on 1000 cases and is within 100x of observed), O |
+| M09.4 | FP8 E4M3/E5M2, MXFP4/MXFP8 with E8M0 block scales; Python conversions | core | Py | `tinyllm/num/lowp.py` | M09.1 | L8.5 fp8/MX weights, craft.13 KV format v2, optional C mirror M09.7 | O (all 256 codes bitwise, saturation) |
+| M09.5 | Fixed-point iteration, fast inverse sqrt in C | optional | C | `c/src/numerics/rsqrt.c` | M01.2, M09.1 | L9.6 `tl_rmsnorm_f32` | E (rel err <= 5e-6 on normals after 2 Newton steps), I |
+| M09.6 | Polynomial approximation and range reduction: `expf` in C | optional | C | `c/src/numerics/expf.c` | M02.1, M00.4, M09.1 | L9.2, L9.3, L9.6 SiLU | E (<= 4 ulp on 10^6 samples in [-87, 88]; ±inf, NaN, underflow), I |
+| M09.7 | Low-precision conversions in standalone C | optional | C | `c/src/numerics/lowp.c` | M09.4 semantics, shared fixture | L9.4 f16 reads, L9.5 f16 scales | C test binary; bitwise parity against Python-generated fixtures |
 
 ```python
 def decompose_f32(x: float) -> tuple[int, int, int]                  # sign, biased exponent, mantissa
@@ -1507,19 +1480,19 @@ Answer kinds: `expr`, `equation`, `number`, `interval`, `set`, `matrix`, `vector
 
 ### 4.3 LLM spine catalog (`tinyllm`)
 
-Parts 0 to 8 are Python/numpy and are the semantic source of truth. Part 9 is C behind `tinyllm.h`, first proven from Python (`--backend c`). Part 10 is the Rust engine over the C kernels. A native port is proven by **differential tests against the learner's own Python**, never against a black box. Two tracer modules (`L0.0`, `L10.0`) build the thin end-to-end version in Pass 1; later modules upgrade their units.
+Parts 0 to 8 are Python/numpy and the semantic source of truth. Part 9 contains optional standalone C exercises with their own test binaries and fixture parity. Part 10 is the Rust engine on `candle-core` and `candle-nn`, without `candle-transformers`. Cross-language parity uses files, never FFI. Two tracer modules (`L0.0`, `L10.0`) build the thin end-to-end version in Pass 1; later modules upgrade their units.
 
 #### Tracer modules (Pass 1)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
-| L0.0 | Byte-level bigram LM from counts (vocabulary = the 256 byte values, D32), logits through the C matmul via ctypes, safetensors writer v0 (F32 only). Beat 2 is self-contained "just enough" math with forward links: counts to probabilities, `log` and `exp`, negative log-likelihood, add-one smoothing, temperature, sampling by inverse CDF (M00.1, M07.1, M07.2, M11.1 teach each properly later) | core, tracer | Py | `tinyllm/lm/bigram.py` (upgraded by L0.5), `tinyllm/io/safetensors.py` (v0, upgraded by L0.6) | M03.1, rt.01, lang.01 | L10.0 serves it (`tl_arch = bigram`, `tl_tokenizer = bytes`); L0.5 retrains it with autograd | U (hand example), I (rows sum to 1), O (safetensors bytes identical to the pinned `safetensors` library) |
-| L10.0 | Your first endpoint: Rust std-only HTTP/1.1 + SSE server for API v0, calling the C matmul through a minimal `extern "C"` block; byte tokenizer; parses `traceparent` and exports one span per request as hand-written OTLP/HTTP JSON | core, tracer | Rust | `rust/crates/tl-serve/src/http.rs` (v0, upgraded by L10.5), `rust/crates/tl-sys/src/lib.rs` (v0, upgraded by L10.1) | M03.1, rt.01, L0.0, lang.04, lang.05 | gw.00 upstream, dep.00 image, obs.00 | C (`openapi:v0` cases: framing, `[DONE]`, `max_tokens`), U (request parser on malformed input; OTLP JSON body validates against the OTLP schema subset) |
+| L0.0 | Byte-level bigram LM from counts (vocabulary = the 256 byte values, D32), logits through Python matmul, safetensors writer v0 (F32 only). Beat 2 is self-contained "just enough" math with forward links: counts to probabilities, `log` and `exp`, negative log-likelihood, add-one smoothing, temperature, sampling by inverse CDF (M00.1, M07.1, M07.2, M11.1 teach each properly later) | core, tracer | Py | `tinyllm/lm/bigram.py` (upgraded by L0.5), `tinyllm/io/safetensors.py` (v0, upgraded by L0.6) | M03.1, lang.01 | L10.0 serves it (`tl_arch = bigram`, `tl_tokenizer = bytes`); L0.5 retrains it with autograd | U (hand example), I (rows sum to 1), O (safetensors bytes identical to the pinned `safetensors` library) |
+| L10.0 | Your first endpoint: Rust std-only HTTP/1.1 + SSE server for API v0; byte tokenizer; parses `traceparent` and exports one span per request as hand-written OTLP/HTTP JSON | core, tracer | Rust | `rust/crates/tl-serve/src/http.rs` (v0, upgraded by L10.5) | M03.1, L0.0, lang.04, lang.05 | gw.00 upstream, dep.00 image, obs.00 | C (`openapi:v0` cases: framing, `[DONE]`, `max_tokens`), U (request parser on malformed input; OTLP JSON body validates against the OTLP schema subset) |
 
 ```python
 class BigramLM:
     def fit_counts(self, ids: NDArray, vocab_size: int, alpha: float = 1.0) -> None
-    def logits(self, ids: NDArray) -> NDArray                 # [T, V] = onehot(ids) @ W via tl_matmul_f32
+    def logits(self, ids: NDArray) -> NDArray                 # [T, V] = onehot(ids) @ W via numpy matmul
     def nll(self, ids: NDArray) -> float
     def sample(self, prefix: list[int], n: int, temperature: float, seed: int) -> list[int]
 def save_safetensors(path: str, tensors: dict[str, NDArray], meta: dict[str, str]) -> None   # v0: F32
@@ -1598,7 +1571,7 @@ def gradcheck_all(rtol: float = 1e-5) -> dict[str, "GradcheckReport"]  # L0.2, e
 | L1.2 | Byte-level BPE (GPT-2 compatible): hand-written pre-tokenizer, trainer, HF loader | core | Py | `tinyllm/tok/bpe.py`, `pretok.py` | L1.1, M05.2, M06.2 | L1.5, L1.6, L7.9 SmolLM2, L8.2 detokenizer, C1 (vocab 4096 trained on a fixed 16 MB sample) | O (GPT-2 ids on 300 strings; SmolLM2 ids on 300 strings; trainer merges with the documented tie-break), I (roundtrip), B (1 MB train budget) |
 | L1.3 | WordPiece (BERT basic tokenizer + greedy longest match) | core | Py | `tinyllm/tok/wordpiece.py` | L1.1, M06.2 | L6.2, L6.3 | O (bert-base-uncased ids on 300 strings) |
 | L1.4 | Unigram LM tokenizer (EM, Viterbi, subword sampling) | core (D31) | Py | `tinyllm/tok/unigram.py` | L1.1, M06.2, M07.2, M11.1 | C1 tokenizer ablation (BPE vs Unigram at vocab 4096 on the same sample, compared by L1.6 metrics and `short`-config bpb) | O (Viterbi path vs sentencepiece on a fixture vocab), I |
-| L1.5 | Rust fast BPE (`tl-tok`) with a streaming UTF-8 decoder, the byte tokenizer, and PyO3 binding (`tl-py`) | core | Rust | `rust/crates/tl-tok/src/*.rs`, `rust/crates/tl-py/src/{lib,tok}.rs` | L1.2, ds.05, ds.06, lang.04 | L10.1 request path, L10.5, data.07 tokenize stage, C1 (gw.03 and ag.06 reach it over `/v1/tokenize`) | E (ids identical to L1.2 on fixtures and a 10 MB TinyStories sample; golden ids for 10k strings incl. emoji, CJK, whitespace runs, contractions), I (`decode_bytes(encode(x)) == x`; stream decoder splits multi-byte chars correctly; `encode_batch` output equals serial `encode`), B (`encode_batch` with 4 threads at least 1.5x one thread; at least 20x L1.2 single-thread) |
+| L1.5 | Rust fast BPE (`tl-tok`) with a streaming UTF-8 decoder and byte tokenizer; parity with Python uses fixture files | core | Rust | `rust/crates/tl-tok/src/*.rs` | L1.2, ds.05, ds.06, lang.04 | L10.1 request path, L10.5, data.07 tokenize stage, C1 (gw.03 and ag.06 reach it over `/v1/tokenize`) | E (ids identical to L1.2 on fixtures and a 10 MB TinyStories sample; golden ids for 10k strings incl. emoji, CJK, whitespace runs, contractions), I (`decode_bytes(encode(x)) == x`; stream decoder splits multi-byte chars correctly; `encode_batch` output equals serial `encode`), B (`encode_batch` with 4 threads at least 1.5x one thread; at least 20x L1.2 single-thread) |
 | L1.6 | Tokenizer metrics | core | Py | `tinyllm/tok/metrics.py` | M11.2 | C1 vocab ADR and tokenizer ablation, data.07 manifest stats | O, I |
 
 ```python
@@ -1847,7 +1820,7 @@ def run_zoo(manifest: str, rng) -> list[Result]                        # every f
 | L7.6 | Multi-head latent attention (DeepSeek-V2/V3), weight absorption | core | Py | `tinyllm/modern/mla.py` | M03.5, L7.3, L7.5 | L8.2 `LatentCache`, L7.9 (`tl_attention = mla`), C1 core ablation: MLA vs GQA at equal KV bytes (`short` config) | E (absorbed decode == naive), O (tiny HF DeepseekV3Attention), I (cache bytes match M05.1) |
 | L7.7 | Sliding window, StreamingLLM sinks, learned sinks | core | Py | `tinyllm/modern/window.py` | L5.2, L7.5 | L7.9 (`tl_sliding_window`, `tl_sink_tokens`), L8.2 eviction policy, L9.3 `window` and `sink_logits` | E (vs full attention + window mask), O (tiny HF Mistral SWA), I (bounded cache) |
 | L7.8 | Mixture of Experts: routing, sorted dispatch, Switch aux loss, aux-free bias | core | Py | `tinyllm/modern/moe.py` | L7.2 | L7.9 (`tl_num_experts > 0`), C1 core ablation: MoE vs dense at equal active parameters (`short` config) | E (sorted dispatch == dense per-token loop), O (tiny HF Mixtral/Qwen2-MoE block), I |
-| L7.9 | Llama-family model, HF config, weight loading, downloader | core | Py | `tinyllm/modern/llama.py`, `tinyllm/io/hf.py` | L7.1 to L7.8, L0.6, M09.1, M05.1, L1.2 | L8.1 to L8.6, L9.7 parity, L10.1 parity, C1 architecture (the `llama` zoo rows register through `load_model`) | O (tiny random LlamaForCausalLM logits atol 1e-5), I (`param_count` == M05.1) |
+| L7.9 | Llama-family model, HF config, weight loading, downloader | core | Py | `tinyllm/modern/llama.py`, `tinyllm/io/hf.py` | L7.1 to L7.8, L0.6, M09.1, M05.1, L1.2 | L8.1 to L8.6, L10.1 parity, C1 architecture (the `llama` zoo rows register through `load_model`) | O (tiny random LlamaForCausalLM logits atol 1e-5), I (`param_count` == M05.1) |
 
 ```python
 class RMSNorm(Module): def __init__(self, d: int, eps: float = 1e-6, offset: float = 0.0)
@@ -1902,7 +1875,7 @@ def hf_download(repo_id: str, filenames: Sequence[str], cache_dir: str, revision
 |---|---|---|---|---|---|---|---|
 | L8.1 | Sampling and logit processors (`spec/sampling.md`) | core | Py | `tinyllm/infer/sample.py` | M07.1, M06.3, M09.2, M11.1 | L8.2, **L10.1 Rust port (same ids on the same fixture logits)**, L8.6, L8.7, L12.3 | S (exact enumeration per processor), O (seed to fixed ids), I (top_k=1 and T->0 give argmax) |
 | L8.2 | KV cache, incremental decode, incremental UTF-8 detokenizer, `generate` | core | Py | `tinyllm/infer/kvcache.py`, `generate.py` | L7.9, L5.2, L1.2 | L8.3 to L8.6 (L10.5 ports the incremental detokenizer) | E (cached logits == full recompute every step, atol 1e-5), I (incremental decode concat == decode(all)) |
-| L8.3 | Paged KV cache in Python over the C block pool (`rt.04` via ctypes) | core | Py | `tinyllm/infer/paged.py` | L8.2, rt.04 | L9.4 (its E oracle), L10.4 semantics | E (paged == contiguous **with `dtype=float16`**, so both round K and V identically: logits atol 1e-5, greedy ids equal), I (10^4 random add/fork/append/free ops: free count restored, refcounts >= 0) |
+| L8.3 | Pure-Python paged KV cache | core | Py | `tinyllm/infer/paged.py` | L8.2 | L9.4 (its E oracle), L10.4 semantics | E (paged == contiguous **with `dtype=float16`**, so both round K and V identically: logits atol 1e-5, greedy ids equal), I (10^4 random add/fork/append/free ops: free count restored, refcounts >= 0) |
 | L8.4 | Radix prefix cache (block-granular, LRU leaf eviction, locks) | core | Rust | `rust/crates/tl-engine/src/prefix.rs` | M06.2, ds.07 | L10.4, gw.05 reads hit metrics | I (randomized: longest prefix after insert, locked never evicted, blocks conserved), O (reference trace) |
 | L8.5 | Quantization: int8 per-channel, int4 group (packed), fp8, KV quant | core (AWQ/GPTQ optional) | Py | `tinyllm/infer/quant.py` | M09.1, M09.3, M09.4, M07.4 | **L9.5 byte-layout contract**, L10.1 `*.q4.safetensors` runner (and its differential oracle) | O (packed bytes == reference layout), I (per-element error <= scale/2), ppl budget in milestone |
 | L8.6 | Speculative decoding: n-gram, prompt-lookup, and model drafts | core | Py | `tinyllm/infer/spec.py` | M07.6, L8.2, **L2.1**, M11.1, L8.1 | L10.8 (the Rust port is proven against it on shared draft and target logits) | S (toy vocab 5: output distribution == target exactly), E (greedy spec == greedy target), I (cache rollback on reject) |
@@ -1926,12 +1899,13 @@ class IncrementalDecoder:
 class Generation: text: str; ids: list[int]; logprobs: list[float]; timings: dict[str, float]; stats: dict[str, float]
 def generate(model, tok: Tokenizer, prompt: str, p: SamplingParams, cache: Literal['none','contiguous','paged'] = 'contiguous',
              kv_dtype=np.float32, on_text: Optional[Callable[[str], None]] = None) -> Generation
-class PagedKVCache:                                    # over libtinyllm tl_kv_pool (rt.04)
-    def __init__(self, lib, num_blocks: int, block_size: int, n_layers: int, n_kv_heads: int, d_head: int)
+class PagedKVCache:                                    # pure Python; owns its page table and blocks
+    def __init__(self, num_blocks: int, block_size: int, n_layers: int, n_kv_heads: int, d_head: int)
     def add_seq(self, seq_id: int) -> None; def fork(self, parent: int, child: int) -> None
     def append(self, seq_id: int, layer: int, k: NDArray, v: NDArray) -> None
     def block_table(self, seq_id: int) -> NDArray; def gather(self, seq_id: int, layer: int) -> tuple[NDArray, NDArray]
-    def free(self, seq_id: int) -> None
+    def seq_len(self, seq_id: int, layer: int = 0) -> int
+    def free(self, seq_id: int) -> None; def stats(self) -> dict[str, int]; def close(self) -> None
 @dataclass
 class Q4Tensor: packed: NDArray; scales: NDArray; group: int; shape: tuple[int, int]   # low nibble = even column, symmetric
 def quantize_int8_per_channel(w: NDArray) -> tuple[NDArray, NDArray]
@@ -1965,34 +1939,34 @@ impl RadixCache {
 
 **MS-L8** (SmolLM2-135M; `tiny-llama-2l` in PR CI). (1) `{tinyllm} generate --cache {none,contiguous,paged} --greedy`: `{"cache_equiv": true}` under the near-tie rule (paged compares against contiguous with `--kv-dtype f16`). (2) `{tinyllm} eval ppl --quant {int8,q4_g32,fp8_e4m3} --data {asset:course-corpora/wiki-mini.txt}`: ppl increase <= reference degradation + 1 point per scheme (int4 within 5%). (3) `{tinyllm} generate --spec ngram --k 4 --greedy`: token-identical output, `acceptance_rate` reported. (4) `{tinyllm} bench decode --tokens 256` reports `cache_speedup` (a `perf` step, `ci = "local"`, bound `>= 5`). (5) the L8.4 course tests pass from `cargo test`.
 
-#### L9 Kernels in C (`ml/08-tinyllm/p09-kernels/`)
+#### L9 Optional kernels in C (`ml/08-tinyllm/p09-kernels/`)
 
-Build contract: the learner's `c/Makefile` produces `c/build/libtinyllm.{a,dylib,so}`; `SANITIZE=1` adds `-fsanitize=address,undefined`. The harness builds its own objects for tests (5.4) in two variants: a sanitized build used only by the C test harness, and an unsanitized `-O2` build that serves ctypes, Rust, and benchmarks (an ASan library cannot be loaded into an uninstrumented Python on macOS, and stable Rust cannot link an ASan archive). The Makefile is only for the learner's entry points. Each kernel module is tested twice: through the ctypes differential suite in Python (unsanitized build), and through the C harness under sanitizers. Signatures are in 2.4. Runtime pieces (`rt.01` to `rt.03`) live in this part's chapter directory but are catalogued in 4.4.
+L9.1 to L9.6 are optional, skippable standalone C exercises. Each builds its own C test binary and checks parity against fixture files generated by the Python reference. No C library is loaded into Python or linked into Rust, and no core pass or milestone depends on these modules. C build details are in 5.4. Runtime exercises `rt.02` to `rt.04` are catalogued in 4.4.
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
-| L9.1 | Cache-blocked, packed matmul (optional NEON micro-kernel), batch-invariant (2.4); upgrades `M03.1` | core | C | `c/src/kernels/matmul.c` | M03.1, M09.3, rt.02, rt.03, reading: M05.1 (roofline) | L9.5, L9.7, L10.1 projections | E (vs numpy within the frozen dot-product bound; shapes 1 to 257, strides, `trans_b`), I (**batch invariance**: row `i` bitwise equal for M = 1, 7, 37 and any row position), B (>= 10x naive at 512³; Accelerate reported) |
-| L9.2 | Softmax: 3-pass and online 2-pass | core | C | `c/src/kernels/softmax.c` | M09.2, M09.6, reading: S-M05 (loop invariant) | L9.3, L9.4 | E, I (finite at ±1e4; rows sum to 1 within k·u) |
-| L9.3 | FlashAttention forward (GQA, causal, window, sinks, `q_offset`, LSE), key tiles aligned to absolute positions | core | C | `c/src/kernels/flash_attn.c` | L9.2, L5.1, L5.2, L7.5, L7.7 | L10.1 prefill, L10.3 chunked prefill | E (vs Python SDPA; lse vs logsumexp), I (arena high-water independent of Tk; **chunk invariance**: query rows computed in one call or in chunks with `q_offset` are bitwise equal) |
-| L9.4 | Paged attention, decode | core | C | `c/src/kernels/paged_attn.c` | L8.3, rt.04, L9.2, M09.4 (f16 reads) | L10.1 decode, L10.2 batched decode | E (vs L8.3 gather + SDPA), I (shared and non-contiguous blocks; **batch invariance**: a sequence's output is bitwise equal alone or in a batch of 16) |
-| L9.5 | Fused int4/int8 dequant matmul (W4A32, decode GEMV) | core | C | `c/src/kernels/qmatmul.c` | L8.5, L9.1, M09.3 | L10.1 quantized forward | E (vs dequantize then numpy), B (M=1, N=K=2048: >= 2x faster than f32) |
-| L9.6 | Elementwise: RMSNorm, RoPE, SiLU-mul, embedding, add, argmax | core | C | `c/src/kernels/elementwise.c` | M09.5, M09.6, L7.1 to L7.3 | L9.7, L10.1 | E, I |
-| L9.7 | Python C backend: per-op dispatch of the L7.9 forward to `libtinyllm`, with a load-time op check (`--backend c --check` compares each op against numpy within the M09.3 bound) | core | Py | `tinyllm/backend/c.py` | L9.1 to L9.6, rt.01 loader, M09.3, L7.9 | L10.1 (its differential oracle: the Rust runner's logits are compared with `--backend c` logits), `{tinyllm} --backend c` | E (logits vs numpy backend within 1e-3 rel on `tiny-llama-2l`), I (varlen batch == per-sequence calls) |
+| L9.1 | Cache-blocked, packed matmul (optional NEON micro-kernel) | optional | C | `c/src/kernels/matmul.c` | M03.1, M09.3, reading: M05.1 (roofline) | none | C binary parity against Python-generated fixtures; shape and stride coverage |
+| L9.2 | Softmax: 3-pass and online 2-pass | optional | C | `c/src/kernels/softmax.c` | M09.2, M09.6, reading: S-M05 (loop invariant) | optional L9 C comparisons | E, I (finite at ±1e4; rows sum to 1 within k·u) |
+| L9.3 | FlashAttention forward (GQA, causal, window, sinks, `q_offset`, LSE), key tiles aligned to absolute positions | optional | C | `c/src/kernels/flash_attn.c` | L9.2, L5.1, L5.2, L7.5, L7.7 | optional C comparisons | E (vs Python SDPA; lse vs logsumexp), I (arena high-water independent of Tk; **chunk invariance**: query rows computed in one call or in chunks with `q_offset` are bitwise equal) |
+| L9.4 | Paged attention, decode | optional | C | `c/src/kernels/paged_attn.c` | L8.3, optional rt.04, L9.2, M09.7 (f16 reads) | optional C comparisons | E (vs L8.3 gather + SDPA), I (shared and non-contiguous blocks; **batch invariance**: a sequence's output is bitwise equal alone or in a batch of 16) |
+| L9.5 | Fused int4/int8 dequant matmul (W4A32, decode GEMV) | optional | C | `c/src/kernels/qmatmul.c` | L8.5, L9.1, M09.3, M09.7 | optional C comparisons | E (vs dequantize then numpy), B (M=1, N=K=2048: >= 2x faster than f32) |
+| L9.6 | Elementwise: RMSNorm, RoPE, SiLU-mul, embedding, add, argmax | optional | C | `c/src/kernels/elementwise.c` | M09.5, M09.6, L7.1 to L7.3 | none | E, I |
 
-CUDA variants (`_cuda` suffix, same signatures, `ss check L9.3+cuda` on GPU machines only) are the side quest `sq.cuda-kernels`.
 
-**MS-L9.** (1) `{tinyllm} generate --model SmolLM2-135M --backend c --greedy` is token-identical to `--backend numpy` under the near-tie rule. (2) `{tinyllm} bench --backend {numpy,c} --decode 128` reports `speedup_c` (a `perf` step, `ci = "local"`, bound `>= 3` relative to calibration). (3) The course C harness for every L9 and rt module is sanitizer-clean.
+
+
+**Optional L9 check.** A learner may run standalone C test binaries for L9.1 to L9.6 and review fixture parity. This check is local enrichment only; no pass gate or core milestone depends on it.
 
 #### L10 Serving (`ml/08-tinyllm/p10-serving/`, Rust)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
-| L10.1 | `tl-sys` FFI + RAII wrappers (with `build.rs` emitting `rerun-if-changed` for the linked `libtinyllm.a` and `rerun-if-env-changed=TINYLLM_C_LIB_DIR`); model runner (mmap safetensors, Llama forward over C kernels, the tracer `bigram` arch kept so the Pass 1 checkpoint still serves, int4 weights); Rust sampler and PCG32 port | core | Rust | `rust/crates/tl-sys/src/lib.rs` (upgrades L10.0), `tl-engine/src/{lib,model,forward,runner,sample,quant}.rs` | L9.1 to L9.7, L8.1, L8.5, L1.5, L7.9, lang.04 | L10.2 to L10.9 | E (Rust sampled ids == the learner's Python L8.1 on the **same fixture logits** and seeds; runner logits == learner Python within 1e-4 fp32 and within tolerance of HF fixture logits; q4 runner logits vs L8.5 dequantized Python), U (Drop frees exactly once via the allocator hook), C (ABI version check; the bigram checkpoint from MS-P1 still serves) |
-| L10.2 | Continuous batching scheduler: admission by free blocks, priority (from `X-TL-Priority` / `PrefillRequest.priority`) with aging, preemption by recompute | core | Rust | `tl-engine/src/sched.rs` | L8.3, ds.06, M05.1, L10.1 | L10.3 to L10.6, serve loop | I (fake-model simulation: every request finishes, no block leak, bounded max wait under a fake clock), E (batched greedy == single-request, which holds because the kernels are batch-invariant, 2.4), F (KV exhaustion forces preemption and outputs stay identical) |
-| L10.3 | Chunked prefill (mixed prefill + decode batches) | core | Rust | `tl-engine/src/chunk.rs` | L10.2, L9.3 `q_offset` | L10.5 serve loop (the TTFT/TPOT tradeoff is measured through L10.7 metrics) | E (chunked == unchunked logits, bitwise given chunk-invariant kernels), I (token budget never exceeded) |
-| L10.4 | Block manager with prefix cache (`--prefix-cache=none|hash|radix`) | core | Rust | `tl-engine/src/block_manager.rs` | L8.4, rt.04, ds.02, L10.2 | L10.5 serve loop, L10.6, L10.8 (gw.05 routes on its hit metrics over gRPC) | E (identical outputs with and without cache), I (refcounts), B (shared-system-prompt TTFT >= 2x better; hash vs radix compared) |
+| L10.1 | Candle model runner: mmap safetensors, implement the Llama forward with `candle-core` and `candle-nn` (no `candle-transformers`), preserve the tracer `bigram` checkpoint, int4 weights; Rust sampler and PCG32 port | core | Rust | `tl-engine/src/{lib,model,forward,runner,sample,quant}.rs` | L8.1, L8.5, L1.5, L7.9, lang.04 | L10.2 to L10.9 | E (Rust sampled ids == Python on shared fixture logits and seeds; runner logits == Python within 1e-4 fp32 and within tolerance of HF fixture logits; q4 runner logits vs L8.5 dequantized Python), C (bigram checkpoint from MS-P1 still serves) |
+| L10.2 | Continuous batching scheduler: admission by free blocks, priority (from `X-TL-Priority` / `PrefillRequest.priority`) with aging, preemption by recompute | core | Rust | `tl-engine/src/sched.rs` | L8.3, ds.06, M05.1, L10.1 | L10.3 to L10.6, serve loop | I (fake-model simulation: every request finishes, no block leak, bounded max wait under a fake clock), E (batched greedy == single-request, which holds under the engine batching contract), F (KV exhaustion forces preemption and outputs stay identical) |
+| L10.3 | Chunked prefill (mixed prefill + decode batches) | core | Rust | `tl-engine/src/chunk.rs` | L10.2, L10.1 (`q_offset` semantics) | L10.5 serve loop (the TTFT/TPOT tradeoff is measured through L10.7 metrics) | E (chunked == unchunked logits, within the documented floating-point tolerance), I (token budget never exceeded) |
+| L10.4 | Block manager with prefix cache (`--prefix-cache=none|radix`) | core | Rust | `tl-engine/src/block_manager.rs` | L8.4, ds.07, L10.2 | L10.5 serve loop, L10.6, L10.8 (gw.05 routes on its hit metrics over gRPC) | E (identical outputs with and without cache), I (refcounts), B (shared-system-prompt TTFT >= 2x better; radix compared with no cache) |
 | L10.5 | `tl-serve`: OpenAI-compatible HTTP + SSE on tokio + hyper, `--config` via `runtime.toml`, chat template, bounded admission channel (429 + `Retry-After`), abort on disconnect, SIGTERM drain, `/v1/tokenize`, `/v1/embeddings`; upgrades L10.0 | core | Rust | `tl-serve/src/{lib,http,sse,openai,template}.rs` | L10.2 to L10.4, L1.5, lang.09, reading: L8.2 | L10.6, L10.7, L10.9 (gw.04, ag.01, load.01, and L12.3 reach it over HTTP) | C (`ss conform openapi:v1 --target engine`, about 60 cases, plus the official `openai` Python client), F (disconnect frees blocks within one step per `/metrics`; full queue gives 429) |
-| L10.6 | Disaggregated prefill/decode: `EngineControl.Prefill`, `tl.kv.v1` transfer with hash dedup (format v1 only), resume via `X-TL-KV-Handle` with the `KvHandle` RNG hand-off (2.7), `Release`, and the engine's heartbeat client to `tl.control.v1` | core | Rust | `tl-engine/src/{kv_transfer,heartbeat}.rs`, `tl-serve/src/control.rs` | L10.2, L10.4, L10.5, rt.04 export/import, lang.10 | craft.13 (upgrades `kv_transfer.rs`); gw.05 calls it over gRPC | E (disaggregated == colocated, greedy and seeded on fixture prompts), I (bytes moved = missing full blocks x block bytes + the tail block), F (chaos-proxy reset mid-transfer: decode errors, prefill frees blocks, nothing leaks; CRC bit-flip rejected; any `kv_format` other than 1 refused with `FAILED_PRECONDITION`; `Release` frees the handle's blocks) |
+| L10.6 | Disaggregated prefill/decode: `EngineControl.Prefill`, `tl.kv.v1` transfer with hash dedup (format v1 only), resume via `X-TL-KV-Handle` with the `KvHandle` RNG hand-off (2.7), `Release`, and the engine's heartbeat client to `tl.control.v1` | core | Rust | `tl-engine/src/{kv_transfer,heartbeat}.rs`, `tl-serve/src/control.rs` | L10.2, L10.4, L10.5, lang.10 | craft.13 (upgrades `kv_transfer.rs`); gw.05 calls it over gRPC | E (disaggregated == colocated, greedy and seeded on fixture prompts), I (bytes moved = missing full blocks x block bytes + the tail block), F (chaos-proxy reset mid-transfer: decode errors, prefill frees blocks, nothing leaks; CRC bit-flip rejected; any `kv_format` other than 1 refused with `FAILED_PRECONDITION`; `Release` frees the handle's blocks) |
 | L10.7 | Serving metrics, SLO histograms, OTel spans and propagation (replaces the tracer's hand-written OTLP) | core | Rust | `tl-serve/src/{metrics,telemetry}.rs` | M07.4, obs.00, L10.5 | serve loop (load.01, obs.03, and drills read its metrics) | C (exposition parse; names and buckets match `otel/metrics.yaml`), I (counters monotone; histogram count == requests) |
 | L10.8 | Speculative decoding in the engine: prompt-lookup and n-gram drafts over the request's context, greedy acceptance at temperature 0 and M07.6 rejection otherwise, KV rollback on reject | core (D37) | Rust | `tl-engine/src/spec.rs` | L8.6, L10.2, L10.4 | serve loop (`[engine].speculative`), metric `tl.engine.spec_accept_rate` | E (accepted tokens == the learner's Python L8.6 on shared draft and target logits; greedy spec output == greedy without spec), I (blocks conserved across rollbacks), B (decode tokens/s with prompt-lookup on a repetitive fixture) |
 | L10.9 | Tool calls and constrained decoding in the engine: `tools`/`tool_choice` rendered by the chat template, tool-call parsing into `tool_calls` deltas with `finish_reason: tool_calls`, and a Rust port of the L8.7 JSON-schema DFA masks for `response_format` and forced tool arguments | core (D37) | Rust | `tl-engine/src/constrain.rs`, `tl-serve/src/tools.rs` | L8.7, L10.5 | serve loop (ag.01 and MS-agent consume `tool_calls` over HTTP) | E (token masks == the learner's Python L8.7 on fixture schemas), C (`tools.*` conformance cases: streamed argument fragments, parallel calls, `tool_choice` forced and none), I (constrained output always parses against the schema) |
@@ -2074,7 +2048,7 @@ class ZeroOptimizer(Optimizer): def __init__(self, opt_cls, params, comm: Comm, 
 | Ablations (core, `short` config) | tokenizer: BPE vs Unigram; attention: MLA vs GQA at equal KV bytes; MLP: MoE vs dense at equal active parameters. Each is one `short` run reported with a paired CI | L1.4, L7.6, L7.8, M07.5 |
 | Evaluate | val loss and bpb with CI; deterministic quality checks (repeat-8-gram rate, KN ppl of samples); long-context bpb at 1024 with YaRN vs none (L7.4); scaling-law fit with `lstsq` over three `short`-family sizes (0.3M, 1M, 2.5M params); the **model-zoo baseline table** (KN-4, NPLM, LSTM, GPT, and the C1 Llama, bpb on the same TinyStories val file, plus the seq2seq, classification, and word-similarity rows) run by `EvalSuite`; the LLM judge (ag.11) is added when Pass 10 lands and rerun by MS-P10 | L6.7, L7.4, M07.4, M07.5, M03.5, dur.11, later ag.09 to ag.12 |
 | Release | safetensors + `config.json` + `tokenizer.json`, `ModelRelease` gate (dur.12), model card, data ledger | L0.6, L7.9, data.08, ethics.03, dur.12 |
-| Serve | Rust engine (q4 and f32) behind the learner's gateway | L8.5, L9.1 to L9.7, L10.1 to L10.9, gw.01 to gw.07 |
+| Serve | Rust candle engine (q4 and f32) behind the learner's gateway | L8.5, L10.1 to L10.9, gw.01 to gw.07 |
 
 Compute: about 6·N·D = 6 x 1e7 x 1e8 = 6e15 FLOP, roughly 4 to 12 h on an M-series laptop with numpy and Accelerate BLAS (uncertain). The `short` config (2.5M params, 2e7 tokens) finishes in under 1 h and is accepted at a looser threshold; the three ablations and the two smaller scaling sizes add about 3 to 4 h of `short`-family runs.
 
@@ -2107,7 +2081,7 @@ def contains_required_words(story: str, words: Sequence[str]) -> float
 
 ### 4.4 Systems layers
 
-The spine owns model math, kernels, and inference algorithms. This section owns everything else: data structures, the C runtime, the corpus pipeline, the durable engine, the gateway, the agent SDK, and load generation. Where a systems chapter implements a spine algorithm (for example the engine scheduler), the spine owns the prose and the module id.
+The spine owns model math and inference algorithms. Optional C modules provide standalone kernel/runtime exercises. This section owns the remaining systems modules: data structures, the corpus pipeline, the durable engine, the gateway, the agent SDK, and load generation. Where a systems chapter implements a spine algorithm (for example the engine scheduler), the spine owns the prose and the module id.
 
 #### Fault and determinism kit (`course/testkit/`)
 
@@ -2129,26 +2103,26 @@ The spine owns model math, kernels, and inference algorithms. This section owns 
 
 | ID | Title | Lang | Path | Prereqs | Interface | Call sites | Tests | Lights up at |
 |---|---|---|---|---|---|---|---|---|
-| ds.01 | Growable array `tl_vec` (type-erased) | C | `c/src/ds/vec.c` | rt.01 | 2.4 `tinyllm/ds.h` | rt.04 block tables | U (growth, reserve), I (10^6 random ops vs a model), F (alloc failure leaves the vec unchanged and leak-free) | `--kv-stats` shows block tables growing without realloc storms |
-| ds.02 | Swiss table `tl_map` (u64 to u64); practice `c/02` linear probing is the worked baseline; builds on the ds.05 chapter (the first hash-table chapter) | C | `c/src/ds/swiss.c` | ds.01, reading: ds.05, S-M06a (load factor) | 2.4 | rt.04 prefix-hash index and KV-transfer dedup | U (7/8 load boundary, tombstone churn, SWAR group match), E (vs the linear-probing baseline over 10^6 ops), F (alloc failure mid-rehash keeps the old table valid), B (hit lookup >= 1.3x baseline) | engine `--prefix-cache=hash` hit rate in the load report |
-| ds.03 | Intrusive list + LRU | C | `c/src/ds/list.c`, `lru.c` | ds.02 | 2.4 | rt.04 evictable cached blocks | U (splice, safe iteration), I (LRU order vs a model) | eviction counters on `/metrics` |
-| ds.04 | Binary heap top-k `tl_topk_f32` (ties: lower index wins); builds on the ds.06 chapter (the first heap chapter) | C | `c/src/ds/topk.c` | ds.01, reading: ds.06 | 2.4 | L10.1 Rust sampler top-k via `tl-sys` | U (k=0, k>n, NaN gives `TL_EINVAL`), E (vs full sort; vs L8.1 Python top-k on fixture logits) | engine sampling with `top_k=40` |
+| ds.01 | Growable array `tl_vec` (type-erased) | optional C | `c/src/ds/vec.c` | lang.03 | 2.4 `tinyllm/ds.h` | standalone C test binary | U (growth, reserve), I (10^6 random ops vs a model), F (alloc failure leaves the vec unchanged and leak-free) | optional standalone exercise |
+| ds.02 | Swiss table `tl_map` (u64 to u64); practice `c/02` linear probing is the worked baseline; builds on the ds.05 chapter (the first hash-table chapter) | optional C | `c/src/ds/swiss.c` | ds.01, reading: ds.05, S-M06a (load factor) | 2.4 | optional standalone C exercise only | U (7/8 load boundary, tombstone churn, SWAR group match), E (vs the linear-probing baseline over 10^6 ops), F (alloc failure mid-rehash keeps the old table valid), B (hit lookup >= 1.3x baseline) | optional exercise only |
+| ds.03 | Intrusive list + LRU | optional C | `c/src/ds/list.c`, `lru.c` | ds.02 | 2.4 | optional standalone C exercise only | U (splice, safe iteration), I (LRU order vs a model) | eviction counters on `/metrics` |
+| ds.04 | Binary heap top-k `tl_topk_f32` (ties: lower index wins); builds on the ds.06 chapter (the first heap chapter) | optional C | `c/src/ds/topk.c` | ds.01, reading: ds.06 | 2.4 | optional standalone C top-k exercise | U (k=0, k>n, NaN gives `TL_EINVAL`), E (vs full sort; vs L8.1 Python top-k on fixture logits) | optional C/Python fixture comparison |
 | ds.05 | Robin Hood hash map (backward-shift delete); **the first hash-table chapter** (hashing, probing, load factor from first principles) | Rust | `rust/crates/tl-ds/src/robin.rs` | lang.04, reading: S-M06a | `RobinHoodMap<K: Hash+Eq, V, S: BuildHasher = FxBuild>`: `insert/get/get_mut/remove/entry/iter/len` | L1.5 vocab and merge ranks | U (entry API, probe-length bound), E (proptest vs `std::HashMap`), Miri, B (L1.5 encode with own map >= 0.85x the std-map build) | `{tl-tok} encode` |
 | ds.06 | Binary heap with lazy deletion (generation counters); **the first heap chapter** | Rust | `rust/crates/tl-ds/src/heap.rs` | lang.04 | `Heap<T, F: Fn(&T,&T)->Ordering>`: `push/pop/peek/len`; `LazyHeap` | L1.5 merge queue; L10.2 waiting queue | U (stability), E (vs sorted Vec; heap BPE == naive O(n²) BPE ids) | `{tl-tok} bench` |
 | ds.07 | Radix tree over token ids with index-linked LRU leaf list | Rust | `rust/crates/tl-ds/src/radix.rs` | ds.05, reading: M06.2 | `RadixTree<V>`: `match_prefix(&[u32]) -> (usize, Vec<NodeId>)`, `insert`, `lock/unlock`, `evict(n, FnMut(V))` | L8.4 prefix cache | U (edge split/merge), I (model-based vs naive trie; locked never evicted; LRU over unlocked leaves) | engine `--prefix-cache=radix`, shared-prefix load hit ratio >= 0.6 |
-| ds.08 | Bloom filter | Rust | `rust/crates/tl-ds/src/bloom.rs`, `rust/crates/tl-py/src/bloom.rs` | L1.5 (`tl-py` crate root), reading: S-M06b (FP rate, optimal k) | `Bloom::with_rate(n, p)`, `insert`, `contains`, `union`, `to_bytes/from_bytes` | data.03 exact dedup | U (m and k formulas), I (no false negatives), S (FP rate within 3σ of the binomial prediction) | `{corpus} run --until dedup_exact` |
+| ds.08 | Bloom filter | Rust | `rust/crates/tl-ds/src/bloom.rs` | reading: S-M06b (FP rate, optimal k) | `Bloom::with_rate(n, p)`, `insert`, `contains`, `union`, `to_bytes/from_bytes` | data.03 exact dedup | U (m and k formulas), I (no false negatives), S (FP rate within 3σ of the binomial prediction) | `{corpus} run --until dedup_exact` |
 | ds.09 | Consistent hash ring with bounded loads | Go | `go/ds/ring/ring.go` | lang.06, reading: S-M07d (balls into bins) | `ring.New(vnodes int, h func([]byte) uint64)`, `Add/Remove`, `Get(key)`, `GetBounded(key, load func(string) int, c float64)` | gw.05 affinity routing | U, S (key movement on Add about K/N, chi-square), I (bounded variant never exceeds `ceil(c*avg)`) | gateway `route_policy=affinity`, per-replica hit rate in the load report |
 
-The engine flag `--prefix-cache=hash|radix` deliberately gives both `ds.02` (hash prefix index in C) and `ds.07` (radix tree in Rust) a production call site; `L10.4` benchmarks one against the other.
+The engine flag Rust uses its own radix prefix cache; optional C modules have no production call sites.
 
-#### rt: C runtime (`ml/08-tinyllm/p09-kernels/`, `rt.04` in `p08-inference/`)
+#### rt: Optional standalone C runtime exercises (`ml/08-tinyllm/p09-kernels/`, `rt.04` in `p08-inference/`)
 
 | ID | Title | Path | Prereqs | Call sites | Tests | Lights up at |
 |---|---|---|---|---|---|---|
-| rt.01 | C ABI conventions: status codes, `tl_last_error`, allocator hook, versioning; Python ctypes loader with lazy symbol binding | `c/src/runtime/abi.c`, `python/tinyllm/ffi/libtinyllm.py` | lang.03, lang.01 | every `tl_*` function, L0.0, L9.7, L10.0/L10.1 | U (`-std=c11 -Wall -Wextra -Werror -pedantic`), C (`nm` exports only `tl_` after Mach-O `_` normalization; bindings refuse a mismatched major; loading a library built with stub units succeeds and a stubbed call raises), F (alloc-fail-after-n for every n over every constructor gives `TL_ENOMEM` and no leaks by the counting allocator) | `{tinyllm} info --native` prints the ABI version (tracer) |
-| rt.02 | Arena allocator with marks | `c/src/runtime/arena.c` | rt.01 | L9 kernel scratch (attention tiles, online softmax rows) | U (64-byte alignment, nested marks), I (random alloc/reset vs a model), F, B (zero `malloc` per step after warmup, counted via the hook) | flat arena high-water across 1k engine steps |
-| rt.03 | Thread pool + `tl_parallel_for` | `c/src/runtime/pool.c` | rt.01 | L9.1 row blocks, L9.3 heads, L10.1 forward | U (grain edges, n=0), I (each index runs exactly once, atomic bitmap), TSan clean, E (pooled matmul bitwise equal to single-thread via a deterministic partition), F (destroy with pending work joins cleanly) | `{tinyllm} bench matmul --native --threads 1,2,4,8` scaling table |
-| rt.04 | Paged KV block pool: refcount, CoW, chained hash over full blocks, prefix index (ds.02), LRU (ds.03), export/import in the 2.9 envelope, stats; format v1 only (v2 arrives with craft.13); not thread-safe | `c/src/runtime/kv_pool.c` | ds.01 to ds.03, M06.3 (FNV-1a), reading: L8.2 | L8.3, L9.4, L10.4, L10.6 transfer, craft.13 (upgrades it) | U (CoW, chained hash vectors), I (model-based random ops: refcount >= 0, a referenced block is never evicted, free + used + cached == n_blocks), F (double unref gives `TL_EINVAL` without corruption; export/import roundtrip; bit flip gives `TL_EFORMAT`; a partial block is never registered) | engine `--kv-stats` under load: blocks return to baseline |
+
+| rt.02 | Arena allocator with marks | `c/src/runtime/arena.c` | lang.03 | optional C exercise scratch storage | U (64-byte alignment, nested marks), I (random alloc/reset vs a model), F, B (zero `malloc` per step after warmup, counted via the hook) | flat arena high-water across 1k engine steps |
+| rt.03 | Thread pool + `tl_parallel_for` | `c/src/runtime/pool.c` | lang.03 | optional standalone C parallel loop exercise | U (grain edges, n=0), I (each index runs exactly once, atomic bitmap), TSan clean, E (pooled matmul bitwise equal to single-thread via a deterministic partition), F (destroy with pending work joins cleanly) | `{tinyllm} bench matmul --native --threads 1,2,4,8` scaling table |
+| rt.04 | Standalone C exercise: paged KV block pool, refcount, CoW, chained hash, LRU, export/import fixtures, stats; not thread-safe | `c/src/runtime/kv_pool.c` | ds.01 to ds.03, M06.3 (FNV-1a), reading: L8.2 | optional C tests only | U (CoW, chained hash vectors), I (model-based random ops: refcount >= 0, a referenced block is never evicted, free + used + cached == n_blocks), F (double unref gives `TL_EINVAL` without corruption; export/import roundtrip; bit flip gives `TL_EFORMAT`; a partial block is never registered) | optional fixture comparison |
 
 #### data: corpus pipeline (`data-engineering/05-corpus-pipeline/`, Python `python/corpus/`)
 
@@ -2441,10 +2415,10 @@ Competitive programming and `practice/` (predict, build, reattempt) are unchange
 
 | ID | Primer | Exercises (checked by `ss check lang.NN`) | First use | Pass |
 |---|---|---|---|---|
-| lang.01 | Python and numpy: arrays, dtypes, broadcasting, views vs copies, `uv` projects | a broadcasting worksheet and a vectorized bigram count | L0.0, rt.01 loader, L0.1 | P0 |
+| lang.01 | Python and numpy: arrays, dtypes, broadcasting, views vs copies, `uv` projects | a broadcasting worksheet and a vectorized bigram count | L0.0, L0.1 | P0 |
 | lang.02 | Shell, git, make, processes: exit codes, signals (SIGTERM, SIGKILL), environment, pipes | a `Makefile` for a two-file C program; a script that traps SIGTERM and exits 130 | craft.01, every `ss` verdict | P0 |
-| lang.03 | C: memory, pointers, structs, the C11 toolchain, sanitizers, headers and linkage | the practice `c/01` dynamic-array drill (reference exists) plus a ctypes round trip | rt.01, M03.1 | P1 |
-| lang.04 | Rust: ownership, traits, `Result`, cargo workspaces, `extern "C"`, std TCP | a line-protocol echo server on `std::net` | L10.0, ds.05, L1.5 | P1 |
+| lang.03 | C: memory, pointers, structs, the C11 toolchain, sanitizers, headers and linkage | the practice `c/01` dynamic-array drill (reference exists) plus a standalone C header and test-binary exercise | M03.1 | P1 |
+| lang.04 | Rust: ownership, traits, `Result`, cargo workspaces, std TCP | a line-protocol echo server on `std::net` | L10.0, ds.05, L1.5 | P1 |
 | lang.05 | HTTP/1.1, JSON, and Server-Sent Events from the wire up | parse and emit an HTTP request and an SSE stream by hand; `curl -N` against it | L10.0, gw.00 | P1 |
 | lang.06 | Go: packages, interfaces, goroutines, channels, `context`, `net/http`, `testing` | a streaming HTTP proxy with a deadline | gw.00, dur.01, load.01 | P1 |
 | lang.07 | Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind | build an image, deploy it to kind with a Helm chart, reach it through a NodePort | dep.00 | P1 |
@@ -2469,7 +2443,7 @@ Side quests have no call site in the system. They are optional, checked when the
 | `sq.tantivy` | `infrastructure/04` tantivy example |
 | `sq.type-systems` | `software-craftsmanship/07-type-systems/` (OCaml, Haskell) |
 | `sq.prefix-bloom` | Bloom of cached block hashes in heartbeats to refine routing (D21) |
-| `sq.cuda-kernels` | CUDA variants of L9.1 to L9.5 (`_cuda` suffix, same signatures, `ss check L9.3+cuda` on GPU machines only); `ml/04/quantization` `symmetric_quant.cu` is the worked example |
+
 | `sq.tensor-parallel`, `sq.pipeline-parallel` | Megatron column/row parallel layers over L11.2 collectives; the 1F1B schedule and its bubble `(p-1)/(m+p-1)`; figure `ml/04-llm-systems/diagrams/parallelism.d2` |
 | `sq.multi-lora` | batched multi-adapter serving in the engine (`tl-engine/src/lora.rs`) over L6.6 adapters; serves C2 next to the base model |
 | `sq.lm-compressor` | compress TinyStories with your model and M11.3 arithmetic coding |
@@ -2482,11 +2456,11 @@ Side quests have no call site in the system. They are optional, checked when the
 | Layer | Core | Optional | Python | C | Rust | Go | Other |
 |---|---|---|---|---|---|---|---|
 | Primers `lang.01` to `lang.11` | 11 | | | | | | practice |
-| Math code modules M00 to M11 | 48 | 5 | 50 | 5 (M03.1, M09.5, M09.6 C only; M06.3, M09.4 shared with Python) | 0 | 0 | |
+| Math code modules M00 to M11 | 46 | 7 | 50 | 3 (M09.5, M09.6, M09.7 optional C only) | 0 | 0 | |
 | Solve sets | 12 sets in 20 parts, 659 items (64 rubric) | | | | | | SymPy |
-| Spine L0 to L10 incl. tracer | 70 | 2 (L3.5, L6.4) | 54 | 6 | 12 | 0 | |
+| Spine L0 to L10 incl. tracer | 63 | 8 (L3.5, L6.4, L9.1 to L9.6) | 53 | 6 | 12 | 0 | |
 | L11, L12, C1, C2 | 2 | 7 | 7 | | | | capstones |
-| ds, rt | 13 | 0 | | 8 | 4 | 1 | |
+| ds, rt | 5 | 7 (ds.01 to ds.04, rt.02 to rt.04) | | 7 | 4 | 1 | |
 | data, dur, gw, ag, load | 43 | 1 (dur.10) | 8 (+ dur.09 shared) | | | 36 | |
 | dep, obs, ops | 26 | 1 (ops.12) | | | | 1 (obs.01 `go/otelx`) | YAML, Docker |
 | Practices (craft, ethics, review, field, iv) | 40 | | 1 (ethics.04) | 1 (craft.13) | 2 (craft.13, craft.14) | 1 (craft.14) | docs |
@@ -2516,7 +2490,7 @@ The course runs on `practice/bin/ss`, extended in place. The existing contract s
 One branch is added before the existing `case "$sub"` in `practice/bin/ss`:
 
 ```bash
-COURSE_ID_RE='^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z]?|(lang|ds|rt|data|dur|gw|ag|load|dep|obs|ops|craft|ethics|review|field|iv)\.[0-9]{2}|sq\.[a-z0-9-]+|MS-[A-Za-z0-9-]+)(\+cuda)?$'
+COURSE_ID_RE='^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z]?|(lang|ds|rt|data|dur|gw|ag|load|dep|obs|ops|craft|ethics|review|field|iv)\.[0-9]{2}|sq\.[a-z0-9-]+|MS-[A-Za-z0-9-]+)$'
 course() { exec uv run --project "$ROOT/course/harness" --quiet python -m sscourse "$@"; }
 
 case "$sub" in
@@ -2596,22 +2570,22 @@ A verdict produced with any reference source is `assisted`. A milestone counts o
 
 | Language | Mechanism |
 |---|---|
-| Python | `tinyllm` and `corpus` are namespace packages (no `__init__.py`, lint-enforced). Tests run **in the learner's uv environment**: `uv run --project <learner>/python --with <harness test deps> pytest ...`, so the learner's own dependencies (`pyarrow`, `zstandard`, OpenTelemetry) are present. `PYTHONPATH=$TINYLLM_PYEXT_DIR:.ss/overlay/<ID>/subst/python:<learner>/python`, where `subst/` holds symlinks to the reference units only for reference-sourced modules. First hit per submodule wins, so imports inside reference units resolve to learner code for every other module: that is the cumulative property |
-| C | explicit per-unit object selection, in **two builds**: (a) sanitized, `cc -std=c11 -O1 -g -fsanitize=address,undefined -I<learner>/contracts/c/include <one .c per unit: learner, ref, or stub> course/tests/<ID>/*.c -o .ss/build/<ID>/test-asan`, used only by the C harness; (b) unsanitized `-O2`, which builds `.ss/build/<ID>/libtinyllm.{a,dylib,so}` for ctypes, Rust, and benchmarks. Leaks are checked portably by the counting allocator (4.4) |
+| Python | `tinyllm` and `corpus` are namespace packages (no `__init__.py`, lint-enforced). Tests run **in the learner's uv environment**: `uv run --project <learner>/python --with <harness test deps> pytest ...`, so the learner's own dependencies (`pyarrow`, `zstandard`, OpenTelemetry) are present. `PYTHONPATH=.ss/overlay/<ID>/subst/python:<learner>/python`, where `subst/` holds symlinks to the reference units only for reference-sourced modules. First hit per submodule wins, so imports inside reference units resolve to learner code for every other module: that is the cumulative property |
+| C | explicit per-unit object selection, as standalone C test binaries with sanitizers; `cc -std=c11 -O1 -g -fsanitize=address,undefined -I<learner>/contracts/c/include <one .c per unit: learner, ref, or stub> course/tests/<ID>/*.c -o .ss/build/<ID>/test-asan`, used only by the C harness; no shared library is built or loaded by another language. Leaks are checked portably by the counting allocator (4.4) |
 | Rust | a **copy farm** `.ss/overlay/<ID>/rust/` of the learner's `rust/` at file granularity, where each reference-sourced file is a copy of `course/ref/rust/...`. Files are copied, not symlinked (Cargo decides freshness by mtime through links): a file whose source or content hash changed since the last build is rewritten with a fresh mtime, and unchanged files keep theirs, so builds stay warm. The farm has its own generated `Cargo.toml` (the learner's manifests plus the `allowed-deps.toml` pins reference units need, plus the harness crate `ss-tests` whose `tests/<id_>.rs` come from `course/tests/rust/`) and its own `Cargo.lock` seeded from the learner's. `CARGO_TARGET_DIR=<learner>/.ss/target`, shared by every farm and every mutant run. The learner's manifests and lock are never touched |
 | Go | a **copy farm** `.ss/overlay/<ID>/go/` of the learner's module with reference-sourced files copied in, a generated `go.mod`/`go.sum` (the learner's requirements plus the `allowed-deps.toml` pins reference files need), and `GOWORK=.ss/overlay/<ID>/go.work` = the farm + `contracts/go` (`supersource.urmzd.com/tl/contracts`, generated stubs included) + `course/tests/go` (`supersource.urmzd.com/tl/coursetests`). `go test -count=1 supersource.urmzd.com/tl/coursetests/<id_>/...`. `_test.go` files from the learner are never replaced |
 
 | Env var set by `ss` | Value | Read by |
 |---|---|---|
-| `TINYLLM_LIB` | `.ss/build/<ID>/libtinyllm.{dylib,so}` (the unsanitized build) | learner's ctypes loader (`rt.01`) |
-| `TINYLLM_C_LIB_DIR` | same dir | learner's `tl-sys/build.rs` (contract: must honor it and emit `rerun-if-env-changed`) |
-| `TINYLLM_PYEXT_DIR` | dir holding `tinyllm_rs.so` built from the farm's `tl-py` | **prepended** to `PYTHONPATH` |
-| `PYO3_PYTHON` | the learner's uv interpreter | `tl-py` build (2.5) |
+
+
+
+
 | `TINYLLM_FIXTURES` | the `course/fixtures` of the `contracts/VERSION` worktree | course tests |
 | `TINYLLM_CACHE` | `~/.cache/supersource` | weight loaders, `ss fetch` |
 | `SS_SEED`, `SS_MODULE`, `SS_OVERLAY` | `0`, id, overlay root | tests, debugging |
 
-**Contract pre-check (exit 4).** `contracts/` is compared by **content hash** with `contracts/VERSION` (local edits fail: `contracts/ modified; revert, or run ss contracts sync`). Contracts carry a semver: a minor bump is backward compatible and `ss` only advises a sync; a major bump is a migration chapter. Then: the manifest entries required by 2.15 (lib targets, crate and module names, the contracts `replace`, the `tl-py` build contract); Python `mypy.stubtest` of each unit against `contracts/py`; C `cc -fsyntax-only` on each unit and an `nm` diff after Mach-O `_` normalization (no non-`static` symbol outside the headers); Rust `cargo check -p <crate>` in the farm (trait impls from `tl-contracts`); Go `go vet` plus a compile-only assertion file such as `var _ contracts.Queue = (*queue.Queue)(nil)`.
+**Contract pre-check (exit 4).** `contracts/` is compared by **content hash** with `contracts/VERSION` (local edits fail: `contracts/ modified; revert, or run ss contracts sync`). Contracts carry a semver: a minor bump is backward compatible and `ss` only advises a sync; a major bump is a migration chapter. Then: the manifest entries required by 2.15 (lib targets, crate and module names, the contracts `replace`, the declared Rust crate and C test contracts); Python `mypy.stubtest` of each unit against `contracts/py`; C compiles each standalone test binary with `cc -fsyntax-only` and sanitizer flags; Rust `cargo check -p <crate>` in the farm (trait impls from `tl-contracts`); Go `go vet` plus a compile-only assertion file such as `var _ contracts.Queue = (*queue.Queue)(nil)`.
 
 **Verdict ledger.** `.ss/verdicts.jsonl`, one line per check:
 
@@ -2790,14 +2764,14 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | Milestone | Pass | Pass condition (details in section 4) | CI |
 |---|---|---|---|
 | MS-P0 | P0 | `ci-status`: the learner's CI (commit lint, native tests, `ss check --all --ci`) is green on the first conventional commit; `lang.01` and `lang.02` exercises pass | pr |
-| MS-P1 | P1 | tracer: curl with a key through the learner's gateway on kind streams >= 32 tokens from their byte bigram, served by their Rust engine calling their C matmul; `openapi:v0` passes; one trace spans gateway and engine in Jaeger; `ops.00` resolved with a runbook; ADR-0001 lints. Smoke steps (local processes): the same stream without kind | pr (smoke), kind job (full) |
+| MS-P1 | P1 | tracer: curl with a key through the learner's gateway on kind streams >= 32 tokens from their byte bigram, served by their Rust engine; `openapi:v0` passes; one trace spans gateway and engine in Jaeger; `ops.00` resolved with a runbook; ADR-0001 lints. Smoke steps (local processes): the same stream without kind | pr (smoke), kind job (full) |
 | MS-L0 | P2 | gradcheck suite; autograd bigram = count MLE within 1e-3 nats, served unchanged; MLP digits >= 0.95; bitwise kill-and-resume with the token cursor | pr |
 | MS-L1 | P3 | GPT-2 and SmolLM2 tokenization exact; Rust speedup only in the local perf step | pr, local (perf) |
 | MS-corpus | P3 | shards, manifest, ledger, `.bin` pass format conformance; deterministic hash; decontamination count recorded | pr |
 | MS-L2 | P3 | KN-4 ppl within 0.5%; NPLM at the calibrated threshold and below bigram; deterministic generation; bpb reported | pr |
 | MS-L3, MS-L4 | P4 | RNN family bpc ordering; LSTM bpb below NPLM bpb on the shared TinyStories val file; seq2seq attention EM and the no-attention gap; beam beats greedy | pr (`--smoke` configs), nightly (full) |
 | MS-L5, MS-L6, MS-L7 | P5 | transformer EM; post-LN divergence demo with pre-LN from L5.5; GPT/BERT/ELECTRA/LoRA; zoo report; SmolLM2 logits within 1e-3, greedy exact on margin-filtered prompts | pr (tiny, `--smoke`), nightly (SmolLM2, full) |
-| MS-L8, MS-L9 | P6 | cache equivalence, quant budgets, spec decoding exactness; C backend token-identical; sanitizer-clean; speedups only in local perf steps | pr, local (perf) |
+| MS-L8 | P6 | cache equivalence, quant budgets, spec decoding exactness | pr |
 | MS-L10 | P7 | engine conformance, sampler parity on fixture logits, greedy Rust == Python, 64-way concurrency, abort, disaggregated subset, prompt-lookup spec, tool calls | pr (tiny model), nightly (SmolLM2-Instruct tool calls), local (perf) |
 | MS-gateway | P7 | gateway conformance (`gw.08` cases pending), failover before first byte, ledger reconciliation | pr |
 | MS-prod | P7 | kind deploy of gateway, engine, and observability; serving traces; metrics; SLO rules; load within SLO (in-cluster calibration); `ops.01` within budget | nightly (kind) |
@@ -2826,7 +2800,7 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | `chat.seed` | engine | same seed, same output across two calls of the same engine (Rust-vs-Python seeded equality is proven on fixture logits by `parity/sampler`, never end to end) |
 | `err.400`, `err.422` | engine | out-of-range and unsupported parameters in the error shape |
 | `cancel.disconnect` | engine | client closes mid-stream; within 2 s `tl.engine.active_sequences` on `/metrics` drops and KV returns to baseline |
-| `concurrency.16` | engine | 16 parallel streams complete; temperature 0 outputs equal the serial runs (batch-invariant kernels, 2.4) |
+| `concurrency.16` | engine | 16 parallel streams complete; temperature 0 outputs equal the serial runs under the engine batching contract |
 | `tools.call`, `tools.stream`, `tools.choice` | engine | `requires = ["L10.9"]`: schema-valid `tool_calls`, argument fragments streamed and reassembled, `tool_choice` forced and `none` |
 | `priority.internal` | gateway | `X-TL-Priority` from a client is stripped; the gateway sets it from the key's tier toward the engine (recorded by a fake upstream) |
 | `auth.401`, `auth.403` | gateway | missing, bad, or under-scoped key |
@@ -2842,12 +2816,12 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | Suite (`course/conformance/parity/*.toml`) | Implementations | Mode | Equality |
 |---|---|---|---|
 | `tokenizer.bpe` | Python BPE (L1.2) vs Rust `tl-tok` via `tinyllm_rs` | golden (tiktoken GPT-2 ids, HF SmolLM2 ids) + live fuzz (Hypothesis text, 2k cases) | bit-exact ids |
-| `rng` | Python (M06.3), C (M06.3), Rust (L10.1), Go (load.01) | first 1024 outputs for seeds `0, 1, 2^63`, plus `uniform_f64` and Box-Muller normals | bit-exact |
+| `rng` | Python (M06.3), Rust (L10.1), Go (load.01) | first 1024 outputs for seeds `0, 1, 2^63`, plus `uniform_f64` and Box-Muller normals | bit-exact |
 | `sampler` | Python L8.1 vs Rust L10.1 | the same fixture logits and seeds fed to both (never logits each side computed) | identical ids |
-| `matmul` | C L9.1 vs numpy f64 | golden | `abs err <= 4 * eps32 * sqrt(K) * max(abs(A) @ abs(B))` |
+| `matmul` | optional C L9.1 vs Python-generated golden outputs | golden | `abs err <= 4 * eps32 * sqrt(K) * max(abs(A) @ abs(B))` |
 | `softmax.online`, `flash.fwd` | C vs Python naive | golden | f32 rtol 1e-5, atol 1e-6 |
-| `quant.int4`, `quant.fp8` | Python (M09.4, L8.5) vs C | golden | packed bytes and dequant values bit-exact |
-| `kv.wire.v1`, `kv.wire.v2` (v2 from craft.13) | Rust writer vs Rust reader and C `tl_kv_import` | golden blobs in the 2.9 envelope | byte-exact roundtrip |
+| `quant.int4`, `quant.fp8` | Python (M09.4, L8.5) vs optional C (M09.7, L9.5) | golden | packed bytes and dequant values bit-exact |
+| `kv.wire.v1`, `kv.wire.v2` (v2 from craft.13) | Rust writer vs Rust reader | golden blobs in the 2.9 envelope | byte-exact roundtrip |
 | `ring.hash` | Go ds.09 vs a Python reference map | golden key-to-node map | exact |
 | `bloom` | Rust `tl-ds` vs `tinyllm_rs` | golden bit arrays | exact |
 
@@ -2966,7 +2940,7 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 | `dur/histories`, `agent`, `rag`, `eval` | reference runs | recorded histories of the course test workflows, `faketool` provider rules, agent suites, embeddings, judge labels, the prompt-injection suite | about 3 MB |
 | `ref-thresholds` | hidden reference runs | mean and sd of `ref_metric` over 5 seeds per learning test and milestone | < 1 MB |
 
-About 21 MB committed at design time, which leaves room for per-module fixtures (KV golden blobs, kernel goldens, recorded SSE streams).
+About 21 MB committed at design time, which leaves room for per-module fixtures (KV golden blobs, optional C exercise goldens, recorded SSE streams).
 
 **Large assets** (`course/fixtures/ASSETS.tsv`: url, revision, sha256, license) are never committed and are fetched by `ss fetch <asset>` into `$TINYLLM_CACHE`: `smollm2-135m` and `smollm2-135m-instruct` (`HuggingFaceTB/SmolLM2-135M` and `-Instruct` at pinned revisions), `tinystories` (full corpus for C1), `course-corpora` (the TinyStories 5 MB slice and its `ts-train.bin`, `ts-val.bin`, `ts-2m.bin` token streams, `wiki-mini`; about 20 MB), and `tiny-hf-models` (random tiny GPT2, BERT, ELECTRA, Llama variants including `tiny-llama-2l`, `tiny-llama-yarn`, `tiny-llama-3`, Mistral-SWA, DeepseekV3-MLA, Mixtral-MoE: safetensors + logits; about 8 MB). The last two are generated by `course/oracle/` and published as release assets of supersource. CI caches them by sha. Learners can also pull weights with their own `{tinyllm} pull`.
 
@@ -3051,7 +3025,7 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 | `lint` | PR | ubuntu | 3 min | ruff, `gofmt -l`, `cargo fmt --check`, `clang-format --dry-run` on `course/`; `ss lint` |
 | `harness-unit` | PR | ubuntu | 3 min | `pytest course/harness` (solve checker, overlay builder, stubber, mutation runner, matchers); existing `practice/bin/test_measure.py` |
 | `course-verify-changed` | PR | ubuntu | 12 min | `ss verify course --changed origin/main` (changed modules in full, dependents' smoke tests) |
-| `course-verify-macos` | PR, when C or Rust course files change | macos-14 | 10 min | same for C and Rust modules (Apple clang, Accelerate, the two C builds, PyO3 linking) |
+| `course-verify-macos` | PR, when C or Rust course files change | macos-14 | 10 min | same for C and Rust modules (Apple clang, Accelerate, standalone C test binaries) |
 | `parity-golden` | PR | ubuntu | 4 min | `ss parity` golden mode |
 | `reference-learner-e2e` | PR | ubuntu | 10 min | `ss verify course --e2e`: assemble a learner repo from `course/ref` + `course/ref/entry`, run every `ci = "pr"` milestone step **in `--smoke` mode** (reduced configs; full training milestones such as MS-L3, MS-L4, and MS-L6 run nightly) and `ss conform` on both tiers, then `ss export` into a temp dir and run the vendored tests natively through the generated glue |
 | `milestone-p1-kind` | PR touching tracer modules | ubuntu (kind via `helm/kind-action`) | 15 min | `ss milestone MS-P1` against the reference system, kind steps included |
@@ -3062,7 +3036,7 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 | `train-smoke` | nightly | ubuntu | 25 min | capstone pipeline on a 2 MB TinyStories slice through `CorpusBuild`, 300 reference training steps, threshold, serve, conformance (`MS-C1 --smoke`) |
 | `kind-e2e` | nightly | ubuntu (kind) | 40 min | reference charts (including KEDA), OTel/Prometheus/Tempo, `ss conform` through the NodePort, one drill per night by rotation (`--seed $(date +%j)`) with the scripted responder and the `drill` SLO profile, optional Raft linearizability over 5 min |
 | `oracle-drift` | weekly + manual | ubuntu | 30 min | regenerate fixtures and compare within tolerance (5.11) |
-| local only | never in CI | dev machine | | `+cuda` variants, `ss bench` perf gates and `perf` milestone steps, full C1 training, drills against the learner's own cluster |
+| local only | never in CI | dev machine | | `ss bench` perf gates and `perf` milestone steps, full C1 training, drills against the learner's own cluster |
 
 ### 5.15 `path.tsv` check column and `ss learn`
 
@@ -3070,7 +3044,7 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 
 ```
 # stage	title	files	done when	check
-3	Matmul and the C ABI	math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md	Your tl_matmul_f32 matches numpy and Python calls it through ctypes.	module:M03.1
+3	Matmul and standalone C exercise	math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md	Your Python matmul matches numpy; the C exercise is optional standalone depth.	module:M03.1
 12	Inference milestone	paths/course-p06-inference-and-kernels/milestone.md	Your stack matches no-cache output token for token.	milestone:MS-L8
 4	Chain rule by hand	math/01-calculus-1/README.md	You differentiate compositions without a table.	solve:S-M01
 30	Decode worker dies	systems/05-incident-response-and-chaos/02-chaos-catalog.md	You detect within 5 minutes and restore the SLO.	drill:ops.01
@@ -3124,7 +3098,7 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 | **Contract** | [`course/contracts/py/tinyllm/num/stable.pyi`](../../course/contracts/py/tinyllm/num/stable.pyi) |
 | **Tests** | `course/tests/M09.2/` (what they check: section 4) |
 | **Needs** | [`M09.1` IEEE 754](01-ieee-754.md), [`M02.1` Taylor series](../02-calculus-2/01-taylor-series.md) (or `--ref-deps`) |
-| **Used by** | `L0.2` op library · `L0.3` fused cross-entropy · `L8.1` sampler · `L9.2` online softmax in C |
+| **Used by** | `L0.2` op library · `L0.3` fused cross-entropy · `L8.1` sampler · optional `L9.2` C softmax fixture comparison |
 | **Milestone** | [MS-L0](../../paths/course-p02-foundations/milestone.md) |
 | **Optional depth** | Higham, *Accuracy and Stability of Numerical Algorithms*, ch. 1 and 4 |
 
@@ -3176,7 +3150,7 @@ def log_softmax(x: np.ndarray, axis: int = -1) -> np.ndarray: ...
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `test_hand_example` | unit | the section 3 numbers to 1e-7 | you and the test agree on the definition |
-| `test_shift_invariance` | property | `softmax(x + c) == softmax(x)` | lets the C kernel subtract a running max (`L9.2`) |
+| `test_shift_invariance` | property | `softmax(x + c) == softmax(x)` | supports numerically stable softmax, including optional C exercise L9.2 |
 | `test_no_overflow` | boundary | `x = [1000, 1000]` gives `[0.5, 0.5]` | large logits after training |
 | `test_fully_masked_row` | boundary | all `-inf` gives zeros, not NaN | causal masks in `L5.2` |
 
@@ -3192,7 +3166,7 @@ def log_softmax(x: np.ndarray, axis: int = -1) -> np.ndarray: ...
 |---|---|---|
 | Back | `M09.1` | why fp32 overflows at 88.7 |
 | Forward | `L0.3` | fused cross-entropy via `log_softmax` |
-| Forward | `L9.2` | the same math in one pass, in C |
+| Forward | optional `L9.2` | the same math in one pass, in C |
 
 If you skip this module, `ss check L0.3` fails with
 `needs M09.2: build it, or pass --ref-deps`.
@@ -3298,13 +3272,13 @@ paths/course-p11-operate/
 | Pass | Path | Weeks at 10 to 12 h | System after the pass (all learner-built) | Gate |
 |---|---|---|---|---|
 | P0 | course-p00-setup | 1.5 | Python/numpy and shell/git/make primers; empty repo from `ss course init`; CI runs commit lint, native tests, and `ss check --all --ci` on every push | MS-P0 |
-| P1 | course-p01-tracer | 5 | C, Rust, HTTP/SSE, Go, and container primers; Python byte-level bigram (logits via their C matmul through ctypes), safetensors, Rust std-only engine streaming SSE with hand-written OTLP, Go gateway with a key check, kind + Helm + Jaeger, one trace, one drill, ADR-0001 | MS-P1 |
+| P1 | course-p01-tracer | 5 | C, Rust, HTTP/SSE, Go, and container primers; Python byte-level bigram (numpy logits), safetensors, Rust std-only engine streaming SSE with hand-written OTLP, Go gateway with a key check, kind + Helm + Jaeger, one trace, one drill, ADR-0001 | MS-P1 |
 | P2 | course-p02-foundations | 7.5 | the bigram retrained by **their autograd** (L0.5 takes over `bigram.py`), gradcheck everywhere, the token-stream reader; the engine unchanged (same checkpoint contract) | MS-P2 = MS-L0 |
 | P3 | course-p03-tokens-and-data | 7.5 | corpus pipeline v1 with ledger and decontamination, BPE, WordPiece, and Unigram in Python, BPE in Rust, n-gram/NPLM/word2vec run through `{tinyllm}`; the engine keeps serving the bigram | MS-P3 = MS-L1 + MS-corpus + MS-L2 |
 | P4 | course-p04-sequence-models | 4 | RNN/LSTM/GRU LMs, seq2seq with attention, beam search in the CLI | MS-P4 = MS-L3 + MS-L4 |
 | P5 | course-p05-transformer | 6 | transformer, GPT/BERT/ELECTRA/LoRA, the model zoo, modern block; SmolLM2-135M loads and matches HF | MS-P5 = MS-L5 + MS-L6 + MS-L7 |
-| P6 | course-p06-inference-and-kernels | 7 | Python inference stack (sampler, KV, paged KV over their C pool, prefix cache in Rust, quant, spec decoding, constrained decoding) and batch-invariant C kernels behind `--backend c` | MS-P6 = MS-L8 + MS-L9 |
-| P7 | course-p07-serving-platform | 8 | async Rust, gRPC, and SQL primers; Rust engine on their C kernels (continuous batching, chunked prefill, disaggregation, speculative decoding, tool calls), gateway (auth, limits, routing, cascades, cache, ledger), loadgen, gateway and engine charts, Tilt, Prometheus, Tempo, Grafana, SLOs | MS-P7 = MS-L10 + MS-gateway + MS-prod |
+| P6 | course-p06-inference-and-kernels | 7 | Python inference stack (sampler, KV, paged KV, quant, spec decoding, constrained decoding), plus optional standalone C exercises | MS-P6 = MS-L8; optional C exercises are not pass-gate dependencies |
+| P7 | course-p07-serving-platform | 8 | async Rust, gRPC, and SQL primers; candle-based Rust engine (continuous batching, chunked prefill, disaggregation, speculative decoding, tool calls), gateway (auth, limits, routing, cascades, cache, ledger), loadgen, gateway and engine charts, Tilt, Prometheus, Tempo, Grafana, SLOs | MS-P7 = MS-L10 + MS-gateway + MS-prod |
 | P8 | course-p08-durable | 4.5 | data pipeline and training run as workflows (`CorpusBuild`, `TrainRun`, `EvalSuite`) on their durable engine; durable and worker charts with KEDA; control-plane traces | MS-P8 = MS-durable |
 | P9 | course-p09-capstone-training | 5 | about 10M model trained on TinyStories (mixed precision, accumulation, resume) with core ablations and the zoo table, safety evals, released through `ModelRelease`, and served | MS-P9 = MS-L11 + MS-C1 |
 | P10 | course-p10-agents | 5 | Go agent SDK on their engine's tool calls, RAG over their docs, eval runner with judge and A/B, usage policy at the gateway, agent chart; optional post-training | MS-P10 = MS-agent (+ optional MS-C2) |
@@ -3317,15 +3291,15 @@ About 67 weeks part-time. These are planning estimates: advance on gates, not el
 | Contract | Path through the course |
 |---|---|
 | model behind the checkpoint contract (`forward(ids) -> logits`) | count bigram (P1), autograd bigram (P2): both served by the engine. NPLM (P3), RNN/LSTM (P4), GPT, BERT, ELECTRA, the modern block, SmolLM2 (P5) run through `{tinyllm}` and the L6.7 zoo only (D36). From P7 the engine serves the Llama family (SmolLM2, the capstone 10M in P9, optional SFT chat in P10) and keeps `tl_arch = bigram` (D32) |
-| `Tokenizer` | bytes (P1, D32), char, Python BPE, WordPiece, Unigram, Rust `tl-tok` via PyO3 (P3), chat template and tool-call parsing (P7) |
-| `tl_matmul_f32` | naive `M03.1` (P1), tiled + packed + batch-invariant `L9.1` (P6): same symbol and signature, bench gate |
+| `Tokenizer` | bytes (P1, D32), char, Python BPE, WordPiece, Unigram, Rust `tl-tok` (P3), parity via shared fixtures, chat template and tool-call parsing (P7) |
+| `tl_matmul_f32` | Python `M03.1` (P1); optional standalone C exercise `L9.1` compares to fixture outputs |
 | checkpoint (`model.safetensors` + `config.json`) | F32 tensors only, `tl_format: 0` (P1), full dtypes and `tl_format: 1` with optimizer state and the token cursor (P2), quantized dtypes (P6) |
 | HTTP `openai-subset` | v0 `/v1/completions` SSE (P1), v1 with chat, usage, stop, errors, tools on engine and gateway (P7), v2 migration (P11, craft.14) |
 | KV layout | contiguous (P6), paged v1 (P6), v2 fp8 migration (P11, craft.13) |
 | gateway handler chain | proxy (P1), auth, limits, routing, cache, ledger (P7), policy (P10) |
 | Helm | engine and gateway charts plus Jaeger (P1), gateway and engine charts per role + observability (P7, dep.03), durable + workers + KEDA (P8, dep.06), agent (P10, dep.07) |
 | `train` and `data build` | local process (P1 to P7), durable workflow (P8) |
-| tracer engine (`tl-serve` v0, `tl-sys` v0) | std-only HTTP and hand-written OTLP (P1), tokio/hyper + full engine (P7) |
+| tracer engine (`tl-serve` v0) | std-only HTTP and hand-written OTLP (P1), tokio/hyper + candle engine (P7) |
 
 ### 7.4 Pass stage lists
 
@@ -3342,21 +3316,20 @@ P0 and P1 in full:
 
 ```text
 # paths/course-p01-tracer/path.tsv
-1	C	software-craftsmanship/12-language-and-tool-primers/03-c.md	Your dynamic array passes under ASan and Python calls a C function through ctypes.	module:lang.03
-2	The C ABI	ml/08-tinyllm/p09-kernels/01-the-c-abi.md	tl_abi_version and tl_status_str work from Python through ctypes.	module:rt.01
-3	Matmul in C	math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md	Your tl_matmul_f32 matches numpy and Python calls it through ctypes.	module:M03.1
-4	Byte bigram	ml/08-tinyllm/p00-foundations/00-byte-bigram.md	Your bigram reaches the count-MLE NLL and writes a safetensors file; your CLI trains and samples from a clean shell.	module:L0.0
-5	Rust	software-craftsmanship/12-language-and-tool-primers/04-rust.md	Your std-only echo server handles two clients.	module:lang.04
-6	HTTP and SSE	software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md	You parse an HTTP request and emit an SSE stream by hand.	module:lang.05
-7	Your first endpoint	ml/08-tinyllm/p10-serving/00-your-first-endpoint.md	Your Rust server streams SSE completions from your checkpoint, calling your C matmul, and exports its span.	module:L10.0
-8	Go	software-craftsmanship/12-language-and-tool-primers/06-go.md	Your streaming proxy honors a deadline.	module:lang.06
-9	Your gateway	ai-platform-engineering/12-gateway/00-streaming-proxy.md	Your Go gateway rejects bad keys and streams without buffering.	module:gw.00
-10	Containers and Kubernetes	software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md	Your image runs on kind behind a Helm chart and a NodePort.	module:lang.07
-11	Images, kind, and Helm	infrastructure/01-containers-kubernetes/00-tracer-deploy.md	helm install brings both up on kind and curl through the gateway works.	module:dep.00
-12	One trace	systems/04-observability/00-one-trace.md	One request shows as one trace across gateway and engine in Jaeger.	module:obs.00
-13	First drill	systems/05-incident-response-and-chaos/00-first-drill.md	You fixed engine-crashloop and wrote its runbook.	drill:ops.00
-14	First ADR	software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md	ADR-0001 records why the languages meet at a C ABI and HTTP.	module:craft.02
-15	Milestone	paths/course-p01-tracer/milestone.md	Every layer is yours and runs end to end.	milestone:MS-P1
+1	C	software-craftsmanship/12-language-and-tool-primers/03-c.md	Your dynamic array passes under ASan as a standalone C test binary.	module:lang.03
+2	Matmul in Python	math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md	Your Python matmul matches numpy; the C exercise is optional standalone depth.	module:M03.1
+3	Byte bigram	ml/08-tinyllm/p00-foundations/00-byte-bigram.md	Your bigram reaches the count-MLE NLL and writes a safetensors file; your CLI trains and samples from a clean shell.	module:L0.0
+4	Rust	software-craftsmanship/12-language-and-tool-primers/04-rust.md	Your std-only echo server handles two clients.	module:lang.04
+5	HTTP and SSE	software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md	You parse an HTTP request and emit an SSE stream by hand.	module:lang.05
+6	Your first endpoint	ml/08-tinyllm/p10-serving/00-your-first-endpoint.md	Your Rust server streams SSE completions from your checkpoint and exports its span.	module:L10.0
+7	Go	software-craftsmanship/12-language-and-tool-primers/06-go.md	Your streaming proxy honors a deadline.	module:lang.06
+8	Your gateway	ai-platform-engineering/12-gateway/00-streaming-proxy.md	Your Go gateway rejects bad keys and streams without buffering.	module:gw.00
+9	Containers and Kubernetes	software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md	Your image runs on kind behind a Helm chart and a NodePort.	module:lang.07
+10	Images, kind, and Helm	infrastructure/01-containers-kubernetes/00-tracer-deploy.md	helm install brings both up on kind and curl through the gateway works.	module:dep.00
+11	One trace	systems/04-observability/00-one-trace.md	One request shows as one trace across gateway and engine in Jaeger.	module:obs.00
+12	First drill	systems/05-incident-response-and-chaos/00-first-drill.md	You fixed engine-crashloop and wrote its runbook.	drill:ops.00
+13	First ADR	software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md	ADR-0001 records why the languages meet at process and file boundaries.	module:craft.02
+14	Milestone	paths/course-p01-tracer/milestone.md	Every layer is yours and runs end to end.	milestone:MS-P1
 ```
 
 Later passes as ordered stages (each row's check is the module or milestone id; optional items are reachable but not gating). Within a pass, every module follows all of its deps (`ss learn --verify`).
@@ -3367,14 +3340,14 @@ Later passes as ordered stages (each row's check is the module or milestone id; 
 | P3 | M05.2 · M06.2 · S-M06b · M11.2 · M07.1 · M07.2 · S-M07b · L1.1 · L1.2 · L1.3 · L1.4 · L1.6 · ds.05 · ds.06 · L1.5 · craft.04 · MS-L1 · ethics.01 · ethics.02 · ds.08 · lang.08 · data.01 to data.08 · MS-corpus · M03.5 · M03.6 · S-M03b · M11.4 · S-M11b · L2.1 to L2.3 · MS-L2 · MS-P3 |
 | P4 | M07.4 · S-M07c · L3.1 to L3.4 · L3.6 · L4.2 · L4.3 · L4.1 · L4.4 · L4.5 · craft.07 · MS-L3 · MS-L4 · MS-P4 (optional: L3.5) |
 | P5 | M01.4 · M07.5 · M07.7 · S-M07d · L5.1 to L5.5 · MS-L5 · L6.1 · L6.2 · L6.3 · L6.6 · L6.5 · L6.7 · MS-L6 · M05.1 · L7.1 to L7.9 · craft.05 · MS-L7 · MS-P5 (optional: L6.4) |
-| P6 | M07.6 · M09.3 · M09.4 · S-M09b · L8.1 · L8.2 · ds.01 to ds.03 · rt.04 · L8.3 · ds.07 · L8.4 · L8.5 · L8.6 · L8.7 · MS-L8 · M09.5 · M09.6 · rt.02 · rt.03 · ds.04 · L9.1 to L9.7 · craft.06 · MS-L9 · MS-P6 |
+| P6 | M07.6 · M09.3 · M09.4 · S-M09b · L8.1 · L8.2 · L8.3 · ds.07 · L8.4 · L8.5 · L8.6 · L8.7 · craft.06 · MS-L8 · MS-P6 (optional standalone C modules: ds.01 to ds.04, rt.02 to rt.04, M09.5 to M09.7, L9.1 to L9.6) |
 | P7 | L10.1 to L10.4 · lang.09 · L10.5 · lang.10 · L10.6 · L10.7 · L10.8 · L10.9 · load.01 · load.02 · MS-L10 · gw.01 to gw.04 · ds.09 · gw.05 · gw.06 · lang.11 · gw.07 · craft.20 · MS-gateway · dep.01 to dep.05 · obs.01 to obs.04 · drill ops.01 · craft.08 · review.01 · MS-prod · MS-P7 |
 | P8 | dur.01 to dur.09 · data.09 · dur.11 · dep.06 · obs.05 · craft.21 · drill ops.02 · drill ops.03 · MS-durable · MS-P8 (optional: dur.10 · MS-durable-ha) |
 | P9 | M08.4 · L11.1 · ethics.03 · ethics.04 · dur.12 · craft.22 · C1 · MS-L11 · MS-C1 · MS-P9 (optional: L11.2 · L11.3 · M10.5 · M10.6) |
 | P10 | ag.01 to ag.12 · ethics.05 · gw.08 · dep.07 · craft.23 · MS-agent · MS-P10 (optional: S-M10b · L12.1 to L12.4 · C2 · MS-C2) |
 | P11 | craft.09 to craft.12 · craft.13 + drill ops.04 · craft.14 + drill ops.05 · craft.15 + drill ops.06 · craft.16 + drill ops.07 · drills ops.08 to ops.11 · craft.17 to craft.19 · review.02 · review.03 · ethics.06 · field.01 to field.07 · iv.01 · MS-ops · MS-P11 (optional: ops.12) |
 
-Solve-only modules and optional math (`M02.4`, `M09.7`, `M11.3`) remain reachable from their topic READMEs. `ss learn --verify` enforces that every core `build` module appears exactly once across the pass lists and that no stage precedes one of its deps.
+Solve-only modules (`M02.4`, `M11.3`) remain reachable from their topic READMEs; optional C module M09.7 is reachable from the M09 chapter and standalone C milestone. `ss learn --verify` enforces that every core `build` module appears exactly once across the pass lists and that no stage precedes one of its deps.
 
 ### 7.5 Just-in-time math
 
@@ -3391,7 +3364,7 @@ Math is not front-loaded. Each chapter gates the first spine part that calls it:
 | L6 | M01.4, M07.5, M07.7; S-M07d |
 | L7 | M05.1 |
 | L8 | M07.6, M09.3, M09.4; S-M09b |
-| L9 | M09.5, M09.6 |
+| L9 | M09.5, M09.6; optional M09.7 |
 | L11 | M08.4 |
 | C1 | M03.5 (`lstsq`); optional M10.5, M10.6 |
 | L12 | S-M10b (M10.7), M11.1 `kl_k3` |
@@ -3454,7 +3427,7 @@ Churn is minimized: tracks stay top level, moves use `git mv`, and new directori
 | `ml/03-reinforcement-learning` | depth reading for L12.3 (policy gradient, PPO); classic RL becomes `sq.rl-classics` |
 | `ml/04-llm-systems` README | section 1 cut to a pointer to L7; sections 3 to 7 and diagrams become figures and depth: `paged-kv-cache.d2` and `disaggregated-serving.d2` for L8 to L10, `parallelism.d2` for `sq.tensor-parallel` and `sq.pipeline-parallel`, `serving-stack.d2` for `paths/course/SYSTEM.md` |
 | `ml/04/model-loading` | depth for L7.9; `safetensors_inspect.py` and `config_explain.py` become L0.6/L7.9 worked examples |
-| `ml/04/quantization` | depth for L8.5 and L9.5; `nf4_quant.c`, `turboquant.c` stay as worked examples; `symmetric_quant.cu` feeds `sq.cuda-kernels`; `burn_quantize.rs` becomes side-quest reading (the `.zig` files are in `ml/04/frameworks/code` and go with `sq.engines-tour`) |
+| `ml/04/quantization` | depth for L8.5 and optional L9.5; `nf4_quant.c`, `turboquant.c` stay as worked examples; `burn_quantize.rs` becomes side-quest reading (the `.zig` files are in `ml/04/frameworks/code` and go with `sq.engines-tour`) |
 | `ml/04/frameworks` | "Going further" reading for L8; code becomes `sq.engines-tour` |
 | `ml/04/serving-and-load` | depth for L10; `capacity.py` becomes the M05.1 worked example; `loadgen.py` is reading, superseded by load.01 |
 | `ml/04/serving-platforms.md` | reading, linked from gw.05 |
@@ -3553,14 +3526,14 @@ Every batch ends green on its verification command and leaves the **reference-as
 
 | Batch | Harness work | Modules (reference + tests + mutants + chapter + registry row) | Paths, new topic READMEs, committed fixture budget | Verification |
 |---|---|---|---|---|
-| **B1 Harness + tracer** | `course/modules/*.toml` loader, `modules.tsv` generator, registry invariants (3.4); dispatch including the `bench` routing (5.2); `ss course init`, `start/check/diff/show/reset/tests/status/next` in all four languages; marker ids, the compiling stubber, and the stubbed-tree compile lint; `course/ref/history/` snapshots and `upgrades` handling; cumulative overlay (Python in the learner's uv env with namespace paths, C object selection in two builds with stub objects and the counting allocator, Rust and Go copy farms with generated manifests); `contracts/VERSION` worktree resolution and the content-hash pre-check; `--ref-deps`; verdict ledger; frozen helpers (`tests/_lib` close, pcg32, gradcheck; `ss_test.h`); `ss milestone` with `system.toml` (`[build]`, port allocation, generated `runtime.toml`, smoke and kind tags, matchers including `tokens-equal` over emitted ids, `trace` for Jaeger, `ci-status`); `ss conform openapi:v0`; `ss drill` framework with the safety gate and journal; `ss doctor`; `ss lint`; `path.tsv` column 5; `ss verify course` checks 1 to 14; `ss check --all --ci` and the learner CI recipe; `ss export` with the test glue; site and book publish `course/contracts/` only; CI `course-verify-changed`, `milestone-p1-kind`, `reference-learner-e2e` (smoke) | lang.01 to lang.07, craft.01, rt.01, M03.1, L0.0, L10.0, gw.00, dep.00, obs.00, ops.00, craft.02; contracts `tinyllm.h` (abi, matmul), `openai-subset.v0.yaml`, `formats/{safetensors,tokenizer}.md` (with the `bytes` tokenizer), `formats/config.schema.json`, `spec/cli-roles.md`, `config/system.schema.json`; MS-P0, MS-P1; root README gains a Course section | `paths/course/` (README, SYSTEM.md), `course-p00-setup`, `course-p01-tracer`; new topic READMEs `software-craftsmanship/12-language-and-tool-primers/`, `ml/08-tinyllm/` (+ `p00`, `p09`, `p10` part READMEs), `ai-platform-engineering/12-gateway/`, `systems/05-incident-response-and-chaos/`, `software-craftsmanship/{06-documentation-writing,08-code-review-and-ci}/`; fixtures 2 MiB (`small-corpora/tinyshakespeare.txt`, public domain) | `ss lint && ss learn --verify && ss verify course --changed origin/main && ss milestone MS-P0 && ss milestone MS-P1 && ss export "$(mktemp -d)/x" --allow-incomplete` |
+| **B1 Harness + tracer** | `course/modules/*.toml` loader, `modules.tsv` generator, registry invariants (3.4); dispatch including the `bench` routing (5.2); `ss course init`, `start/check/diff/show/reset/tests/status/next` in all four languages; marker ids, the compiling stubber, and the stubbed-tree compile lint; `course/ref/history/` snapshots and `upgrades` handling; cumulative overlay (Python in the learner's uv env with namespace paths, C standalone test binaries with stub objects and the counting allocator, Rust and Go copy farms with generated manifests); `contracts/VERSION` worktree resolution and the content-hash pre-check; `--ref-deps`; verdict ledger; frozen helpers (`tests/_lib` close, pcg32, gradcheck; `ss_test.h`); `ss milestone` with `system.toml` (`[build]`, port allocation, generated `runtime.toml`, smoke and kind tags, matchers including `tokens-equal` over emitted ids, `trace` for Jaeger, `ci-status`); `ss conform openapi:v0`; `ss drill` framework with the safety gate and journal; `ss doctor`; `ss lint`; `path.tsv` column 5; `ss verify course` checks 1 to 14; `ss check --all --ci` and the learner CI recipe; `ss export` with the test glue; site and book publish `course/contracts/` only; CI `course-verify-changed`, `milestone-p1-kind`, `reference-learner-e2e` (smoke) | lang.01 to lang.07, craft.01, M03.1, L0.0, L10.0, gw.00, dep.00, obs.00, ops.00, craft.02; contracts `tinyllm.h` (optional C exercises, matmul), `openai-subset.v0.yaml`, `formats/{safetensors,tokenizer}.md` (with the `bytes` tokenizer), `formats/config.schema.json`, `spec/cli-roles.md`, `config/system.schema.json`; MS-P0, MS-P1; root README gains a Course section | `paths/course/` (README, SYSTEM.md), `course-p00-setup`, `course-p01-tracer`; new topic READMEs `software-craftsmanship/12-language-and-tool-primers/`, `ml/08-tinyllm/` (+ `p00`, `p09`, `p10` part READMEs), `ai-platform-engineering/12-gateway/`, `systems/05-incident-response-and-chaos/`, `software-craftsmanship/{06-documentation-writing,08-code-review-and-ci}/`; fixtures 2 MiB (`small-corpora/tinyshakespeare.txt`, public domain) | `ss lint && ss learn --verify && ss verify course --changed origin/main && ss milestone MS-P0 && ss milestone MS-P1 && ss export "$(mktemp -d)/x" --allow-incomplete` |
 | **B2 Consolidation + solve** | all section 8 moves (`git mv`), `archive/`, binary deletions, link rewrite + `ss lint --links` over all markdown; `assemble_book.py` recursive discovery and track list; `sync-content.mjs`; `solve` checker (SymPy) with lettered parts and the `proof` rubric; `course/rubrics/` | S-M00, M00.1 to M00.4 (new topic); `information-theory` to `math/11`; role paths repointed (7.6) | new topic READMEs `math/00-precalculus/`, `responsible-ai/`, `archive/`; merged `software-craftsmanship/README.md`; fixtures 1 MiB | `ss lint --links && ss learn --verify && ss verify course && ./scripts/build-book.sh --path course && pnpm -C site build && ! git grep -nE '(information-theory\|diagramming-and-documentation\|programming-languages)/' -- '*.md' ':!archive' ':!CHANGELOG.md'` |
-| **B3 Foundations** | mutation runner (`ss mutate`, Python first, cached by unit, test, and patch hash; `ss check` sampling); `ss tdd`; the Hypothesis profile `ss` | M01.1 to M01.3, M02.1, M02.2, M03.2 to M03.4, M04.1, M04.2, M06.1, M06.3 (C + Python), M07.0, M07.3, M08.1 to M08.3, M09.1, M09.2, M10.1 to M10.4, M11.1; S-M01, S-M02, S-M03a, S-M04, S-M05, S-M06a, S-M07a, S-M08, S-M09a, S-M10a, S-M11a; L0.1 to L0.6 (L0.5 takes over `bigram.py`; L0.6 includes `TokenStream`); craft.03; MS-L0, MS-P2 | `course-p02-foundations`; new topic READMEs `math/{08-matrix-calculus-and-autodiff,09-numerical-methods-and-floating-point,10-optimization}/`, `software-craftsmanship/03-testing-mentality/` chapter index; fixtures 6 MiB (`ops-torch`, `optim-torch`, `digits`) | `ss verify course && ss milestone MS-P2 && ss milestone MS-P1 --smoke` |
-| **B4 Data structures + tokenizers** | Rust farm with the `tl-py` build (PyO3 `abi3`, macOS link args, `PYO3_PYTHON`; no maturin); `ss fetch` and `ASSETS.tsv`, with `course-corpora` published as a release asset; parity runner (`tokenizer.bpe`, `rng`, `bloom`) | ds.05, ds.06, ds.08; M05.2, M06.2, M07.1, M07.2, M11.2; S-M06b, S-M07b; L1.1 to L1.6 (L1.4 core); craft.04; MS-L1 | first half of `course-p03-tokens-and-data`; new topic READMEs `algorithms/16-systems-data-structures/`, `ml/08-tinyllm/p01-tokenizers/`; fixtures 6 MiB (`tok-gpt2`, `tok-smollm2`, `tok-bert`) | `ss verify course && ss parity && ss milestone MS-L1` |
+| **B3 Foundations** | mutation runner (`ss mutate`, Python first, cached by unit, test, and patch hash; `ss check` sampling); `ss tdd`; the Hypothesis profile `ss` | M01.1 to M01.3, M02.1, M02.2, M03.1 to M03.4, M04.1, M04.2, M06.1, M06.3 (Python), M07.0, M07.3, M08.1 to M08.3, M09.1, M09.2, M10.1 to M10.4, M11.1; S-M01, S-M02, S-M03a, S-M04, S-M05, S-M06a, S-M07a, S-M08, S-M09a, S-M10a, S-M11a; L0.1 to L0.6 (L0.5 takes over `bigram.py`; L0.6 includes `TokenStream`); craft.03; MS-L0, MS-P2 | `course-p02-foundations`; new topic READMEs `math/{08-matrix-calculus-and-autodiff,09-numerical-methods-and-floating-point,10-optimization}/`, `software-craftsmanship/03-testing-mentality/` chapter index; fixtures 6 MiB (`ops-torch`, `optim-torch`, `digits`) | `ss verify course && ss milestone MS-P2 && ss milestone MS-P1 --smoke` |
+| **B4 Data structures + tokenizers** | Rust farm for standalone `tl-tok` and `tl-engine` crates; `ss fetch` and `ASSETS.tsv`, with `course-corpora` published as a release asset; parity runner (`tokenizer.bpe`, `rng`, `bloom`) | ds.05, ds.06, ds.08; M05.2, M06.2, M07.1, M07.2, M11.2; S-M06b, S-M07b; L1.1 to L1.6 (L1.4 core); craft.04; MS-L1 | first half of `course-p03-tokens-and-data`; new topic READMEs `algorithms/16-systems-data-structures/`, `ml/08-tinyllm/p01-tokenizers/`; fixtures 6 MiB (`tok-gpt2`, `tok-smollm2`, `tok-bert`) | `ss verify course && ss parity && ss milestone MS-L1` |
 | **B5 Data + statistical LM** | local HTTP fixture server (`flakyhttp`, no network in CI); decontamination fixtures | lang.08; data.01 to data.08, ethics.01, ethics.02; M03.5, M03.6, M11.4, S-M03b, S-M11b; L2.1 to L2.3; MS-corpus, MS-L2, MS-P3 | rest of `course-p03-tokens-and-data`; new topic READMEs `data-engineering/05-corpus-pipeline/`, `responsible-ai/{01-data-licensing,02-privacy-and-pii}/`, `ml/08-tinyllm/p02-statistical-lm/`; fixtures 4 MiB | `ss verify course && ss milestone MS-P3` |
 | **B6 Sequence models** | mutation runner for all languages (shared warm target dir, mutant cache); perf, model, agent, and resilience mutant classes scaffolded; `ref-thresholds` from 5 reference seeds | M07.4, S-M07c; L3.1 to L3.6 (L3.5 optional); L4.1 to L4.5; craft.07; MS-L3, MS-L4, MS-P4 | `course-p04-sequence-models`; new topic READMEs `ml/08-tinyllm/{p03-recurrent,p04-attention-origins}/`; fixtures 3 MiB | `ss verify course && ss milestone MS-P4 --smoke` (nightly: full) |
 | **B7 Transformer + modern block + zoo** | `course/oracle` generators for `tiny-hf-models` (published asset) and SmolLM2 parity with margin-filtered prompts; the near-tie rule in `tokens-equal`; zoo report schema | M01.4, M07.5, M07.7, S-M07d, M05.1; L5.1 to L5.5; L6.1 to L6.3, L6.5 to L6.7 (L6.4 optional); L7.1 to L7.9; craft.05; MS-L5, MS-L6, MS-L7, MS-P5 | `course-p05-transformer`; new topic READMEs `ml/08-tinyllm/{p05-transformer-2017,p06-objectives,p07-modern-block}/`; fixtures 8 MiB (`smollm2-parity`, margin prompts, `rope-scaling`, `lowp`, `configs`) | `ss verify course && ss milestone MS-P5 --smoke` (nightly: `hf-real`) |
-| **B8 Inference + kernels** | C overlay in two builds with sanitizers on macOS and Linux; the counting allocator; `ss bench course --assert` and `ss bench --calibrate`; batch- and chunk-invariance kernel tests; parity suites for matmul, softmax, flash, quant, `kv.wire.v1` | M07.6, M09.3 to M09.6, S-M09b; ds.01 to ds.04, ds.07; rt.02 to rt.04; L8.1 to L8.7; L9.1 to L9.7; craft.06; MS-L8, MS-L9, MS-P6 | `course-p06-inference-and-kernels`; new topic READMEs `ml/08-tinyllm/{p08-inference,p09-kernels}/` chapter indexes; fixtures 6 MiB | `ss verify course && ss bench course --assert && ss milestone MS-P6 --smoke` |
+| **B8 Inference + kernels** | optional standalone C test binaries with sanitizers on macOS and Linux; the counting allocator; fixture parity suites for optional C modules; no production C backend | M07.6, M09.3 to M09.6, S-M09b; ds.07; L8.1 to L8.7; craft.06; MS-L8, MS-P6 (optional: ds.01 to ds.04, rt.02 to rt.04, M09.5 to M09.7, L9.1 to L9.6) | `course-p06-inference-and-kernels`; new topic READMEs `ml/08-tinyllm/{p08-inference,p09-kernels}/` chapter indexes; fixtures 6 MiB | `ss verify course && ss milestone MS-P6 --smoke` |
 | **B9 Serving platform** | generated proto code in `contracts/` (`tl-proto`, `contracts/go/gen`); full OpenAI conformance (v1, both tiers, `tools.*`, `priority.internal`, `requires`/pending); `testkit` (chaosproxy, otlpsink, promscrape, clock); drill `kill-decode` with the `drill` SLO profile and scripted responder; in-cluster calibration Job; scratch-copy builder for seeded PRs (craft.08); CI `kind-e2e` and `milestones-full` | lang.09 to lang.11; L10.1 to L10.9; load.01, load.02; gw.01 to gw.07, ds.09; dep.01 to dep.05; obs.01 to obs.04; ops.01; craft.08, craft.20; review.01; MS-L10, MS-gateway, MS-prod, MS-P7 | `course-p07-serving-platform`; new chapters in `ml/08-tinyllm/p10-serving/`, `ai-platform-engineering/12-gateway/`, `systems/04-observability/`, `infrastructure/01-containers-kubernetes/`; fixtures 4 MiB (recorded SSE streams, KV golden blobs) | `ss verify course && ss milestone MS-P7 --smoke` (nightly: kind) |
 | **B10 Durable** | `KillLoop`, `effects`, failpoints; `--test-activities` and the course test workflows; recorded histories; drills `durable-kill9`, `poison-task`; KEDA in the pinned charts | dur.01 to dur.09, dur.11 (dur.10 optional, MS-durable-ha); data.09; dep.06, obs.05; craft.21; ops.02, ops.03; MS-durable, MS-P8 | `course-p08-durable`; `ai-platform-engineering/05-durable-orchestration-and-workers/` merged README; fixtures 3 MiB | `ss verify course && ss milestone MS-P8 --smoke` (nightly: full, kind) |
 | **B11 Training at scale + capstone** | milestone `--smoke` mode for C1 (200 steps, about 1M params); the full reference run and the `short` ablations are author-local and calibrate `ref-thresholds` | M08.4; L11.1 (L11.2, L11.3 optional); ethics.03, ethics.04; dur.12; craft.22; C1; MS-L11, MS-C1, MS-P9 | `course-p09-capstone-training`; new topic READMEs `ml/08-tinyllm/{p11-training-at-scale,capstones}/`, `responsible-ai/{03-model-and-data-cards,04-bias-and-safety-evals}/`; fixtures 2 MiB | `ss verify course && ss milestone MS-P9 --smoke` (nightly: `train-smoke`) |
@@ -3582,7 +3555,7 @@ Committed-fixture budgets sum to 50 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 +
 | Q3 | C1 compute on a Mac (4 to 12 h for 10M params, 100M tokens, plus about 3 to 4 h of `short` runs for the core ablations and scaling sizes) is an estimate. Is the `short` config the default, with the full run optional? | full run recommended, `short` accepted |
 | Q5 | Licenses of committed fixture slices (TinyStories, SST-2, wiki-mini) and of the SmolLM2-135M and SmolLM2-135M-Instruct weights must be verified and recorded in `MANIFEST.tsv`/`ASSETS.tsv` before B4/B7/B9. | blocking for those batches |
 | Q6 | Delete `main.py` and `package.json` at the root? | ask the owner (8.1) |
-| Q7 | Glue-file ownership: crate roots (`tl-py/src/lib.rs`) and the Python `__main__` dispatch are shared by several modules. The rule "first creator owns it; it declares all submodules; `ss start` stubs the rest; nobody overwrites it" needs a prototype in B1/B4. | as stated in 2.15 and 5.2 |
+| Q7 | Glue-file ownership: crate roots (`tl-tok/src/lib.rs`) and the Python `__main__` dispatch are shared by several modules. The rule "first creator owns it; it declares all submodules; `ss start` stubs the rest; nobody overwrites it" needs a prototype in B1/B4. | as stated in 2.15 and 5.2 |
 | Q8 | Mutation testing cost for Rust and C even with a shared warm target dir, the hash-keyed cache, and `ss check` sampling. Is a cap of 40 mutants per module enough to keep `full-verify` shards inside 90 minutes? | cap at 40; measure in B6 |
 | Q11 | `course-corpora` (about 20 MB) and `tiny-hf-models` (about 8 MB) become release assets of the supersource GitHub repo, fetched by `ss fetch`. Is that hosting acceptable, or should they live elsewhere (a Hugging Face dataset repo)? | supersource release assets |
 | Q12 | Pass durations (about 67 weeks part-time after adding the primers) are estimates; recalibrate after the first cohort or self-run. | estimates only |
@@ -3602,4 +3575,4 @@ Committed-fixture budgets sum to 50 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 +
 
 ### Resolved conflicts not listed in 1.5
 
-These smaller conflicts were resolved inline: test-type letter codes mapped onto the KIND vocabulary (4.0); `L9.0` retired and the C full forward (`model.c`) dropped, with `L9.7` reassigned to the Python C backend (D7, D14); E's tracer ids (`tinyllm.p0.*`, `p9.01`, `p10.00`) mapped to `L0.0`, `M03.1`, `rt.01`, `L10.0`, `gw.00`, `dep.00`, `obs.00`, `ops.00`; the systems section's `rs.*` modules folded into `L1.5` and `L10.1` to `L10.7`; `eval.01` to `eval.03` folded into `L6.7`; E's `gw.09` (engine admin client) folded into `gw.05`; E's math ids mapped to the B catalog (for example `math.04.01` gradcheck is `M04.1`); `gw.08` usage policy moved to Pass 10 with `ethics.05`; `M06.3` moved to Pass 2; `M09.1` moved to Pass 2 (prerequisite of `M09.2`); the C1 LLM judge deferred to Pass 10; postmortems in `docs/postmortems/`; observability config in `deploy/observability/`; cache header `X-TL-Cache`.
+These smaller conflicts were resolved inline: test-type letter codes mapped onto the KIND vocabulary (4.0); `L9.0` and `L9.7` retired and the C full forward (`model.c`) dropped; E's tracer ids (`tinyllm.p0.*`, `p9.01`, `p10.00`) mapped to `L0.0`, `M03.1`, `L10.0`, `gw.00`, `dep.00`, `obs.00`, `ops.00`; the systems section's `rs.*` modules folded into `L1.5` and `L10.1` to `L10.7`; `eval.01` to `eval.03` folded into `L6.7`; E's `gw.09` (engine admin client) folded into `gw.05`; E's math ids mapped to the B catalog (for example `math.04.01` gradcheck is `M04.1`); `gw.08` usage policy moved to Pass 10 with `ethics.05`; `M06.3` moved to Pass 2; `M09.1` moved to Pass 2 (prerequisite of `M09.2`); the C1 LLM judge deferred to Pass 10; postmortems in `docs/postmortems/`; observability config in `deploy/observability/`; cache header `X-TL-Cache`.

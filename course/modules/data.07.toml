@@ -5,10 +5,11 @@ lang      = ["python"]
 pass      = 3
 chapter   = "data-engineering/05-corpus-pipeline/07-tokenize-and-pack.md"
 contract  = ["contracts/py/corpus/tokenize.pyi"]
-# tinyllm_rs.Bpe (L1.5) encodes tokenizer.json corpora; L1.6's bytes_per_token
-# gives the val split's bits-per-byte factor; read_shards (data.06) is the input.
-deps      = ["L1.5", "L1.6", "data.06"]
-reading   = ["L0.6", "L1.2"]           # the TokenStream reader of these files; the Python BPE L1.5 matches
+# Python BPETokenizer (L1.2) encodes tokenizer.json corpora; L1.6's
+# bytes_per_token gives the val split's bits-per-byte factor; read_shards
+# (data.06) is the input.
+deps      = ["L1.2", "L1.6", "data.06"]
+reading   = ["L0.6", "L1.5"]           # the TokenStream reader; Rust BPE parity is file-based
 # C1 trains on these files through L0.6's TokenStream (a later batch).
 used_by   = ["data.08"]                # the datasheet reports the token counts of the manifest
 units     = ["python/corpus/tokenize.py"]
@@ -19,7 +20,7 @@ ci        = "pr"
 [tests]
 dir       = "course/tests/data.07"
 smoke     = ["test_hand_example", "test_gpt2_golden", "test_output_is_deterministic"]
-timeout_s = 120                        # the overlay builds tinyllm_rs (tl-py) on a cold run
+timeout_s = 120
 determinism_runs = 2
 
 [fixtures]

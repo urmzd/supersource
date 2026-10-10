@@ -5,7 +5,6 @@ Pass 1 verbs:
     train bigram --data <file> --out <dir> [--alpha A]
     generate --model <dir> --prompt <text> [--max-tokens N] [--greedy | --temperature T] [--seed S]
     logits --model <dir> --prompt <text> [--prefix-ids a,b,...]
-    info --native
 
 Pass 2 verbs and flags (course/milestones/MS-L0.toml, glue in cli_train.py):
 
@@ -39,10 +38,6 @@ Pass 5 verbs (course/milestones/MS-L6.toml, glue in cli_obj.py):
     train gpt|bert|electra ...    finetune classify ...    eval ppl ...
     zoo add ...    eval --suite zoo ...
 
-Pass 6 verbs (course/milestones/MS-L9.toml, glue in cli_kernels.py):
-
-    generate|logits ... --backend numpy|c [--check]    bench decode --backend numpy,c ...
-
 Pass 6 verbs (course/milestones/MS-L8.toml, glue in cli_infer.py):
 
     generate --cache none|contiguous|paged --kv-dtype f32|f16    generate --spec ngram|prompt-lookup --k K
@@ -53,7 +48,7 @@ Pass 9 verbs (course/milestones/MS-L11.toml, glue in cli_capstone.py):
     train llama --cfg <config.json> --data <text> [--micro-batch B] [--accum K] [--bf16] [--checkpoint-activations]
 
 Entry-point territory (D16): this file is yours. It is glue over L0.0
-(BigramLM, safetensors) and rt.01 (the ctypes loader); the reference is used
+(BigramLM, safetensors); the reference is used
 by course CI only. Runs as `python -m tinyllm` with python/ on the path, or
 as `python python/tinyllm/__main__.py` from the repo root.
 """
@@ -62,7 +57,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -163,16 +157,6 @@ def cmd_logits(a: argparse.Namespace) -> dict:
     return {"logits": [float(x) for x in row]}
 
 
-def cmd_info(a: argparse.Namespace) -> dict:
-    if not a.native:
-        raise UsageError("info: Pass 1 has one form, `info --native`")
-    from tinyllm.ffi import libtinyllm
-
-    path = libtinyllm.library_path()
-    lib = libtinyllm.load(path)
-    return {"abi_version": int(lib.abi_version()), "lib": os.path.abspath(path)}
-
-
 def cmd_gradcheck(a: argparse.Namespace) -> dict:
     from tinyllm.cli_train import cmd_gradcheck as run
 
@@ -218,9 +202,6 @@ def parser() -> argparse.ArgumentParser:
     lg.add_argument("--prompt", default="")
     lg.add_argument("--prefix-ids", default="")
     lg.set_defaults(fn=cmd_logits)
-    i = sub.add_parser("info")
-    i.add_argument("--native", action="store_true")
-    i.set_defaults(fn=cmd_info)
     # Pass 3 (MS-L1): tok train, tok encode, tok bench, glue in cli_tok.py.
     from tinyllm.cli_tok import add_parser as add_tok
 
@@ -246,14 +227,6 @@ def main(argv: list[str] | None = None) -> int:
     from tinyllm.cli_activity import intercept as intercept_activity
 
     code = intercept_activity(sys.argv[1:] if argv is None else list(argv))
-    if code is not None:
-        return code
-    # Pass 6 (MS-L9): generate, logits, and bench decode with --backend
-    # numpy|c [--check], glue in cli_kernels.py (first: it claims only forms
-    # that carry --backend).
-    from tinyllm.cli_kernels import intercept as intercept_kernels
-
-    code = intercept_kernels(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
     # Pass 6 (MS-L8): generate with --cache, --kv-dtype, --spec, or

@@ -6,14 +6,12 @@ manifests   Rust workspace and lib targets; Go module name and the
 Python      every def and class in the unit's .pyi exists in the unit with
             the same parameter names (an AST comparison standing in for
             mypy.stubtest, which needs mypy in the learner env)
-C           `cc -fsyntax-only`, then an nm diff: every defined global symbol
-            is declared in the contract headers (Mach-O `_` normalized)
+C           compiles each C unit against its standalone C contract headers
 """
 
 from __future__ import annotations
 
 import ast
-import platform
 import re
 import tomllib
 from pathlib import Path
@@ -81,35 +79,9 @@ def pyi_for(contracts: Path, unit: str) -> Path:
     return contracts / "py" / (rel[:-3] + ".pyi")
 
 
-def header_names(inc: Path) -> set[str]:
-    names: set[str] = set()
-    for h in inc.rglob("*.h") if inc.is_dir() else []:
-        text = re.sub(r"/\*.*?\*/", " ", h.read_text(), flags=re.S)
-        names |= set(re.findall(r"\b([A-Za-z_]\w*)\s*\(", text))
-        names |= set(re.findall(r"\bextern\b[^;(]*?\b([A-Za-z_]\w*)\s*;", text))
-    return names
-
-
-def defined_globals(obj: Path) -> list[str]:
-    rc, out = ctx.run(["nm", "-g", str(obj)])
-    if rc != 0:
-        return []
-    syms = []
-    for line in out.splitlines():
-        parts = line.split()
-        if len(parts) >= 2 and parts[-2] not in ("U", "w", "v") and parts[-2].isupper():
-            name = parts[-1]
-            if platform.system() == "Darwin" and name.startswith("_"):
-                name = name[1:]
-            syms.append(name)
-    return syms
-
-
 def c_unit(learner: Path, unit: str, scratch: Path) -> list[str]:
     inc = learner / "contracts" / "c" / "include"
     src = learner / unit
-    obj = scratch / (unit.replace("/", "_") + ".o")
-    obj.parent.mkdir(parents=True, exist_ok=True)
     rc, out = ctx.run(
         [
             "cc",
@@ -118,21 +90,13 @@ def c_unit(learner: Path, unit: str, scratch: Path) -> list[str]:
             "-Wall",
             "-Wno-unused-parameter",
             f"-I{inc}",
-            "-c",
+            "-fsyntax-only",
             str(src),
-            "-o",
-            str(obj),
         ]
     )
     if rc != 0:
         return [
             f"{unit} does not compile against the contract headers:\n{ctx.indent(ctx.tail(out, 20))}"
-        ]
-    declared = header_names(inc)
-    extra = [s for s in defined_globals(obj) if s not in declared]
-    if extra:
-        return [
-            f"{unit} exports {', '.join(sorted(extra))}, which no contract header declares; make them static"
         ]
     return []
 
@@ -167,34 +131,6 @@ def rust_manifests(learner: Path, unit_list: list[str], ref_rust: Path) -> list[
             )
         if "lib" not in m and not (man.parent / "src" / "lib.rs").is_file():
             errs.append(f"rust/crates/{crate}: needs a lib target (src/lib.rs)")
-        if crate == "tl-py":
-            errs += tl_py_contract(learner, m)
-    return errs
-
-
-def tl_py_contract(learner: Path, man: dict) -> list[str]:
-    """The tl-py build contract (DESIGN 2.5): a cdylib, PyO3 with `abi3-py311`
-    and `extension-module`, and on macOS `-undefined dynamic_lookup` in
-    rust/.cargo/config.toml or the crate's build.rs (no maturin needed)."""
-    errs = []
-    where = "rust/crates/tl-py/Cargo.toml"
-    if "cdylib" not in (man.get("lib") or {}).get("crate-type", []):
-        errs.append(f'{where}: [lib] crate-type must include "cdylib"')
-    py = (man.get("dependencies") or {}).get("pyo3")
-    feats = set(py.get("features", [])) if isinstance(py, dict) else set()
-    for f in ("abi3-py311", "extension-module"):
-        if f not in feats:
-            errs.append(f"{where}: the pyo3 dependency needs feature {f!r}")
-    cfg = learner / "rust" / ".cargo" / "config.toml"
-    build = learner / "rust" / "crates" / "tl-py" / "build.rs"
-    text = (cfg.read_text() if cfg.is_file() else "") + (
-        build.read_text() if build.is_file() else ""
-    )
-    if "dynamic_lookup" not in text:
-        errs.append(
-            "tl-py: on macOS the extension links with `-undefined dynamic_lookup`; put the "
-            "link args in rust/.cargo/config.toml ([target.'cfg(target_os = \"macos\")'] rustflags) or build.rs"
-        )
     return errs
 
 

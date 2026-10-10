@@ -1,6 +1,6 @@
 id        = "rt.04"
-title     = "Paged KV block pool (format v1)"
-kind      = "build"
+title     = "Paged KV block pool (format v1, optional C)"
+kind      = "side"
 lang      = ["c"]
 pass      = 6
 chapter   = "ml/08-tinyllm/p08-inference/08-paged-kv-block-pool.md"
@@ -8,19 +8,18 @@ chapter   = "ml/08-tinyllm/p08-inference/08-paged-kv-block-pool.md"
 # both linked from the card; neither carries a `chapter:` back-pointer
 # (DEVIATIONS B82-02).
 contract  = []
-# abi.c (tl_alloc, the error slot), rng.c's tl_fnv1a64 for the chained
-# block hash (M06.3), the free list as a tl_vec stack reserved once at
+# local FNV-1a for the chained block hash, the free list as a tl_vec stack reserved once at
 # create (ds.01), the Swiss table (ds.02) for the prefix index, and the
 # intrusive LRU (ds.03) for cached blocks.
-deps      = ["rt.01", "M06.3", "ds.01", "ds.02", "ds.03"]
-reading   = ["ml/08-tinyllm/p08-inference/README.md"]   # L8.2's contiguous cache (not registered yet)
+deps      = ["ds.01", "ds.02", "ds.03", "rt.02"]
+reading   = ["M06.3", "ml/08-tinyllm/p08-inference/README.md"]   # FNV-1a; L8.2's contiguous cache
 # L8.3 is the Python cache over the pool; L9.4's paged attention kernel
 # reads its slabs. L10.4 (block manager), L10.6 (KV transfer), and craft.13
 # (format v2, upgrades kv_pool.c) join with their batches.
-used_by   = ["L10.1", "L10.4", "L10.6", "L10.8", "L8.3", "L9.4"]
+used_by   = ["L9.4"]
 units     = ["c/src/runtime/kv_pool.c"]
 upgrades  = []
-milestone = "MS-L8"
+milestone = "MS-L9"
 ci        = "pr"
 
 [tests]

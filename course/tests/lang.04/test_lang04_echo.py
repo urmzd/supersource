@@ -158,9 +158,9 @@ def test_crlf_line_endings_are_accepted(server):
     c.close()
 
 
-def test_len_counts_utf8_bytes_through_strlen(server):
-    # WHY: LEN calls C's strlen through extern "C": it counts bytes, so
-    #      "héllo" (é is two UTF-8 bytes) is 6, not 5 characters.
+def test_len_counts_utf8_bytes(server):
+    # WHY: Rust's str.len() counts UTF-8 bytes, so "héllo" (é is two bytes)
+    #      is 6, not 5 Unicode scalar values.
     # KIND: unit
     # CHAPTER: lang.04 section 3
     c = Client(server)
@@ -169,14 +169,13 @@ def test_len_counts_utf8_bytes_through_strlen(server):
     c.close()
 
 
-def test_len_rejects_an_interior_nul(server):
-    # WHY: a C string ends at the first NUL, so strlen("a\0b") would answer 1.
-    #      CString::new refuses the text instead; the server must turn that
-    #      Result into `ERR nul byte`, not a wrong number or a panic.
+def test_len_counts_nul_as_a_byte(server):
+    # WHY: Rust strings carry NUL as ordinary content; LEN counts every UTF-8
+    #      byte, including the NUL, instead of treating it as a terminator.
     # KIND: boundary
     # CHAPTER: lang.04 section 5, pitfalls
     c = Client(server)
-    assert c.ask(b"LEN a\x00b\n") == b"ERR nul byte"
+    assert c.ask(b"LEN a\x00b\n") == b"3"
     assert c.ask(b"PING\n") == b"PONG", "an error must leave the connection usable"
     c.close()
 

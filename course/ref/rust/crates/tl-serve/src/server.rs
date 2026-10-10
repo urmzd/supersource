@@ -51,6 +51,7 @@ use tl_engine::engine::{Engine, EngineStats, GenRequest};
 use tl_engine::model::TokenizerKind;
 use tl_engine::runner::{EngineConfig, KvConfig, ModelRunner, PrefixCache, Quant, SchedPolicy};
 use tl_engine::sample::mix64;
+use tl_engine::spec::{self, SpecConfig};
 use tl_engine::sched::{AdmitError, FinishReason, RequestId};
 use tl_tok::{ByteBpe, ByteTokenizer, Tokenizer};
 
@@ -71,6 +72,8 @@ pub struct ServeConfig {
     pub engine: EngineConfig,
     pub queue_capacity: usize,
     pub queue_deadline_ms: u64,
+    /// Optional request-local speculative decoder (L10.8).
+    pub speculative: Option<SpecConfig>,
     /// Exit 0 on SIGTERM after draining (the binary sets it; tests do not).
     pub handle_signals: bool,
     /// Sleep after every engine step (tests use it to hold requests in
@@ -122,6 +125,7 @@ impl ServeConfig {
             },
             queue_capacity: 256,
             queue_deadline_ms: 30000,
+            speculative: None,
             handle_signals: false,
             step_delay: Duration::ZERO,
         }
@@ -130,8 +134,7 @@ impl ServeConfig {
 
     /// Parses runtime.toml's `[engine]`, then applies `TL_ENGINE__<KEY>`
     /// overrides from `env`. Unknown keys and values this engine cannot
-    /// serve (roles other than unified, KV format 2, int8, speculative
-    /// drafts) are errors.
+    /// serve (roles other than unified, KV format 2, int8) are errors.
     pub fn from_toml(text: &str, env: &[(String, String)]) -> Result<ServeConfig, String> {
         // SOLUTION-BEGIN L10.5
         let doc: toml::Table = text.parse().map_err(|e| format!("runtime.toml: {e}"))?;
@@ -198,11 +201,14 @@ impl ServeConfig {
             Some("int4") => Some(Quant::Int4 { group: 32 }),
             Some(o) => return Err(format!("runtime.toml: engine.quant {o:?} is not supported by this engine (none, int4)")),
         };
-        if let Some(sp) = eng.get("speculative").and_then(|v| v.as_table()) {
-            if sp.get("draft").and_then(|v| v.as_str()).is_some_and(|d| d != "none") {
-                return Err("runtime.toml: engine.speculative needs speculative decoding (L10.8)".to_string());
+        c.speculative = match eng.get("speculative").and_then(|v| v.as_table()) {
+            None => None,
+            Some(sp) => {
+                let draft = sp.get("draft").and_then(|v| v.as_str()).unwrap_or("none");
+                let k = sp.get("k").and_then(|v| v.as_integer()).unwrap_or(4);
+                Some(SpecConfig::parse(draft, k).map_err(|e| format!("runtime.toml: {e}"))?)
             }
-        }
+        };
         Ok(c)
         // SOLUTION-END
     }
@@ -317,7 +323,7 @@ fn admit_error(e: AdmitError) -> ApiError {
 
 /// The engine thread: take commands, drop requests whose client is gone
 /// or whose queue deadline passed, run one step, deliver its tokens.
-fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop: Arc<AtomicBool>, deadline: Duration, step_delay: Duration) {
+fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop: Arc<AtomicBool>, deadline: Duration, step_delay: Duration, speculative: Option<SpecConfig>) {
     // SOLUTION-BEGIN L10.5
     let mut live: HashMap<RequestId, Live> = HashMap::new();
     loop {
@@ -344,6 +350,20 @@ fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop:
                 }
             };
             match cmd {
+                Cmd::Generate { req, events } if speculative.is_some() => {
+                    let cfg = speculative.as_ref().expect("checked above");
+                    let result = spec::generate_with_runner(engine.runner_mut(), cfg, &req.prompt, &req.params, req.seed, req.max_tokens, &req.stop_ids);
+                    match result {
+                        Ok(g) => {
+                            let finish = Some(match g.finish { spec::Finish::Stop => FinishReason::Stop, spec::Finish::Length => FinishReason::Length });
+                            for (i, (&token, &logprob)) in g.tokens.iter().zip(&g.logprobs).enumerate() {
+                                let end = (i + 1 == g.tokens.len()).then_some(finish).flatten();
+                                if events.send(Ev::Token { token, logprob, finish: end }).is_err() { break; }
+                            }
+                        }
+                        Err(e) => { let _ = events.send(Ev::Failed(e.to_string())); }
+                    }
+                }
                 Cmd::Generate { req, events } => match engine.add_request(req) {
                     Ok(id) => {
                         live.insert(id, Live { tx: events, since: Instant::now(), started: false });
@@ -936,9 +956,10 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
     let eng_stop = Arc::clone(&stop);
     let deadline = Duration::from_millis(cfg.queue_deadline_ms);
     let delay = cfg.step_delay;
+    let speculative = cfg.speculative.clone();
     let engine_thread = std::thread::Builder::new()
         .name("tl-engine".to_string())
-        .spawn(move || engine_loop(engine, cmd_rx, eng_shared, eng_stop, deadline, delay))
+        .spawn(move || engine_loop(engine, cmd_rx, eng_shared, eng_stop, deadline, delay, speculative))
         .map_err(|e| e.to_string())?;
     let signals = cfg.handle_signals;
     let drain_self = drain_tx.clone();

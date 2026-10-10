@@ -14,10 +14,3 @@ s12	python/tinyllm/num/rng.py	semantic	set-state	95	n	(hidden until pass)	even i
 m01	python/tinyllm/num/rng.py	auto	stmt_delete	65	n	argument check deleted in uniforms	n < 0 accepted
 m02	python/tinyllm/num/rng.py	auto	boundary	70	n	range check in below changed	1 <= n to 0 <= n
 m03	python/tinyllm/num/rng.py	auto	return_default	113	n	chaining argument ignored	h reset to the offset
-s13	c/src/numerics/rng.c	semantic	pitfall-1	26	n	(hidden until pass)	C: output from the new state
-s14	c/src/numerics/rng.c	semantic	pitfall-8	30	n	(hidden until pass)	C: xs << (32 - rot), undefined at rot = 0
-s15	c/src/numerics/rng.c	semantic	pitfall-4	34	n	(hidden until pass)	C: 32-bit a overflows in a << 26
-s16	c/src/numerics/rng.c	semantic	pitfall-7	42	n	(hidden until pass)	C: FNV-1 order
-s17	c/src/numerics/rng.c	semantic	seeding	19	n	(hidden until pass)	C: state = seed instead of += seed
-m05	c/src/numerics/rng.c	auto	return_default	41	n	C: chaining argument ignored	h reset to the offset basis
-m04	c/src/numerics/rng.c	auto	const_replace	17	n	increment constant changed	inc = seq << 1

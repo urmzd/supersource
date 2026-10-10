@@ -21,7 +21,7 @@
  * for n_blocks keys so it never grows while the pool lives. The cached
  * blocks are linked through a tl_list_node embedded in each block's record
  * (ds.03), so moving a block to the most recent end or evicting the oldest
- * is O(1). The chained hash uses tl_fnv1a64 (M06.3).
+ * is O(1). The chained hash uses the FNV-1a 64-bit byte update below.
  *
  * Not thread-safe (kv_pool.h). Every allocation goes through tl_alloc.
  */
@@ -31,7 +31,6 @@
 #include "tinyllm/abi.h"
 #include "tinyllm/ds.h"
 #include "tinyllm/kv_pool.h"
-#include "tinyllm/numerics.h"
 
 typedef struct {
     uint32_t ref;        /* holders; 0 for free and cached blocks */
@@ -108,6 +107,17 @@ uint32_t tl_crc32c(const void *data, size_t n, uint32_t crc) {
 /* SOLUTION-END */
 }
 
+static uint64_t kv_fnv1a64(const void *data, size_t n, uint64_t h) {
+/* SOLUTION-BEGIN rt.04 */
+    const unsigned char *p = data;
+    for (size_t i = 0; i < n; i++) {
+        h ^= (uint64_t)p[i];
+        h *= UINT64_C(0x100000001B3);
+    }
+    return h;
+/* SOLUTION-END */
+}
+
 uint64_t tl_kv_block_hash(uint64_t parent, const uint32_t *toks, uint32_t n) {
 /* SOLUTION-BEGIN rt.04 */
     if (toks == NULL && n > 0) {
@@ -116,10 +126,10 @@ uint64_t tl_kv_block_hash(uint64_t parent, const uint32_t *toks, uint32_t n) {
     }
     unsigned char b[8];
     put_u64(b, parent);
-    uint64_t h = tl_fnv1a64(b, 8, TL_FNV1A64_OFFSET);
+    uint64_t h = kv_fnv1a64(b, 8, UINT64_C(0xCBF29CE484222325));
     for (uint32_t i = 0; i < n; i++) {
         put_u32(b, toks[i]);
-        h = tl_fnv1a64(b, 4, h);
+        h = kv_fnv1a64(b, 4, h);
     }
     return h == 0 ? 1 : h; /* 0 means "no hash" (the partial tail block) */
 /* SOLUTION-END */

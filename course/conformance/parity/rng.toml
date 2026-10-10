@@ -7,19 +7,13 @@ golden   = "course/fixtures/parity/rng.json"
 generator = "gen/rng.py"           # random 64-bit seeds and streams
 cases     = 200
 
-# Drivers land with their modules (the Python and C ports in M06.3, the Rust
-# port in L10.1, the Go port in load.01); until then each is pending.
+# Drivers land with their modules (Python in M06.3, Rust in L10.1, Go in
+# load.01); each implementation is checked through a process boundary.
 [[impl]]
 name   = "python"
 module = "M06.3"
 lang   = "python"
 driver = "drivers/rng.py"
-
-[[impl]]
-name   = "c"
-module = "M06.3"
-lang   = "c"
-driver = "drivers/rng.c"
 
 [[impl]]
 name   = "rust"

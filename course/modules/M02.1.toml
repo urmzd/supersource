@@ -9,7 +9,7 @@ deps      = ["M00.4"]       # exp_range_reduced evaluates its polynomial with ho
 reading   = ["M01.1"]       # derivatives; no code called
 # gelu_erf (M01.3) calls erf_series. M09.6 (tl_expf, B8) ports
 # exp_range_reduced and M09.2 reads the chapter.
-used_by   = ["M01.3", "M09.6"]
+used_by   = ["M01.3"]
 units     = ["python/tinyllm/num/taylor.py"]
 upgrades  = []
 milestone = "MS-P2"

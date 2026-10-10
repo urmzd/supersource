@@ -1,4 +1,4 @@
-//! L10.0 course tests: your first endpoint (tl-serve http v0, tl-sys v0).
+//! L10.0 course tests: the std-only first endpoint (tl-serve http v0).
 //!
 //! Annotated exemplars (DESIGN 5.12). Every model these tests serve is
 //! written by hand, byte by byte, in `write_model` below, following
@@ -368,66 +368,20 @@ mod j {
 }
 
 // ---------------------------------------------------------------------------
-// tl-sys v0
+// Candle-free endpoint math
 
 #[test]
-fn abi_version_is_1() {
-    // WHY: the binding refuses a library built for another ABI version
-    //      (c/ABI.md rule 12); version 1 is what tinyllm/abi.h declares.
-    // KIND: conformance
-    // CATCHES: s11
-    // CHAPTER: L10.0 section 4
-    assert_eq!(tl_sys::abi_version(), 1);
-    assert_eq!(tl_sys::check_abi(), Ok(()));
-}
-
-#[test]
-fn matmul_hand_example() {
-    // WHY: the chapter's 2 x 2 product through the safe wrapper and the C
-    //      kernel: [[1,2],[3,4]] @ [[5,6],[7,8]] = [[19,22],[43,50]]. With
-    //      trans_b, B is stored transposed and the product is the same.
+fn bigram_logits_select_the_weight_row() {
+    // WHY: the endpoint's one-hot previous token selects a row directly.
     // KIND: unit
+    // CATCHES: s02
     // CHAPTER: L10.0 section 3
-    let a = [1.0, 2.0, 3.0, 4.0];
-    let mut c = [0.0f32; 4];
-    tl_sys::matmul_f32(&a, &[5.0, 6.0, 7.0, 8.0], &mut c, 2, 2, 2, false).unwrap();
-    assert_eq!(c, [19.0, 22.0, 43.0, 50.0]);
-    let mut c = [0.0f32; 4];
-    tl_sys::matmul_f32(&a, &[5.0, 7.0, 6.0, 8.0], &mut c, 2, 2, 2, true).unwrap();
-    assert_eq!(c, [19.0, 22.0, 43.0, 50.0]);
-}
-
-#[test]
-fn matmul_rejects_short_slices() {
-    // WHY: C trusts the dimensions it is given and would read or write past
-    //      the end of a short slice: undefined behavior that no test sees.
-    //      The safe wrapper checks every length BEFORE the call and leaves C
-    //      untouched.
-    // KIND: boundary
-    // CATCHES: s09
-    // CHAPTER: L10.0 section 5, Pitfalls
-    let mut c = [7.0f32; 4];
-    let e = tl_sys::matmul_f32(&[1.0, 2.0, 3.0], &[5.0, 6.0, 7.0, 8.0], &mut c, 2, 2, 2, false).unwrap_err();
-    assert_eq!((e.status, e.name.as_str()), (tl_sys::TL_EINVAL, "TL_EINVAL"));
-    assert_eq!(c, [7.0; 4], "a rejected call must not write C");
-    let mut short_c = [0.0f32; 3];
-    assert!(tl_sys::matmul_f32(&[1.0; 4], &[1.0; 4], &mut short_c, 2, 2, 2, false).is_err());
-}
-
-#[test]
-fn matmul_maps_c_status_to_error() {
-    // WHY: a status C rejects comes back as Err with the status, its name
-    //      from tl_status_str, and the message from tl_last_error, read
-    //      before any other tl_ call; never as Ok, never as a panic.
-    // KIND: boundary
-    // CATCHES: s10
-    // CHAPTER: L10.0 section 2
-    let mut c = [0.0f32; 4];
-    // lda = 1 < K = 2: the slices are long enough, but C rejects the stride.
-    let e = tl_sys::matmul_f32_strided(&[1.0; 4], &[1.0; 4], &mut c, 2, 2, 2, 1, 2, 2, 1.0, 0.0, false).unwrap_err();
-    assert_eq!(e.status, 1);
-    assert_eq!(e.name, "TL_EINVAL");
-    assert!(!e.message.is_empty(), "the message comes from tl_last_error()");
+    let mut w = vec![0.0f32; 256 * 256];
+    w[3 * 256 + 7] = 2.5;
+    let m = Bigram::from_weight(w).unwrap();
+    let logits = m.logits(3).unwrap();
+    assert_eq!(logits[7], 2.5);
+    assert!(logits.iter().enumerate().all(|(i, x)| i == 7 || *x == 0.0));
 }
 
 // ---------------------------------------------------------------------------
@@ -633,7 +587,7 @@ fn greedy_ties_go_to_lowest_id() {
 
 #[test]
 fn sampling_skips_nan_logits() {
-    // WHY: a NaN logit (0 x -inf in the one-hot matmul, say) has no
+    // WHY: a NaN logit in the selected weight row has no
     //      probability; sampling must never return its id, at any temperature.
     // KIND: boundary
     // CHAPTER: L10.0 section 5, Pitfalls

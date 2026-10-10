@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/modern/llama.pyi`](../../../course/contracts/py/tinyllm/modern/llama.pyi), [`course/contracts/py/tinyllm/io/hf.pyi`](../../../course/contracts/py/tinyllm/io/hf.pyi) |
 | **Tests** | `course/tests/L7.9/test_llama.py` and `test_hf.py` (what they check: section 4); five tiny random checkpoints saved by transformers 5.19.0 with their float32 logits and parameter counts in `course/fixtures/L7.9/` (`course/oracle/L7.9/llama_hf.py`); a local fake Hub for the downloader; your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
 | **Needs** | `L7.1` `RMSNorm`, `pre_norm_residual` · `L7.2` `GatedMLP` · `L7.3` `RopeSpec` · `L7.4` `rope_inv_freq_scaled` · `L7.5` `GQAttention` · `L7.6` `MLAttention` · `L7.7` `attention_mask` · `L7.8` `MoE` · `L0.6` `load_safetensors`, `save_safetensors` · `M05.1` `ModelConfig` · `L0.4` `Embedding`, `Linear`, `ModuleList` · `L0.2` the op library · `L0.1` `Tensor` · `M06.3` `PCG32` · reading: `M09.1` BF16, `L1.2` the SmolLM2 tokenizer (or `--ref-deps`) |
-| **Used by** | MS-L7 through your CLI · later: `L8.1` to `L8.6` (inference), `L9.7` and `L10.1` (logits parity), C1 (the capstone architecture) · later: `L8.2` |
+| **Used by** | MS-L7 through your CLI · later: `L8.1` to `L8.6` (inference), `L10.1` (logits parity), C1 (the capstone architecture) · later: `L8.2` |
 | **Milestone** | `MS-L7` (your decoder loads and matches Hugging Face checkpoints) |
 | **Optional depth** | Touvron et al., "Llama 2" (2023), section 2.2; Hugging Face, `modeling_llama.py` and the `safetensors` and Hub download documentation |
 
@@ -185,7 +185,6 @@ Your oracles are the course's golden files (`$TINYLLM_FIXTURES/L7.9/hf_logits.np
 | Back | `M06.3` | the initialization stream of a fresh model |
 | Forward | `L8.2` | KV-cached generation over this model |
 | Forward | `L8.1`, `L8.3` to `L8.6` | sampling, paged caches, quantization, speculative decoding |
-| Forward | `L9.7` | the C backend's logits compared with this model's |
 | Forward | `L10.1` | the Rust engine's logits compared with this model's |
 | Forward | C1 | the capstone's architecture and release format |
 

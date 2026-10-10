@@ -2,8 +2,8 @@
  * tinyllm/qmatmul.h and the int4 layout of formats/safetensors.md, under
  * ASan and UBSan. The differential tests dequantize the weight to float32
  * and multiply with your L9.1 tl_matmul_f32, so the fused kernel is held to
- * "dequantize, then the ordinary matmul". The ctypes tests are in
- * test_qmatmul_ctypes.py.
+ * "dequantize, then the ordinary matmul". Deterministic fixture vectors
+ * keep this standalone C implementation comparable with the Python oracle.
  */
 #include <math.h>
 #include <stdlib.h>

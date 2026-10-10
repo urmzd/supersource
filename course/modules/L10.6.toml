@@ -9,17 +9,14 @@ chapter   = "ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md"
 # the chapter card; none carries a `chapter:` back-pointer yet (DEVIATIONS
 # B92-03).
 contract  = []
-# Code this module's units and tests call: tl-sys's KvPool and the sampler's
-# stream (L10.1), and the C pool's export, import, register, and lookup
-# (rt.04). The scheduler, block manager, and engine loop (L10.2, L10.4,
+# Code this module's units and tests call: the Rust KV cache and the sampler's
+# stream (L10.1). The scheduler, block manager, and engine loop (L10.2, L10.4,
 # L10.5) are the serve loop this plugs into; the Prefill RPC reaches them
 # through the PrefillBackend trait, so no code of theirs is called here.
-deps      = ["L10.1", "rt.04"]
+deps      = ["L10.1"]
 reading   = ["L10.2", "L10.4", "L10.5", "lang.09", "lang.10"]   # the serve loop it plugs into; async Rust; gRPC and the generated stubs
-# Catalog call sites: craft.13 (upgrades kv_transfer.rs to format v2) and
-# gw.05 (calls Prefill and Release over gRPC). Neither is registered yet, so
-# verify check 9 fails until one lists L10.6 (DEVIATIONS B92-01).
-used_by   = []
+# The gateway calls Prefill and Release over the shared gRPC contracts.
+used_by   = ["gw.05"]
 units     = [
   "rust/crates/tl-engine/src/kv_transfer.rs",
   "rust/crates/tl-engine/src/heartbeat.rs",

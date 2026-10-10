@@ -6,9 +6,9 @@ pass      = 1
 chapter   = "software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md"
 contract  = []
 deps      = []
-# ADR-0001 records the boundaries these modules built: the C ABI (rt.01, M03.1),
+# ADR-0001 records the boundaries these modules built: the Python matrix contract (M03.1),
 # the Rust engine over HTTP (L10.0), and the Go gateway in front of it (gw.00).
-reading   = ["craft.01", "rt.01", "M03.1", "L10.0", "gw.00"]
+reading   = ["craft.01", "M03.1", "L10.0", "gw.00"]
 used_by   = []
 units     = []
 artifacts = ["docs/adr"]          # learner files the check grades: hashed into the verdict, present = started (I16)

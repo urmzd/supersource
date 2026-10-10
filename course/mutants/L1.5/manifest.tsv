@@ -12,8 +12,6 @@ s10	rust/crates/tl-tok/src/stream.rs	semantic	pitfall-10	61	y	a partial characte
 s11	rust/crates/tl-tok/src/stream.rs	semantic	pitfall-11	66	y	emitted bytes stay pending	push never drains what it emitted
 s12	rust/crates/tl-tok/src/bpe.rs	semantic	pitfall-12	393	y	batch results come back out of order	encode_batch joins the worker chunks in reverse
 s13	rust/crates/tl-tok/src/hfjson.rs	semantic	pitfall-13	165	y	a normalizer is ignored	the loader no longer rejects a non-null normalizer
-s14	rust/crates/tl-py/src/tok.rs	semantic	pitfall-14	38	n	a negative thread count is accepted	encode_batch casts threads < 0 to usize
-s15	rust/crates/tl-py/src/tok.rs	semantic	pitfall-15	16	n	a missing file is the wrong exception	LoadError::Io becomes ValueError
 s16	rust/crates/tl-tok/src/lib.rs	semantic	pitfall-16	137	y	decode is strict	invalid UTF-8 decodes to an empty string instead of U+FFFD
 m01	rust/crates/tl-tok/src/bpe.rs	auto	statement-deletion	254	n	the last symbol has no end marker	syms[n - 1].next is left at n
 m02	rust/crates/tl-tok/src/lib.rs	auto	return-default	128	n	unknown ids are skipped	decode_bytes skips an id outside the vocabulary

@@ -175,7 +175,7 @@ def test_as_c_float32_hand_example():
 
 
 def test_as_c_float32_does_not_copy_when_it_need_not():
-    # WHY: the ctypes loader (rt.01) calls this on every tensor it hands to C.
+    # WHY: a tensor's dimensions must agree with its stored values.
     #      A copy of an array that is already right doubles memory traffic
     #      for nothing; `np.array(x, dtype=...)` and `x.astype(...)` copy always.
     # KIND: unit

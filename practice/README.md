@@ -271,7 +271,7 @@ drift (exit 4).
 or in supersource: Python runs in your own uv environment with the reference or
 stub of each non-learner unit shadowing yours on `PYTHONPATH`; C compiles one
 object per unit (yours, the reference, or a stub) into an ASan and UBSan test
-binary and an `-O2` `libtinyllm` for ctypes; Rust and Go use copy farms with
+binary for standalone C tests; Rust and Go use copy farms with
 generated manifests (`.ss/rust-farm`, `.ss/overlay/<ID>/go`). Every C test
 binary installs a counting allocator through `tl_set_allocator`, so a leak
 fails the test on every platform. Verdicts land in `.ss/verdicts.jsonl`.

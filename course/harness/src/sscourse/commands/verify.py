@@ -620,8 +620,9 @@ def reference_learner(reg, course: Path, work: Path) -> tuple[Path | None, str]:
     ok, why = e2e.assemble(reg, course, lr, env)
     if not ok:
         return None, why
-    # Built as a learner's repo is by the time its practice checks run: the
-    # reference [build].steps (libtinyllm, engine, gateway, the served model).
+    # Built as a learner's repo is by the time its practice checks run, using
+    # the reference [build].steps (native C artifacts, engine, gateway, and
+    # the served model).
     from .. import services, system
 
     if (lr / "system.toml").is_file():

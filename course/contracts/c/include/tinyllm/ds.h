@@ -15,9 +15,6 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* -- ds.01: growable array ------------------------------------------------ */
 
@@ -101,8 +98,5 @@ void tl_lru_remove(tl_lru *l, tl_list_node *n);
 /* Unlinks and returns the least recently used node, or NULL when empty. */
 tl_list_node *tl_lru_pop_oldest(tl_lru *l);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_DS_H */

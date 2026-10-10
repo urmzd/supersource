@@ -4,7 +4,7 @@ and a sort-merge confirm.
 A corpus repeats itself: mirrored pages, boilerplate, the same story posted
 twice. Exact dedup keeps the first occurrence of every paragraph and drops
 the rest. Holding every paragraph's hash in a set costs 32 bytes plus Python
-overhead per paragraph; a Bloom filter (ds.08, through tinyllm_rs) answers
+overhead per paragraph; a small Python Bloom screen answers
 "maybe seen" for about bloom_bytes_per_item bytes each. A Bloom filter has
 false positives, never false negatives, so its positives are only
 candidates: a sort-merge over the candidates' exact hashes confirms which
@@ -30,7 +30,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
-import tinyllm_rs
+from tinyllm.num.rng import fnv1a64, splitmix64
 
 from corpus.stage import Doc
 
@@ -45,6 +45,30 @@ STATS_KEYS = (
     "docs_dropped",
     "docs_out",
 )
+
+
+class _Bloom:
+    """Small data.03 Bloom screen matching contracts/formats/bloom.md."""
+
+    def __init__(self, n: int, rate: float) -> None:
+        if n < 1 or not 0 < rate < 1:
+            raise ValueError("Bloom needs n >= 1 and 0 < rate < 1")
+        self.m = math.ceil(-n * math.log(rate) / math.log(2) ** 2)
+        self.k = max(1, math.floor(self.m / n * math.log(2) + 0.5))
+        self.bits = bytearray((self.m + 7) // 8)
+
+    def _positions(self, item: bytes):
+        h1 = fnv1a64(item)
+        h2 = splitmix64(h1) | 1
+        for i in range(self.k):
+            yield ((h1 + i * h2) & ((1 << 64) - 1)) % self.m
+
+    def contains(self, item: bytes) -> bool:
+        return all(self.bits[pos // 8] & (1 << (pos % 8)) for pos in self._positions(item))
+
+    def insert(self, item: bytes) -> None:
+        for pos in self._positions(item):
+            self.bits[pos // 8] |= 1 << (pos % 8)
 
 
 def paragraphs(text: str) -> list[str]:
@@ -107,8 +131,8 @@ def exact_dedup(
     is yielded with its remaining paragraphs joined by "\\n\\n"; one that loses
     all is dropped. Output order is input order.
 
-    The screen is tinyllm_rs.Bloom.with_rate(N, bloom_rate(B)) over the N
-    paragraphs of the input; a paragraph whose hash the filter already
+    The screen is a Python Bloom filter sized for N paragraphs at bloom_rate(B);
+    a paragraph whose hash the filter already
     contains becomes a candidate. Only candidates are confirmed, by sorting
     their (hash, document index, paragraph index) occurrences and merging
     equal hashes. If `stats` is given it receives STATS_KEYS once the output
@@ -126,7 +150,7 @@ def exact_dedup(
                 n_paras += len(paragraphs(doc.text))
 
         # Screen: one Bloom filter sized for every paragraph of the input.
-        bloom = tinyllm_rs.Bloom.with_rate(max(n_paras, 1), rate)
+            bloom = _Bloom(max(n_paras, 1), rate)
         candidates: set[bytes] = set()
         for doc in _read_spool(spool):
             for p in paragraphs(doc.text):
@@ -174,7 +198,7 @@ def exact_dedup(
             stats.update(
                 docs_in=n_docs,
                 paragraphs=n_paras,
-                bloom_bits=int.from_bytes(bloom.to_bytes()[8:16], "little"),  # m
+                bloom_bits=bloom.m,
                 candidates=len(candidates),
                 false_positives=false_pos,
                 duplicate_paragraphs=len(drop),

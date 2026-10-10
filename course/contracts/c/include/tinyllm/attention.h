@@ -29,9 +29,6 @@
 #include "tinyllm/arena.h"
 #include "tinyllm/kv_pool.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct tl_pool tl_pool;
 
@@ -72,8 +69,5 @@ tl_status tl_paged_attn_decode_f32(const float *q, const tl_kv_pool *kv, uint32_
                                    int64_t B, int64_t H, int64_t Hkv, int64_t D,
                                    float scale, int64_t window, tl_pool *tp);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_ATTENTION_H */

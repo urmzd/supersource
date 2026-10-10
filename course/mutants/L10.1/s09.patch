@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-engine/src/quant.rs
 +++ b/rust/crates/tl-engine/src/quant.rs
-@@ -88,7 +88,7 @@
-     if let Some(&bad) = q.iter().find(|&&v| !(-8..=7).contains(&v)) {
-         return Err(format!("pack_int4: {bad} outside [-8, 7]"));
-     }
+@@ -98,1 +98,1 @@
 -    Ok(q.chunks_exact(2).map(|p| ((p[0] as u8) & 0x0f) | (((p[1] as u8) & 0x0f) << 4)).collect())
 +    Ok(q.chunks_exact(2).map(|p| ((p[1] as u8) & 0x0f) | (((p[0] as u8) & 0x0f) << 4)).collect())
- }
- 
- /// The inverse of [`pack_int4`]: [rows, 2 * bytes per row] signed values.

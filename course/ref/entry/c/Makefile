@@ -1,10 +1,9 @@
-# c/Makefile: builds libtinyllm (DESIGN 2.15). Your file; this is the reference
-# for course CI. `make -C c` writes build/libtinyllm.a (linked into the engine
-# by tl-sys) and build/libtinyllm.{dylib,so} (loaded by Python through ctypes).
+# Optional standalone C archive for local exploration. Course checks compile
+# each module's C suite as its own process; no runtime loads this archive.
 # SANITIZE=1 adds ASan and UBSan.
 
 CC      ?= cc
-CFLAGS  ?= -std=c11 -O2 -Wall -Wextra -fPIC
+CFLAGS  ?= -std=c11 -O2 -Wall -Wextra
 CPPFLAGS += -I../contracts/c/include
 ifeq ($(SANITIZE),1)
 CFLAGS  += -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
@@ -13,10 +12,9 @@ endif
 
 SRCS := $(sort $(wildcard src/*/*.c))
 OBJS := $(patsubst src/%.c,build/obj/%.o,$(SRCS))
-SHARED_EXT := $(if $(filter Darwin,$(shell uname -s)),dylib,so)
 
 .PHONY: all clean
-all: build/libtinyllm.a build/libtinyllm.$(SHARED_EXT)
+all: build/libtinyllm.a
 
 build/obj/%.o: src/%.c $(wildcard ../contracts/c/include/*.h ../contracts/c/include/tinyllm/*.h)
 	@mkdir -p $(dir $@)
@@ -24,9 +22,6 @@ build/obj/%.o: src/%.c $(wildcard ../contracts/c/include/*.h ../contracts/c/incl
 
 build/libtinyllm.a: $(OBJS)
 	$(AR) rcs $@ $^
-
-build/libtinyllm.$(SHARED_EXT): $(OBJS)
-	$(CC) -shared $(LDFLAGS) $^ -o $@ -lm
 
 clean:
 	rm -rf build

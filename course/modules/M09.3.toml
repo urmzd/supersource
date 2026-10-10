@@ -11,11 +11,9 @@ deps      = ["M03.5", "M01.1"]
 # Concepts only: the unit roundoff and float formats (M09.1), summation
 # order (M09.2), and the pen-and-paper set S-M09a.
 reading   = ["M09.1", "M09.2", "S-M09a"]
-# Call sites: L9.7 (the load-time op check compares each C kernel with numpy
-# within matmul_error_bound). L8.5's quantization budget and the learner's own
-# differential tests are catalog call sites that join with their rows
-# (DEVIATIONS B81-03).
-used_by   = ["L9.7"]
+# Optional C modules use Python-generated fixture vectors; M09.3 supplies the
+# error bound used to derive and document their numerical tolerances.
+used_by   = []
 units     = ["python/tinyllm/num/tolerance.py"]
 upgrades  = []
 milestone = "MS-P6"

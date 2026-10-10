@@ -1,23 +1,23 @@
 <!-- ss:module L10.0 -->
-# Your first endpoint: a std-only Rust HTTP/1.1 + SSE server over the C matmul
+# Your first endpoint: a std-only Rust HTTP/1.1 + SSE server
 
 ## Overview
 
 | | |
 |---|---|
 | **Module** | `L10.0` · build · Rust · Pass 1 · 8 to 12 h |
-| **You build** | `rust/crates/tl-sys/src/lib.rs` (v0): a hand-written `extern "C"` binding to `tl_abi_version`, the error slot, and `tl_matmul_f32`, with safe wrappers · `rust/crates/tl-serve/src/http.rs` (v0): the tracer engine (HTTP/1.1 parser, JSON, the byte bigram through C, sampling, incremental UTF-8, SSE, OTLP span export) and its crate root `lib.rs` · your entry point `rust/crates/tl-serve/src/main.rs` |
-| **Contract** | HTTP: [`openapi/openai-subset.v0.yaml`](../../../course/contracts/openapi/openai-subset.v0.yaml) · the `engine` role: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) · the model directory: [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../course/contracts/formats/config.schema.json), [`formats/tokenizer.md`](../../../course/contracts/formats/tokenizer.md) · C: [`tinyllm/abi.h`](../../../course/contracts/c/include/tinyllm/abi.h), [`tinyllm/matmul.h`](../../../course/contracts/c/include/tinyllm/matmul.h), [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
+| **You build** | `rust/crates/tl-serve/src/http.rs` (v0): the tracer engine (HTTP/1.1 parser, JSON, the byte bigram row lookup, sampling, incremental UTF-8, SSE, OTLP span export) and its crate root `lib.rs` · your entry point `rust/crates/tl-serve/src/main.rs` |
+| **Contract** | HTTP: [`openapi/openai-subset.v0.yaml`](../../../course/contracts/openapi/openai-subset.v0.yaml) · the `engine` role: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) · the model directory: [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../course/contracts/formats/config.schema.json), [`formats/tokenizer.md`](../../../course/contracts/formats/tokenizer.md) |
 | **Tests** | `course/tests/rust/l10_0.rs`, 29 tests (what they check: section 4); conformance `ss conform openapi:v0:engine` from `MS-P1` |
-| **Needs** | `M03.1` your `tl_matmul_f32` ([chapter](../../../math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md)) · `rt.01` the error slot and ABI version ([chapter](../p09-kernels/01-the-c-abi.md)) · `L0.0` the checkpoint you serve ([chapter](../p00-foundations/00-byte-bigram.md)) · reading: `lang.04` Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `lang.05` HTTP, JSON, SSE ([primer](../../../software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md)) · or `--ref-deps` |
-| **Used by** | `dep.00` builds it into the engine image · `obs.00` reads its spans; `gw.00` proxies to it over HTTP; `L10.1` takes `tl-sys` over and `L10.5` takes `http.rs` over |
+| **Needs** | `L0.0` the checkpoint you serve ([chapter](../p00-foundations/00-byte-bigram.md)) · reading: `lang.04` Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `lang.05` HTTP, JSON, SSE ([primer](../../../software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md)) · or `--ref-deps` |
+| **Used by** | `dep.00` builds it into the engine image · `obs.00` reads its spans; `gw.00` proxies to it over HTTP; `L10.1` adds Candle model math and `L10.5` takes `http.rs` over |
 | **Milestone** | `MS-P1` (the tracer: every layer is yours and runs end to end) |
-| **Optional depth** | [RFC 9112](https://www.rfc-editor.org/rfc/rfc9112) (free); [W3C Trace Context](https://www.w3.org/TR/trace-context/) (free); [OTLP specification, JSON encoding](https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding) (free); [PCG, A Family of Better Random Number Generators](https://www.pcg-random.org/) (free); [The Rustonomicon, FFI](https://doc.rust-lang.org/nomicon/ffi.html) (free) |
+| **Optional depth** | [RFC 9112](https://www.rfc-editor.org/rfc/rfc9112) (free); [W3C Trace Context](https://www.w3.org/TR/trace-context/) (free); [OTLP specification, JSON encoding](https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding) (free); [PCG, A Family of Better Random Number Generators](https://www.pcg-random.org/) (free) |
 
 ## Key Takeaways
 
 - Your engine reads exactly the files `L0.0` writes: `bigram.weight` sits at an offset counted from the start of the safetensors **data buffer**, not the file (`loads_hand_written_checkpoint`).
-- The next token's logits are $e_{x} W$, a one-hot row times the weight, computed by **your** C kernel through an `extern "C"` call whose slice lengths Rust checks first (`matmul_hand_example`, `matmul_rejects_short_slices`).
+- The next token's logits are row `prev` of the stored weight matrix, selected by `Bigram::logits` (`bigram_logits_select_the_weight_row`).
 - Greedy decoding takes the largest logit with ties to the lowest id; sampling at temperature $T$ draws from $\mathrm{softmax}(z/T)$ with one uniform from a seeded PCG32, so a seed reproduces a stream (`greedy_ties_go_to_lowest_id`, `temperature_sampling_matches_softmax`, `seed_reproduces_sampling`).
 - One token is one byte, so a stream must hold back an incomplete UTF-8 sequence: the chunk for `0xC3` is `""` and the chunk for `0xA9` is `"é"` (`utf8_stream_holds_back_incomplete_sequences`).
 - One request, one server span: with a `traceparent` header the engine's span joins the caller's trace, and it is posted as OTLP/HTTP JSON after the client is answered (`exports_child_span_of_traceparent`).
@@ -25,17 +25,16 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.0               # stubs http.rs, lib.rs, tl-sys/src/lib.rs; writes rust/Cargo.toml and the crate manifests
+ss start L10.0               # stubs http.rs and lib.rs; writes rust/Cargo.toml and the crate manifest
 ss tests L10.0               # read the test catalog first: rung R0, you write no tests here
 ss check L10.0               # exit code is the verdict
 ss check L10.0 --ref-deps    # only if M03.1, rt.01, or L0.0 is not passing yet
 ss diff  L10.0               # after passing: your code against the reference
 ```
 
-`ss start` writes `rust/Cargo.toml` (a workspace with `crates/tl-sys` and `crates/tl-serve`), both crate manifests, and `tl-sys/build.rs` only if they are absent, and never rewrites them. `build.rs` links `libtinyllm.a` from `$TINYLLM_C_LIB_DIR` (the harness points it at its own build of your C units) or else from your `c/build/`. The binary `src/main.rs` is yours (D16): the course ships no server. To run your engine yourself:
+`ss start` writes the `tl-serve` workspace member and manifest only if they are absent, and never rewrites them. The binary `src/main.rs` is yours (D16): the course ships no server. To run your engine yourself:
 
 ```bash
-make -C c                                         # your c/Makefile builds c/build/libtinyllm.a
 cargo build --release --manifest-path rust/Cargo.toml
 uv run --project python python python/tinyllm/__main__.py train bigram --data some.txt --out artifacts/bigram
 rust/target/release/tl-serve --model-dir artifacts/bigram --port 8000 --health-port 9464
@@ -48,7 +47,7 @@ and declare it in `system.toml` for `MS-P1`: `[entry].engine = ["rust/target/rel
 
 ## 1. Why now
 
-After `L0.0` your system has a trained byte bigram on disk and a Python CLI that can sample from it, and nothing else can reach it: no process listens on a port, so the gateway you write next (`gw.00`) has no upstream, the cluster (`dep.00`) has no image to run, and there is no request to trace (`obs.00`). Every later layer of the course is a client of an inference server, from the load generator to the agent SDK. This module writes that server: a Rust process that speaks the smallest OpenAI-compatible API (v0: `POST /v1/completions`, plain or streamed), serves the checkpoint `L0.0` wrote, computes every token's logits with the C matmul you wrote in `M03.1`, and reports each request as a span. It uses only Rust's standard library, so the HTTP framing, the JSON, the decoding, and the trace export are all code you can read.
+After `L0.0` your system has a trained byte bigram on disk and a Python CLI that can sample from it, and nothing else can reach it: no process listens on a port, so the gateway you write next (`gw.00`) has no upstream, the cluster (`dep.00`) has no image to run, and there is no request to trace (`obs.00`). Every later layer of the course is a client of an inference server, from the load generator to the agent SDK. This module writes that server: a Rust process that speaks the smallest OpenAI-compatible API (v0: `POST /v1/completions`, plain or streamed), serves the checkpoint `L0.0` wrote, computes each token's logits by selecting the matching row in the checkpoint, and reports each request as a span. It uses only Rust's standard library, so the HTTP framing, the JSON, the decoding, and the trace export are all code you can read.
 
 ## 2. Principles
 
@@ -56,7 +55,7 @@ After `L0.0` your system has a trained byte bigram on disk and a Python CLI that
 
 ```text
 TCP bytes --read_request--> Request --parse_completion--> CompletionRequest
-   --for each new token: Bigram::logits (tl_matmul_f32 in C) then sample--> byte id
+   --for each new token: Bigram::logits (row lookup) then sample--> byte id
    --Utf8Stream--> text --JSON body, or one SSE chunk per token--> TCP bytes
    (connection closed) --otlp_json + export_span--> POST <collector>/v1/traces
 ```
@@ -80,7 +79,7 @@ A bigram model predicts the next byte from the previous byte only. Its logits af
 
 $$z = e_{x_t} W, \qquad z_j = \sum_{k} [k = x_t]\, W_{kj} = W_{x_t j}.$$
 
-Every term but one is an exact zero, so the product equals the row bit for bit. Calling `tl_matmul_f32` with $M = 1$, $K = N = 256$ costs 65,536 multiply-adds where an index would cost nothing; you pay it so that the engine's forward pass already goes through your C kernel, the path `L10.1` keeps for the Llama forward. One caution: $0 \times (-\infty)$ is NaN, so a weight row holding $-\infty$ would make every logit in that column NaN. `L0.0` stores the log of add-one-smoothed probabilities, which are finite; the sampler still never picks a NaN logit.
+Every term but one is an exact zero, so the product equals the row bit for bit. The endpoint directly copies row $x_t$ from the row-major weight array. This avoids a matrix operation for a one-hot vector and preserves the checkpoint values exactly.
 
 The **prompt** is encoded by the byte tokenizer (its ids are its UTF-8 bytes), and generation starts from its last byte, so the prompt must be non-empty (the v0 contract requires it).
 
@@ -118,9 +117,9 @@ offset 8 + N  the data buffer
 
 and each header entry's `data_offsets` is `[begin, end)` **relative to the data buffer**. The reader rejects a header length past the end of the file, a dtype other than `F32` (contract v0), a shape other than `[256, 256]`, duplicate names, and tensors that do not tile the data buffer exactly (gaps, overlaps, or trailing bytes). Weights are little-endian `f32`: `f32::from_le_bytes`.
 
-### 2.6 Calling C from Rust: `tl-sys` v0
+### 2.6 The model boundary
 
-`tl-sys` declares the C functions with the exact C types (`int64_t` is `i64`, `int` is `c_int`, `tl_status` is `i32`, never a Rust enum, `c/ABI.md` rule 5) inside `extern "C" { ... }`, and `build.rs` tells Cargo to link the static library `libtinyllm.a`. Raw calls are `unsafe`: C trusts the dimensions it is given and will read and write past the end of a buffer that is too short. So the safe wrapper `matmul_f32_strided` first checks that each slice holds at least $(\text{rows} - 1)\cdot \text{ld} + \text{cols}$ elements, and only then passes pointers. A non-zero status becomes `Err(TlError { status, name, message })`, where `name` is `tl_status_str(status)` and `message` is `tl_last_error()`, read **immediately**, because the error slot is per-thread and the next `tl_` call may overwrite it (`rt.01`). `check_abi()` refuses a library whose `tl_abi_version()` is not 1.
+The endpoint reads the checkpoint into a Rust `Bigram` value. `Bigram::from_weight` checks that the row-major matrix has exactly 256 × 256 values, and `Bigram::logits(prev)` returns the row for the previous byte. The first endpoint uses Rust's standard library only; later modules use Candle for tensor operations in the Llama runner.
 
 ### 2.7 Serving API v0
 
@@ -138,7 +137,7 @@ When `OTEL_EXPORTER_OTLP_ENDPOINT` is set (`spec/cli-roles.md`), the engine post
 
 ### 2.9 Stopping
 
-`spec/cli-roles.md` asks servers to exit 0 on SIGTERM (what Kubernetes sends before killing a pod). The default action of SIGTERM kills the process with a signal status instead. `exit_on_sigterm()` installs a handler through C's `signal()` that calls `_exit(0)`: inside a signal handler only async-signal-safe functions are allowed, and `_exit` is one, while Rust's `std::process::exit` is not.
+`spec/cli-roles.md` asks servers to exit 0 on SIGTERM (what Kubernetes sends before killing a pod). The process uses the operating system default signal handling; graceful signal handling is added with the async server later in this part.
 
 ## 3. Worked example by hand
 
@@ -146,7 +145,7 @@ When `OTEL_EXPORTER_OTLP_ENDPOINT` is set (`spec/cli-roles.md`), the engine post
 
 **Greedy, three tokens from `a`.** The prompt `a` is the id 97. $z = e_{97} W$ is row 97: 2 at index 98, 0 elsewhere, so the argmax is 98 (`b`). Then row 98 gives 99 (`c`), row 99 gives 100 (`d`). The answer to `{"model":"m","prompt":"a","max_tokens":3,"temperature":0}` is the text `bcd` with `finish_reason: "length"` and `usage` 1, 3, 4. This is `hand_example_completion`.
 
-**The same through C.** `matmul_hand_example` checks the kernel on numbers small enough to multiply by hand:
+**A small matrix product.** The same row-selection rule follows from the one-hot product, though this endpoint uses a direct row lookup:
 
 $$\begin{bmatrix}1 & 2\\ 3 & 4\end{bmatrix}\begin{bmatrix}5 & 6\\ 7 & 8\end{bmatrix} = \begin{bmatrix}1\cdot5+2\cdot7 & 1\cdot6+2\cdot8\\ 3\cdot5+4\cdot7 & 3\cdot6+4\cdot8\end{bmatrix} = \begin{bmatrix}19 & 22\\ 43 & 50\end{bmatrix}.$$
 
@@ -166,26 +165,7 @@ data: [DONE]\n\n
 
 ## 4. The interface
 
-```rust
-// rust/crates/tl-sys/src/lib.rs (v0)
-pub const ABI_VERSION: u32 = 1;
-pub const TL_OK: i32 = 0; pub const TL_EINVAL: i32 = 1; pub const TL_EUNSUPPORTED: i32 = 9;
-#[repr(C)] pub struct TlPool { _private: [u8; 0] }
-extern "C" {
-    pub fn tl_abi_version() -> u32;
-    pub fn tl_status_str(s: i32) -> *const c_char;
-    pub fn tl_last_error() -> *const c_char;
-    pub fn tl_matmul_f32(a: *const f32, b: *const f32, c: *mut f32, m: i64, n: i64, k: i64,
-                         lda: i64, ldb: i64, ldc: i64, alpha: f32, beta: f32, trans_b: c_int, tp: *mut TlPool) -> i32;
-}
-pub struct TlError { pub status: i32, pub name: String, pub message: String }   // Display + Error
-pub fn last_error(status: i32) -> TlError;
-pub fn abi_version() -> u32;
-pub fn check_abi() -> Result<(), TlError>;
-pub fn matmul_f32_strided(a: &[f32], b: &[f32], c: &mut [f32], m: usize, n: usize, k: usize,
-                          lda: usize, ldb: usize, ldc: usize, alpha: f32, beta: f32, trans_b: bool) -> Result<(), TlError>;
-pub fn matmul_f32(a: &[f32], b: &[f32], c: &mut [f32], m: usize, n: usize, k: usize, trans_b: bool) -> Result<(), TlError>;
-```
+The endpoint's model interface is deliberately small: `Bigram::load` validates `config.json` and `model.safetensors`, then `logits(prev)` returns a copied slice of the selected transition row. There is no foreign-function boundary in this endpoint.
 
 ```rust
 // rust/crates/tl-serve/src/http.rs (v0); lib.rs is `pub mod http;`
@@ -208,7 +188,7 @@ pub struct Bigram { /* weight: Vec<f32>, row-major [256, 256] */ }
 impl Bigram {
     pub fn from_weight(weight: Vec<f32>) -> Result<Bigram, String>;
     pub fn load(dir: &Path) -> Result<Bigram, String>;               // config.json + model.safetensors
-    pub fn logits(&self, prev: u8) -> Result<Vec<f32>, String>;       // onehot(prev) @ W through tl_matmul_f32
+    pub fn logits(&self, prev: u8) -> Result<Vec<f32>, String>;       // copy row prev from W
 }
 pub fn read_bigram_weight(bytes: &[u8]) -> Result<Vec<f32>, String>;  // the safetensors reader rules
 
@@ -233,20 +213,16 @@ impl Server { pub fn from_env(model_dir: &Path) -> Result<Server, String>; }   /
 pub fn serve(listener: TcpListener, server: Arc<Server>) -> io::Result<()>;  // a thread per connection, forever
 pub fn handle_connection(stream: TcpStream, server: &Server);
 pub fn sse_event(payload: &str) -> String;
-pub fn exit_on_sigterm();
 ```
 
-Your `main.rs` parses `--model-dir`, `--port`, `--health-port` (exit 2 on a usage error), calls `exit_on_sigterm()` and `tl_sys::check_abi()`, builds the `Server` with `Server::from_env`, binds `0.0.0.0:<port>` and `0.0.0.0:<health port>`, serves the health listener on a second thread, and calls `serve` on the API listener. It is about 70 lines.
+Your `main.rs` parses `--model-dir`, `--port`, `--health-port` (exit 2 on a usage error), builds the `Server` with `Server::from_env`, binds `0.0.0.0:<port>` and `0.0.0.0:<health port>`, serves the health listener on a second thread, and calls `serve` on the API listener. It is about 70 lines.
 
 ### What the tests check
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `hand_example_completion` | unit | `a` greedy 3 is `bcd` with every Completion field | the worked example over the wire |
-| `abi_version_is_1` | conformance | `tl_abi_version()` is 1 and `check_abi` accepts it | `L10.1` refuses a mismatched library the same way |
-| `matmul_hand_example` | unit | the section 3 product, with and without `trans_b` | every logit goes through this call |
-| `matmul_rejects_short_slices` | boundary | a short slice is an `Err` before C runs; C is untouched | memory safety at the FFI boundary |
-| `matmul_maps_c_status_to_error` | boundary | `lda < K` comes back as `TL_EINVAL` with C's message | errors from C are never lost |
+| `bigram_logits_select_the_weight_row` | unit | `logits(prev)` returns the corresponding row | each generated byte uses the same checkpoint semantics |
 | `parses_request_line_headers_and_body` | unit | method, path without query, trimmed header value, body | the gateway forwards these requests (`gw.00`) |
 | `header_names_are_case_insensitive` | boundary | `content-length` works | Go's HTTP client and curl spell headers differently |
 | `malformed_requests_are_rejected` | boundary | 400, 411, 413, 501, and 0 for an empty connection | bad input is answered, never a panic |
@@ -284,9 +260,7 @@ Your `main.rs` parses `--model-dir`, `--port`, `--health-port` (exit 2 on a usag
 | Decoding each byte on its own | every multi-byte character streams as two or three U+FFFD | `utf8_stream_holds_back_incomplete_sequences` (mutant `s06`) |
 | Comparing header names exactly | requests from some clients have no body (411) | `header_names_are_case_insensitive` (mutant `s07`) |
 | Ending an SSE event with one `\n` | clients merge every chunk into one event | `stream_framing_is_exact` (mutant `s08`) |
-| Calling C without checking slice lengths | reads and writes past a buffer: silent corruption or a crash far away | `matmul_rejects_short_slices` (mutant `s09`) |
-| Ignoring the returned `tl_status` | a rejected call looks like success and returns zeros | `matmul_maps_c_status_to_error` (mutant `s10`) |
-| Inverting the ABI check | the engine refuses the library it was written for | `abi_version_is_1` (mutant `s11`) |
+
 | Accepting bytes after the last tensor | a truncated or concatenated file loads without complaint | `rejects_bad_checkpoints` (mutant `s12`) |
 | Counting the prompt in characters | `usage.prompt_tokens` disagrees with the byte tokenizer | `max_tokens_counts_generated_tokens_only` (mutant `s13`) |
 | `Content-Length` in characters | multi-byte answers are cut off by the client | `content_length_counts_bytes` (mutant `s14`) |
@@ -298,15 +272,14 @@ Your `main.rs` parses `--model-dir`, `--port`, `--health-port` (exit 2 on a usag
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `M03.1` | `tl_matmul_f32` computes every logit the engine serves |
-| Back | `rt.01` | `tl_abi_version`, `tl_status_str`, and the per-thread error slot behind every `TlError` |
+
 | Back | `L0.0` | the checkpoint: `config.json` and `bigram.weight` in `model.safetensors` |
-| Back | `lang.04` | `TcpListener`, a thread per connection, `Result`, `extern "C"` |
+| Back | `lang.04` | `TcpListener`, a thread per connection, `Result` |
 | Back | `lang.05` | HTTP/1.1 framing, JSON, SSE, flushing |
 | Forward | `gw.00` | the gateway's upstream: it checks the key and relays your SSE byte for byte |
 | Forward | `dep.00` | your engine binary in a container image, behind a Helm chart on kind |
 | Forward | `obs.00` | your exported span is the child of the gateway's `gateway.proxy` span in Jaeger |
-| Forward | `L10.1` | takes `tl-sys` over: the full binding, RAII wrappers, the Llama forward over the C kernels; the bigram still serves |
+| Forward | `L10.1` | adds the Candle-backed Llama runner and Rust-owned KV cache; the bigram still serves |
 | Forward | `L10.5` | takes `http.rs` over: tokio and hyper, `runtime.toml`, chat completions, admission control, the v1 API |
 | Forward | `L10.7` | replaces the hand-written OTLP JSON with the OpenTelemetry SDK and adds metrics |
 

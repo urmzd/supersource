@@ -9,9 +9,8 @@
 #
 # Tokenizers. tokenizer_json None is the byte tokenizer (D32: id = UTF-8
 # byte, vocab_size 256, no separator, tokenizer_sha256 of b""). Otherwise
-# the file loads through tinyllm_rs.Bpe.from_hf_json (L1.5) and documents
-# are encoded with Bpe.encode_batch(texts, threads) (no special tokens
-# added; the ids do not depend on threads).
+# the file loads through Python BPETokenizer (L1.2/L1.5) and documents are
+# encoded with no special tokens added.
 #
 # Separator. doc_sep_id when given; else the int eos_token_id of
 # generation_config.json in tokenizer_json's directory when that file
@@ -78,7 +77,6 @@ def tokenize_shards(
     tokenizer_id: str,
     doc_sep_id: Optional[int] = None,
     max_file_tokens: int = ...,
-    threads: int = 0,
 ) -> TokensManifest:
     """Tokenize the corpus whose _MANIFEST.json is `manifest` into out (the
     rules above); return the manifest. ValueError for max_file_tokens < 1 or

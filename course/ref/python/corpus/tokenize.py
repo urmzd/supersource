@@ -22,6 +22,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from corpus.shard import read_shards
+from tinyllm.tok.bpe import BPETokenizer
 from tinyllm.tok.metrics import bytes_per_token
 
 MAGIC = 20240520
@@ -114,22 +115,19 @@ class TokensManifest:
 
 
 class _Bytes:
-    """The identity byte tokenizer (D32), in the shape of tinyllm_rs.Bpe."""
+    """The identity byte tokenizer (D32)."""
 
     def encode(self, text: str) -> list[int]:
         # SOLUTION-BEGIN data.07
         return list(text.encode("utf-8"))
         # SOLUTION-END
 
-    def encode_batch(self, texts: list[str], threads: int) -> list[list[int]]:
+    def encode_batch(self, texts: list[str]) -> list[list[int]]:
         # SOLUTION-BEGIN data.07
         return [list(t.encode("utf-8")) for t in texts]
         # SOLUTION-END
 
-    def vocab_size(self) -> int:
-        # SOLUTION-BEGIN data.07
-        return 256
-        # SOLUTION-END
+    vocab_size = 256
 
 
 class _Packer:
@@ -204,7 +202,6 @@ def tokenize_shards(
     tokenizer_id: str,
     doc_sep_id: Optional[int] = None,
     max_file_tokens: int = MAX_FILE_TOKENS,
-    threads: int = 0,
 ) -> TokensManifest:
     """Tokenize the corpus of `manifest` into out; return the manifest."""
     # SOLUTION-BEGIN data.07
@@ -216,16 +213,14 @@ def tokenize_shards(
         tok: Any = _Bytes()
         tok_sha = hashlib.sha256(b"").hexdigest()
     else:
-        import tinyllm_rs
-
         tokenizer_json = Path(tokenizer_json)
-        tok = tinyllm_rs.Bpe.from_hf_json(str(tokenizer_json))
+        tok = BPETokenizer.from_hf_json(str(tokenizer_json))
         tok_sha = hashlib.sha256(tokenizer_json.read_bytes()).hexdigest()
         gen = tokenizer_json.parent / "generation_config.json"
         if doc_sep_id is None and gen.is_file():
             eos = json.loads(gen.read_text()).get("eos_token_id")
             doc_sep_id = eos if isinstance(eos, int) else None
-    vocab = int(tok.vocab_size())
+    vocab = int(tok.vocab_size)
     if doc_sep_id is not None and not 0 <= doc_sep_id < vocab:
         raise ValueError(
             f"doc_sep_id {doc_sep_id} is outside the vocabulary [0, {vocab})"
@@ -242,7 +237,7 @@ def tokenize_shards(
         batch: list[str] = []
 
         def flush() -> None:
-            for ids in tok.encode_batch(batch, threads):
+            for ids in tok.encode_batch(batch):
                 packer.add(sep + list(ids))
             batch.clear()
 

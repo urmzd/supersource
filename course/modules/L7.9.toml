@@ -15,10 +15,10 @@ deps      = ["L7.1", "L7.2", "L7.3", "L7.4", "L7.5", "L7.6", "L7.7", "L7.8", "L0
 # Concepts only: BF16 (M09.1; L0.6's reader decodes it), and the SmolLM2
 # tokenizer (L1.2), which your CLI uses around this model in MS-L7.
 reading   = ["M09.1", "L1.2"]
-# Call sites (DESIGN 4.3): L8.1 to L8.6, L9.7 parity, L10.1 parity, C1. None
+# Call sites (DESIGN 4.3): L8.1 to L8.6, L10.1 parity, C1. None
 # is registered yet, so verify check 9 fails until L8.2 lists L7.9 in deps
 # (DEVIATIONS B75-05).
-used_by   = ["L8.2", "L9.7"]
+used_by   = ["L8.2", "L10.1"]
 units     = ["python/tinyllm/modern/llama.py", "python/tinyllm/io/hf.py"]
 upgrades  = []
 milestone = "MS-L7"

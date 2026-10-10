@@ -1,7 +1,7 @@
 """ss verify course --e2e on the Python part of the fixture course (M90.1 and
 its upgrade M90.3): the reference learner passes check --all --ci, the pr
 milestones in --smoke mode, ss conform on both tiers, and ss export with its
-vendored tests run natively. (Export glue for C, ctypes, Rust, and Go is
+vendored tests run natively. (Export glue for C, Rust, and Go is
 covered by test_course_export.py; trimming keeps each test under 10 s.)"""
 
 import shutil

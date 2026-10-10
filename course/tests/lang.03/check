@@ -2,15 +2,11 @@
 # Artifact check for lang.03 (DESIGN 4.6 primers; H15: `ss check lang.03`
 # runs this in your repo and its exit code is the verdict).
 #
-#   1. primers/lang.03/vec.c with the given vec.h, compiled with
-#      -std=c11 -pedantic -Werror under ASan and UBSan, against test_vec.c.
-#   2. primers/lang.03/roundtrip.c built as a shared library with UBSan only
-#      (an ASan library cannot be loaded into an uninstrumented Python on
-#      macOS; UBSan can), called from Python through
-#      primers/lang.03/roundtrip.py by test_roundtrip.py.
+#   primers/lang.03/vec.c with the given vec.h, compiled with
+#   -std=c11 -pedantic -Werror under ASan and UBSan, against test_vec.c.
 #
 # The first run writes the starter files that are missing (the given
-# headers, and stubs of the three files you write) into primers/lang.03/;
+# header and stub for the file you write) into primers/lang.03/;
 # it never overwrites a file. Read the tests with `ss tests lang.03`.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,7 +27,7 @@ done
 # every solution region replaced by a stub that compiles (the harness's own
 # stubber), so the first run compiles and fails.
 missing=()
-for f in vec.h vec.c roundtrip.h roundtrip.c roundtrip.py; do
+for f in vec.h vec.c; do
   [ -f "$dir/$f" ] || missing+=("$f")
 done
 if [ ${#missing[@]} -gt 0 ]; then
@@ -75,21 +71,4 @@ else
   status=1
 fi
 
-# -- 2. the ctypes round trip ------------------------------------------------
-echo "lang.03: roundtrip.c through ctypes from roundtrip.py"
-case "$(uname -s)" in
-  Darwin) lib="$build/libroundtrip.dylib"; shared=(-dynamiclib) ;;
-  *)      lib="$build/libroundtrip.so";    shared=(-shared -fPIC) ;;
-esac
-if cc -std=c11 -pedantic -Wall -Wextra -Wno-unused-parameter -Werror -O1 "${shared[@]}" \
-     -fsanitize=undefined -fno-sanitize-recover=undefined \
-     -I"$dir" "$dir/roundtrip.c" -o "$lib"; then
-  LANG03_LIB="$lib" PYTHONPATH="$dir:$tests" PYTHONDONTWRITEBYTECODE=1 \
-    uv run --no-project --quiet --with pytest \
-    python -m pytest -q --tb=short -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" \
-    "$here/test_roundtrip.py" || status=1
-else
-  echo "  does not compile (see above)"
-  status=1
-fi
 exit $status

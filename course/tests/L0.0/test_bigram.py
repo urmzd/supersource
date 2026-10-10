@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import math
 import os
-import subprocess
-import sys
 
 import numpy as np
 import pytest
@@ -207,7 +205,7 @@ def test_rejects_non_integer_or_2d_ids():
 def test_weight_is_checked_not_converted():
     # WHY: a loaded checkpoint becomes the model as is. A float64 table cast
     #      quietly to float32 hides a writer bug, and a non-finite logit turns
-    #      into nan inside the one-hot matmul (0 * inf). The constructor
+    #      into nan inside a matrix product (0 * inf). The constructor
     #      refuses them; a model with no table has no vocabulary yet.
     # KIND: boundary
     # CHAPTER: L0.0 section 4, The interface
@@ -227,16 +225,15 @@ def test_weight_is_checked_not_converted():
         _ = BigramLM().vocab_size
 
 
-# --- logits through the C matmul ----------------------------------------------
+# --- logits by NumPy row gather -----------------------------------------------
 
 
 def test_logits_are_weight_rows():
-    # WHY: onehot(ids) @ W picks row ids[t] of W. Every other term is an exact
-    #      zero, so the C matmul must return the rows bit for bit, as float32
-    #      [T, V]. This is the forward pass the Rust engine (L10.0) reproduces.
+    # WHY: NumPy indexing picks row ids[t] of W directly, as float32 [T, V].
+    #      This is the forward pass the Rust engine (L10.0) reproduces.
     # KIND: differential
     # CATCHES: m02
-    # CHAPTER: L0.0 section 2, Principles (the one-hot matmul)
+    # CHAPTER: L0.0 section 2, Principles (logits by row gather)
     rng = PCG32(seed=seed())
     m = BigramLM()
     m.fit_counts(random_ids(rng, 300, 256), vocab_size=256)
@@ -244,42 +241,6 @@ def test_logits_are_weight_rows():
     out = m.logits(ids)
     assert out.dtype == np.float32 and out.shape == (17, 256)
     assert np.array_equal(out, m.weight[ids])
-
-
-def _logits_in_child(lib: str | None) -> subprocess.CompletedProcess:
-    code = (
-        "import numpy as np\n"
-        "from tinyllm.lm.bigram import BigramLM\n"
-        "m = BigramLM(np.zeros((4, 4), dtype=np.float32))\n"
-        "print(m.logits([1, 2]).shape)\n"
-    )
-    env = dict(os.environ)
-    if lib is not None:
-        env["TINYLLM_LIB"] = lib
-    return subprocess.run(
-        [sys.executable, "-c", code],
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-
-
-def test_logits_go_through_libtinyllm():
-    # WHY: the tracer's point is one forward pass through your own C kernel.
-    #      With TINYLLM_LIB pointing at a library that does not exist, logits
-    #      must fail loudly; a silent numpy fallback would hide a broken C
-    #      build until the Rust engine meets it. The first run, with the real
-    #      library, shows the failure comes from the library alone.
-    # KIND: boundary
-    # CATCHES: s04
-    # CHAPTER: L0.0 section 5, Pitfalls, item 5
-    ok = _logits_in_child(None)
-    assert ok.returncode == 0, ok.stdout + ok.stderr
-    bad = _logits_in_child(os.path.join(os.sep, "nonexistent", "libtinyllm.so"))
-    assert bad.returncode != 0, (
-        "logits worked without libtinyllm: it must call tl_matmul_f32"
-    )
 
 
 # --- sampling -------------------------------------------------------------------

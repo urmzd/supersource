@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/tok/bpe.pyi`](../../../course/contracts/py/tinyllm/tok/bpe.pyi) · [`course/contracts/py/tinyllm/tok/pretok.pyi`](../../../course/contracts/py/tinyllm/tok/pretok.pyi) · formats: [`tokenizer.md`](../../../course/contracts/formats/tokenizer.md) (the `tokenizer.json` subset), [`tokenizer-json.schema.json`](../../../course/contracts/formats/tokenizer-json.schema.json) |
 | **Tests** | `course/tests/L1.2/` (what they check: section 4) · your own tests in `python/tests/l1-2-bpe/`, rung R2, graded by mutation (threshold 0.60) |
 | **Needs** | `L1.1` the protocol and `check_ids` · `M05.2` the byte map · `M06.2` the trie (`insert`, `longest_prefix`) that splits out added tokens (or `--ref-deps`) |
-| **Used by** | `L1.5` ports it to Rust (`tl-tok`) and is proven id for id against your Python · `L1.6` measures GPT-2 and SmolLM2 through `from_hf_json` · later: `L7.9` loads SmolLM2, `L8.2` detokenizes, `C1` trains a 4096-token vocabulary |
+| **Used by** | `L1.5` ports it to Rust (`tl-tok`) and is proven id for id against your Python · `L1.6` measures GPT-2 and SmolLM2 through `from_hf_json` · `data.07` tokenizes corpus files with the Rust tokenizer process · later: `L7.9` loads SmolLM2, `L8.2` detokenizes, `C1` trains a 4096-token vocabulary |
 | **Milestone** | `MS-L1` (`tok train --algo bpe`, `tok encode` against the SmolLM2 oracle) |
 | **Optional depth** | Sennrich, Haddow, and Birch, *Neural Machine Translation of Rare Words with Subword Units* (2016); Radford et al., *Language Models are Unsupervised Multitask Learners* (GPT-2, 2019), section 2.2 |
 
@@ -225,6 +225,7 @@ def test_round_trip_any_text():
 | Back | `M06.2` | `Trie.longest_prefix` splits out added tokens, leftmost longest |
 | Forward | `L1.5` | the Rust `tl-tok` reimplements encode and decode; its differential tests compare its ids with yours on the fixtures and a TinyStories sample |
 | Forward | `L1.6` | measures GPT-2 and SmolLM2, loaded by `from_hf_json`, against Hugging Face's numbers |
+| Forward | `data.07` | tokenizes corpus files through the Rust tokenizer process and shared file fixtures |
 
 Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2` detokenizes streams, and `C1` trains its 4096-token vocabulary with your trainer. If you skip this module, `ss check L1.6` stops with `needs L1.2`: build it, or rerun with `--ref-deps`.
 

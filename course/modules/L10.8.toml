@@ -10,16 +10,14 @@ chapter   = "ml/08-tinyllm/p10-serving/08-speculative-decoding-in-the-engine.md"
 contract  = []
 # L8.6: the Python specification the course tests hold this port to (its
 # recorded answers, DEVIATIONS B92-02). L10.1: the sampler (apply_penalties,
-# distribution, sample, stream) and tl-sys's KvPool for the rollback. rt.04:
-# the C pool behind it.
-deps      = ["L8.6", "L10.1", "rt.04"]
+# distribution, sample, stream) and Rust KV cache rollback.
+deps      = ["L8.6", "L10.1"]
 # The scheduler and block manager it plugs into; M07.6's rejection step is
 # re-implemented here.
 reading   = ["L10.2", "L10.4", "M07.6"]
-# Catalog call site: the serve loop ([engine].speculative). No registered
-# module calls it yet; verify check 9 fails until one does (DEVIATIONS
-# B92-01).
-used_by   = []
+# Runtime call site: L10.5 routes requests through the runner-backed target
+# when `[engine].speculative` is configured.
+used_by   = ["L10.5"]
 units     = ["rust/crates/tl-engine/src/spec.rs"]
 upgrades  = []
 milestone = "MS-L10"

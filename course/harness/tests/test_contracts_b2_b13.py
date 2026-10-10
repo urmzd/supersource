@@ -1155,19 +1155,6 @@ def test_helm_values_schema_policy(chart, tmp_path):
 # -- the rest ---------------------------------------------------------------------------------
 
 
-def test_tinyllm_rs_stub_matches_design():
-    tree = ast.parse((C / "py/tinyllm_rs.pyi").read_text())
-    classes = {
-        n.name: {f.name for f in n.body if isinstance(f, ast.FunctionDef)}
-        for n in tree.body
-        if isinstance(n, ast.ClassDef)
-    }
-    assert classes == {
-        "Bpe": {"from_hf_json", "encode", "encode_batch", "decode", "vocab_size"},
-        "Bloom": {"with_rate", "insert", "contains", "union", "to_bytes", "from_bytes"},
-    }
-
-
 def test_allowed_deps_parse():
     d = tomllib.loads((C / "allowed-deps.toml").read_text())
     assert d["rust"]["tl-proto"] == {

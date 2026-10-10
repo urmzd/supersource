@@ -1,30 +1,26 @@
 id        = "L10.1"
-title     = "tl-sys FFI, model runner (Llama + bigram, int4), Rust sampler and PCG32"
+title     = "Candle model runner (Llama + bigram, int4), Rust KV cache, sampler and PCG32"
 kind      = "build"
 lang      = ["rust"]
 pass      = 7
 chapter   = "ml/08-tinyllm/p10-serving/01-model-runner-and-sampler.md"
-# No Rust trait contract yet (K01): the C headers, formats/safetensors.md,
+# No Rust trait contract yet (K01): formats/safetensors.md,
 # spec/sampling.md, and spec/pcg32.md are linked from the chapter card.
 contract  = []
-# Code this module's units call: libtinyllm through tl-sys. L10.0's part of
-# tl-sys (the crate root: TlError, the error slot, check_abi, matmul_f32),
-# abi.c (rt.01), the matmul (L9.1, taking over M03.1's), flash attention
-# (L9.3), the int4 product (L9.5), the elementwise kernels (L9.6), and the
-# KV pool (rt.04).
-deps      = ["L10.0", "rt.01", "L9.1", "L9.3", "L9.5", "L9.6", "rt.04"]
+# Candle supplies tensor operations; the learner still writes the model
+# layers and the Rust-owned KV cache. No C kernel or runtime module is a
+# prerequisite.
+deps      = ["L10.0", "L7.9", "L8.5", "M09.4"]
 # Ports and formats it re-implements (never called): the Python sampler
 # (L8.1) and PCG32 (M06.3), the Llama model (L7.9), the int4 format (L8.5),
-# the f16 conversions (M09.4); L9.7's C backend is the Python twin of this
-# runner; L1.5's tokenizer is called by tl-serve (L10.5), not here.
-reading   = ["lang.04", "L8.1", "M06.3", "L7.9", "L8.5", "M09.4", "L9.7", "L1.5"]
+# the f16 conversions (M09.4); L1.5's tokenizer is called by tl-serve
+# (L10.5), not here.
+reading   = ["lang.04", "L8.1", "M06.3", "L1.5"]
 used_by   = ["L10.2", "L10.3", "L10.4", "L10.5", "L10.6", "L10.8", "L10.9"]
-# tl-sys grows by two files of its own (L10.0's crate root declares them and
-# re-exports them); the tl-engine crate root (L8.4's glue) declares the
-# engine's modules (2.15, Q7). No unit is taken over (DEVIATIONS B91-09).
+# The tl-engine crate root (L8.4's glue) declares engine modules (2.15, Q7).
+# Model math uses Candle; `kv.rs` owns the Rust KV cache.
 units     = [
-  "rust/crates/tl-sys/src/kernels.rs",
-  "rust/crates/tl-sys/src/kv.rs",
+  "rust/crates/tl-engine/src/kv.rs",
   "rust/crates/tl-engine/src/quant.rs",
   "rust/crates/tl-engine/src/model.rs",
   "rust/crates/tl-engine/src/forward.rs",

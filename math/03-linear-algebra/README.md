@@ -209,7 +209,7 @@ and inner products let us measure angles and distances, enabling projection and 
 <!-- ss:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
-| 1 | `M03.1` | [Vectors, matrices, row-major layout, and a naive matmul in C](01-vectors-matrices-and-matmul-in-c.md) | build | 1 |
+| 1 | `M03.1` | [Vectors, matrices, row-major layout, and matmul in Python](01-vectors-matrices-and-matmul.md) | build | 1 |
 | 2 | `M03.2` | [Gaussian elimination and LU with partial pivoting](02-gaussian-elimination-and-lu.md) | build | 2 |
 | 3 | `M03.3` | [Orthogonality, Householder QR, and orthogonal initialization](03-orthogonality-and-householder-qr.md) | build | 2 |
 | 4 | `M03.4` | [Eigenvalues, power iteration, and the spectral radius](04-eigenvalues-and-power-iteration.md) | build | 2 |

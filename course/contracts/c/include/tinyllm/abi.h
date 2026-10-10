@@ -1,29 +1,25 @@
-/* tinyllm/abi.h (rt.01): ABI version, status codes, the error slot, the
- * allocator hook. Rules in c/ABI.md.
+/* tinyllm/abi.h (rt.02): shared status codes, error reporting, and allocator
+ * hooks for standalone C modules. Rules in c/ABI.md.
  *
  * tl_set_last_error, tl_alloc, and tl_free are the seams other units use:
  * a unit reaches abi.c only through the names in this header.
  *
- * chapter: ml/08-tinyllm/p09-kernels/01-the-c-abi.md */
+ * module: rt.02
+ * chapter: ml/08-tinyllm/p09-kernels/02-arena-allocator-with-marks.md */
 #ifndef TINYLLM_ABI_H
 #define TINYLLM_ABI_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-/* The ABI version. A binding refuses a library whose tl_abi_version()
- * differs from the TL_ABI_VERSION it was written against. Changing it is a
- * migration (craft.13 style). */
+/* Version of this C support interface. */
 #define TL_ABI_VERSION 1
 uint32_t tl_abi_version(void); /* returns TL_ABI_VERSION */
 
-/* Status codes. tl_status is an int32_t, never a C enum type, across the
- * ABI: a Rust repr(C) enum holding an unknown value is undefined behavior.
- * Bindings map unknown values to an error. Codes are positive; 0 is success. */
+/* Status codes. tl_status is an int32_t rather than a C enum type, so callers
+ * can safely inspect unknown values from newer modules. Codes are positive;
+ * 0 is success. */
 typedef int32_t tl_status;
 enum {
     TL_OK = 0,
@@ -90,8 +86,5 @@ tl_status tl_set_allocator(const tl_allocator *a);
 void *tl_alloc(size_t n, size_t align);
 void tl_free(void *p);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_ABI_H */

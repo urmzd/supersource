@@ -1,17 +1,17 @@
 <!-- ss:module ds.02 -->
-# Swiss table tl_map (u64 to u64)
+# Swiss table tl_map (u64 to u64, optional C)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `ds.02` · build · C · Pass 6 · 5 to 7 h |
+| **Module** | `ds.02` · side · C · Pass 6 · 5 to 7 h |
 | **You build** | `c/src/ds/swiss.c`: `tl_map_create`, `tl_map_put`, `tl_map_get`, `tl_map_del`, `tl_map_len`, `tl_map_destroy` |
 | **Contract** | the ds.02 section of [`tinyllm/ds.h`](../../course/contracts/c/include/tinyllm/ds.h); rules in [`c/ABI.md`](../../course/contracts/c/ABI.md) |
 | **Tests** | `course/tests/ds.02/test_swiss.c`, 11 tests under ASan and UBSan with the counting allocator (what they check: section 4) · your own tests in `c/tests/ds02-swiss/`, rung R2, graded by mutation (threshold 0.60) · bench `ss bench ds.02` |
-| **Needs** | `rt.01` [the C ABI](../../ml/08-tinyllm/p09-kernels/01-the-c-abi.md) (`tl_alloc`, the error slot) · reading: `ds.05` [Robin Hood hashing](05-robin-hood-hash-map.md) (the first hash-table chapter) · `S-M06a` [load factor and expected probe length](../../math/06-discrete-math-2/90-problem-set-a.md) |
+| **Needs** | `rt.02` (C allocation and error support) · reading: `ds.05` [Robin Hood hashing](05-robin-hood-hash-map.md) (the first hash-table chapter) · `S-M06a` [load factor and expected probe length](../../math/06-discrete-math-2/90-problem-set-a.md) |
 | **Used by** | `rt.04` keeps its prefix index (block hash to block id) in a `tl_map` |
-| **Milestone** | `MS-L8` (the paged cache runs over a pool whose index is your table) |
+| **Milestone** | `MS-L9`, the optional standalone C module group |
 | **Optional depth** | Abseil, [Swiss Tables design notes](https://abseil.io/about/design/swisstables); Matt Kulukundis, *Designing a Fast, Efficient, Cache-friendly Hash Table, Step by Step* (CppCon 2017); Knuth, *The Art of Computer Programming*, vol. 3, section 6.4 |
 
 ## Key Takeaways
@@ -160,7 +160,7 @@ Every allocation goes through `tl_alloc` (rt.01), so the counting allocator of `
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | every allocation goes through `tl_alloc`, every failure through the error slot |
+| Back | `rt.02` | allocation hooks and error reporting for standalone C modules |
 | Back | `ds.05` | open addressing, the load factor, and probe lengths, first met in Rust |
 | Forward | `rt.04` | the prefix index: `tl_kv_register` puts (hash, id), `tl_kv_lookup` gets, eviction deletes |
 | Forward | `L10.4` | `--prefix-cache=hash` in the engine is your table behind rt.04, benchmarked against the radix tree of `ds.07` |

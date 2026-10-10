@@ -7,9 +7,9 @@
 |---|---|
 | **Module** | `data.07` · build · Python · Pass 3 · 2 to 3 h |
 | **You build** | `python/corpus/tokenize.py`: `write_bin`, `read_bin`, `TokensManifest` (with `to_json`), `tokenize_shards`, and the constants `MAGIC`, `HEADER_INTS`, `MAX_FILE_TOKENS` |
-| **Contract** | [`course/contracts/py/corpus/tokenize.pyi`](../../course/contracts/py/corpus/tokenize.pyi) · files: [`formats/tokens-bin.md`](../../course/contracts/formats/tokens-bin.md), [`formats/tokens-manifest.schema.json`](../../course/contracts/formats/tokens-manifest.schema.json) · the Rust tokenizer: [`py/tinyllm_rs.pyi`](../../course/contracts/py/tinyllm_rs.pyi) (`Bpe`) |
+| **Contract** | [`course/contracts/py/corpus/tokenize.pyi`](../../course/contracts/py/corpus/tokenize.pyi) · files: [`formats/tokens-bin.md`](../../course/contracts/formats/tokens-bin.md), [`formats/tokens-manifest.schema.json`](../../course/contracts/formats/tokens-manifest.schema.json) |
 | **Tests** | `course/tests/data.07/` (what they check: section 4); the GPT-2 oracle `course/fixtures/tok-gpt2/` (Hugging Face ids for 300 strings) |
-| **Needs** | `L1.5` your Rust BPE as `tinyllm_rs.Bpe` · `L1.6` `bytes_per_token` · `data.06` `read_shards` (or `--ref-deps`) · reading: `L0.6` (the reader of these files), `L1.2` (the Python BPE your Rust one matches) |
+| **Needs** | `L1.2` Python `BPETokenizer` · `L1.6` `bytes_per_token` · `data.06` `read_shards` (or `--ref-deps`) · reading: `L0.6` (the reader of these files), `L1.5` (Rust parity implementation) |
 | **Used by** | `data.08` reports the token counts in the datasheet · later: `C1` trains on these files through `L0.6`'s `TokenStream` |
 | **Milestone** | `MS-corpus` |
 | **Optional depth** | Karpathy, [llm.c](https://github.com/karpathy/llm.c) `dev/data/data_common.py` (the format, MIT); Hugging Face [tokenizers](https://github.com/huggingface/tokenizers) `encode_batch` (free) |
@@ -27,7 +27,7 @@
 ss start data.07              # stubs tokenize.py into python/corpus/
 ss tests data.07              # the course test catalog
 ss tdd red data.07            # rung R4: your property tests first
-ss check data.07              # exit code is the verdict (builds tinyllm_rs from your tl-py)
+ss check data.07              # exit code is the verdict
 ss check data.07 --ref-deps   # only if L1.5, L1.6, or data.06 is not passing yet
 ss mutate data.07             # how many planted bugs your tests catch
 ss diff  data.07              # after passing: your code against the reference
@@ -52,7 +52,7 @@ After `data.06` your corpus is clean Parquet text, and your tokenizers (`L1.2` i
 
 **The layout.** A file is a header of 256 little-endian `int32` values, `[20240520, version, n, V, 0, ..., 0]` (1024 bytes), then the $n$ ids, little-endian, $w$ bytes each. Version 1 means `uint16` ids and requires $V \le 65536$ (ids 0 to 65535); version 2 means `uint32`. The file size is exactly $1024 + n w$, which is how a reader detects truncation. Writing an id outside $[0, V)$ is an error: in `uint16`, 65536 would silently wrap to 0.
 
-**Tokenizers.** With no `tokenizer.json`, the tokenizer is the byte tokenizer of the tracer (D32): ids are the UTF-8 bytes, $V = 256$, no separator. With one, it is your `L1.5` Rust BPE through `tinyllm_rs.Bpe.from_hf_json`, and documents are encoded in batches with `encode_batch(texts, threads)`, whose output does not depend on `threads`. No special tokens are added by the encoder.
+**Tokenizers.** With no `tokenizer.json`, the tokenizer is the byte tokenizer of the tracer (D32): ids are the UTF-8 bytes, $V = 256$, no separator. With one, it is the Python `BPETokenizer` from `L1.2`, which encodes each document; Rust parity is checked separately against frozen fixture rows. No special tokens are added by the encoder.
 
 **The separator precedes.** When the tokenizer defines an end-of-text id $e$ (the `eos_token_id` of the `generation_config.json` next to `tokenizer.json`, or `doc_sep_id` when you pass one), every document is written as $[e, \text{ids}\dots]$. Preceding, as llm.c does, means every window that starts at a document start sees the separator first, the same signal the model gets at generation time. The byte tokenizer has no separator.
 
@@ -108,10 +108,10 @@ class TokensManifest:      # the schema's fields, plus val_bytes_per_token
 
 def tokenize_shards(manifest: Path, tokenizer_json: Path | None, out: Path, *,
                     tokenizer_id: str, doc_sep_id: int | None = None,
-                    max_file_tokens: int = MAX_FILE_TOKENS, threads: int = 0) -> TokensManifest
+                    max_file_tokens: int = MAX_FILE_TOKENS) -> TokensManifest
 ```
 
-Stream each file: write a header with $n = 0$, append ids as documents arrive, then seek back and write the real $n$. Import `tinyllm_rs` only when a `tokenizer.json` is given, so the byte tokenizer works without the Rust extension.
+Stream each file: write a header with $n = 0$, append ids as documents arrive, then seek back and write the real $n$. Load `BPETokenizer` only when a `tokenizer.json` is given, so the byte tokenizer needs no BPE files.
 
 ### What the tests check
 
@@ -127,7 +127,7 @@ Stream each file: write a header with $n = 0$, append ids as documents arrive, t
 | `test_files_hold_whole_documents` | boundary | rollover before the document that would cross the limit; a long document alone; no empty file first | a reader never starts mid-document |
 | `test_manifest_and_empty_split` | conformance | schema-valid manifest, key order, input hashes, file hashes, an empty val file present | consumers can verify and always open both splits |
 | `test_val_bytes_per_token` | unit | $\beta$ equals `L1.6`'s `bytes_per_token` on the val texts, separators excluded | bits per byte in `C1` |
-| `test_output_is_deterministic` | property | 1 and 4 encoding threads give identical bytes | MS-corpus compares output hashes |
+| `test_output_is_deterministic` | property | repeated tokenization produces identical bytes | MS-corpus compares output hashes |
 | `test_atomic_replace` | fault | a stale `.tmp` is cleared; a failing run leaves the old output | retried activities are safe |
 
 **Your tests (rung R4, properties).** Under `python/tests/data-07-tokenize/`, failing first against the stubs: the hand example; for any list of texts (Hypothesis), the byte streams of each split concatenate to exactly the split's documents, file by file and in order, with header counts that match; rollover keeps documents whole; `uint32` above 65536; header padding and the reader's checks; manifest fields; GPT-2 with a separator and with `generation_config.json`; a rerun that replaces the output. `ss mutate data.07` grades them: 0.80 of the mutants, and every Pitfall below.
@@ -150,7 +150,7 @@ Stream each file: write a header with $n = 0$, append ids as documents arrive, t
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `L1.5` | `tinyllm_rs.Bpe.from_hf_json` and `encode_batch`, bit-exact with `L1.2` |
+| Back | `L1.2` | Python `BPETokenizer.from_hf_json` and `encode_batch` |
 | Back | `L1.6` | `bytes_per_token` gives $\beta$ for the val split |
 | Back | `data.06` | `read_shards(corpus, split)` is the input, in manifest order |
 | Back | `L0.6` | the reader (`read_tokens_header`, `TokenStream`) these files are written for |

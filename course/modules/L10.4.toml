@@ -5,9 +5,9 @@ lang      = ["rust"]
 pass      = 7
 chapter   = "ml/08-tinyllm/p10-serving/04-block-manager-and-prefix-cache.md"
 contract  = []                      # no Rust trait contract yet (K01); section 4 pins it
-# BlockSpace (L10.2) over the C pool through tl-sys (L10.1, rt.04: alloc,
-# ref, unref, register, lookup), with L8.4's RadixCache for radix mode.
-deps      = ["L10.2", "L10.1", "L8.4", "rt.04"]
+# BlockSpace (L10.2) over the Rust-owned KV cache (L10.1), with L8.4's
+# RadixCache for radix mode.
+deps      = ["L10.2", "L10.1", "L8.4"]
 reading   = ["ds.02", "ds.07", "L8.3"]   # the pool's prefix index; the radix tree; paged KV
 used_by   = ["L10.5"]
 units     = ["rust/crates/tl-engine/src/block_manager.rs"]

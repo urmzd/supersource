@@ -1,28 +1,25 @@
 id        = "ds.04"
-title     = "Binary heap top-k in C"
-kind      = "build"
+title     = "Binary heap top-k in C (optional)"
+kind      = "side"
 lang      = ["c"]
 pass      = 6
 chapter   = "algorithms/16-systems-data-structures/04-binary-heap-top-k.md"
 contract  = ["contracts/c/include/tinyllm/topk.h"]
-# topk.c reaches rt.01's error slot; the Python tests load the library with
-# rt.01's loader and compare with L8.1's process_logits (spec step 6).
-deps      = ["rt.01", "L8.1"]
-# ds.06 is the first heap chapter (concepts only). ds.01's tl_vec is not
+# The standalone binary compares deterministic inputs with L8.1-generated
+# parity fixtures; it does not load a shared library into Python.
+deps      = ["rt.02"]
 # called: the heap lives in the caller's idx and val (DEVIATIONS B84-02).
 reading   = ["ds.06", "ds.01"]
-# Call site: L10.1's Rust sampler calls tl_topk_f32 through tl-sys; it joins
-# used_by when L10.1 lists ds.04 in deps (B9, DEVIATIONS B84-01).
 used_by   = []
 units     = ["c/src/ds/topk.c"]
 upgrades  = []
-milestone = "MS-P6"
+milestone = "MS-L9"
 ci        = "pr"
 
 [tests]
 dir       = "course/tests/ds.04"
 # One C and one Python name: smoke names run in every test language.
-smoke     = ["hand_example", "test_hand_example_through_ctypes"]
+smoke     = ["hand_example"]
 timeout_s = 60
 determinism_runs = 2
 

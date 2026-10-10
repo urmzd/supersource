@@ -3,7 +3,7 @@
  *
  * The oracle is the C library's exp in double precision, within 1e-16 of
  * the real value: far below the float32 ulp the contract is stated in. The
- * Python side (test_expf_ctypes.py) compares your kernel with M02.1's
+ * Python-generated vectors compare this kernel with M02.1's
  * exp_range_reduced, the same algorithm in float64.
  */
 #include <float.h>

@@ -9,7 +9,7 @@
 | **You build** | `rust/crates/tl-engine/src/block_manager.rs`: `BlockManager`, the scheduler's `BlockSpace` over the C KV pool, with three prefix-cache modes: `none`, `hash` (the pool's own index of chained block hashes), and `radix` (your `L8.4` radix cache) |
 | **Contract** | the pool API in [`tinyllm/kv_pool.h`](../../../course/contracts/c/include/tinyllm/kv_pool.h) and the block hash in [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md); `prefix_cache` of `[engine]` in [`config/runtime.schema.json`](../../../course/contracts/config/runtime.schema.json) |
 | **Tests** | `course/tests/rust/l10_4.rs`, 10 tests plus one B test (what they check: section 4); `ss bench L10.4 --assert` runs `bench_shared_prefix_ttft` against the budget TTFT none / TTFT hash >= 2 |
-| **Needs** | `L10.2` the `BlockSpace` seam ([chapter](02-continuous-batching.md)) · `L10.1` `KvPool` and `kv_block_hash` ([chapter](01-model-runner-and-sampler.md)) · `L8.4` the radix prefix cache ([chapter](../p08-inference/04-radix-prefix-cache.md)) · `rt.04` the pool's refcounts, prefix index, and LRU · reading: `ds.02` the pool's hash table, `ds.07` the radix tree, `L8.3` paged KV · or `--ref-deps` |
+| **Needs** | `L10.2` the `BlockSpace` seam ([chapter](02-continuous-batching.md)) · `L10.1` `KvPool` and `kv_block_hash` ([chapter](01-model-runner-and-sampler.md)) · `L8.4` the radix prefix cache ([chapter](../p08-inference/04-radix-prefix-cache.md)) · `L10.1` the pool's refcounts, prefix index, and LRU · reading: `ds.02` the pool's hash table, `ds.07` the radix tree, `L8.3` paged KV · or `--ref-deps` |
 | **Used by** | `L10.5` (the engine creates one `BlockManager` over the runner's pool, in the mode runtime.toml names) |
 | **Milestone** | `MS-L10` |
 | **Optional depth** | [Zheng et al. 2024, SGLang and RadixAttention](https://arxiv.org/abs/2312.07104) (free); [vLLM automatic prefix caching](https://docs.vllm.ai/en/latest/design/prefix_caching.html) (free); [Kwon et al. 2023, PagedAttention](https://arxiv.org/abs/2309.06180) (free), section 4.4 on sharing |
@@ -35,7 +35,7 @@ ss bench L10.4 --assert      # the TTFT budget (local; never part of ss check)
 
 ## 1. Why now
 
-Chat traffic repeats itself. Every request to an assistant starts with the same system prompt; a conversation resends its whole history each turn; a few-shot template sends the same examples every time. Without a cache, the engine recomputes K and V for those shared tokens on every request: prefill work, KV memory, and time to first token, spent again on identical inputs. `L8.4` built the radix cache in isolation; `rt.04` built a pool that can register and look up full blocks by hash. This module puts them behind the scheduler's `BlockSpace`, so the engine of `L10.5` reuses prefixes across requests.
+Chat traffic repeats itself. Every request to an assistant starts with the same system prompt; a conversation resends its whole history each turn; a few-shot template sends the same examples every time. Without a cache, the engine recomputes K and V for those shared tokens on every request: prefill work, KV memory, and time to first token, spent again on identical inputs. `L8.4` built the radix cache in isolation; `L10.1` built a pool that can register and look up full blocks by hash. This module puts them behind the scheduler's `BlockSpace`, so the engine of `L10.5` reuses prefixes across requests.
 
 ## 2. Principles
 
@@ -61,7 +61,7 @@ The K and V of position $j$ are a function of $x_0, \dots, x_j$ only (causal att
 - **hash**: on `release`, each full computed block $i$ is registered in the pool's prefix index under $h_i$ (`tl_kv_register`; its fill must be $B$, which the block manager sets, so a block is full by the time it is named). When its last reference goes, a registered block becomes **cached**, not free; `tl_kv_alloc` evicts cached blocks least recently used first when free ones run out. `allocate` walks the prompt's full blocks front to back, `tl_kv_lookup`-ing each $h_i$ (a hit takes a reference: a cached block becomes used again) and stops at the first miss.
 - **radix**: the radix cache of `L8.4` maps token runs to block ids. On `release` the full computed blocks are inserted; the cache keeps the request's reference to each block it newly stores, so a cached block has $\rho = 1$ (the cache's). `allocate` matches the longest cached prefix, takes a reference on each matched block for the request, and locks the matched node so eviction cannot take it while the request runs. When the pool's free list is short, the block manager evicts least recently used unlocked leaves and drops the cache's reference on each.
 
-In both caches a reused block has $\rho \ge 2$ while a request holds it (the cache, the request), and $\rho$ returns to the cache's count when the request ends. The invariant `free + used + cached == n_blocks` (`rt.04`) holds at every step; at quiet times, `used` is 0 in hash mode and equals the cache's blocks in radix mode (`refcounts_balance_under_random_workload`).
+In both caches a reused block has $\rho \ge 2$ while a request holds it (the cache, the request), and $\rho$ returns to the cache's count when the request ends. The invariant `free + used + cached == n_blocks` (`L10.1`) holds at every step; at quiet times, `used` is 0 in hash mode and equals the cache's blocks in radix mode (`refcounts_balance_under_random_workload`).
 
 ### 2.3 Hash or radix
 
@@ -132,7 +132,7 @@ The scheduler starts a request's prefill at `Allocation::cached_tokens`; the run
 | Back | `L10.2` | `BlockSpace`: the scheduler admits, grows, and releases through it |
 | Back | `L10.1` | `KvPool` (alloc, retain, release, register, lookup, set_fill) and `kv_block_hash` |
 | Back | `L8.4` | `RadixCache`: match, insert, lock, evict |
-| Back | `rt.04` | the C pool: refcounts, the cached state, LRU eviction, the prefix index |
+| Back | `L10.1` | the Rust pool: refcounts, the cached state, LRU eviction, the prefix index |
 | Forward | `L10.5` | the engine's block space; `/metrics` reports `tl_engine_prefix_cache_hit_ratio` and `tl_engine_kv_blocks` |
 
 `L10.6` dedups KV transfers with the same block hashes (`HasBlocks`), and `gw.05` routes on the hit ratio.

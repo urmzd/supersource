@@ -6,7 +6,7 @@ pass      = 1
 chapter   = "chapters/rt-91-demo-sum.md"
 contract  = ["contracts/c/include/tinyllm/demo.h"]
 deps      = ["rt.90"]
-used_by   = ["M90.2"]
+used_by   = []
 units     = ["c/src/runtime/demo.c"]
 
 [tests]

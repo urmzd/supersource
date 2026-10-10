@@ -3,7 +3,7 @@
  *
  * The oracle is 1 / sqrt(x) in double precision, which is within 1e-16 of
  * the real value, far below the float32 ulp the contract is stated in. The
- * Python side (test_rsqrt_ctypes.py) holds your C to M01.2's rsqrt_newton
+ * Python-generated vectors hold the C results against M01.2's rsqrt_newton
  * bit for bit.
  */
 #include <float.h>

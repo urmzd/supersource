@@ -1,6 +1,6 @@
 id        = "ds.01"
-title     = "Growable array tl_vec (type-erased)"
-kind      = "build"
+title     = "Growable array tl_vec (type-erased, optional C)"
+kind      = "side"
 lang      = ["c"]
 pass      = 6
 chapter   = "algorithms/16-systems-data-structures/01-growable-array.md"
@@ -8,17 +8,17 @@ chapter   = "algorithms/16-systems-data-structures/01-growable-array.md"
 # this module yet, so the registry lists no contract file; the chapter card
 # links the header (as M06.3 with numerics.h; DEVIATIONS B81-02).
 contract  = []
-# vec.c allocates through rt.01's tl_alloc/tl_free and reports through its
+# vec.c allocates through the shared C support helpers and reports through
 # error slot; the course tests install the counting allocator through
 # tl_set_allocator.
-deps      = ["rt.01"]
+deps      = ["rt.02"]
 reading   = ["lang.03"]   # the C primer: pointers, sizeof, memcpy
 # Call site: rt.04 (per-sequence block tables). ds.02 and ds.04 read this
 # chapter.
 used_by   = ["rt.04"]
 units     = ["c/src/ds/vec.c"]
 upgrades  = []
-milestone = "MS-L8"
+milestone = "MS-L9"
 ci        = "pr"
 
 [tests]

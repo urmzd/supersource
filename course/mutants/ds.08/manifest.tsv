@@ -9,8 +9,6 @@ s07	rust/crates/tl-ds/src/bloom.rs	semantic	pitfall-7	144	y	the k probes collaps
 s08	rust/crates/tl-ds/src/bloom.rs	semantic	pitfall-8	171	y	union intersects	union ANDs the bit arrays
 s09	rust/crates/tl-ds/src/bloom.rs	semantic	pitfall-9	223	y	from_bytes trusts the length	the 32 + ceil(m / 8) length check is gone
 s10	rust/crates/tl-ds/src/bloom.rs	semantic	pitfall-10	56	y	the item hash is FNV-1, not FNV-1a	multiply before xor in fnv1a64
-s11	rust/crates/tl-py/src/bloom.rs	semantic	pitfall-11	43	n	union with itself fails	the binding borrows self mutably before reading other
-s12	rust/crates/tl-py/src/bloom.rs	semantic	pitfall-12	53	n	a format error crosses as the wrong exception	from_bytes errors become OSError
 m01	rust/crates/tl-ds/src/bloom.rs	auto	condition-negation	219	n	the reserved field is not checked	from_bytes accepts a non-zero reserved field
 m02	rust/crates/tl-ds/src/bloom.rs	auto	condition-deletion	164	n	union compares only m	union of filters with equal m and different k succeeds
 m03	rust/crates/tl-ds/src/bloom.rs	auto	condition-negation	210	n	the version is not checked	from_bytes accepts any version

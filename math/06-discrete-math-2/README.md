@@ -195,7 +195,7 @@ these topics form the mathematical core of a CS education.
 |---|---|---|---|---|
 | 1 | `M06.1` | [Graphs, DAGs, and an iterative topological sort](01-graphs-dags-and-topological-sort.md) | build | 2 |
 | 2 | `M06.2` | [Trees and tries, longest-prefix match](02-trees-and-tries-longest-prefix-match.md) | build | 3 |
-| 3 | `M06.3` | [Modular arithmetic, hashing, and PCG32 in C and Python](03-modular-arithmetic-hashing-and-pcg32.md) | build | 2 |
+| 3 | `M06.3` | [Modular arithmetic, hashing, and PCG32 in Python](03-modular-arithmetic-hashing-and-pcg32.md) | build | 2 |
 | 4 | `S-M06a` | [Discrete math 2 problem set, part a: DAGs, modular arithmetic, hashing](90-problem-set-a.md) | solve | 2 |
 | 5 | `S-M06b` | [Solve set: trees, birthday bounds, Jaccard/MinHash/LSH S-curve, Bloom FP rate, recurrences](91-problem-set-b.md) | solve | 3 |
 <!-- /ss:chapters -->

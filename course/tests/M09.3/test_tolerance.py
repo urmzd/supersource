@@ -224,7 +224,7 @@ def test_matmul_bound_covers_any_order():
     # WHY: BLAS sums in blocks, in an order you do not control; the
     #      componentwise bound gamma_k |A| |B| holds for every order, so it is
     #      the right tolerance for numpy's float32 matmul and for your C
-    #      kernels (L9.1, L9.7), including k = 300 with A not square.
+    #      optional kernels (L9.1), including k = 300 with A not square.
     # KIND: property
     # CATCHES: s08, s20
     # CHAPTER: M09.3 section 2.3
@@ -339,7 +339,7 @@ def test_assert_close_bounded_special_values():
 
 
 def test_bound_ratio():
-    # WHY: L9.7 prints one number per op: the worst error over its budget
+    # WHY: optional C parity reports the worst error over its budget
     #      (the maximum, not an average that hides one bad element). A zero
     #      error over a zero budget is fine; a nonzero one is infinitely over.
     # KIND: unit

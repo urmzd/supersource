@@ -27,7 +27,7 @@ Just enough of each language and tool to build the course system, each placed im
 | lang.01 | Python and numpy: arrays, dtypes, broadcasting, views vs copies, `uv` projects | L0.0, rt.01 loader, L0.1 | P0 |
 | lang.02 | Shell, git, make, processes: exit codes, signals, environment, pipes | craft.01, every `ss` verdict | P0 |
 | lang.03 | C: memory, pointers, structs, the C11 toolchain, sanitizers, headers and linkage | rt.01, M03.1 | P1 |
-| lang.04 | Rust: ownership, traits, `Result`, cargo workspaces, `extern "C"`, std TCP | L10.0, ds.05, L1.5 | P1 |
+| lang.04 | Rust: ownership, traits, `Result`, cargo workspaces, std TCP | L10.0, ds.05, L1.5 | P1 |
 | lang.05 | HTTP/1.1, JSON, and Server-Sent Events from the wire up | L10.0, gw.00 | P1 |
 | lang.06 | Go: packages, interfaces, goroutines, channels, `context`, `net/http`, `testing` | gw.00, dur.01, load.01 | P1 |
 | lang.07 | Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind | dep.00 | P1 |
@@ -43,8 +43,8 @@ Just enough of each language and tool to build the course system, each placed im
 |---|---|---|---|---|
 | 1 | `lang.01` | [Python and numpy: arrays, dtypes, broadcasting, views vs copies, uv projects](01-python-and-numpy.md) | practice | 0 |
 | 2 | `lang.02` | [Shell, git, make, processes: exit codes, signals, environment, pipes](02-shell-git-make.md) | practice | 0 |
-| 3 | `lang.03` | [C: memory, pointers, structs, the C11 toolchain, sanitizers, headers and linkage](03-c.md) | practice | 1 |
-| 4 | `lang.04` | [Rust: ownership, traits, Result, cargo workspaces, extern "C", std TCP](04-rust.md) | practice | 1 |
+| 3 | `lang.03` | [C: memory, pointers, structs, headers, and the C11 toolchain](03-c.md) | practice | 1 |
+| 4 | `lang.04` | [Rust: ownership, traits, Result, cargo workspaces, std TCP](04-rust.md) | practice | 1 |
 | 5 | `lang.05` | [HTTP/1.1, JSON, and Server-Sent Events from the wire up](05-http-and-sse.md) | practice | 1 |
 | 6 | `lang.06` | [Go: packages, interfaces, goroutines, channels, context, net/http, testing](06-go.md) | practice | 1 |
 | 7 | `lang.07` | [Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind](07-containers-and-kubernetes.md) | practice | 1 |

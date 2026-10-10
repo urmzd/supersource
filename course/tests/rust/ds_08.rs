@@ -5,8 +5,8 @@
 //! course/oracle/ds.08/bloom_golden.py (course/fixtures/parity/bloom.json).
 //! JSON is read with the small parser in `mod j`. Random items come from the
 //! PCG32 transcribed from contracts/spec/pcg32.md (the frozen generator, D35).
-//! The Python half (course/tests/ds.08/) drives the same filter through
-//! tinyllm_rs.
+//! The corpus pipeline has a separate Python Bloom implementation; these
+//! tests exercise the Rust module and its serialized format.
 
 use tl_ds::bloom::{fnv1a64, mix64, optimal_k, optimal_m, predicted_fp_rate, Bloom, BloomError, HEADER_LEN};
 

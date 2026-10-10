@@ -1,25 +1,25 @@
 <!-- ss:module lang.04 -->
-# Rust: ownership, traits, Result, cargo workspaces, extern "C", std TCP
+# Rust: ownership, traits, Result, cargo workspaces, std TCP
 
 ## Overview
 
 | | |
 |---|---|
 | **Module** | `lang.04` · practice · Rust · Pass 1 · 5 to 7 h |
-| **You build** | `primers/lang.04/`: a Cargo workspace with a library `lineproto` (parse one request line, answer it, call C's `strlen`) and a binary `echo` (a line-protocol server on `std::net`, one thread per connection) |
+| **You build** | `primers/lang.04/`: a Cargo workspace with a library `lineproto` (parse one request line, answer it, compare UTF-8 byte and character lengths) and a binary `echo` (a line-protocol server on `std::net`, one thread per connection) |
 | **Contract** | none: the protocol table and the signatures in section 4 are the contract |
 | **Tests** | `course/tests/lang.04/check` builds your workspace, runs your own `cargo test`, then runs `test_lang04_echo.py` against your server over real TCP (what each test checks: section 4) |
-| **Needs** | reading: `lang.03` C (pointers, NUL-terminated strings, linking) and `lang.02` (processes, exit codes, signals) |
-| **Used by** | no call site (a primer): `L10.0` applies it next (a std-only Rust server that calls C), then `ds.05` and `L1.5` |
+| **Needs** | `lang.02` (processes, exit codes, signals); `lang.03` is useful background for comparing byte strings |
+| **Used by** | no call site (a primer): `L10.0` applies the Rust server and workspace patterns, then `ds.05` and `L1.5` |
 | **Milestone** | `MS-P1` |
-| **Optional depth** | [The Rust Programming Language](https://doc.rust-lang.org/book/) (free), ch. 4 (ownership), 6 (enums), 9 (errors), 10 (traits), 14 (workspaces), 16 (threads), 21 (a multithreaded web server); [Rust by Example](https://doc.rust-lang.org/rust-by-example/) (free); [std::net](https://doc.rust-lang.org/std/net/) docs (free); [The Rustonomicon, FFI](https://doc.rust-lang.org/nomicon/ffi.html) (free) |
+| **Optional depth** | [The Rust Programming Language](https://doc.rust-lang.org/book/) (free), ch. 4 (ownership), 6 (enums), 9 (errors), 10 (traits), 14 (workspaces), 16 (threads), 21 (a multithreaded web server); [Rust by Example](https://doc.rust-lang.org/rust-by-example/) (free); [std::net](https://doc.rust-lang.org/std/net/) docs (free) |
 
 ## Key Takeaways
 
 - Every value has exactly one **owner**; assigning or passing it **moves** it, and references **borrow** it without taking ownership. The compiler checks these rules, which is how Rust frees memory without a garbage collector and without use-after-free (`test_two_clients_at_once` moves each socket into its own thread).
 - Failure is a value: a function that can fail returns `Result<T, E>`, and `?` passes the error up. `unwrap()` turns an error into a crash; a server answers errors instead (`test_errors_are_replies_not_crashes`).
 - A **trait** is a set of methods a type promises. `Display` gives your error its text, `Read`/`Write`/`BufRead` are what make a socket, a file, and a byte slice interchangeable.
-- `extern "C"` declares a C function so Rust can call it; the call is `unsafe` because the compiler cannot check C. A C string ends at its first NUL byte, a Rust string does not, so crossing the boundary needs `CString` (`test_len_rejects_an_interior_nul`).
+- A Rust `str` is valid UTF-8; `.len()` counts its bytes and `.chars().count()` counts Unicode scalar values. NUL is ordinary string content (`test_len_counts_nul_as_a_byte`).
 - TCP is a **byte stream**, not a message stream: one `read` can hold half a line or three lines. A buffered reader that splits on `\n` is the fix (`test_several_lines_in_one_packet`, `test_a_line_split_across_packets`).
 
 ## How to work this chapter
@@ -108,9 +108,8 @@ enum Command { Ping, Echo(String), Len(String), Quit }
 C reports failure through a return code that the caller may ignore (`lang.03`); Python raises an exception that unwinds the stack. Rust returns it: a function that can fail returns `Result<T, E>`, which is `Ok(value)` or `Err(error)`, and the caller cannot reach the value without deciding what to do with the error.
 
 ```rust
-fn c_strlen(text: &str) -> Result<usize, ProtoError> {
-    let c = CString::new(text).map_err(|_| ProtoError::NulByte)?;
-    ...
+fn parse(line: &str) -> Result<Command, ProtoError> {
+    // return Ok(command) or Err(error), depending on the request
 }
 ```
 
@@ -145,20 +144,18 @@ Traits are also how one function works on many types. The standard I/O traits:
 
 A function written as `fn f<R: BufRead>(r: &mut R)` is **generic**: it works for any type `R` that implements `BufRead`, a socket in the server and a byte slice in a test.
 
-### 2.6 Calling C: `extern "C"` and `unsafe`
+### 2.6 Strings, bytes, and UTF-8
 
-An **ABI** (application binary interface) is the machine-level calling convention: which registers hold which arguments and the return value. C's ABI is the one every language can speak, which is why your engine and your Python both reach `libtinyllm` through it (`rt.01`). In Rust:
+A Rust `str` is valid UTF-8. Its `.len()` is the number of bytes in that encoding; `.chars().count()` is the number of Unicode scalar values. These differ when a character needs more than one UTF-8 byte: `"héllo"` has six bytes and five scalar values. A Rust string can also contain a NUL byte; it is ordinary content because the string carries an explicit length rather than ending at a sentinel.
 
 ```rust
-use std::os::raw::c_char;
-extern "C" {
-    fn strlen(s: *const c_char) -> usize;   // must match <string.h> exactly
-}
+let text = "héllo";
+assert_eq!(text.len(), 6);              // UTF-8 bytes
+assert_eq!(text.chars().count(), 5);   // Unicode scalar values
+assert_eq!("a\0b".len(), 3);            // NUL is included
 ```
 
-declares a function that the linker will find in a C library. The C standard library is linked into every Rust program already, so this declaration is all `strlen` needs; `L10.0` links your own `libtinyllm.a`. The compiler cannot check that the declaration matches the C prototype, nor what C does with the pointer, so every call is **unsafe**: it must sit in an `unsafe { ... }` block, which says "I, not the compiler, checked the rules here". The convention is a `// SAFETY:` comment saying why the call is sound.
-
-Strings differ across the boundary. A Rust `&str` is a pointer and a **length**, and may contain the byte 0 (NUL). A C string is a pointer to bytes that **end at the first NUL**. `CString::new(text)` copies the text and appends a NUL; it returns an error if the text already contains a NUL, because C would silently see a shorter string. `.as_ptr()` gives the `*const c_char` to pass, valid as long as the `CString` is alive.
+The `LEN` command makes this distinction observable over the wire. Since its line parser has already validated UTF-8, `.len()` gives the byte count needed by byte-oriented protocols without unsafe code or a foreign-library call.
 
 ### 2.7 TCP with `std::net`
 
@@ -204,7 +201,7 @@ mod tests {
 
 ## 3. Worked example by hand
 
-The session below is what `test_ping_pong`, `test_echo_returns_the_text_byte_for_byte`, `test_len_counts_utf8_bytes_through_strlen`, `test_several_lines_in_one_packet`, and `test_quit_says_bye_and_closes` replay. Client bytes are on the left, server bytes on the right; `\n` is the byte `0x0a`.
+The session below is what `test_ping_pong`, `test_echo_returns_the_text_byte_for_byte`, `test_len_counts_utf8_bytes`, `test_several_lines_in_one_packet`, and `test_quit_says_bye_and_closes` replay. Client bytes are on the left, server bytes on the right; `\n` is the byte `0x0a`.
 
 | Client sends | Server answers | Why |
 |---|---|---|
@@ -220,10 +217,10 @@ The session below is what `test_ping_pong`, `test_echo_returns_the_text_byte_for
 1. The line's bytes are `4c 45 4e 20 68 c3 a9 6c 6c 6f 0a`. `é` is the code point U+00E9, which UTF-8 writes as two bytes, `c3 a9`.
 2. `std::str::from_utf8` accepts them: `Ok("LEN héllo\n")`.
 3. `parse` strips the `\n` (and a `\r` if one came before it), splits at the first space into `"LEN"` and `"héllo"`, and returns `Ok(Command::Len("héllo".to_string()))`.
-4. `respond` calls `c_strlen("héllo")`: `CString::new` copies the six bytes `68 c3 a9 6c 6c 6f` and appends `00`. C's `strlen` counts bytes up to the NUL: 6.
+4. `respond` calls `byte_len("héllo")`. Rust's `str.len()` counts its six UTF-8 bytes: `68 c3 a9 6c 6c 6f`.
 5. The reply is `"6"`, and the server writes `6\n`.
 
-`"héllo".chars().count()` is 5 (characters); `.len()` is 6 (bytes). `strlen` is about bytes, which is the answer the test expects.
+`"héllo".chars().count()` is 5 Unicode scalar values; `.len()` is 6 bytes. An interior NUL is counted too: `LEN a\0b` replies `3`.
 
 Try it with your server running (`cargo run -p echo -- --port 7878`) and `nc 127.0.0.1 7878` in another terminal; type the lines. `printf 'PING\nECHO a\nLEN abc\n' | nc 127.0.0.1 7878` sends three lines in one write.
 
@@ -244,24 +241,24 @@ The protocol. One request is one line ending in `\n`; a `\r` right before the `\
 |---|---|---|
 | `PING` | `PONG` | stays open |
 | `ECHO <text>` | `<text>`, byte for byte | stays open |
-| `LEN <text>` | the byte length of `<text>`, computed by C's `strlen` | stays open |
+| `LEN <text>` | the UTF-8 byte length of `<text>`, computed by `str.len()` | stays open |
 | `QUIT` | `BYE` | the server closes it |
 | an empty line | `ERR empty line` | stays open |
 | bytes that are not UTF-8 | `ERR invalid utf-8` | stays open |
 | any other word `W` | `ERR unknown command W` | stays open |
-| `LEN` text holding a NUL byte | `ERR nul byte` | stays open |
+| `LEN a\0b` | `3` (NUL is ordinary string content) | stays open |
 
 The library's interface, in `lineproto/src/lib.rs`:
 
 ```rust
 pub enum Command { Ping, Echo(String), Len(String), Quit }
-pub enum ProtoError { Empty, InvalidUtf8, Unknown(String), NulByte }
+pub enum ProtoError { Empty, InvalidUtf8, Unknown(String) }
 impl fmt::Display for ProtoError { ... }            // the text after "ERR "
 impl std::error::Error for ProtoError {}
 
 pub fn parse(line: &str) -> Result<Command, ProtoError>;      // line with or without "\n" / "\r\n"
-pub fn c_strlen(text: &str) -> Result<usize, ProtoError>;     // CString + extern "C" strlen
-pub fn respond(cmd: &Command) -> Result<String, ProtoError>;  // reply text, no "\n"
+pub fn byte_len(text: &str) -> usize;                         // UTF-8 bytes, NUL included
+pub fn respond(cmd: &Command) -> String;                      // reply text, no "\n"
 pub fn reply(line: &[u8]) -> (String, bool);                  // the whole protocol: (reply, close?)
 ```
 
@@ -276,8 +273,8 @@ The binary, `echo/src/main.rs`: `echo --port <n>` binds `127.0.0.1:<n>` (no flag
 | `test_ping_pong` | unit | section 3's first exchange | one request in, one reply out |
 | `test_echo_returns_the_text_byte_for_byte` | unit | text after the first space, spaces and non-ASCII kept | a server never edits the payload it relays |
 | `test_crlf_line_endings_are_accepted` | boundary | `PING\r\n` is `PING` | HTTP lines end in `\r\n` (`lang.05`) |
-| `test_len_counts_utf8_bytes_through_strlen` | unit | `LEN héllo` is 6 through C | the byte tokenizer counts bytes, not characters (`L10.0`) |
-| `test_len_rejects_an_interior_nul` | boundary | `ERR nul byte`, connection usable | a C string cannot carry a NUL |
+| `test_len_counts_utf8_bytes` | unit | `LEN héllo` is 6 bytes, not 5 scalar values | byte protocols count encoded bytes |
+| `test_len_counts_nul_as_a_byte` | boundary | `LEN a\0b` is 3; the connection remains usable | Rust strings carry NUL as content |
 | `test_errors_are_replies_not_crashes` | boundary | unknown command, empty line, invalid UTF-8, lower case | bad input gets an answer, never a dead thread |
 | `test_quit_says_bye_and_closes` | unit | `BYE`, then end of stream | the server, not the client, ends some exchanges |
 | `test_several_lines_in_one_packet` | boundary | three lines in one write get three replies | TCP is a byte stream |
@@ -292,28 +289,26 @@ The binary, `echo/src/main.rs`: `echo --port <n>` binds `127.0.0.1:<n>` (no flag
 | Reading with one `stream.read(&mut buf)` and treating the result as one line | three pipelined requests get one reply; a slow client's half line gets `ERR unknown command PI` | `test_several_lines_in_one_packet`, `test_a_line_split_across_packets` |
 | Serving connections in the accept loop instead of a thread each | the second client hangs until the first one leaves | `test_two_clients_at_once` |
 | Leaving the `\r` on the line | `nc` and `telnet` users get `ERR unknown command PING` | `test_crlf_line_endings_are_accepted` |
-| Passing `text.as_ptr()` of a `&str` straight to `strlen` | reads past the end of the string (no NUL) or stops early at an inner NUL: wrong numbers, sometimes a crash | `test_len_counts_utf8_bytes_through_strlen`, `test_len_rejects_an_interior_nul` |
 | `.unwrap()` on `from_utf8`, `parse`, or a socket read | one bad line kills that client's thread; the client sees the connection drop with no reply | `test_errors_are_replies_not_crashes`, `test_a_client_vanishing_mid_line_leaves_the_server_up` |
 | Splitting the text on whitespace (`split_whitespace`) | `ECHO  two  spaces` comes back as `two spaces` | `test_echo_returns_the_text_byte_for_byte` |
-| Counting characters for `LEN` (`chars().count()`) | `LEN héllo` answers 5 | `test_len_counts_utf8_bytes_through_strlen` |
+| Counting Unicode scalar values for `LEN` (`chars().count()`) | `LEN héllo` answers 5 instead of 6 bytes | `test_len_counts_utf8_bytes` |
 | Printing the port before binding, or not printing `listening on ...` first | the check cannot find your server and every server test errors | `test_ping_pong` |
 
 ## 6. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `lang.03` | C strings end at NUL; pointers and lengths; a library linked into a program |
+| Back | `lang.03` | compare C byte buffers with Rust's length-carrying strings |
 | Back | `lang.02` | processes, exit codes (your `echo` exits 2 on a bad flag) |
-| Forward | `L10.0` | your engine is this server grown up: `TcpListener`, a thread per connection, a `BufRead` parser, and an `extern "C"` block (`tl-sys`) that calls your `tl_matmul_f32` |
+| Forward | `L10.0` | your engine is this server grown up: `TcpListener`, a thread per connection, a `BufRead` parser, and candle-based inference |
 | Forward | `lang.05` | the same server shape, speaking HTTP/1.1, JSON, and SSE instead of lines |
 | Forward | `ds.05` | traits and generics (`Hash`, `Eq`, `BuildHasher`) in your Robin Hood map |
-| Forward | `L1.5` | a workspace of crates (`tl-tok`, `tl-py`) and a binding to Python |
+| Forward | `L1.5` | a Rust tokenizer crate whose Python parity is checked with shared fixtures |
 
 ## Going further
 
 | Your piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | a thread per connection | async runtimes ([tokio](https://tokio.rs/)) | thousands of connections on a few threads, cancellation, timeouts | `lang.09`; the Book, ch. 17 |
-| a hand-written `extern "C"` block | [bindgen](https://rust-lang.github.io/rust-bindgen/) | generates the declarations from the C header | `L10.1` keeps them by hand on purpose |
 | `BufReader::read_until` line framing | [tokio-util codecs](https://docs.rs/tokio-util/latest/tokio_util/codec/) | reusable framers (lines, length prefixes) over async streams | `LinesCodec` |
 | `cargo test` | [cargo-nextest](https://nexte.st/), [Miri](https://github.com/rust-lang/miri) | faster parallel runs; an interpreter that catches undefined behavior in `unsafe` code | nightly `cargo miri test` |

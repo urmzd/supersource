@@ -10,7 +10,7 @@ reading   = []
 # Catalog call sites: M09.5 (C rsqrt, B8) ports rsqrt_newton and checks
 # against it; M10.6 (optional Newton-Schulz). Neither is in the registry
 # yet, and the mirror rule only accepts registered modules (DEVIATIONS B31-03).
-used_by   = ["M09.5"]
+used_by   = []
 units     = ["python/tinyllm/num/newton.py"]
 upgrades  = []
 milestone = "MS-P2"

@@ -25,7 +25,10 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use tl_sys::KvPool;
+use crate::model::Arch;
+use crate::kv::KvPool;
+use crate::forward::{ForwardBatch, ForwardSeq};
+use crate::runner::{lock, ModelRunner};
 
 use crate::sample::{apply_penalties, argmax, distribution, logprob_of, sample, stream, Pcg32, SamplingParams, PURPOSE_SAMPLE};
 
@@ -391,6 +394,82 @@ pub trait Target {
     fn extend(&mut self, ids: &[u32]) -> Result<Vec<Vec<f32>>, SpecError>;
     /// Drops cached positions at and past `len`.
     fn truncate(&mut self, len: usize) -> Result<(), SpecError>;
+}
+
+/// A request-local speculative target backed by the production model runner.
+/// The temporary blocks belong to this request and are returned on drop.
+pub struct RunnerTarget<'a> {
+    runner: &'a mut ModelRunner,
+    blocks: Vec<u32>,
+    cached: usize,
+}
+
+impl<'a> RunnerTarget<'a> {
+    pub fn new(runner: &'a mut ModelRunner) -> RunnerTarget<'a> {
+        RunnerTarget { runner, blocks: Vec::new(), cached: 0 }
+    }
+}
+
+impl Target for RunnerTarget<'_> {
+    fn cached(&self) -> usize { self.cached }
+
+    fn extend(&mut self, ids: &[u32]) -> Result<Vec<Vec<f32>>, SpecError> {
+        if ids.is_empty() { return Ok(Vec::new()); }
+        let bt = self.runner.block_tokens();
+        let need = blocks_for(self.cached + ids.len(), bt);
+        if need > self.blocks.len() {
+            let pool = self.runner.pool();
+            let mut pool = lock(&pool).map_err(|e| SpecError::Kv(e.to_string()))?;
+            let more = pool.alloc(need - self.blocks.len()).map_err(|e| SpecError::Kv(e.to_string()))?;
+            self.blocks.extend(more);
+        }
+        let mut rows = Vec::with_capacity(ids.len());
+        if self.runner.config().arch == Arch::Bigram {
+            // The byte-bigram runner's batch dimension is sequences, and it
+            // emits one row after each sequence's final token. Score each
+            // speculative position as a one-token sequence.
+            for (offset, token) in ids.iter().enumerate() {
+                let one = std::slice::from_ref(token);
+                let batch = ForwardBatch { seqs: vec![ForwardSeq { tokens: one, start: self.cached + offset, blocks: &self.blocks }] };
+                let logits = self.runner.forward(&batch).map_err(|e| SpecError::Target(e.to_string()))?;
+                rows.push(logits.row(0).to_vec());
+            }
+        } else {
+            let batch = ForwardBatch { seqs: vec![ForwardSeq { tokens: ids, start: self.cached, blocks: &self.blocks }] };
+            let logits = self.runner.forward(&batch).map_err(|e| SpecError::Target(e.to_string()))?;
+            rows.extend(logits.data.chunks_exact(logits.vocab).map(<[f32]>::to_vec));
+        }
+        self.cached += ids.len();
+        Ok(rows)
+    }
+
+    fn truncate(&mut self, len: usize) -> Result<(), SpecError> {
+        if len > self.cached { return Err(SpecError::Shape(format!("cannot extend cache by truncating to {len}"))); }
+        let bt = self.runner.block_tokens();
+        let keep = blocks_for(len, bt);
+        let pool = self.runner.pool();
+        let mut pool = lock(&pool).map_err(|e| SpecError::Kv(e.to_string()))?;
+        for id in self.blocks.drain(keep..) { pool.release(id).map_err(|e| SpecError::Kv(e.to_string()))?; }
+        if len > 0 && len % bt != 0 {
+            pool.set_fill(self.blocks[keep - 1], (len % bt) as u32).map_err(|e| SpecError::Kv(e.to_string()))?;
+        }
+        self.cached = len;
+        Ok(())
+    }
+}
+
+impl Drop for RunnerTarget<'_> {
+    fn drop(&mut self) {
+        let shared_pool = self.runner.pool();
+        if let Ok(mut pool) = lock(&shared_pool) {
+            for id in self.blocks.drain(..) { let _ = pool.release(id); }
+        };
+    }
+}
+
+/// Run speculative decoding directly against the production model runner.
+pub fn generate_with_runner(runner: &mut ModelRunner, cfg: &SpecConfig, prompt: &[u32], p: &SamplingParams, seed: u64, max_new: usize, eos: &[u32]) -> Result<Generated, SpecError> {
+    generate(&mut RunnerTarget::new(runner), cfg, prompt, p, seed, max_new, eos)
 }
 
 /// Counters behind `tl.engine.spec_accept_rate`.

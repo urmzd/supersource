@@ -1,7 +1,6 @@
-"""Course tests for L8.3: the paged KV cache in Python over your C block pool.
+"""Course tests for L8.3: the paged KV cache in pure Python.
 
-PagedKVCache keeps block tables in Python and every K and V value in rt.04's
-tl_kv_pool, reached through your rt.01 loader. The oracle is a contiguous
+PagedKVCache keeps K and V values in NumPy blocks. The oracle is a contiguous
 float16 cache: your L8.2 KVCache(dtype=np.float16) in the decoding
 differential (the catalog's E test), and a small numpy one written here for
 the tests that fork and free sequences, which KVCache does not model. Paged
@@ -11,7 +10,6 @@ Random inputs come from the frozen PCG32 (course/tests/_lib).
 
 from __future__ import annotations
 
-import ctypes
 import os
 
 import numpy as np
@@ -19,34 +17,10 @@ import pytest
 from _lib.close import assert_close
 from _lib.pcg32 import PCG32
 
-from tinyllm.ffi.libtinyllm import load
 from tinyllm.infer.kvcache import KVCache
 from tinyllm.infer.paged import OutOfBlocks, PagedKVCache
 
 SEED = int(os.environ.get("SS_SEED", "0"))
-
-
-def lib():
-    L = load()
-    L.declare("tl_kv_fill", ctypes.c_uint32, [ctypes.c_void_p, ctypes.c_uint32])
-    L.declare(
-        "tl_kv_block_ptr",
-        ctypes.c_void_p,
-        [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_int],
-    )
-    return L
-
-
-def raw_slab(cache: PagedKVCache, block: int, layer: int, is_v: int) -> np.ndarray:
-    """The slab exactly as kv_pool.h lays it out: [n_kv_heads][block_size][d_head] f16."""
-    ptr = cache.lib.tl_kv_block_ptr(cache.pool, int(block), layer, is_v)
-    n = cache.n_kv_heads * cache.block_size * cache.d_head
-    buf = (ctypes.c_uint16 * n).from_address(ptr)
-    return (
-        np.frombuffer(buf, dtype=np.float16)
-        .reshape(cache.n_kv_heads, cache.block_size, cache.d_head)
-        .copy()
-    )
 
 
 def rand(g: PCG32, shape, scale=1.0) -> np.ndarray:
@@ -88,11 +62,11 @@ def test_hand_example_block_table():
     # WHY: the chapter's worked example. block_size 2, one layer, one head,
     #      d_head 2; five tokens appended one at a time need ceil(5/2) = 3
     #      blocks, and token 4 sits in slot 0 of the third block. Reading
-    #      that slot straight from C memory checks the address arithmetic.
+    #      that slot through gather checks the page-table address arithmetic.
     # KIND: unit, smoke
     # CATCHES: s01, s02
     # CHAPTER: L8.3 section 3
-    with PagedKVCache(lib(), 4, 2, 1, 1, 2) as c:
+    with PagedKVCache(4, 2, 1, 1, 2) as c:
         c.add_seq(0)
         for t in range(5):
             k = np.array([[[t + 0.5, -t]]], np.float32)
@@ -107,38 +81,31 @@ def test_hand_example_block_table():
             and len(set(table.tolist())) == 3
         )
         assert c.seq_len(0) == 5
-        assert raw_slab(c, table[2], 0, 0)[0, 0].tolist() == [4.5, -4.0]
-        assert raw_slab(c, table[2], 0, 1)[0, 0].tolist() == [-4.5, 4.0]
-        assert raw_slab(c, table[0], 0, 0)[0, 1].tolist() == [1.5, -1.0]
         K, V = c.gather(0, 0)
         assert K.dtype == np.float16 and K.shape == (1, 5, 2)
         assert K[0, :, 0].tolist() == [0.5, 1.5, 2.5, 3.5, 4.5]
+        assert V[0, :, 0].tolist() == [-0.5, -1.5, -2.5, -3.5, -4.5]
         assert c.stats() == {"free": 1, "used": 3, "cached": 0, "evictions": 0}
         assert c.num_free_blocks() == 1
 
 
-def test_slab_layout_is_heads_tokens_dims():
-    # WHY: L9.4's paged attention kernel reads the slab as
-    #      [n_kv_heads][block_size][d_head]. Writing heads and positions in
-    #      another order still round-trips through your own gather, so this
-    #      test reads C memory directly: head h, position p, dim d of a
-    #      chunk append lands at slab[h, p % B, d] of block table[p // B].
+def test_gather_preserves_head_token_dimension_order():
+    # WHY: the public gather layout is [heads, tokens, dimensions]. Writing
+    #      chunk appends in another order would corrupt L8.2's attention input.
     # KIND: unit
     # CATCHES: s03
     # CHAPTER: L8.3 section 2
     g = PCG32(SEED, 11)
     H, B, D = 3, 4, 5
-    with PagedKVCache(lib(), 4, B, 2, H, D) as c:
+    with PagedKVCache(4, B, 2, H, D) as c:
         c.add_seq(7)
         for layer in range(2):
             k, v = rand(g, (H, 6, D)), rand(g, (H, 6, D))
             c.append(7, layer, k, v)
-            t = c.block_table(7)
-            for p in range(6):
-                kk = raw_slab(c, t[p // B], layer, 0)[:, p % B, :]
-                vv = raw_slab(c, t[p // B], layer, 1)[:, p % B, :]
-                assert (kk == k[:, p, :].astype(np.float16)).all()
-                assert (vv == v[:, p, :].astype(np.float16)).all()
+            got_k, got_v = c.gather(7, layer)
+            assert got_k.shape == (H, 6, D) and got_k.dtype == np.float16
+            assert np.array_equal(got_k, k.astype(np.float16))
+            assert np.array_equal(got_v, v.astype(np.float16))
 
 
 def test_gather_matches_contiguous_float16():
@@ -151,7 +118,7 @@ def test_gather_matches_contiguous_float16():
     g = PCG32(SEED, 12)
     L_, H, B, D = 3, 2, 4, 3
     ref = Contiguous(L_, H, D)
-    with PagedKVCache(lib(), 32, B, L_, H, D) as c:
+    with PagedKVCache(32, B, L_, H, D) as c:
         for s in (1, 2):
             c.add_seq(s)
             ref.add(s)
@@ -177,7 +144,7 @@ def test_fork_shares_until_a_write():
     # KIND: unit
     # CATCHES: s06, s07
     # CHAPTER: L8.3 section 3
-    with PagedKVCache(lib(), 8, 2, 1, 1, 1) as c:
+    with PagedKVCache(8, 2, 1, 1, 1) as c:
         c.add_seq(0)
         for t in range(3):  # blocks: [t0 t1] [t2 .]
             c.append(0, 0, [[[t]]], [[[t]]])
@@ -203,7 +170,7 @@ def test_free_restores_the_pool():
     # KIND: unit
     # CATCHES: s08, s09
     # CHAPTER: L8.3 section 4
-    with PagedKVCache(lib(), 6, 2, 2, 1, 2) as c:
+    with PagedKVCache(6, 2, 2, 1, 2) as c:
         c.add_seq(0)
         for layer in range(2):
             c.append(0, layer, np.ones((1, 5, 2)), np.ones((1, 5, 2)))
@@ -225,7 +192,7 @@ def test_out_of_blocks_changes_nothing():
     # KIND: fault
     # CATCHES: s10, s11
     # CHAPTER: L8.3 section 5, Pitfalls
-    with PagedKVCache(lib(), 4, 2, 1, 1, 1) as c:
+    with PagedKVCache(4, 2, 1, 1, 1) as c:
         c.add_seq(0)
         c.append(0, 0, [[[1], [2], [3]]], [[[1], [2], [3]]])  # 2 blocks used, 2 free
         before = c.stats()
@@ -237,7 +204,7 @@ def test_out_of_blocks_changes_nothing():
         assert c.stats() == before
         c.append(0, 0, six[:, :5], six[:, :5])  # positions 3..7 need exactly 2
         assert c.gather(0, 0)[0][0, :, 0].tolist() == [1, 2, 3, 4, 5, 6, 7, 8]
-    with PagedKVCache(lib(), 2, 2, 1, 1, 1) as c:
+    with PagedKVCache(2, 2, 1, 1, 1) as c:
         c.add_seq(0)
         c.append(0, 0, [[[1], [2], [3], [4]]], [[[1], [2], [3], [4]]])
         c.fork(0, 1)
@@ -246,24 +213,24 @@ def test_out_of_blocks_changes_nothing():
         assert c.seq_len(1) == 4 and c.stats()["used"] == 2
 
 
-def test_fill_counts_positions_every_layer_holds():
-    # WHY: a block's fill (what tl_kv_export sends and a prefix cache may
-    #      register once full) is the positions EVERY layer has written. Mid
-    #      step, layer 0 is ahead of layer 1; the fill must follow the
-    #      slowest layer, or an export would ship garbage for layer 1.
+def test_layers_keep_independent_lengths():
+    # WHY: each layer appends separately during a decode step. The page table
+    #      spans the longest layer while gather exposes only each layer's own
+    #      initialized positions.
     # KIND: unit
     # CATCHES: s12
     # CHAPTER: L8.3 section 2
-    L = lib()
-    with PagedKVCache(L, 4, 4, 2, 1, 1) as c:
+    with PagedKVCache(4, 4, 2, 1, 1) as c:
         c.add_seq(0)
         c.append(0, 0, np.ones((1, 6, 1)), np.ones((1, 6, 1)))
-        t = c.block_table(0)
-        assert [L.tl_kv_fill(c.pool, int(b)) for b in t] == [0, 0]
+        assert c.block_table(0).shape == (2,)
+        assert c.seq_len(0, 0) == 6 and c.seq_len(0, 1) == 0
+        assert c.gather(0, 1)[0].shape == (1, 0, 1)
         c.append(0, 1, np.ones((1, 5, 1)), np.ones((1, 5, 1)))
-        assert [L.tl_kv_fill(c.pool, int(b)) for b in t] == [4, 1]
+        assert c.seq_len(0, 0) == 6 and c.seq_len(0, 1) == 5
         c.append(0, 1, np.ones((1, 1, 1)), np.ones((1, 1, 1)))
-        assert [L.tl_kv_fill(c.pool, int(b)) for b in t] == [4, 2]
+        assert c.seq_len(0, 1) == 6
+        assert c.gather(0, 1)[0].shape == (1, 6, 1)
 
 
 def test_bad_arguments():
@@ -275,8 +242,8 @@ def test_bad_arguments():
     # CATCHES: s13
     # CHAPTER: L8.3 section 4
     with pytest.raises(ValueError):
-        PagedKVCache(lib(), 0, 2, 1, 1, 1)
-    with PagedKVCache(lib(), 4, 2, 2, 2, 3) as c:
+        PagedKVCache(0, 2, 1, 1, 1)
+    with PagedKVCache(4, 2, 2, 2, 3) as c:
         c.add_seq(0)
         with pytest.raises(ValueError):
             c.add_seq(0)
@@ -372,7 +339,7 @@ def test_paged_matches_contiguous_decoding():
         g.below(m.V) for _ in range(10)
     ]  # 9 fed before the fork: block 2 is shared and partial
     refs = {0: Contiguous82(m.L, m.H, m.D)}
-    with PagedKVCache(lib(), 16, 4, m.L, m.H, m.D) as c:
+    with PagedKVCache(16, 4, m.L, m.H, m.D) as c:
 
         def step(seq, tok, i):
             r = refs[seq]
@@ -427,7 +394,7 @@ def test_random_ops_conserve_blocks():
     ref = Contiguous(L_, H, D)
     live: list[int] = []
     nxt = 0
-    with PagedKVCache(lib(), N, B, L_, H, D) as c:
+    with PagedKVCache(N, B, L_, H, D) as c:
         for _ in range(10_000):
             op = g.below(10)
             if op < 2 or not live:

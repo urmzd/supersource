@@ -187,6 +187,17 @@ def assemble(
             _copy_dropping_markers(ref / sub, lr / sub)
     if (ref / "entry").is_dir():
         _copy_dropping_markers(ref / "entry", lr)
+    # The reference crates live under course/ref/rust, one level deeper than
+    # the learner's rust tree. Rebase paths into vendored contracts before
+    # Cargo resolves the learner workspace during the build step.
+    engine_manifest = lr / "rust" / "crates" / "tl-engine" / "Cargo.toml"
+    if engine_manifest.is_file():
+        manifest = engine_manifest.read_text()
+        manifest = manifest.replace(
+            '../../../../contracts/rust/tl-proto',
+            '../../../contracts/rust/tl-proto',
+        )
+        engine_manifest.write_text(manifest)
     if (ref / "system.toml").is_file():
         shutil.copy2(ref / "system.toml", lr / "system.toml")
     _lock(lr, env)

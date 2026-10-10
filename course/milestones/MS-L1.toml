@@ -1,10 +1,10 @@
 # MS-L1: the Part 1 milestone (DESIGN 4.3 "MS-L1", 5.7, 7.2). MS-P3 includes it.
 # Page: paths/course-p03-tokens-and-data/milestone.md
 #
-# Your tokenizers, run through your own entry points: the Python BPE (L1.2)
+# Your tokenizers, run through their own entry points: the Python BPE (L1.2)
 # trains a vocabulary and encodes exactly like Hugging Face on GPT-2's and
-# SmolLM2's tokenizer.json; your Rust tl-tok (L1.5) does the same, and is
-# faster (the speedups are local perf steps, asserted only by `ss bench`).
+# SmolLM2's tokenizer.json; Rust tl-tok (L1.5) independently reads the same
+# files and is checked against the same frozen id fixtures.
 #
 # This file fixes the Pass 3 tokenizer verbs of your `tinyllm` and `tl-tok`
 # roles (spec/cli-roles.md, "Verbs of later passes"). Every verb keeps the
@@ -18,19 +18,13 @@
 #       {"out": "<dir>", "algo": "bpe", "vocab_size": N, "merges": <int>, "bytes_per_token": <float>}
 #       with bytes_per_token measured on the training file.
 #
-#   {tinyllm} tok encode --tokenizer <tokenizer.json> --in <texts.jsonl> [--impl python|rust]
-#       Encodes every text with your Python BPE (or, with --impl rust,
-#       tinyllm_rs). Final line:
+#   {tinyllm} tok encode --tokenizer <tokenizer.json> --in <texts.jsonl>
+#       Encodes every text with your Python BPE. Final line:
 #       {"ids": [every id of every text, in order], "texts": <int>, "tokens": <int>, "bytes_per_token": <float>}
 #
-#   {tinyllm} tok bench --impl rust --tokenizer <tokenizer.json> --in <texts.jsonl> [--threads T] [--repeat R]
-#       Times your Python BPE (a fresh tokenizer per repetition), tinyllm_rs
-#       encode_batch on one thread, and tinyllm_rs encode_batch
-#       on T threads (best of R). Final line includes
-#       {"rust_speedup": t_python / t_rust, "batch_speedup": t_rust / t_batch, ...}
-#
 #   {tl-tok} encode --tokenizer <tokenizer.json> --in <texts.jsonl>
-#       The same final line as `tok encode`, from your Rust binary.
+#       Encodes every text with the independent Rust BPE. Its output is
+#       compared with the same fixture ids as the Python command.
 #
 #   {tl-tok} bench --tokenizer <tokenizer.json> --in <texts.jsonl> [--threads T] [--repeat R]
 #       Final line includes {"tokens_per_s": <float>, "batch_speedup": t_serial / t_batch}.
@@ -92,18 +86,7 @@ argv      = ["encode", "--tokenizer", "{fixture:tok-smollm2/tokenizer.json}", "-
 expect    = { match = "tokens-equal", file = "course/fixtures/MS-L1/smollm2.ids.json" }
 timeout_s = 120
 
-# -- 4. faster (local perf steps; `ss bench` asserts them, never CI) ---------------------
-# On story text, where words repeat as in TinyStories: the reference measured
-# rust_speedup 23.8 and batch_speedup 1.9 to 2.2 on an Apple M-series laptop.
-# On L1.5's golden strings, built to be rare, the same code is about 8x.
-[[step]]
-name      = "rust-speedup"
-ci        = "local"
-run       = "tinyllm"
-argv      = ["tok", "bench", "--impl", "rust", "--tokenizer", "{fixture:tok-gpt2/tokenizer.json}", "--in", "{fixture:MS-L1/train.txt}", "--threads", "4"]
-expect    = { match = "perf", metric = "rust_speedup", budget = ">= 20" }
-timeout_s = 600
-
+# -- 4. Rust-only batching perf (local, never CI) ----------------------------------------
 [[step]]
 name      = "rust-batch-speedup"
 ci        = "local"

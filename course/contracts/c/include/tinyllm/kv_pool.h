@@ -29,9 +29,6 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define TL_KV_FORMAT_V1 1u
 #define TL_KV_MAGIC "TLKV"        /* the first 4 bytes of an export envelope */
@@ -157,8 +154,5 @@ void tl_kv_stats_get(const tl_kv_pool *p, tl_kv_stats *out);
  * tl_crc32c("123456789", 9, 0) == 0xE3069283. */
 uint32_t tl_crc32c(const void *data, size_t n, uint32_t crc);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_KV_POOL_H */

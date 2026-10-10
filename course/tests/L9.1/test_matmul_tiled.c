@@ -3,7 +3,7 @@
  * (and ThreadSanitizer for the pool case). M03.1's contract still holds
  * (its tests are this module's regression); these tests add the shapes
  * that cross tile edges, the k-blocking, batch invariance, and threads.
- * The ctypes tests against numpy are in test_matmul_tiled_ctypes.py.
+ * Parity with the Python oracle is represented by checked-in fixture files.
  */
 #include <math.h>
 #include <stdlib.h>

@@ -4,8 +4,8 @@
 #include "ss_test.h"
 
 SS_TEST(abi_version_matches_header) {
-    /* WHY: bindings refuse a library whose major ABI version differs from the
-     *      header they were written against.
+    /* WHY: a C consumer can compare the library version with the header's
+     *      version before using the interface.
      * KIND: unit */
     SS_EQ(tl_abi_version(), TL_ABI_VERSION);
 }

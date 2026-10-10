@@ -1,5 +1,5 @@
 //! L10.4 course tests: the block manager with prefix caching (tl-engine
-//! block_manager.rs) over the C KV pool (rt.04) and the radix cache (L8.4).
+//! block_manager.rs) over the Rust KV pool and the radix cache (L8.4).
 //!
 //! Annotated exemplars (DESIGN 5.12). Unit tests drive `BlockManager`
 //! directly with token lists written out in each test and blocks of 4
@@ -19,8 +19,7 @@ use tl_engine::forward::{ForwardBatch, ForwardSeq};
 use tl_engine::runner::{lock, EngineConfig, KvConfig, ModelRunner, PrefixCache, SchedPolicy, SharedPool};
 use tl_engine::sample::{self, Pcg32, SamplingParams};
 use tl_engine::sched::{BlockSpace, Request, RequestEvent, RequestId, Scheduler, SchedulerConfig, StepOutput};
-use tl_sys::kernels::TL_F16;
-use tl_sys::kv::{KvCfg, KvPool, TL_KV_FORMAT_V1};
+use tl_engine::kv::{KvCfg, KvPool, TL_F16, TL_KV_FORMAT_V1};
 
 // ---------------------------------------------------------------------------
 // helpers

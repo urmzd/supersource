@@ -1,17 +1,17 @@
 <!-- ss:module rt.02 -->
-# Arena allocator with marks
+# C runtime support and arena allocator with marks (optional)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `rt.02` · build · C · Pass 6 · 2 to 3 h |
-| **You build** | `c/src/runtime/arena.c`: `tl_arena_create`, `tl_arena_alloc`, `tl_arena_mark_get`, `tl_arena_reset_to`, `tl_arena_stats_get`, `tl_arena_destroy` (the struct is given) |
-| **Contract** | [`course/contracts/c/include/tinyllm/arena.h`](../../../course/contracts/c/include/tinyllm/arena.h) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/rt.02/test_arena.c` (C, under ASan and UBSan with the counting allocator) (what they check: section 4) |
-| **Needs** | [`rt.01` the C ABI](01-the-c-abi.md): `tl_alloc` and `tl_free` (the hook), `tl_set_last_error` (or `--ref-deps`) |
-| **Used by** | `L9.3` FlashAttention takes its query and key tiles and running maxima from a `tl_arena` scratch |
-| **Milestone** | `MS-L9` (your C kernels run the Llama forward; part of the Pass 6 gate) |
+| **Module** | `rt.02` · side · C · Pass 6 · 2 to 3 h |
+| **You build** | `c/src/runtime/abi.c`: status, error, and allocator helpers; `arena.c`: `tl_arena_create`, `tl_arena_alloc`, `tl_arena_mark_get`, `tl_arena_reset_to`, `tl_arena_stats_get`, `tl_arena_destroy` |
+| **Contract** | [`tinyllm/abi.h`](../../../course/contracts/c/include/tinyllm/abi.h) · [`tinyllm/arena.h`](../../../course/contracts/c/include/tinyllm/arena.h) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
+| **Tests** | `course/tests/rt.02/test_abi.c` and `test_arena.c`, standalone C under sanitizers |
+| **Needs** | `lang.03` for C pointers, `size_t`, and compiling a standalone test binary |
+| **Used by** | `L9.1`, `L9.2`, `L9.3`, `L9.4`, `L9.5`, `ds.01`, `ds.02`, `ds.04`, `rt.03`, `rt.04`: optional C exercises share runtime helpers through standalone C test binaries |
+| **Milestone** | `MS-L9`, the optional C module group |
 | **Optional depth** | Hanson, *Fast allocation and deallocation of memory based on object lifetimes* (1990); Bonwick, *The Slab Allocator* (USENIX 1994); the `tcmalloc` and `jemalloc` design notes |
 
 ## Key Takeaways
@@ -25,20 +25,20 @@
 ## How to work this chapter
 
 ```bash
-ss start rt.02              # stubs arena.c into your repo (the struct is given)
+ss start rt.02              # stubs abi.c and arena.c into your repo
 ss tests rt.02              # read the test catalog first
 ss check rt.02              # exit code is the verdict
-ss check rt.02 --ref-deps   # only if you skipped rt.01
+ss check rt.02 --ref-deps   # only if you skipped a listed prerequisite
 ss diff  rt.02              # after passing: your code against the reference
 ```
 
-The counting allocator of `ss_test.h` is installed through your rt.01 `tl_set_allocator`: a test that ends with a block still live fails as a leak, and `ss_alloc_fail_after(n)` makes the n-th allocation fail.
+The counting allocator of `ss_test.h` is installed through `tl_set_allocator`: a test that ends with a block still live fails as a leak, and `ss_alloc_fail_after(n)` makes the n-th allocation fail. The helper API stays inside C test processes; Rust and Python use process and file protocols.
 
 ---
 
 ## 1. Why now
 
-Part 9 moves the model's inner loops into C, and the fast versions need scratch memory that is not an input or an output: a FlashAttention kernel (`L9.3`) keeps tiles of scores and running maxima, an online softmax (`L9.2`) keeps a row of partial sums. Each call needs a few kilobytes for a few microseconds, and the engine makes these calls thousands of times per second. `malloc` and `free` per call would put the C library's allocator, with its locks and fragmentation, in the hottest loop, and every call would be one more place that can fail. Worse, with the ABI's rule that every allocation goes through the hook (rt.01), each one would hit the counting allocator in tests. An arena solves all of it: allocate scratch by bumping a pointer, and when the kernel returns, rewind to where it started. After the first step the memory is already there.
+Part 9's optional C kernels need scratch memory that is not an input or an output: FlashAttention (`L9.3`) keeps tiles of scores and running maxima, and online softmax (`L9.2`) keeps partial sums. `malloc` and `free` for every tile would add allocator overhead and another failure point in each kernel call. This module begins with a small C support layer: fixed status values, a thread-local error message, and replaceable allocation hooks. The arena then uses those hooks to reserve blocks once, bump an offset for each request, and rewind when a kernel finishes. None of these C interfaces is loaded by Python or linked into the Rust engine.
 
 ## 2. Principles
 
@@ -51,6 +51,8 @@ Part 9 moves the model's inner loops into C, and the fast versions need scratch 
 | $a$ | the requested alignment, a power of two $\le 4096$ (0 means 64) | `size_t` |
 | $\mathrm{pad}(p, a)$ | bytes from address $p$ up to the next multiple of $a$: $(a - (p \bmod a)) \bmod a$ | `size_t` |
 | $U$ | `bytes_used`: allocated bytes including padding | `size_t` |
+
+The shared C support functions have simple contracts too. `tl_status_str` returns a stable name for known values and `TL_UNKNOWN` for any other integer. `tl_set_last_error` copies and truncates a message into a thread-local slot. `tl_alloc` rejects zero sizes and non-power-of-two alignments before calling the installed hook; `tl_free(NULL)` does nothing. These helpers make standalone C failures observable and make allocator behavior countable in tests.
 
 ### 2.1 Bump allocation
 
@@ -124,6 +126,12 @@ The arena is not thread-safe: one arena per thread (L9.3 gives each worker of th
 | `random_operations_against_a_model` | property | 300 seeded runs of allocations, marks, rewinds: aligned, disjoint, unchanged contents; $U$ exact at marks; `high_water` the running maximum | everything above, combined |
 | `zero_hook_calls_after_warmup` | fault | after 3 warmup steps every hook call fails; 1000 more steps still succeed | the "zero malloc per step" claim, counted |
 | `hook_failure_leaves_the_arena_usable` | fault | the n-th hook call fails, for n = 0 to 39: TL_ENOMEM or NULL, unchanged stats, no leak | every constructor's failure path |
+| `abi_version_matches_header` | unit | the support version equals the header constant | each C test binary compiles against the same interface |
+| `status_str_names_every_code`, `status_str_unknown_codes` | unit, boundary | all declared names and negative/future values | logs remain safe for invalid enum values |
+| `error_slot_copies_and_truncates` | boundary | caller storage can disappear; long messages stop at the buffer bound | errors do not retain invalid pointers or overflow |
+| `alloc_goes_through_the_hook`, `alloc_alignment_by_hand` | unit | custom hooks count calls; returned addresses satisfy requested alignment | arenas and containers use the configured allocator |
+| `set_allocator_null_restores_the_default`, `set_allocator_rejects_half_a_hook`, `set_allocator_copies_the_struct` | boundary | reset, invalid hooks, and stack-local hook structs | no stale function pointers or partial hooks |
+| `alloc_rejects_zero_and_bad_alignment`, `alloc_failure_sets_the_error`, `free_null_is_a_no_op` | boundary, fault | invalid inputs, failed hook, and null free | defined failure paths for every C module |
 
 ## 5. Pitfalls
 
@@ -142,9 +150,10 @@ The arena is not thread-safe: one arena per thread (L9.3 gives each worker of th
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | `tl_alloc` and `tl_free` for blocks (so tests count them), `tl_set_last_error` for failures |
+| Back | `lang.03` | C types, pointers, and compilation fundamentals |
 | Forward | `L9.3` | `tl_flash_attn_fwd_f32` takes a `tl_arena *scratch`: query and key tiles, running maxima, rewound per call |
-| Forward | `L10.1` | the Rust forward pass calls the L9 kernels through `tl-sys` and hands each its scratch arena |
+| Forward | `L9.1`, `L9.2`, `L9.4`, `L9.5` | Optional C exercises use the shared error and allocator helpers in standalone C test binaries |
+| Forward | `ds.01`, `ds.02`, `ds.04`, `rt.03`, `rt.04` | Optional C exercises reuse the standalone runtime helpers; none are linked into Python or Rust |
 
 If you skip this module, `ss check L9.3` stops with `BLOCKED ... needs rt.02`: build it, or pass `--ref-deps`.
 

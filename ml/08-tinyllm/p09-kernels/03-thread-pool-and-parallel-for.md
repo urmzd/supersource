@@ -1,17 +1,17 @@
 <!-- ss:module rt.03 -->
-# Thread pool and tl_parallel_for
+# Thread pool and tl_parallel_for (optional C)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `rt.03` · build · C · Pass 6 · 3 to 4 h |
+| **Module** | `rt.03` · side · C · Pass 6 · 3 to 4 h |
 | **You build** | `c/src/runtime/pool.c`: `tl_pool_create`, `tl_parallel_for`, `tl_pool_threads`, `tl_pool_destroy`, and the helpers `run_ranges`, `worker_main`, `shutdown_pool` (the struct is given) |
 | **Contract** | [`course/contracts/c/include/tinyllm/pool.h`](../../../course/contracts/c/include/tinyllm/pool.h) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) (pthreads only; batch invariance, rule 10) |
 | **Tests** | `course/tests/rt.03/test_pool.c` (C, built twice: ASan and UBSan with the counting allocator, then ThreadSanitizer) (what they check: section 4) |
-| **Needs** | [`rt.01` the C ABI](01-the-c-abi.md): `tl_alloc`, `tl_free`, `tl_set_last_error` (or `--ref-deps`). Reading: [`lang.03` C](../../../software-craftsmanship/12-language-and-tool-primers/03-c.md) |
-| **Used by** | `L9.1` row blocks of the tiled matmul · `L9.3` attention heads · `L9.4` paged decode attention · `L9.5` quantized matmul rows; later `L10.1`, the Rust forward through `tl-sys` |
-| **Milestone** | `MS-L9` (your C kernels run the Llama forward; part of the Pass 6 gate) |
+| **Needs** | [`rt.02` runtime support](02-arena-allocator-with-marks.md): `tl_alloc`, `tl_free`, `tl_set_last_error` (or `--ref-deps`). Reading: [`lang.03` C](../../../software-craftsmanship/12-language-and-tool-primers/03-c.md) |
+| **Used by** | `L9.1`, `L9.3`, `L9.4`, and `L9.5` use the pool in their optional standalone C implementations |
+| **Milestone** | `MS-L9`, the optional C module group |
 | **Optional depth** | Herlihy and Shavit, *The Art of Multiprocessor Programming*, ch. 16 (work distribution); Butenhof, *Programming with POSIX Threads*, ch. 3 and 7; the OpenMP specification, `schedule(dynamic, chunk)` |
 
 ## Key Takeaways
@@ -38,7 +38,7 @@ Every test starts a 10-second watchdog: a deadlock reports `FAIL (no progress in
 
 ## 1. Why now
 
-Your C matmul (M03.1) runs on one core. The tiled kernel of L9.1 is several times faster per core, and the machine has eight or more; attention (L9.3) has independent heads; the Rust engine (L10.1) runs both every step. All of them need the same thing: split $n$ independent pieces of work over a fixed set of threads, and return when all are done. Starting threads per call costs tens of microseconds, more than a small matmul, so the threads must live in a **pool** that sleeps between calls. And there is a stricter requirement that a general-purpose pool does not meet: the engine must give the same tokens for a request whether it runs alone or batched with 63 others (c/ABI.md rule 10). Float addition is not associative, so if the work were split differently with different thread counts, the sums would round differently and greedy decoding would drift. This module's pool fixes the split.
+Your C matmul (M03.1) runs on one core. The optional tiled kernel of L9.1 can split independent columns across workers; attention (L9.3) splits heads, and other optional C exercises parallelize rows or sequences. Each implementation still owns a fixed reduction order, so scheduling changes which worker computes a result but does not change the result's bits. Starting threads per call costs tens of microseconds, so these standalone C exercises keep a pool that sleeps between calls. The production Rust engine owns its own Rust thread pool and independent kernels.
 
 ## 2. Principles
 
@@ -152,12 +152,12 @@ void      tl_pool_destroy(tl_pool *p);                     /* waits for a runnin
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | `tl_alloc`/`tl_free` for the pool and its tables (counted in tests), `tl_set_last_error` for failures |
+| Back | `rt.02` | `tl_alloc`/`tl_free` for the pool and its tables (counted in tests), `tl_set_last_error` for failures |
 | Forward | `L9.1` | `tl_matmul_f32(..., tp)` splits rows of C into ranges; each output element is reduced in one range |
 | Forward | `L9.3` | FlashAttention gives each (batch, head) pair to a range; worker ids index per-worker scratch arenas (rt.02) |
 | Forward | `L9.4` | paged decode attention splits the batch's sequences and heads into ranges |
 | Forward | `L9.5` | the int4 and int8 matmuls split output rows into ranges |
-| Forward | `L10.1` | the Rust engine creates one pool at startup and passes it to every kernel through `tl-sys` |
+| Forward | `L9.1`, `L9.3`, `L9.4`, `L9.5` | Optional standalone C kernels use the pool to schedule independent output regions |
 
 If you skip this module, `ss check L9.1` stops with `BLOCKED ... needs rt.03`: build it, or pass `--ref-deps`.
 

@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-engine/src/model.rs
 +++ b/rust/crates/tl-engine/src/model.rs
-@@ -285,7 +285,7 @@
- 
-     /// The raw bytes of a tensor.
-     pub fn bytes(&self, t: &TensorInfo) -> &[u8] {
+@@ -306,1 +306,1 @@
 -        &self.map[self.layout.data_start + t.begin..self.layout.data_start + t.end]
 +        &self.map[t.begin..t.end]
-     }
- 
-     /// A float tensor (F32, F16, or BF16) widened to f32, with its shape

@@ -1,5 +1,5 @@
 <!-- ss:module L0.0 -->
-# Byte bigram: counts, logits through C, safetensors v0
+# Byte bigram: counts, logits, safetensors v0
 
 ## Overview
 
@@ -9,7 +9,7 @@
 | **You build** | `python/tinyllm/lm/bigram.py`: `BigramLM` (`fit_counts`, `logits`, `nll`, `sample`); `python/tinyllm/io/safetensors.py`: `save_safetensors`, `load_safetensors` (F32 only) |
 | **Contract** | [`course/contracts/py/tinyllm/lm/bigram.pyi`](../../../course/contracts/py/tinyllm/lm/bigram.pyi) · [`course/contracts/py/tinyllm/io/safetensors.pyi`](../../../course/contracts/py/tinyllm/io/safetensors.pyi) · formats: [`safetensors.md`](../../../course/contracts/formats/safetensors.md), [`tokenizer.md`](../../../course/contracts/formats/tokenizer.md) · CLI verbs: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) |
 | **Tests** | `course/tests/L0.0/` (what they check: section 4) |
-| **Needs** | `M03.1` naive matmul in C (`tl_matmul_f32`) · `rt.01` the ctypes loader (`load`, `f32_ptr`) · reading: `lang.01` Python and numpy (or `--ref-deps`) |
+| **Needs** | reading: `M03.1` Python matmul and `lang.01` Python and NumPy |
 | **Used by** | `L10.0` your Rust engine serves this checkpoint · later: `L0.5` retrains it with autograd, `L0.6` adds every dtype |
 | **Milestone** | `MS-P1` (the tracer: every layer is yours and runs end to end) |
 | **Optional depth** | Jurafsky and Martin, *Speech and Language Processing* (3rd ed. draft), ch. 3 "N-gram Language Models" |
@@ -18,7 +18,7 @@
 
 - A bigram language model is one table: row $i$ is the distribution of the next byte after byte $i$, and add-alpha smoothing makes every row a proper distribution with no zeros (`test_rows_sum_to_one`).
 - The negative log-likelihood of the count model is a closed form in the counts, and it is the number every later model in this course must beat (`test_hand_example_nll`, `test_nll_matches_counts`).
-- Multiplying a one-hot row by the table picks a row exactly, so your C matmul returns the model's logits bit for bit (`test_logits_are_weight_rows`).
+- Indexing the table by token ids picks its rows exactly, so NumPy returns the model's logits bit for bit (`test_logits_are_weight_rows`).
 - Sampling is temperature, softmax, one uniform draw, and an inverse CDF; a seed makes it repeatable (`test_sample_is_seeded`, `test_sample_frequencies_match_model`).
 - Your safetensors file is byte-identical to the reference library's, so your Rust engine (and anyone else's reader) loads it (`test_matches_library_bytes`).
 
@@ -28,7 +28,7 @@
 ss start L0.0              # stubs bigram.py and safetensors.py into your repo
 ss tests L0.0              # read the test catalog first: rung R0, you write no tests here
 ss check L0.0              # exit code is the verdict
-ss check L0.0 --ref-deps   # only if your M03.1 or rt.01 is not passing yet
+ss check L0.0 --ref-deps   # only if a Python prerequisite is not passing yet
 ss diff  L0.0              # after passing: your code against the reference
 ```
 
@@ -39,7 +39,6 @@ You also write the first verbs of your own CLI, `python/tinyllm/__main__.py` (it
 | `train bigram --data F --out DIR [--alpha A]` | reads the bytes of `F` as ids, calls `fit_counts`, writes `DIR/model.safetensors` (`bigram.weight`, metadata `{"format": "tinyllm"}`) and `DIR/config.json`, prints `{"out", "tokens", "nll"}` as the last line |
 | `generate --model DIR --prompt P [--max-tokens N] [--greedy \| --temperature T] [--seed S]` | `load_safetensors`, `BigramLM(weight)`, `sample(list(P.encode()), N, T, S)`, prints `{"ids", "text"}` |
 | `logits --model DIR --prompt P [--prefix-ids ...]` | `logits(ids)[-1]` as a JSON list |
-| `info --native` | `load()` from `rt.01`, prints `{"abi_version", "lib"}`; non-zero exit when the library is missing or its ABI differs |
 
 `config.json` for the tracer is exactly `{"tl_arch": "bigram", "tl_tokenizer": "bytes", "vocab_size": 256, "tl_format": 1}`.
 
@@ -86,7 +85,7 @@ uv run --project python python python/tinyllm/__main__.py generate --model artif
 
 ## 1. Why now
 
-After `M03.1` and `rt.01` your system has a C matmul that Python can call through ctypes, and nothing to call it with. The Rust engine you write next (`L10.0`) needs a model directory to serve, the Go gateway (`gw.00`) needs that engine behind it, and the cluster (`dep.00`) needs both. Today `{tinyllm} train bigram` does not exist and there is no checkpoint on disk, so every layer above Python has nothing to load. This module builds the smallest real language model, routes its forward pass through your own C kernel, and writes it in the file format every later model uses. From here on, the tracer bullet has a payload.
+The Rust engine you write next (`L10.0`) needs a model directory to serve, the Go gateway (`gw.00`) needs that engine behind it, and the cluster (`dep.00`) needs both. Today `{tinyllm} train bigram` does not exist and there is no checkpoint on disk, so every layer above Python has nothing to load. This module builds the smallest real language model, computes logits with a NumPy row gather, and writes the file format every later model uses. From here on, the tracer bullet has a payload.
 
 ## 2. Principles
 
@@ -127,7 +126,7 @@ $$\mathrm{NLL} = -\frac{1}{T-1} \sum_{t=1}^{T-1} \ln P(x_{t+1} \mid x_t).$$
 
 There are $T - 1$ predictions, because the first token has no context. The unit is **nats per token** (natural log). Lower is better; a model that knows nothing (uniform over 256 bytes) scores $\ln 256 \approx 5.545$. For the count model the sum regroups by pair: $\mathrm{NLL} = -\frac{1}{T-1} \sum_{i,j} C_{ij} \ln P(j \mid i)$, a closed form your autograd bigram in `L0.5` must reach by gradient descent.
 
-**The one-hot matmul.** A one-hot vector $e_i$ has a 1 at position $i$ and 0 elsewhere. Multiplying it by the table picks row $i$: $(e_i W)_j = \sum_k [k = i] W_{kj} = W_{ij}$. Stack the one-hot rows of $T$ ids into a $T \times V$ matrix $E$, and $E W$ is the $T \times V$ matrix of logits, one row per position. Every other term in each sum is an exact zero, so the product equals the rows bit for bit. It costs $T \cdot V \cdot V$ multiply-adds where a row lookup would cost nothing; you pay it on purpose, because `logits = activations @ weight` is the shape of every model to come, and it sends the forward pass through your C kernel (`tl_matmul_f32`) via the ctypes loader. `L10.0` does the same in Rust.
+**Logits by row gather.** A one-hot vector $e_i$ has a 1 at position $i$ and 0 elsewhere. Multiplying it by the table selects row $i$: $(e_i W)_j = \sum_k [k = i] W_{kj} = W_{ij}$. NumPy expresses the same operation directly as `weight[ids]`, producing the $T \times V$ logits without constructing a $T \times V$ one-hot matrix or doing $T \cdot V \cdot V$ multiply-adds. `L10.0` computes the same row selection in Rust.
 
 **Temperature.** To sample, divide the logits by $\tau$ before softmax: $p = \mathrm{softmax}(z / \tau)$. With log-probabilities $z = \ln q$ this gives $p_j \propto q_j^{1/\tau}$. At $\tau = 1$ you sample the model as is; $\tau < 1$ sharpens it (at $\tau = 0.5$, $p \propto q^2$); $\tau > 1$ flattens it. $\tau = 0$ is defined as **greedy**: take the largest logit, and on a tie the lowest id (decision D11, so every implementation agrees).
 
@@ -172,7 +171,7 @@ Every row sums to 1. The weight table is the natural log of each entry, for exam
 
 Sum: $3 \ln 2 + 2 \ln 2.5 + \ln 3 = 2.0794 + 1.8326 + 1.0986 = 5.0106$. Divided by 6: $\mathrm{NLL} = 0.8351$ nats per token, better than the uniform model's $\ln 3 = 1.0986$.
 
-**Logits by one-hot matmul.** For ids `[0, 2]`, $E = \begin{bmatrix}1&0&0\\0&0&1\end{bmatrix}$ and $E W$ is rows `a` and `c` of $W$, unchanged.
+**Logits by row gather.** For ids `[0, 2]`, `weight[ids]` is rows `a` and `c` of $W$, unchanged.
 
 **Greedy.** From `a` the largest entry is `b` (0.5). From `b`, `a` and `b` tie at 0.4, and ties go to the lowest id, so `a`. Then `b`, then `a`: greedy from `[a]` for 4 tokens is `[1, 0, 1, 0]`.
 
@@ -194,7 +193,7 @@ class BigramLM:
     @property
     def vocab_size(self) -> int
     def fit_counts(self, ids: ArrayLike, vocab_size: int, alpha: float = 1.0) -> None
-    def logits(self, ids: ArrayLike) -> NDArray       # [T, V] = onehot(ids) @ W via tl_matmul_f32
+    def logits(self, ids: ArrayLike) -> NDArray       # [T, V] = W[ids]
     def nll(self, ids: ArrayLike) -> float
     def sample(self, prefix: list[int], n: int, temperature: float, seed: int) -> list[int]
 
@@ -203,7 +202,7 @@ def save_safetensors(path: str, tensors: dict[str, NDArray], meta: dict[str, str
 def load_safetensors(path: str) -> tuple[dict[str, NDArray], dict[str, str]]
 ```
 
-The contracts carry the exact rules: which errors are `ValueError`, that `sample` returns only the new ids, that an empty `meta` omits `__metadata__`. Call the C matmul through `rt.01`: `load().tl_matmul_f32(f32_ptr(A), f32_ptr(B), f32_ptr(C), M, N, K, K, N, N, 1.0, 0.0, 0, None)`, with $M = T$, $N = K = V$. The loader raises `TlError` on a bad status, so you do not check it yourself.
+The contracts carry the exact rules: which errors are `ValueError`, that `sample` returns only the new ids, and that an empty `meta` omits `__metadata__`. For input ids $i_0, \dots, i_{T-1}$, `logits` is the row gather `weight[ids]`, with output shape $T 	imes V$.
 
 ### What the tests check
 
@@ -220,7 +219,6 @@ The contracts carry the exact rules: which errors are `ValueError`, that `sample
 | `test_rejects_non_integer_or_2d_ids` | boundary | float ids and a 2-D batch are a `ValueError` | `2.7` is not a byte |
 | `test_weight_is_checked_not_converted` | boundary | a float64, non-square, 1-D, `inf`, or `nan` weight is a `ValueError`; `vocab_size` before a table is a `RuntimeError` | a bad checkpoint fails at load, not inside the matmul |
 | `test_logits_are_weight_rows` | differential | `logits(ids) == weight[ids]` bit for bit, float32 `[T, V]` | the forward pass `L10.0` reproduces |
-| `test_logits_go_through_libtinyllm` | boundary | with `TINYLLM_LIB` pointing nowhere, `logits` fails | proves your C kernel is on the path |
 | `test_greedy_ties_go_to_lowest_id` | unit | greedy from `a` is `[1, 0, 1, 0]` | the tie rule every engine shares (D11) |
 | `test_temperature_zero_is_greedy` | unit | $\tau = 0$ ignores the seed | `generate --greedy` |
 | `test_sample_returns_only_new_ids` | unit | `n` new ids, no prefix; `n = 0` is `[]` | `generate` prints generated ids only |
@@ -245,7 +243,7 @@ The contracts carry the exact rules: which errors are `ValueError`, that `sample
 | 2. counting `C[next, cur]` | the model predicts the previous byte; the hand table comes out transposed | `test_counts_direction` (mutant `s02`) |
 | 3. trusting ids | `-1` silently counts into the last row (numpy wraps negative indexes) | `test_rejects_out_of_range_ids` (mutant `s03`) |
 | 4. reading logits as log-probabilities in `nll` | correct for the count model, wrong the day `L0.5` stores trained logits | `test_nll_normalizes_logits` (mutant `s10`) |
-| 5. a numpy fallback in `logits` | everything passes while your C build is broken, until the Rust engine meets it | `test_logits_go_through_libtinyllm` (mutant `s04`) |
+| 5. a one-hot matrix multiply in `logits` | allocates an unnecessary $T 	imes V$ array instead of gathering rows | `test_logits_are_weight_rows` |
 | 6. seeding a new generator at every step | still repeatable, but every step draws the same $u$, so the text follows one quantile of each row | `test_sample_frequencies_match_model` (mutant `s09`) |
 | 7. writing the array's memory as is | a transposed view writes columns; a big-endian array writes swapped bytes | `test_bytes_are_little_endian_row_major` (mutants `s15`, `s16`) |
 | 8. a reader that trusts the header | reads past a gap or ignores trailing bytes, so a corrupt checkpoint loads | `test_load_rejects_bad_files` (mutants `s20`, `s21`) |
@@ -260,10 +258,9 @@ The contracts carry the exact rules: which errors are `ValueError`, that `sample
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `M03.1` | `tl_matmul_f32` computes `onehot(ids) @ weight` |
-| Back | `rt.01` | `load()` finds `libtinyllm` and checks its ABI version; `f32_ptr` passes arrays; `TlError` reports a failed call |
+| Back | `M03.1` | its Python reference defines matrix multiplication; L0.0 uses NumPy row indexing for logits |
 | Back | `lang.01` | numpy arrays, dtypes, `np.add.at`, and broadcasting (the vectorized bigram count) |
-| Forward | `L10.0` | your Rust engine reads `bigram.weight` from this file (`tl_arch = bigram`, `tl_tokenizer = bytes`) and computes the same one-hot logits through `tl_matmul_f32` |
+| Forward | `L10.0` | your Rust engine reads `bigram.weight` from this file (`tl_arch = bigram`, `tl_tokenizer = bytes`) and computes the same logits by indexing `bigram.weight` with token ids |
 | Forward | `L0.5` | takes over `bigram.py`: trains the same table with your autograd until it reaches the count model's NLL within $10^{-3}$, and samples with your PCG32 |
 | Forward | `L0.6` | takes over `safetensors.py`: every dtype, atomic checkpoints, the token-stream reader |
 

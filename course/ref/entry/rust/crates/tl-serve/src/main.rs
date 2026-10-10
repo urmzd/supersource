@@ -78,15 +78,10 @@ fn main() {
             }
         }
     }
-    http::exit_on_sigterm();
     let args = parse_args().unwrap_or_else(|e| {
         eprintln!("tl-serve: {e}\nusage: tl-serve --model-dir <dir> --port <n> --health-port <n>");
         process::exit(2)
     });
-    if let Err(e) = tl_sys::check_abi() {
-        eprintln!("tl-serve: {e}");
-        process::exit(1);
-    }
     let server = Arc::new(http::Server::from_env(&args.model_dir).unwrap_or_else(|e| {
         eprintln!("tl-serve: {e}");
         process::exit(1)

@@ -7,14 +7,14 @@
 //! generation tests run against a fake target model written below: its
 //! logits are a fixed function of the context, so plain greedy decoding is
 //! computed here independently and compared token for token. The KV tests
-//! use a real rt.04 pool through tl-sys. JSON is read with `mod j`, never
+//! use a real Rust KV pool. JSON is read with `mod j`, never
 //! with yours.
 
 use std::path::PathBuf;
 
 use tl_engine::sample::{child_seed, stream, Pcg32, SamplingParams, PURPOSE_SAMPLE};
 use tl_engine::spec::{self, Draft, Finish, SpecConfig, SpecError, Target};
-use tl_sys::{KvCfg, KvPool};
+use tl_engine::kv::{KvCfg, KvPool, TL_F16};
 
 fn fixtures() -> PathBuf {
     PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
@@ -114,7 +114,7 @@ impl Target for Fake {
     }
 }
 
-/// The fake model whose cache also holds KV blocks in a real rt.04 pool:
+/// The fake model whose cache also holds KV blocks in a real Rust KV pool:
 /// extend allocates a block whenever a position starts a new one and keeps
 /// fills current; truncate is spec::rollback.
 struct KvFake {
@@ -127,7 +127,7 @@ const B: u32 = 4;
 const N_BLOCKS: u32 = 64;
 
 fn pool() -> KvPool {
-    KvPool::new(KvCfg { n_blocks: N_BLOCKS, block_tokens: B, n_layers: 1, n_kv_heads: 1, head_dim: 2, dtype: tl_sys::TL_F16, format: 1 }).expect("pool")
+    KvPool::new(KvCfg { n_blocks: N_BLOCKS, block_tokens: B, n_layers: 1, n_kv_heads: 1, head_dim: 2, dtype: TL_F16, format: 1 }).expect("pool")
 }
 
 impl Target for KvFake {

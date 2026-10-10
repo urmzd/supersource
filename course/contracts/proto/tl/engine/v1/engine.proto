@@ -96,7 +96,7 @@ message InfoResponse {
   uint32 kv_format = 3;         // the KV format this engine writes; it reads every format listed in kv_formats_read
   int32 max_context = 4;
   int32 block_size = 5;         // tokens per KV block
-  uint32 abi = 6;               // tl_abi_version() of the linked libtinyllm
+  uint32 abi = 6;               // engine protocol revision; no native library ABI
   repeated uint32 kv_formats_read = 7; // from craft.13: [1, 2] during a migration window
 }
 

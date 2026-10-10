@@ -1,17 +1,17 @@
 <!-- ss:module ds.01 -->
-# Growable array tl_vec (type-erased)
+# Growable array tl_vec (type-erased, optional C)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `ds.01` · build · C · Pass 6 · 2 to 3 h |
+| **Module** | `ds.01` · side · C · Pass 6 · 2 to 3 h |
 | **You build** | `c/src/ds/vec.c`: `tl_vec_init`, `tl_vec_reserve`, `tl_vec_push`, `tl_vec_at`, `tl_vec_free` |
 | **Contract** | [`tinyllm/ds.h`](../../course/contracts/c/include/tinyllm/ds.h) (the ds.01 section) · the rules every unit follows: [`c/ABI.md`](../../course/contracts/c/ABI.md) |
 | **Tests** | `course/tests/ds.01/test_vec.c`, built with ASan, UBSan, and the counting allocator (what they check: section 4) · your own tests in `c/tests/ds01_vec_test.c`, rung R4 (properties with `ss_prop.h`), graded by mutation (threshold 0.80, every pitfall mutant required) |
-| **Needs** | `rt.01` (`tl_alloc`, `tl_free`, the error slot, and the allocator hook the tests count through) · reading: `lang.03` the C primer (pointers, `sizeof`, `memcpy`) |
+| **Needs** | `rt.02` (C allocation and error support) · reading: `lang.03` the C primer (pointers, `sizeof`, `memcpy`) |
 | **Used by** | `rt.04` keeps one `tl_vec` of block ids per sequence (its block table) · `ds.02` and `ds.04` build on this chapter's growth and failure rules |
-| **Milestone** | `MS-L8` (the engine's `--kv-stats` shows block tables growing without reallocation storms) |
+| **Milestone** | `MS-L9`, the optional standalone C module group |
 | **Optional depth** | Cormen et al., *Introduction to Algorithms* (3rd ed.), section 17.4 (dynamic tables, amortized analysis); Sedgewick and Wayne, *Algorithms* (4th ed.), section 1.3 (resizing arrays); the warm-up drill `practice/` C `01` (dynamic array) from `lang.03` |
 
 ## Key Takeaways
@@ -133,7 +133,7 @@ The caller may read `data[0 .. len * elem)` directly. Not thread-safe: the calle
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | `tl_alloc`, `tl_free`, `tl_set_last_error`, and the allocator hook the tests count through |
+| Back | `rt.02` | allocation hooks and error reporting for standalone C modules |
 | Back | `lang.03` | the C you need: pointers, `sizeof`, `memcpy` |
 | Forward | `rt.04` | each sequence's block table is a `tl_vec` of `uint32_t` block ids |
 | Forward | `ds.02` | the Swiss table grows by the same allocate, copy, free order and the same failure rule |

@@ -6,8 +6,8 @@
 //! (GPT-2's cross-checked by tiktoken), course/fixtures/L1.5/golden.jsonl,
 //! from course/oracle/L1.5/golden.py. Hand-written expectations come from the
 //! Python specification (L1.2). JSON is read with `mod j` below, never with
-//! yours. The Python half (course/tests/L1.5/) diffs tinyllm_rs against your
-//! Python BPE.
+//! yours. The independent Python implementation also checks its ids against
+//! the shared golden vectors in course/tests/L1.5/.
 
 #![allow(dead_code)] // the fixture helpers are shared with ds_08.rs
 

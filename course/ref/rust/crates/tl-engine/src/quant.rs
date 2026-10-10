@@ -8,10 +8,10 @@
 //!   W[r, c] ~ q[r, c] * s[r, c / group], q in [-8, 7], s = f16(amax / 7),
 //!   q = rint(W / s) with the f16 scale actually stored; packed two per byte,
 //!   the even column in the low nibble (formats/safetensors.md).
-//! - [`QLinear`]: an int4 linear layer whose product runs in C
-//!   (`tl_matmul_q4_f32`, L9.5) without ever widening W to f32.
+//! - [`QLinear`]: an int4 linear layer that unpacks and widens its weights
+//!   before applying them with Candle tensor operations.
 
-use tl_sys::TlError;
+use candle_core::{Device, Tensor};
 
 /// f16 bits to f32: exact (every f16 is an f32).
 pub fn f16_to_f32(h: u16) -> f32 {
@@ -173,10 +173,16 @@ impl QLinear {
         // SOLUTION-END
     }
 
-    /// y [m, out] = x [m, inp] @ W^T through `tl_matmul_q4_f32`.
-    pub fn forward(&self, x: &[f32], m: usize, y: &mut [f32]) -> Result<(), TlError> {
+    /// y [m, out] = x [m, inp] @ W^T using Candle after groupwise
+    /// dequantization at the tensor boundary.
+    pub fn forward(&self, x: &[f32], m: usize, y: &mut [f32]) -> Result<(), String> {
         // SOLUTION-BEGIN L10.1
-        tl_sys::kernels::matmul_q4_f32(x, &self.qweight, &self.scales, y, m, self.out, self.inp, self.group)
+        if x.len() != m * self.inp || y.len() != m * self.out { return Err("qlinear: input/output length mismatch".to_string()); }
+        let input = Tensor::from_vec(x.to_vec(), (m, self.inp), &Device::Cpu).map_err(|e| e.to_string())?;
+        let weight = Tensor::from_vec(self.dequantize(), (self.out, self.inp), &Device::Cpu).map_err(|e| e.to_string())?;
+        let result = input.matmul(&weight.transpose(0, 1).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        for (dst, row) in y.chunks_exact_mut(self.out).zip(result.to_vec2::<f32>().map_err(|e| e.to_string())?) { dst.copy_from_slice(&row); }
+        Ok(())
         // SOLUTION-END
     }
 }

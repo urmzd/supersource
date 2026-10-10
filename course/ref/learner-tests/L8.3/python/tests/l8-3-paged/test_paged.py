@@ -5,7 +5,6 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from tinyllm.ffi.libtinyllm import load
 from tinyllm.infer.paged import OutOfBlocks, PagedKVCache
 
 
@@ -21,7 +20,7 @@ def chunk(t0, T, H=2, D=3):
 @settings(max_examples=40)
 @given(st.lists(st.integers(1, 7), min_size=1, max_size=8))
 def test_gather_is_the_concatenation(sizes):
-    with PagedKVCache(load(), 32, 4, 2, 2, 3) as c:
+    with PagedKVCache(32, 4, 2, 2, 3) as c:
         c.add_seq(0)
         t = 0
         for T in sizes:
@@ -36,7 +35,7 @@ def test_gather_is_the_concatenation(sizes):
 
 
 def test_fork_then_write_never_changes_the_parent():
-    with PagedKVCache(load(), 8, 2, 1, 2, 3) as c:
+    with PagedKVCache(8, 2, 1, 2, 3) as c:
         c.add_seq(0)
         c.append(0, 0, chunk(0, 3), chunk(0, 3))
         used = c.stats()["used"]
@@ -54,21 +53,18 @@ def test_fork_then_write_never_changes_the_parent():
         assert c.stats()["free"] == 8
 
 
-def test_fill_follows_the_slowest_layer():
-    import ctypes
-
-    lib = load()
-    lib.declare("tl_kv_fill", ctypes.c_uint32, [ctypes.c_void_p, ctypes.c_uint32])
-    with PagedKVCache(lib, 4, 4, 2, 2, 3) as c:
+def test_layers_keep_independent_lengths():
+    with PagedKVCache(4, 4, 2, 2, 3) as c:
         c.add_seq(0)
         c.append(0, 0, chunk(0, 5), chunk(0, 5))
         c.append(0, 1, chunk(0, 2), chunk(0, 2))
-        fills = [lib.tl_kv_fill(c.pool, int(b)) for b in c.block_table(0)]
-        assert fills == [2, 0]
+        assert c.seq_len(0, 0) == 5 and c.seq_len(0, 1) == 2
+        assert len(c.block_table(0)) == 2
+        assert c.gather(0, 1)[0].shape == (2, 2, 3)
 
 
 def test_freeing_everything_returns_every_block():
-    with PagedKVCache(load(), 6, 2, 2, 2, 3) as c:
+    with PagedKVCache(6, 2, 2, 2, 3) as c:
         for s in range(3):
             c.add_seq(s)
             for layer in range(2):
@@ -80,7 +76,7 @@ def test_freeing_everything_returns_every_block():
 
 
 def test_out_of_blocks_changes_nothing():
-    with PagedKVCache(load(), 3, 2, 1, 2, 3) as c:
+    with PagedKVCache(3, 2, 1, 2, 3) as c:
         c.add_seq(0)
         c.append(0, 0, chunk(0, 2), chunk(0, 2))
         before = c.stats()

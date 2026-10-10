@@ -8,16 +8,14 @@
 //! |--------------|--------------------------------------------------------|
 //! | `PING`       | `PONG`                                                 |
 //! | `ECHO <text>`| `<text>`, byte for byte                                |
-//! | `LEN <text>` | the UTF-8 byte length of `<text>`, from C's `strlen`   |
+//! | `LEN <text>` | the UTF-8 byte length of `<text>`, from Rust's `.len()` |
 //! | `QUIT`       | `BYE`, then the server closes the connection           |
 //! | anything else| `ERR <reason>`; the connection stays open              |
 //!
 //! Nothing here does I/O. The binary in `echo/` reads lines from a socket
 //! and writes `reply(line)` back, so every rule is testable without a socket.
 
-use std::ffi::CString;
 use std::fmt;
-use std::os::raw::c_char;
 
 /// A parsed request. `Echo` and `Len` own their text (a `String`), so a
 /// `Command` outlives the buffer the line was read into.
@@ -38,8 +36,6 @@ pub enum ProtoError {
     InvalidUtf8,
     /// The first word is not a command; carries that word.
     Unknown(String),
-    /// `LEN` text holds a NUL byte, which a C string cannot carry.
-    NulByte,
 }
 
 impl fmt::Display for ProtoError {
@@ -49,20 +45,12 @@ impl fmt::Display for ProtoError {
             ProtoError::Empty => write!(f, "empty line"),
             ProtoError::InvalidUtf8 => write!(f, "invalid utf-8"),
             ProtoError::Unknown(word) => write!(f, "unknown command {word}"),
-            ProtoError::NulByte => write!(f, "nul byte"),
         }
         // SOLUTION-END
     }
 }
 
 impl std::error::Error for ProtoError {}
-
-// The C standard library is already linked into every Rust program, so this
-// declaration is all it takes to call `strlen`. The compiler cannot check it:
-// the signature must match <string.h> exactly, and every call is `unsafe`.
-extern "C" {
-    fn strlen(s: *const c_char) -> usize;
-}
 
 /// Parses one line (with or without its `\n` / `\r\n`) into a command.
 pub fn parse(line: &str) -> Result<Command, ProtoError> {
@@ -83,25 +71,24 @@ pub fn parse(line: &str) -> Result<Command, ProtoError> {
     // SOLUTION-END
 }
 
-/// The byte length of `text` as C sees it: copy it into a NUL-terminated
-/// buffer and call `strlen`. A NUL inside `text` is an error, not a short
-/// answer.
-pub fn c_strlen(text: &str) -> Result<usize, ProtoError> {
+/// The number of UTF-8 bytes in `text`, including any NUL bytes.
+///
+/// Rust strings store valid UTF-8, and `.len()` reports the byte length while
+/// `.chars().count()` reports Unicode scalar values.
+pub fn byte_len(text: &str) -> usize {
     // SOLUTION-BEGIN lang.04
-    let c = CString::new(text).map_err(|_| ProtoError::NulByte)?;
-    // SAFETY: `c` is NUL-terminated and stays alive until strlen returns.
-    Ok(unsafe { strlen(c.as_ptr()) })
+    text.len()
     // SOLUTION-END
 }
 
 /// The reply text for a command (without the trailing `\n`).
-pub fn respond(cmd: &Command) -> Result<String, ProtoError> {
+pub fn respond(cmd: &Command) -> String {
     // SOLUTION-BEGIN lang.04
     match cmd {
-        Command::Ping => Ok("PONG".to_string()),
-        Command::Echo(text) => Ok(text.clone()),
-        Command::Len(text) => Ok(c_strlen(text)?.to_string()),
-        Command::Quit => Ok("BYE".to_string()),
+        Command::Ping => "PONG".to_string(),
+        Command::Echo(text) => text.clone(),
+        Command::Len(text) => byte_len(text).to_string(),
+        Command::Quit => "BYE".to_string(),
     }
     // SOLUTION-END
 }
@@ -114,7 +101,7 @@ pub fn reply(line: &[u8]) -> (String, bool) {
     let answer = std::str::from_utf8(line)
         .map_err(|_| ProtoError::InvalidUtf8)
         .and_then(parse)
-        .and_then(|cmd| respond(&cmd).map(|text| (text, cmd == Command::Quit)));
+        .map(|cmd| (respond(&cmd), cmd == Command::Quit));
     match answer {
         Ok(pair) => pair,
         Err(e) => (format!("ERR {e}"), false),
@@ -140,7 +127,8 @@ mod tests {
 
     #[test]
     fn len_counts_bytes_not_characters() {
-        assert_eq!(c_strlen("h\u{e9}llo"), Ok(6));
+        assert_eq!(byte_len("h\u{e9}llo"), 6);
+        assert_eq!(byte_len("a\0b"), 3);
     }
 
     #[test]

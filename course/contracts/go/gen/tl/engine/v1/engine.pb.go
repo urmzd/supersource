@@ -481,7 +481,7 @@ type InfoResponse struct {
 	KvFormat      uint32                 `protobuf:"varint,3,opt,name=kv_format,json=kvFormat,proto3" json:"kv_format,omitempty"` // the KV format this engine writes; it reads every format listed in kv_formats_read
 	MaxContext    int32                  `protobuf:"varint,4,opt,name=max_context,json=maxContext,proto3" json:"max_context,omitempty"`
 	BlockSize     int32                  `protobuf:"varint,5,opt,name=block_size,json=blockSize,proto3" json:"block_size,omitempty"`                      // tokens per KV block
-	Abi           uint32                 `protobuf:"varint,6,opt,name=abi,proto3" json:"abi,omitempty"`                                                   // tl_abi_version() of the linked libtinyllm
+	Abi           uint32                 `protobuf:"varint,6,opt,name=abi,proto3" json:"abi,omitempty"`                                                   // engine protocol revision
 	KvFormatsRead []uint32               `protobuf:"varint,7,rep,packed,name=kv_formats_read,json=kvFormatsRead,proto3" json:"kv_formats_read,omitempty"` // from craft.13: [1, 2] during a migration window
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

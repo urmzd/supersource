@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-serve/src/http.rs
 +++ b/rust/crates/tl-serve/src/http.rs
-@@ -1045,7 +1045,7 @@
- 
- /// A whole JSON response; Content-Length counts the body's bytes.
- fn write_json<W: Write>(w: &mut W, status: u16, extra: &[(String, String)], body: &str) -> io::Result<()> {
+@@ -1132 +1132 @@
 -    write_head(w, status, "application/json", Some(body.len()), extra)?;
 +    write_head(w, status, "application/json", Some(body.chars().count()), extra)?;
-     w.write_all(body.as_bytes())?;
-     w.flush()
- }

@@ -5,7 +5,7 @@
  * use, room for cap. Appending to a full vec allocates a new block with at
  * least twice the capacity, copies the len * elem bytes over, and frees the
  * old block, so n pushes cost O(n) copies in total (amortized O(1)). Every
- * allocation goes through the allocator hook (tl_alloc / tl_free, rt.01), so
+ * allocation goes through the shared C test-support hooks (tl_alloc / tl_free), so
  * tests can make the k-th allocation fail; a failed growth must leave the
  * vec exactly as it was. rt.04 keeps one tl_vec of block ids per sequence.
  */

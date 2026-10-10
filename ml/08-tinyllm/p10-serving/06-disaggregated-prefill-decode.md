@@ -9,7 +9,7 @@
 | **You build** | `rust/crates/tl-engine/src/kv_transfer.rs`: block hashes, CRC-32C, the export envelope in Rust, the decode side of `tl.kv.v1` (`KvReceiver`, `KvService`), the prefill side's deduplicated push (`transfer`), the RNG hand-off · `rust/crates/tl-engine/src/heartbeat.rs`: the heartbeat client to the gateway's worker registry · `rust/crates/tl-serve/src/control.rs`: `tl.engine.v1.EngineControl` (Prefill, Info, Cancel, Drain) over a `PrefillBackend` |
 | **Contract** | gRPC: [`proto/tl/engine/v1/engine.proto`](../../../course/contracts/proto/tl/engine/v1/engine.proto), [`proto/tl/kv/v1/kv.proto`](../../../course/contracts/proto/tl/kv/v1/kv.proto), [`proto/tl/control/v1/control.proto`](../../../course/contracts/proto/tl/control/v1/control.proto), generated code in [`rust/tl-proto`](../../../course/contracts/rust/tl-proto/src/lib.rs) · bytes: [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md) · conformance: `parity/kv.wire.v1` |
 | **Tests** | `course/tests/rust/l10_6.rs`, 17 tests (what they check: section 4) |
-| **Needs** | `L10.1` tl-sys's `KvPool` and the sampler's `stream` ([chapter](01-model-runner-and-sampler.md)) · `rt.04` the C pool: export, import, register, lookup ([chapter](../p08-inference/08-paged-kv-block-pool.md)) · reading: `L10.2`, `L10.4`, `L10.5` the serve loop this plugs into, `lang.09` async Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.10` gRPC ([primer](../../../software-craftsmanship/12-language-and-tool-primers/10-protocol-buffers-and-grpc.md)) · or `--ref-deps` |
+| **Needs** | `L10.1` `KvPool` and the sampler's `stream` ([chapter](01-model-runner-and-sampler.md)) · `L10.1` the Rust pool: export, import, register, lookup ([chapter](../p08-inference/08-paged-kv-block-pool.md)) · reading: `L10.2`, `L10.4`, `L10.5` the serve loop this plugs into, `lang.09` async Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.10` gRPC ([primer](../../../software-craftsmanship/12-language-and-tool-primers/10-protocol-buffers-and-grpc.md)) · or `--ref-deps` |
 | **Used by** | `gw.05` calls Prefill and Release over gRPC and serves the registry your heartbeat reaches; `craft.13` takes `kv_transfer.rs` over for KV format v2 |
 | **Milestone** | `MS-L10` (and `MS-prod`, where the engines run as 1 prefill + 2 decode) |
 | **Optional depth** | [DistServe](https://arxiv.org/abs/2401.09670) (free); [Splitwise](https://arxiv.org/abs/2311.18677) (free); [Mooncake](https://arxiv.org/abs/2407.00079) (free); [gRPC core concepts](https://grpc.io/docs/what-is-grpc/core-concepts/) (free) |
@@ -28,18 +28,18 @@
 ss start L10.6               # stubs kv_transfer.rs, heartbeat.rs, control.rs
 ss tests L10.6               # the test catalog
 ss check L10.6               # exit code is the verdict
-ss check L10.6 --ref-deps    # only if L10.1 or rt.04 is not passing yet
+ss check L10.6 --ref-deps    # only if L10.1 or L10.1 is not passing yet
 ss diff  L10.6               # after passing: your code against the reference
-ss parity kv.wire.v1         # your Rust writer against the golden blobs and the C exporter
+ss parity kv.wire.v1         # your Rust writer against the golden blobs
 ```
 
-Add to your `tl-engine` manifest the dependencies this module needs: `tl-proto = { path = "../../../contracts/rust/tl-proto" }`, `tokio` (full), `tonic = "0.14"`, `prost = "0.14"` (all in `contracts/allowed-deps.toml`), and declare `pub mod kv_transfer; pub mod heartbeat;` in `tl-engine/src/lib.rs` and `pub mod control;` in `tl-serve/src/lib.rs`. Your `main.rs` starts the servers: `kv_transfer::serve_kv` on `[engine].kv_listen` for a decode engine, `control::serve_control` on `[engine].grpc_listen` for every engine, and `Heartbeat::spawn` toward `[engine].gateway_registry`.
+Add to your `tl-engine` manifest the dependencies this module needs: `tl-proto = { path = "../../../../contracts/rust/tl-proto" }`, `tokio` (full), `tonic = "0.14"`, and `prost = "0.14"` (all in `contracts/allowed-deps.toml`), and declare `pub mod kv_transfer; pub mod heartbeat;` in `tl-engine/src/lib.rs` and `pub mod control;` in `tl-serve/src/lib.rs`. Your `main.rs` starts the servers: `kv_transfer::serve_kv` on `[engine].kv_listen` for a decode engine, `control::serve_control` on `[engine].grpc_listen` for every engine, and `Heartbeat::spawn` toward `[engine].gateway_registry`.
 
 ---
 
 ## 1. Why now
 
-After `L10.5` one engine runs both phases of every request: the compute-bound prefill of the prompt and the memory-bound decode of each new token. They compete for the same batch. A long prompt arriving while thirty streams decode makes every one of them stall for its prefill (TPOT spikes), and a burst of decodes makes a new prompt wait (TTFT spikes). Production systems split the two onto separate workers: prefill engines that only build KV caches, decode engines that only extend them. That needs three things your engine does not have yet: a way for the gateway to ask a prefill engine to run one prompt (`EngineControl.Prefill`), a way to move the prompt's KV blocks to the decode engine without moving the ones it already holds (`tl.kv.v1`), and a way for the gateway to know which engines exist and how loaded they are (the heartbeat to `tl.control.v1`). This module writes all three on top of the block pool `rt.04` gave you and the sampler `L10.1` gave you.
+After `L10.5` one engine runs both phases of every request: the compute-bound prefill of the prompt and the memory-bound decode of each new token. They compete for the same batch. A long prompt arriving while thirty streams decode makes every one of them stall for its prefill (TPOT spikes), and a burst of decodes makes a new prompt wait (TTFT spikes). Production systems split the two onto separate workers: prefill engines that only build KV caches, decode engines that only extend them. That needs three things your engine does not have yet: a way for the gateway to ask a prefill engine to run one prompt (`EngineControl.Prefill`), a way to move the prompt's KV blocks to the decode engine without moving the ones it already holds (`tl.kv.v1`), and a way for the gateway to know which engines exist and how loaded they are (the heartbeat to `tl.control.v1`). This module writes all three on top of the block pool `L10.1` gave you and the sampler `L10.1` gave you.
 
 ## 2. Principles
 
@@ -71,7 +71,7 @@ The gateway emits `first_token` to the client at once and then streams the rest 
 
 ### 2.2 Naming blocks by content
 
-`rt.04` hashes a full block as $h_i = \mathrm{FNV1a64}(\mathrm{le64}(h_{i-1}) \,\Vert\, \mathrm{le32}(x_{iB}) \cdots \mathrm{le32}(x_{iB+B-1}))$, with a result of 0 replaced by 1. Chaining the parent makes $h_i$ name the whole prefix up to block $i$: two prompts that share their first $k$ blocks share $h_0 \ldots h_{k-1}$ and nothing after. The decode engine's prefix index (the Swiss table of `ds.02` inside `rt.04`) answers "do I hold $h_i$?" in O(1). A partial block has no hash: its contents will still change.
+`L10.1` hashes a full block as $h_i = \mathrm{FNV1a64}(\mathrm{le64}(h_{i-1}) \,\Vert\, \mathrm{le32}(x_{iB}) \cdots \mathrm{le32}(x_{iB+B-1}))$, with a result of 0 replaced by 1. Chaining the parent makes $h_i$ name the whole prefix up to block $i$: two prompts that share their first $k$ blocks share $h_0 \ldots h_{k-1}$ and nothing after. The decode engine's prefix index (the Swiss table of `ds.02` inside `L10.1`) answers "do I hold $h_i$?" in O(1). A partial block has no hash: its contents will still change.
 
 ### 2.3 What crosses the wire
 
@@ -183,13 +183,13 @@ Your engine's step loop implements `PrefillBackend` (prefill the prompt through 
 
 ### What the tests check
 
-The tests run a fake model that writes a fixed f16 pattern per position into real `rt.04` pools and whose logits hash every cached KV value, so any lost or stale block changes the next token. Prefill and decode engines run your servers on `127.0.0.1:0`.
+The tests run a fake model that writes a fixed f16 pattern per position into real `L10.1` pools and whose logits hash every cached KV value, so any lost or stale block changes the next token. Prefill and decode engines run your servers on `127.0.0.1:0`.
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `hand_example_envelope` | unit | section 3's 60 bytes, the two chained hashes, FNV-1a and CRC-32C check values | the bytes every engine and `craft.13` agree on |
 | `envelope_reader_rules` | boundary | each reader rule refuses with the right error kind | corrupt or foreign bytes never reach the pool |
-| `rust_writer_matches_the_golden_blobs` | differential | Rust writer, C exporter, and `parity/kv.wire.v1` agree byte for byte; the reader takes them back | parity across languages |
+| `rust_writer_matches_the_golden_blobs` | differential | Rust writer and `parity/kv.wire.v1` agree byte for byte; the reader takes them back | parity with the file contract |
 | `resume_rng_hands_off_the_draws` | unit | `resume_rng` equals the stream advanced by 0, 1, 2 draws | seeded streams survive the hand-off |
 | `has_blocks_takes_no_reference` | unit | a hit leaves used and cached counts unchanged; format 2 refused | asking is free |
 | `push_accepts_dedups_and_refuses` | fault | import, dedup, and every refusal leaving D exactly as before; an unregistered full block is registered on arrival | no leak on a bad push |
@@ -229,7 +229,7 @@ The tests run a fake model that writes a fixed f16 pattern per position into rea
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `L10.1` | `KvPool` (export, import, register, lookup, slabs) and `stream` for the hand-off |
-| Back | `rt.04` | the C pool behind both engines: the export envelope, the prefix index, refcounts |
+| Back | `L10.1` | the Rust pool behind both engines: the export envelope, the prefix index, refcounts |
 | Forward | `gw.05` | picks P and D, calls Prefill and Release, serves the registry your heartbeat reaches |
 | Forward | `craft.13` | takes `kv_transfer.rs` over: format v2 (fp8), mixed-version negotiation |
 

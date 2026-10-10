@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-engine/src/kv_transfer.rs
 +++ b/rust/crates/tl-engine/src/kv_transfer.rs
-@@ -301,7 +301,7 @@
-     /// For each hash, whether a full block with it is cached here. Looking
-     /// takes no reference: a hit's reference is dropped at once.
-     pub fn has_blocks(&self, hashes: &[u64], kv_format: u32) -> Result<Vec<bool>, Status> {
+@@ -341 +341 @@
 -        if kv_format != KV_FORMAT {
 +        if kv_format > 2 {
-             return Err(Status::failed_precondition(format!("kv_format {kv_format}: this engine reads format {KV_FORMAT}")));
-         }
-         let mut pool = lock(&self.pool);

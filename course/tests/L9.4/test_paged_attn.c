@@ -3,8 +3,8 @@
  * and UBSan (and ThreadSanitizer for the pool case). Two oracles: the naive
  * attention over the gathered cache built on your L9.2 tl_softmax_f32, and
  * your L9.3 FlashAttention on the same gathered values, which a paged
- * decode must equal bit for bit. The ctypes tests through your L8.3
- * PagedKVCache are in test_paged_attn_ctypes.py.
+ * decode must equal bit for bit. Paged KV inputs and outputs are recorded
+ * in the shared file fixture, independent of the Python cache process.
  */
 #include <math.h>
 #include <stdlib.h>

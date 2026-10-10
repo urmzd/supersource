@@ -20,7 +20,6 @@ This page fixes the verbs, flags, and outputs that milestones depend on. Your CL
 
 - **Exit codes.** `0` on success; `2` for a usage error (unknown verb or flag); any other non-zero code for a failure, with the reason on stderr.
 - **Machine output.** When a verb's output is marked *final JSON line*, the **last line of stdout** is one JSON object on one line. Earlier lines are free (progress, streamed text). Matchers read only that line, so they never need your tokenizer.
-- **Native library.** Roles that load `libtinyllm` find it through `TINYLLM_LIB` when it is set (the harness sets it to its own build), else through your own default path.
 - **Telemetry.** Servers read the standard OTel variables: `OTEL_EXPORTER_OTLP_ENDPOINT` (base URL; unset means export nothing) and `OTEL_SERVICE_NAME` (in Kubernetes your charts set it to `<system>-engine`, `<system>-gateway`, ...).
 - **Shutdown.** Servers exit `0` on SIGTERM.
 
@@ -41,7 +40,7 @@ This page fixes the verbs, flags, and outputs that milestones depend on. Your CL
 
 ## `tinyllm`
 
-The Python CLI: `python/tinyllm/__main__.py`, run as a script from the repo root inside your uv project (`uv run --project python python python/tinyllm/__main__.py`). The project is not an installed package (`[tool.uv] package = false`), so the script puts `python/` on `sys.path` itself before importing `tinyllm`. In Pass 1 it has four verbs.
+The Python CLI: `python/tinyllm/__main__.py`, run as a script from the repo root inside your uv project (`uv run --project python python python/tinyllm/__main__.py`). The project is not an installed package (`[tool.uv] package = false`), so the script puts `python/` on `sys.path` itself before importing `tinyllm`. In Pass 1 it has three verbs.
 
 ### `train bigram`
 
@@ -75,16 +74,6 @@ Final JSON line: `{"ids": [<int>, ...], "text": "<string>"}`. `ids` holds the **
 Teacher forcing: runs the model on the prompt's ids followed by `--prefix-ids` (comma-separated, may be empty) and prints the next-token logits, before temperature.
 
 Final JSON line: `{"logits": [<float>, ...]}`, `vocab_size` values. The `tokens-equal` matcher's near-tie rule calls this verb: it takes `generate`'s argv, replaces the verb with `logits`, and appends `--prefix-ids` with the expected ids up to the first divergence.
-
-### `info --native`
-
-```
-{tinyllm} info --native
-```
-
-Loads `libtinyllm` through your ctypes loader (rt.01) and calls `tl_abi_version()`.
-
-Final JSON line: `{"abi_version": <int>, "lib": "<path loaded>"}`. Exits non-zero, with the reason on stderr, when the library is missing or its ABI version differs from the one the loader was written for.
 
 ## `engine`
 

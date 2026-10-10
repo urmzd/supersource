@@ -22,9 +22,6 @@
 #include "tinyllm/abi.h"
 #include "tinyllm/kv_pool.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define TL_KV_FORMAT_V2 2u
 
@@ -44,8 +41,5 @@ float *tl_kv_block_scales(const tl_kv_pool *p, uint32_t id, uint32_t layer, int 
  * upgrade. The engine reports the list in InfoResponse.kv_formats_read. */
 uint32_t tl_kv_formats_supported(uint32_t *out, uint32_t cap);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_KV_POOL_V2_H */

@@ -14,6 +14,7 @@ use std::path::Path;
 
 use memmap2::Mmap;
 use serde_json::Value;
+use candle_core::{Device, Tensor};
 
 use crate::quant::{bf16_to_f32, f16_to_f32, QLinear};
 
@@ -365,15 +366,25 @@ impl Linear {
         // SOLUTION-END
     }
 
-    /// y [m, out] = x [m, inp] @ W^T, through `tl_matmul_f32` with
-    /// `trans_b` (W is stored [out, inp], the HF Linear layout) or through
-    /// `tl_matmul_q4_f32`.
-    pub fn forward(&self, x: &[f32], m: usize, y: &mut [f32]) -> Result<(), tl_sys::TlError> {
+    /// y [m, out] = x [m, inp] @ W^T using Candle.
+    pub fn forward(&self, x: &[f32], m: usize, y: &mut [f32]) -> Result<(), String> {
+        self.forward_on(x, m, y, &Device::Cpu)
+    }
+
+    pub fn forward_on(&self, x: &[f32], m: usize, y: &mut [f32], device: &Device) -> Result<(), String> {
         // SOLUTION-BEGIN L10.1
-        match self {
-            Linear::F32 { w, out, inp } => tl_sys::matmul_f32(x, w, y, m, *out, *inp, true),
-            Linear::Q4(q) => q.forward(x, m, y),
+        let (out, inp) = self.dims();
+        if x.len() != m.checked_mul(inp).ok_or_else(|| "linear input size overflow".to_string())? || y.len() != m.checked_mul(out).ok_or_else(|| "linear output size overflow".to_string())? {
+            return Err(format!("linear: input/output lengths do not match [{m}, {inp}] -> [{m}, {out}]"));
         }
+        let weight = match self { Linear::F32 { w, .. } => w.clone(), Linear::Q4(q) => q.dequantize() };
+        let a = Tensor::from_vec(x.to_vec(), (m, inp), device).map_err(|e| e.to_string())?;
+        let b = Tensor::from_vec(weight, (out, inp), device).map_err(|e| e.to_string())?;
+        let transposed = b.transpose(0, 1).map_err(|e| e.to_string())?;
+        let product = a.matmul(&transposed).map_err(|e| e.to_string())?;
+        let rows = product.to_vec2::<f32>().map_err(|e| e.to_string())?;
+        for (dst, row) in y.chunks_exact_mut(out).zip(rows) { dst.copy_from_slice(&row); }
+        Ok(())
         // SOLUTION-END
     }
 }

@@ -29,7 +29,7 @@ ss check rt.91
 
 ## 1. Why now
 
-The Python normalizer in M90.2 needs a native sum it can call through ctypes, and its buffer must not leak.
+The Python normalizer in M90.2 uses a direct Python sum. This C example exercises a separate native implementation and its allocation behavior.
 
 ## 2. Principles
 

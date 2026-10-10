@@ -1,6 +1,6 @@
 id        = "ds.02"
-title     = "Swiss table tl_map (u64 to u64)"
-kind      = "build"
+title     = "Swiss table tl_map (u64 to u64, optional C)"
+kind      = "side"
 lang      = ["c"]
 pass      = 6
 chapter   = "algorithms/16-systems-data-structures/02-swiss-table.md"
@@ -8,7 +8,7 @@ chapter   = "algorithms/16-systems-data-structures/02-swiss-table.md"
 # that shared header carries no `chapter:` back-pointer, which `ss lint`
 # requires of a listed contract (DEVIATIONS B82-02).
 contract  = []
-deps      = ["rt.01"]                # tl_alloc, tl_free, and the error slot (abi.c)
+deps      = ["rt.02"]
 # ds.05 is the first hash-table chapter (hashing, probing, load factor);
 # S-M06a gives the expected probe lengths. Neither has code ds.02 calls.
 reading   = ["ds.05", "S-M06a"]
@@ -18,7 +18,7 @@ reading   = ["ds.05", "S-M06a"]
 used_by   = ["rt.04"]
 units     = ["c/src/ds/swiss.c"]
 upgrades  = []
-milestone = "MS-L8"
+milestone = "MS-L9"
 ci        = "pr"
 
 [tests]

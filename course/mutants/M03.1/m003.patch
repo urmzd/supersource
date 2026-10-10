@@ -1,11 +1,11 @@
---- a/c/src/kernels/matmul.c	2026-10-08 23:00:32
-+++ b/c/src/kernels/matmul.c	2026-10-08 23:00:32
-@@ -37,7 +37,7 @@
-             tl_set_last_error(trans_b ? "tl_matmul_f32: ldb < K (trans_b)" : "tl_matmul_f32: ldb < N");
-             return TL_EINVAL;
-         }
--        if (A == NULL || B == NULL) {
-+        if (A == NULL && B == NULL) {
-             tl_set_last_error("tl_matmul_f32: A or B is NULL");
-             return TL_EINVAL;
-         }
+--- a/python/tinyllm/linalg/matmul.py
++++ b/python/tinyllm/linalg/matmul.py
+@@ -38,7 +38,7 @@
+         bk, n = bb.shape
+     if k != bk:
+         raise ValueError(f"inner dimensions differ: A has {k}, op(B) has {bk}")
+-    if c is None:
++    if c is not None:
+         cc = np.empty((m, n), dtype=np.float32)
+     else:
+         cc = np.asarray(c)

@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/tolerance.pyi`](../../course/contracts/py/tinyllm/num/tolerance.pyi) |
 | **Tests** | `course/tests/M09.3/` (what they check: section 4) |
 | **Needs** | `M03.5` (`svd`: `cond` takes its singular values) · `M01.1` (`central_diff`: the tests measure a real difference against your step) · reading: `M09.1` the unit roundoff, `M09.2` summation order, `S-M09a` |
-| **Used by** | `L8.5` budgets quantization error with `matmul_error_bound(..., dA=scale/2)` · `L9.7` checks every C kernel against numpy within `matmul_error_bound` and prints `bound_ratio` · your own differential tests from rung R5 on |
+| **Used by** | `L8.5` budgets quantization error with `matmul_error_bound(..., dA=scale/2)` · optional `L9.1` checks its standalone C matmul against fixture values within `matmul_error_bound` · your own differential tests from rung R5 on |
 | **Milestone** | `MS-P6` (Pass 6 gate: every math module of the pass checks green) |
 | **Optional depth** | Higham, *Accuracy and Stability of Numerical Algorithms* (SIAM, 2nd ed.), ch. 2 to 4 and 7; Trefethen and Bau, *Numerical Linear Algebra*, lectures 12 to 15; Higham and Mary, "A New Approach to Probabilistic Rounding Error Analysis" (SIAM J. Sci. Comput., 2019) |
 
@@ -87,7 +87,7 @@ A test compares an implementation against a reference. Every source of differenc
 
 $$\text{allowed}_{ij} = \underbrace{(dA\, \lvert B\rvert)_{ij}}_{\text{weights moved by } \le dA} + \underbrace{\gamma_k \big((\lvert A\rvert + dA)\, \lvert B\rvert\big)_{ij}}_{\text{rounding of the moved product}}.$$
 
-With quantization to a grid of step $s$ (`L8.5`), each weight moves by at most $dA = s/2$. With $dA = 0$ it is the plain rounding bound `L9.7` checks every C kernel against. `bound_ratio` reports $\max_{ij} \lvert\text{error}\rvert / \text{allowed}$: at most 1 passes, and how close to 1 it is tells you whether the test can still catch a bug. `assert_close_bounded` multiplies the dot bound by a `slack` (default 4) because the "expected" side is itself computed in floating point (in float64, or in float32 by a different order).
+With quantization to a grid of step $s$ (`L8.5`), each weight moves by at most $dA = s/2$. With $dA = 0$ it is the plain rounding bound optional `L9.1` checks its standalone C matmul against. `bound_ratio` reports $\max_{ij} \lvert\text{error}\rvert / \text{allowed}$: at most 1 passes, and how close to 1 it is tells you whether the test can still catch a bug. `assert_close_bounded` multiplies the dot bound by a `slack` (default 4) because the "expected" side is itself computed in floating point (in float64, or in float32 by a different order).
 
 The worst case is rarely reached: rounding errors have random signs and partially cancel, so the typical error grows like $\sqrt{k}\, u$, not $k u$ (Higham and Mary 2019). The frozen `tests/_lib/close.py` that grades your modules uses that statistical rule: tolerances times $\sqrt{K}$. It is tighter and almost always right; the bound here is looser and always right. Use the bound when a false failure would be expensive to debug.
 
@@ -163,7 +163,7 @@ def optimal_fd_step(order, dtype, f_scale=1.0, deriv_scale=1.0) -> float
 | `test_matmul_bound_budgets_a_perturbation` | property | quantized weights pass with $dA = s/2$, fail without | `L8.5`'s quantization budget |
 | `test_assert_close_bounded_passes_and_fails` | unit | a correct dot passes, one dropped term fails, slack scales | the helper is a verdict |
 | `test_assert_close_bounded_special_values` | boundary | NaN, infinities, zero bounds, shape mismatch | overflowed kernels compare sanely |
-| `test_bound_ratio` | unit | the worst element, $0/0 = 0$, $x/0 = \infty$ | `L9.7` prints one number per op |
+| `test_bound_ratio` | unit | the worst element, $0/0 = 0$, $x/0 = \infty$ | optional C parity reports one number per operation |
 | `test_cond_matches_numpy` | golden | LAPACK on square, tall, wide, Hilbert, non-normal | an independent implementation agrees |
 | `test_cond_edges` | boundary | identity, scale invariance, orthogonal, singular gives $\infty$ | no meaningless $10^{17}$ |
 | `test_cond_bounds_the_amplification` | property | amplification $\le \kappa_2$, reached at the singular directions | the theorem of section 2.5 |
@@ -193,10 +193,10 @@ def optimal_fd_step(order, dtype, f_scale=1.0, deriv_scale=1.0) -> float
 | Back | `M01.1` | `central_diff` is the difference whose step section 2.6 optimizes |
 | Back | `M09.1` | $u$ and the formats |
 | Forward | `L8.5` | quantization error budget: `matmul_error_bound(W, x, "f32", dA=scale/2)` |
-| Forward | `L9.7` | `--backend c --check`: each C op against numpy within `matmul_error_bound`, reported as `bound_ratio` |
+| Forward | `L9.1` | standalone C matmul checked against fixture values within `matmul_error_bound` |
 | Forward | `L9.1` | the tiled matmul's own differential test, if you write it with these bounds |
 
-If you skip this module, `L8.5` and `L9.7` stop with `needs M09.3`; `--ref-deps` substitutes the reference.
+If you skip this module, `L8.5` still needs its error budget; optional `L9.1` can be studied later.
 
 ## Going further
 

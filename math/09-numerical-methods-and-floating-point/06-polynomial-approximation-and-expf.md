@@ -1,17 +1,17 @@
 <!-- ss:module M09.6 -->
-# Polynomial approximation and range reduction: expf in C
+# Polynomial approximation and range reduction: expf in C (optional)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M09.6` · build · C · Pass 6 · 2 to 3 h |
+| **Module** | `M09.6` · side · C · Pass 6 · 2 to 3 h |
 | **You build** | `c/src/numerics/expf.c`: `tl_expf` and `tl_exp_f32` (and the helper `pow2i`) |
 | **Contract** | [`course/contracts/c/include/tinyllm/numerics.h`](../../course/contracts/c/include/tinyllm/numerics.h) (the M09.6 section) · rules: [`c/ABI.md`](../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/M09.6/`: `test_expf.c` (C, under ASan and UBSan) and `test_expf_ctypes.py` (Python, through your loader) (what they check: section 4) |
-| **Needs** | [`rt.01` the C ABI](../../ml/08-tinyllm/p09-kernels/01-the-c-abi.md), [`M02.1` Taylor series and range reduction](../02-calculus-2/01-taylor-series.md) (`exp_range_reduced`, the Python twin) (or `--ref-deps`). Reading: [`M00.4` Horner's rule](../00-precalculus/04-polynomials-horner-and-stable-roots.md), [`M09.1` IEEE 754](01-ieee-754.md) |
+| **Tests** | `course/tests/M09.6/`: `test_expf.c` (C, under ASan and UBSan) (what they check: section 4) |
+| **Needs** | [`rt.02` runtime support](../../ml/08-tinyllm/p09-kernels/02-arena-allocator-with-marks.md), [`M02.1` Taylor series and range reduction](../02-calculus-2/01-taylor-series.md) (`exp_range_reduced`, the Python twin) (or `--ref-deps`). Reading: [`M00.4` Horner's rule](../00-precalculus/04-polynomials-horner-and-stable-roots.md), [`M09.1` IEEE 754](01-ieee-754.md) |
 | **Used by** | `L9.2` softmax · `L9.3` FlashAttention · `L9.4` paged attention · `L9.6` SiLU, each calling `tl_expf` per element |
-| **Milestone** | `MS-P6` (the Pass 6 gate: inference and kernels) |
+| **Milestone** | `MS-L9`, the optional standalone C module group |
 | **Optional depth** | Muller, *Elementary Functions: Algorithms and Implementation* (3rd ed.), ch. 2 and 11; Cody and Waite, *Software Manual for the Elementary Functions* (1980); Trefethen, *Approximation Theory and Approximation Practice*, ch. 10 |
 
 ## Key Takeaways
@@ -28,7 +28,7 @@
 ss start M09.6              # stubs expf.c into your repo
 ss tests M09.6              # read the test catalog first: rung R0, you write no tests here
 ss check M09.6              # exit code is the verdict
-ss check M09.6 --ref-deps   # only if you skipped rt.01 or M02.1
+ss check M09.6 --ref-deps   # only if you skipped rt.02 or M02.1
 ss diff  M09.6              # after passing: your code against the reference
 ```
 
@@ -115,9 +115,7 @@ Write `pow2i(k)` (the float $2^k$ from its bit pattern, for $-126 \le k \le 127$
 | `underflow_edge` | boundary | $-87.3$ within 2 ulp; below the normal range $0 \le y \le$ `FLT_MIN` and within one subnormal step (or 0); $e^{-\infty} = +0$ | masked attention scores are $-\infty$ |
 | `nan_in_nan_out` | boundary | NaN stays NaN, with no undefined behavior | a NaN logit stays visible |
 | `array_matches_scalar_and_aliases` | unit | the array form gives the scalar's bits, writes exactly $n$, works in place | the softmax row in place |
-| `test_hand_example_through_ctypes` | unit, smoke | $x = 1$ through your loader; your degree-7 `exp_range_reduced` within $10^{-8}$ of $e$ | Python and C agree |
-| `test_within_2_ulp_of_exp_range_reduced` | differential | 50000 inputs: C within 2 ulp of your M02.1 function, which is itself checked against numpy | the kernel is your Python, ported |
-| `test_edges_through_ctypes` | boundary | the overflow edge, $\pm\infty$, NaN, $-104$ through ctypes | the values L9.7's Python backend sees |
+| `hand_example` | unit, smoke | the standalone C implementation evaluates $x = 1$ within $10^{-8}$ of $e$ | checks the worked reduction |
 
 ## 5. Pitfalls
 
@@ -136,7 +134,7 @@ Write `pow2i(k)` (the float $2^k$ from its bit pattern, for $-126 \le k \le 127$
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the error slot of every stub, and the loader the Python test declares `tl_exp_f32` on |
+| Back | `rt.02` | the error slot of every stub, and the status and error support used by `tl_exp_f32` |
 | Back | `M02.1` | `exp_range_reduced` is this algorithm in float64; the differential test compares the two |
 | Back | `M00.4` | Horner's rule for the polynomial (reading) |
 | Back | `M09.1` | exponent fields, ulps, subnormals (reading) |

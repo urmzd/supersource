@@ -165,7 +165,7 @@ The two learning tests compare against bars in `course/fixtures/ref-thresholds.t
 | Back | `M10.2` | `SGD` steps the hand example |
 | Back | `M10.3` | `AdamW` trains the MLPs and the bigram |
 | Back | `M10.4` | `clip_grad_norm_` in `train_step` |
-| Back | `rt.01` | the ctypes loader `BigramLM.logits` calls through |
+| Back | Python reference | This model has no native library boundary. |
 | Back | `M03.1` | `tl_matmul_f32` computes `BigramLM.logits` |
 | Forward | `L10.0` | your Rust engine serves the table `to_lm()` produces, unchanged (`tl_arch = bigram`) |
 | Forward | `L0.6` | takes over `safetensors.py`; its regression run of `L0.0`'s suite exercises your `bigram.py` too |

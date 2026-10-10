@@ -30,8 +30,8 @@ A language model is a function from a prefix of token ids to a distribution over
 **Key ideas**:
 - **Byte tokenizer**: 256 ids, no training, no unknown tokens; decoding a stream must handle incomplete UTF-8.
 - **Count bigram**: $P(b \mid a) = (c_{ab} + \alpha) / (\sum_x c_{ax} + 256\alpha)$; its negative log-likelihood is the baseline every later model must beat.
-- **Logits through C**: one-hot rows times the weight matrix through your `tl_matmul_f32`, called by ctypes.
-- **Checkpoint**: `model.safetensors` plus `config.json`, byte-identical to the reference library's output.
+- **Logits in Python**: the bigram model computes logits in the reference implementation.
+- **Checkpoint**: Python writes `model.safetensors`; Rust Candle reads the same weights. Shared fixture files check cross-language behavior.
 
 ## 2. The spine (Passes 2 to 11)
 

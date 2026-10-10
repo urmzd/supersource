@@ -2,8 +2,8 @@
 //! already computed, kept in a radix tree over token ids at block
 //! granularity (tl-ds `radix`, ds.07).
 //!
-//! The cache stores block ids, never KV data: the blocks live in the C pool
-//! (rt.04) and the block manager (L10.4) moves references between the pool,
+//! The cache stores block ids, never KV data: the blocks live in the Rust pool
+//! (L10.1) and the block manager (L10.4) moves references between the pool,
 //! running requests, and this cache. The rules the cache adds to the tree:
 //!
 //! - Block granular. Only whole blocks of `block_size` tokens are matched or
@@ -22,7 +22,7 @@ use tl_ds::radix::{RadixTree, ROOT};
 
 pub use tl_ds::radix::NodeId;
 
-/// A KV block id of the C pool (rt.04).
+/// A KV block id of the Rust pool (L10.1).
 pub type BlockId = u32;
 
 /// The longest cached prefix of a prompt.

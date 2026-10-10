@@ -1,62 +1,29 @@
-//! The model graph in Rust over the C kernels (L10.1, D7).
-//!
-//! One call runs one engine step: a batch of sequences, each contributing a
-//! run of new tokens at absolute positions `start..start + n` (a whole
-//! prompt, a prefill chunk, or one decode token). Every token of every
-//! sequence goes through the projections together, as one matrix of N rows,
-//! so the weights are read once per step whatever the batch size; attention
-//! is the only per-sequence part. Each kernel is batch- and chunk-invariant
-//! (c/ABI.md rule 10), so a sequence's logits do not depend on what else is
-//! in the batch or on how its prompt was split into chunks.
-//!
-//! K and V of every new token are written into the sequence's blocks of the
-//! KV pool (rt.04) as f16, then read back for attention: the pool is the
-//! only place a sequence's past lives between steps.
+//! Llama and byte-bigram forward passes (L10.1), built from Candle tensors
+//! and the layer operations the learner implements here. K and V live in the
+//! engine's Rust-owned, f16 KV pool between steps.
 
-use tl_sys::kernels::{AttnShape, RopeLayout};
-use tl_sys::kv::KvPool;
+use candle_core::{D, Device, Tensor};
+use candle_nn::{ops, Module};
 
+use crate::kv::KvPool;
 use crate::model::{Linear, LlamaWeights, ModelConfig};
 use crate::quant::{f16_to_f32, f32_to_f16};
 
-/// One sequence's part of a step: `tokens` sit at positions
-/// `start..start + tokens.len()`; `blocks` is its block table and covers at
-/// least `start + tokens.len()` positions (block i holds positions
-/// `i * block_tokens..(i + 1) * block_tokens`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ForwardSeq<'a> {
-    pub tokens: &'a [u32],
-    pub start: usize,
-    pub blocks: &'a [u32],
-}
+pub struct ForwardSeq<'a> { pub tokens: &'a [u32], pub start: usize, pub blocks: &'a [u32] }
 
-/// The sequences of one step.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ForwardBatch<'a> {
-    pub seqs: Vec<ForwardSeq<'a>>,
-}
+pub struct ForwardBatch<'a> { pub seqs: Vec<ForwardSeq<'a>> }
 
-/// Next-token logits: one row of `vocab` values per sequence of the batch,
-/// for the position after its last token.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Logits {
-    pub vocab: usize,
-    pub data: Vec<f32>,
-}
+pub struct Logits { pub vocab: usize, pub data: Vec<f32> }
 
 impl Logits {
-    /// Number of rows.
     pub fn rows(&self) -> usize {
         // SOLUTION-BEGIN L10.1
-        if self.vocab == 0 {
-            0
-        } else {
-            self.data.len() / self.vocab
-        }
+        if self.vocab == 0 { 0 } else { self.data.len() / self.vocab }
         // SOLUTION-END
     }
-
-    /// Row `i`: the logits of sequence `i` of the batch.
     pub fn row(&self, i: usize) -> &[f32] {
         // SOLUTION-BEGIN L10.1
         &self.data[i * self.vocab..(i + 1) * self.vocab]
@@ -64,210 +31,188 @@ impl Logits {
     }
 }
 
-/// RoPE inverse frequencies, HF Llama's default: inv_freq[i] =
-/// 1 / theta^(2i / d) for i < d / 2, computed in f32 as transformers does.
 pub fn rope_inv_freq(theta: f64, d: usize) -> Vec<f32> {
     // SOLUTION-BEGIN L10.1
     let base = theta as f32;
-    (0..d / 2).map(|i| 1.0f32 / base.powf((2 * i) as f32 / d as f32)).collect()
+    (0..d / 2).map(|i| 1.0 / base.powf((2 * i) as f32 / d as f32)).collect()
     // SOLUTION-END
 }
 
-fn err(e: tl_sys::TlError) -> String {
+fn tensor_vec(t: Tensor) -> Result<Vec<f32>, String> {
     // SOLUTION-BEGIN L10.1
-    e.to_string()
+    Ok(t.flatten_all().and_then(|x| x.to_vec1::<f32>()).map_err(|e| e.to_string())?)
     // SOLUTION-END
 }
 
-/// Writes K and V rows of one layer into the pool: row r of `k` and `v`
-/// ([n, n_kv_heads * head_dim]) is position `start + r` of the sequence.
-/// Then records each touched block's fill.
-pub fn write_kv(pool: &mut KvPool, layer: u32, seq: &ForwardSeq, k: &[f32], v: &[f32]) -> Result<(), String> {
+fn rms_norm(x: &[f32], weight: &[f32], rows: usize, width: usize, eps: f32, device: &Device) -> Result<Vec<f32>, String> {
     // SOLUTION-BEGIN L10.1
-    let cfg = pool.cfg();
-    let (bt, hkv, hd) = (cfg.block_tokens as usize, cfg.n_kv_heads as usize, cfg.head_dim as usize);
-    let end = seq.start + seq.tokens.len();
-    if seq.blocks.len() * bt < end {
-        return Err(format!("forward: {} blocks cover {} positions, the step needs {end}", seq.blocks.len(), seq.blocks.len() * bt));
-    }
-    for (src, is_v) in [(k, false), (v, true)] {
-        for r in 0..seq.tokens.len() {
-            let p = seq.start + r;
-            let (blk, slot) = (seq.blocks[p / bt], p % bt);
-            let slab = pool.slab_mut(blk, layer, is_v).map_err(err)?;
-            for h in 0..hkv {
-                let dst = &mut slab[(h * bt + slot) * hd..(h * bt + slot + 1) * hd];
-                let row = &src[r * hkv * hd + h * hd..r * hkv * hd + (h + 1) * hd];
-                for (d, x) in dst.iter_mut().zip(row) {
-                    *d = f32_to_f16(*x);
-                }
-            }
-        }
-    }
-    if layer == 0 {
-        for b in seq.start / bt..end.div_ceil(bt) {
-            let fill = (end - b * bt).min(bt) as u32;
-            if pool.fill(seq.blocks[b]) < fill {
-                pool.set_fill(seq.blocks[b], fill).map_err(err)?;
-            }
-        }
-    }
+    let x = Tensor::from_vec(x.to_vec(), (rows, width), device).map_err(|e| e.to_string())?;
+    let w = Tensor::from_vec(weight.to_vec(), width, device).map_err(|e| e.to_string())?;
+    tensor_vec(ops::rms_norm(&x, &w, eps).map_err(|e| e.to_string())?)
+    // SOLUTION-END
+}
+
+fn project(l: &Linear, x: &[f32], rows: usize, device: &Device) -> Result<Vec<f32>, String> {
+    // SOLUTION-BEGIN L10.1
+    let (out, _) = l.dims();
+    let mut y = vec![0.0f32; rows * out];
+    l.forward_on(x, rows, &mut y, device)?;
+    Ok(y)
+    // SOLUTION-END
+}
+
+fn add_assign(x: &mut [f32], y: &[f32]) -> Result<(), String> {
+    // SOLUTION-BEGIN L10.1
+    if x.len() != y.len() { return Err("residual add shape mismatch".into()); }
+    for (a,b) in x.iter_mut().zip(y) { *a += *b; }
     Ok(())
     // SOLUTION-END
 }
 
-/// K or V of positions `0..tk` of one sequence and layer, widened to f32,
-/// laid out [n_kv_heads, tk, head_dim] as the attention kernel wants.
-pub fn gather_kv(pool: &KvPool, layer: u32, blocks: &[u32], tk: usize, is_v: bool) -> Result<Vec<f32>, String> {
+fn silu_mul(gate: &[f32], up: &[f32], device: &Device) -> Result<Vec<f32>, String> {
     // SOLUTION-BEGIN L10.1
-    let cfg = pool.cfg();
-    let (bt, hkv, hd) = (cfg.block_tokens as usize, cfg.n_kv_heads as usize, cfg.head_dim as usize);
-    let mut out = vec![0.0f32; hkv * tk * hd];
-    for b in 0..tk.div_ceil(bt) {
-        let slab = pool.slab(blocks[b], layer, is_v).map_err(err)?;
-        for slot in 0..bt.min(tk - b * bt) {
-            let p = b * bt + slot;
-            for h in 0..hkv {
-                let src = &slab[(h * bt + slot) * hd..(h * bt + slot + 1) * hd];
-                let dst = &mut out[(h * tk + p) * hd..(h * tk + p + 1) * hd];
-                for (d, s) in dst.iter_mut().zip(src) {
-                    *d = f16_to_f32(*s);
-                }
-            }
+    if gate.len() != up.len() { return Err("SwiGLU shape mismatch".into()); }
+    let g = Tensor::from_vec(gate.to_vec(), gate.len(), device).map_err(|e| e.to_string())?;
+    let u = Tensor::from_vec(up.to_vec(), up.len(), device).map_err(|e| e.to_string())?;
+    tensor_vec(ops::silu(&g).and_then(|s| s.mul(&u)).map_err(|e| e.to_string())?)
+    // SOLUTION-END
+}
+
+fn rope(data: &mut [f32], positions: &[usize], heads: usize, head_dim: usize, inv: &[f32], rows: usize) -> Result<(), String> {
+    // SOLUTION-BEGIN L10.1
+    if head_dim % 2 != 0 || inv.len() != head_dim / 2 || data.len() != rows * heads * head_dim || positions.len() != rows {
+        return Err("RoPE shape mismatch".into());
+    }
+    let half = head_dim / 2;
+    for r in 0..rows { for h in 0..heads {
+        let base = (r * heads + h) * head_dim;
+        for i in 0..half {
+            let angle = positions[r] as f32 * inv[i];
+            let (sin, cos) = angle.sin_cos();
+            let a = data[base + i]; let b = data[base + i + half];
+            data[base + i] = a * cos - b * sin;
+            data[base + i + half] = a * sin + b * cos;
         }
+    }}
+    Ok(())
+    // SOLUTION-END
+}
+
+fn attention(q: &[f32], k: &[f32], v: &[f32], ns: usize, tk: usize, heads: usize, kv_heads: usize, hd: usize, q_offset: usize, scale: f32, device: &Device) -> Result<Vec<f32>, String> {
+    // SOLUTION-BEGIN L10.1
+    let mut out = vec![0.0f32; ns * heads * hd];
+    for h in 0..heads {
+        let kh = h / (heads / kv_heads);
+        let qh: Vec<f32> = (0..ns).flat_map(|i| q[(i * heads + h) * hd..(i * heads + h + 1) * hd].iter().copied()).collect();
+        let khv: Vec<f32> = (0..tk).flat_map(|i| k[(kh * tk + i) * hd..(kh * tk + i + 1) * hd].iter().copied()).collect();
+        let vhv: Vec<f32> = (0..tk).flat_map(|i| v[(kh * tk + i) * hd..(kh * tk + i + 1) * hd].iter().copied()).collect();
+        let qt = Tensor::from_vec(qh, (ns, hd), device).map_err(|e| e.to_string())?;
+        let kt = Tensor::from_vec(khv, (tk, hd), device).map_err(|e| e.to_string())?;
+        let scores = qt.matmul(&kt.transpose(0, 1).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        let mut score_rows = scores.to_vec2::<f32>().map_err(|e| e.to_string())?;
+        for i in 0..ns { for j in q_offset + i + 1..tk { score_rows[i][j] = f32::NEG_INFINITY; } }
+        for row in &mut score_rows { for x in row { *x *= scale; } }
+        let scores = Tensor::from_vec(score_rows.into_iter().flatten().collect(), (ns, tk), device).map_err(|e| e.to_string())?;
+        let probs = ops::softmax(&scores, D::Minus1).map_err(|e| e.to_string())?;
+        let vt = Tensor::from_vec(vhv, (tk, hd), device).map_err(|e| e.to_string())?;
+        let result = probs.matmul(&vt).map_err(|e| e.to_string())?.to_vec2::<f32>().map_err(|e| e.to_string())?;
+        for i in 0..ns { out[(i * heads + h) * hd..(i * heads + h + 1) * hd].copy_from_slice(&result[i]); }
     }
     Ok(out)
     // SOLUTION-END
 }
 
-/// `y = x @ W^T` into a new buffer of m rows.
-fn project(l: &Linear, x: &[f32], m: usize) -> Result<Vec<f32>, String> {
+pub fn write_kv(pool: &mut KvPool, layer: u32, seq: &ForwardSeq, k: &[f32], v: &[f32]) -> Result<(), String> {
     // SOLUTION-BEGIN L10.1
-    let (out, _) = l.dims();
-    let mut y = vec![0.0f32; m * out];
-    l.forward(x, m, &mut y).map_err(err)?;
-    Ok(y)
+    let cfg = pool.cfg();
+    let (bt, hkv, hd) = (cfg.block_tokens as usize, cfg.n_kv_heads as usize, cfg.head_dim as usize);
+    let end = seq.start + seq.tokens.len();
+    if seq.blocks.len() * bt < end { return Err(format!("forward: {} blocks cover {} positions, the step needs {end}", seq.blocks.len(), seq.blocks.len() * bt)); }
+    for (src, is_v) in [(k, false), (v, true)] {
+        for r in 0..seq.tokens.len() { let p = seq.start + r; let (blk, slot) = (seq.blocks[p / bt], p % bt);
+            let slab = pool.slab_mut(blk, layer, is_v).map_err(|e| e.to_string())?;
+            for h in 0..hkv {
+                let dst = &mut slab[(h * bt + slot) * hd..(h * bt + slot + 1) * hd];
+                let row = &src[r * hkv * hd + h * hd..r * hkv * hd + (h + 1) * hd];
+                for (d, x) in dst.iter_mut().zip(row) { *d = f32_to_f16(*x); }
+            }
+        }
+    }
+    if layer == 0 { for b in seq.start / bt..end.div_ceil(bt) { let fill = (end - b * bt).min(bt) as u32; if pool.fill(seq.blocks[b]) < fill { pool.set_fill(seq.blocks[b], fill).map_err(|e| e.to_string())?; } } }
+    Ok(())
     // SOLUTION-END
 }
 
-/// The Llama forward of one step. Returns the logits of each sequence's
-/// last token; with `hidden`, also fills it with the final-normed hidden
-/// states of every token of the batch, [N, hidden_size] in batch order.
-pub fn llama_forward(
-    w: &LlamaWeights,
-    cfg: &ModelConfig,
-    inv_freq: &[f32],
-    pool: &mut KvPool,
-    batch: &ForwardBatch,
-    hidden: Option<&mut Vec<f32>>,
-) -> Result<Logits, String> {
+pub fn gather_kv(pool: &KvPool, layer: u32, blocks: &[u32], tk: usize, is_v: bool) -> Result<Vec<f32>, String> {
     // SOLUTION-BEGIN L10.1
-    let d = cfg.hidden_size;
-    let (h, hkv, hd) = (cfg.n_heads, cfg.n_kv_heads, cfg.head_dim);
-    let mut ids = Vec::new();
-    let mut pos = Vec::new();
-    let mut offs = Vec::with_capacity(batch.seqs.len());
+    let cfg = pool.cfg();
+    let (bt, hkv, hd) = (cfg.block_tokens as usize, cfg.n_kv_heads as usize, cfg.head_dim as usize);
+    let mut out = vec![0.0f32; hkv * tk * hd];
+    for b in 0..tk.div_ceil(bt) { let slab = pool.slab(blocks[b], layer, is_v).map_err(|e| e.to_string())?;
+        for slot in 0..bt.min(tk - b * bt) { let p = b * bt + slot; for h in 0..hkv {
+            let src = &slab[(h * bt + slot) * hd..(h * bt + slot + 1) * hd];
+            let dst = &mut out[(h * tk + p) * hd..(h * tk + p + 1) * hd];
+            for (d,s) in dst.iter_mut().zip(src) { *d = f16_to_f32(*s); }
+        }}
+    }
+    Ok(out)
+    // SOLUTION-END
+}
+
+pub fn llama_forward(w: &LlamaWeights, cfg: &ModelConfig, inv_freq: &[f32], device: &Device, pool: &mut KvPool, batch: &ForwardBatch, hidden: Option<&mut Vec<f32>>) -> Result<Logits, String> {
+    // SOLUTION-BEGIN L10.1
+    let d = cfg.hidden_size; let (h, hkv, hd) = (cfg.n_heads, cfg.n_kv_heads, cfg.head_dim);
+    if hkv == 0 || h % hkv != 0 { return Err("forward: invalid grouped-query attention shape".into()); }
+    let mut ids = Vec::new(); let mut positions = Vec::new(); let mut offsets = Vec::with_capacity(batch.seqs.len());
     for s in &batch.seqs {
-        if s.tokens.is_empty() {
-            return Err("forward: a sequence with no new tokens".to_string());
-        }
-        if s.start + s.tokens.len() > cfg.max_position_embeddings {
-            return Err(format!("forward: position {} is past the context of {}", s.start + s.tokens.len(), cfg.max_position_embeddings));
-        }
-        offs.push(ids.len());
-        for (i, &t) in s.tokens.iter().enumerate() {
-            ids.push(i32::try_from(t).map_err(|_| format!("forward: token id {t}"))?);
-            pos.push(i32::try_from(s.start + i).map_err(|_| "forward: position overflow".to_string())?);
-        }
+        if s.tokens.is_empty() { return Err("forward: a sequence with no new tokens".into()); }
+        if s.start + s.tokens.len() > cfg.max_position_embeddings { return Err(format!("forward: position {} is past the context of {}", s.start + s.tokens.len(), cfg.max_position_embeddings)); }
+        offsets.push(ids.len());
+        for (i,&t) in s.tokens.iter().enumerate() { if t as usize >= cfg.vocab_size { return Err(format!("forward: token id {t} outside vocab {}", cfg.vocab_size)); } ids.push(t); positions.push(s.start + i); }
     }
     let n = ids.len();
-    let mut x = vec![0.0f32; n * d];
-    tl_sys::kernels::embedding_f32(&w.embed, cfg.vocab_size, &ids, &mut x, d).map_err(err)?;
-    let mut hbuf = vec![0.0f32; n * d];
-    let scale = 1.0 / (hd as f32).sqrt();
-    for (li, lw) in w.layers.iter().enumerate() {
+    let embedding = Tensor::from_vec(w.embed.clone(), (cfg.vocab_size, d), device).map_err(|e| e.to_string())?;
+    let index = Tensor::new(ids, device).map_err(|e| e.to_string())?;
+    let embed = candle_nn::Embedding::new(embedding, d).forward(&index).map_err(|e| e.to_string())?;
+    let mut x = tensor_vec(embed)?;
+    for (li,lw) in w.layers.iter().enumerate() {
         let layer = li as u32;
-        // attention block
-        tl_sys::kernels::rmsnorm_f32(&x, &lw.input_norm, &mut hbuf, n, d, cfg.rms_norm_eps).map_err(err)?;
-        let mut q = project(&lw.q, &hbuf, n)?;
-        let mut k = project(&lw.k, &hbuf, n)?;
-        let v = project(&lw.v, &hbuf, n)?;
-        tl_sys::kernels::rope_f32(&mut q, &pos, n, h, hd, hd, inv_freq, 1.0, RopeLayout::Half).map_err(err)?;
-        tl_sys::kernels::rope_f32(&mut k, &pos, n, hkv, hd, hd, inv_freq, 1.0, RopeLayout::Half).map_err(err)?;
+        let normed = rms_norm(&x, &lw.input_norm, n, d, cfg.rms_norm_eps, device)?;
+        let mut q = project(&lw.q, &normed, n, device)?; let mut k = project(&lw.k, &normed, n, device)?; let v = project(&lw.v, &normed, n, device)?;
+        rope(&mut q, &positions, h, hd, inv_freq, n)?; rope(&mut k, &positions, hkv, hd, inv_freq, n)?;
         let mut attn = vec![0.0f32; n * h * hd];
-        for (s, &off) in batch.seqs.iter().zip(&offs) {
+        for (s,&off) in batch.seqs.iter().zip(&offsets) {
             let ns = s.tokens.len();
             write_kv(pool, layer, s, &k[off * hkv * hd..(off + ns) * hkv * hd], &v[off * hkv * hd..(off + ns) * hkv * hd])?;
-            let tk = s.start + ns;
-            let kc = gather_kv(pool, layer, s.blocks, tk, false)?;
-            let vc = gather_kv(pool, layer, s.blocks, tk, true)?;
-            // [ns, h, hd] -> [h, ns, hd]
-            let mut qs = vec![0.0f32; h * ns * hd];
-            for i in 0..ns {
-                for hh in 0..h {
-                    let src = &q[((off + i) * h + hh) * hd..((off + i) * h + hh + 1) * hd];
-                    qs[(hh * ns + i) * hd..(hh * ns + i + 1) * hd].copy_from_slice(src);
-                }
-            }
-            let mut o = vec![0.0f32; h * ns * hd];
-            let shape = AttnShape { batch: 1, heads: h, kv_heads: hkv, tq: ns, tk, head_dim: hd, scale, q_offset: s.start, causal: true, window: 0 };
-            tl_sys::kernels::flash_attn_f32(&qs, &kc, &vc, &mut o, &shape).map_err(err)?;
-            for i in 0..ns {
-                for hh in 0..h {
-                    let dst = &mut attn[((off + i) * h + hh) * hd..((off + i) * h + hh + 1) * hd];
-                    dst.copy_from_slice(&o[(hh * ns + i) * hd..(hh * ns + i + 1) * hd]);
-                }
-            }
+            let tk = s.start + ns; let kc = gather_kv(pool, layer, s.blocks, tk, false)?; let vc = gather_kv(pool, layer, s.blocks, tk, true)?;
+            let qs: Vec<f32> = (0..ns).flat_map(|i| q[(off + i) * h * hd..(off + i + 1) * h * hd].iter().copied()).collect();
+            let o = attention(&qs, &kc, &vc, ns, tk, h, hkv, hd, s.start, 1.0 / (hd as f32).sqrt(), device)?;
+            for i in 0..ns { attn[(off + i) * h * hd..(off + i + 1) * h * hd].copy_from_slice(&o[i * h * hd..(i + 1) * h * hd]); }
         }
-        let ao = project(&lw.o, &attn, n)?;
-        tl_sys::kernels::add_assign_f32(&mut x, &ao).map_err(err)?;
-        // MLP block
-        tl_sys::kernels::rmsnorm_f32(&x, &lw.post_norm, &mut hbuf, n, d, cfg.rms_norm_eps).map_err(err)?;
-        let g = project(&lw.gate, &hbuf, n)?;
-        let u = project(&lw.up, &hbuf, n)?;
-        let mut m = vec![0.0f32; g.len()];
-        tl_sys::kernels::silu_mul_f32(&g, &u, &mut m).map_err(err)?;
-        let dn = project(&lw.down, &m, n)?;
-        tl_sys::kernels::add_assign_f32(&mut x, &dn).map_err(err)?;
+        let ao = project(&lw.o, &attn, n, device)?; add_assign(&mut x, &ao)?;
+        let normed = rms_norm(&x, &lw.post_norm, n, d, cfg.rms_norm_eps, device)?;
+        let g = project(&lw.gate, &normed, n, device)?; let u = project(&lw.up, &normed, n, device)?;
+        let m = silu_mul(&g, &u, device)?; let dn = project(&lw.down, &m, n, device)?; add_assign(&mut x, &dn)?;
     }
-    if let Some(out) = hidden {
-        out.resize(n * d, 0.0);
-        tl_sys::kernels::rmsnorm_f32(&x, &w.norm, out, n, d, cfg.rms_norm_eps).map_err(err)?;
-    }
-    // final norm and LM head on each sequence's last token only
-    let rows = batch.seqs.len();
-    let mut last = vec![0.0f32; rows * d];
-    for (r, (s, &off)) in batch.seqs.iter().zip(&offs).enumerate() {
-        let i = off + s.tokens.len() - 1;
-        last[r * d..(r + 1) * d].copy_from_slice(&x[i * d..(i + 1) * d]);
-    }
-    let mut normed = vec![0.0f32; rows * d];
-    tl_sys::kernels::rmsnorm_f32(&last, &w.norm, &mut normed, rows, d, cfg.rms_norm_eps).map_err(err)?;
-    let v = cfg.vocab_size;
-    let mut data = vec![0.0f32; rows * v];
-    match &w.lm_head {
-        Some(head) => head.forward(&normed, rows, &mut data).map_err(err)?,
-        None => tl_sys::matmul_f32(&normed, &w.embed, &mut data, rows, v, d, true).map_err(err)?,
-    }
-    Ok(Logits { vocab: v, data })
+    if let Some(out) = hidden { *out = rms_norm(&x, &w.norm, n, d, cfg.rms_norm_eps, device)?; }
+    let rows = batch.seqs.len(); let mut last = vec![0.0f32; rows * d];
+    for (r,(s,&off)) in batch.seqs.iter().zip(&offsets).enumerate() { let i = off + s.tokens.len() - 1; last[r*d..(r+1)*d].copy_from_slice(&x[i*d..(i+1)*d]); }
+    let normed = rms_norm(&last, &w.norm, rows, d, cfg.rms_norm_eps, device)?;
+    let data = match &w.lm_head { Some(head) => project(head, &normed, rows, device)?, None => {
+        let input = Tensor::from_vec(normed, (rows,d), device).map_err(|e| e.to_string())?;
+        let embed = Tensor::from_vec(w.embed.clone(), (cfg.vocab_size,d), device).map_err(|e| e.to_string())?;
+        tensor_vec(input.matmul(&embed.transpose(0,1).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?)?
+    }};
+    Ok(Logits { vocab: cfg.vocab_size, data })
     // SOLUTION-END
 }
 
-/// The bigram forward: each sequence's logits are row `last token` of W,
-/// computed as onehot(last) @ W through `tl_matmul_f32`, as in L10.0.
-pub fn bigram_forward(w: &[f32], batch: &ForwardBatch) -> Result<Logits, String> {
+pub fn bigram_forward(w: &[f32], batch: &ForwardBatch, device: &Device) -> Result<Logits, String> {
     // SOLUTION-BEGIN L10.1
-    let rows = batch.seqs.len();
-    let mut onehot = vec![0.0f32; rows * 256];
-    for (r, s) in batch.seqs.iter().enumerate() {
-        let last = *s.tokens.last().ok_or("forward: a sequence with no new tokens")? as usize;
-        if last >= 256 {
-            return Err(format!("forward: token id {last} outside the byte vocabulary"));
-        }
-        onehot[r * 256 + last] = 1.0;
-    }
-    let mut data = vec![0.0f32; rows * 256];
-    tl_sys::matmul_f32(&onehot, w, &mut data, rows, 256, 256, false).map_err(err)?;
-    Ok(Logits { vocab: 256, data })
+    let rows = batch.seqs.len(); let mut onehot = vec![0.0f32; rows * 256];
+    for (r,s) in batch.seqs.iter().enumerate() { let id = *s.tokens.last().ok_or("forward: a sequence with no new tokens")? as usize; if id >= 256 { return Err(format!("forward: token id {id} outside the byte vocabulary")); } onehot[r*256+id] = 1.0; }
+    let a = Tensor::from_vec(onehot, (rows,256), device).map_err(|e| e.to_string())?;
+    let b = Tensor::from_vec(w.to_vec(), (256,256), device).map_err(|e| e.to_string())?;
+    Ok(Logits { vocab: 256, data: tensor_vec(a.matmul(&b).map_err(|e| e.to_string())?)? })
     // SOLUTION-END
 }

@@ -1,5 +1,5 @@
 id        = "lang.04"
-title     = "Rust: ownership, traits, Result, cargo workspaces, extern \"C\", std TCP"
+title     = "Rust: ownership, traits, Result, cargo workspaces, std TCP"
 kind      = "practice"
 lang      = ["rust"]
 pass      = 1

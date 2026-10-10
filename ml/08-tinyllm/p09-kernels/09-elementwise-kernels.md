@@ -5,12 +5,12 @@
 
 | | |
 |---|---|
-| **Module** | `L9.6` · build · C · Pass 6 · 3 to 4 h |
+| **Module** | `L9.6` · side · C · Pass 6 · 3 to 4 h |
 | **You build** | `c/src/kernels/elementwise.c`: `tl_rmsnorm_f32`, `tl_rope_f32` (half and interleaved layouts, partial rotary, attention scaling), `tl_silu_mul_f32`, `tl_embedding_f32`, `tl_add_f32`, `tl_argmax_f32` |
 | **Contract** | [`course/contracts/c/include/tinyllm/elementwise.h`](../../../course/contracts/c/include/tinyllm/elementwise.h) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/L9.6/`: `test_elementwise.c` (C, under ASan and UBSan) and `test_elementwise_ctypes.py` (Python, through your `rt.01` loader, against your `L7.1` RMSNorm and `L7.3` RoPE) (what they check: section 4) |
-| **Needs** | `rt.01` the loader · `M09.5` your `tl_rsqrtf` · `M09.6` your `tl_expf` · `L7.1` your `RMSNorm` · `L7.3` your `rope_cos_sin` and `apply_rope` (or `--ref-deps`). Reading: `L7.2` (SwiGLU) |
-| **Used by** | `L9.7` (the Python C backend) and `L10.1` (the Rust forward) call every one of these per layer, per token |
+| **Tests** | `course/tests/L9.6/`: `test_elementwise.c` (C, under ASan and UBSan) and shared file fixtures (what they check: section 4) |
+| **Needs** | `rt.02` the loader · `M09.5` your `tl_rsqrtf` · `M09.6` your `tl_expf` · `L7.1` your `RMSNorm` · `L7.3` your `rope_cos_sin` and `apply_rope` (or `--ref-deps`). Reading: `L7.2` (SwiGLU) |
+| **Used by** | These standalone C routines are useful as independent examples; the Python and Rust engine paths retain their own implementations. |
 | **Milestone** | `MS-L9` (the C backend generates the same tokens as numpy) |
 | **Optional depth** | Zhang and Sennrich, "Root Mean Square Layer Normalization" (2019); Su et al., "RoFormer" (2021), section 3.4; Shazeer, "GLU Variants Improve Transformer" (2020) |
 
@@ -28,7 +28,7 @@
 ss start L9.6              # stubs c/src/kernels/elementwise.c into your repo
 ss tests L9.6              # read the test catalog first
 ss check L9.6              # exit code is the verdict
-ss check L9.6 --ref-deps   # only if rt.01, M09.5, M09.6, L7.1, or L7.3 is not passing yet
+ss check L9.6 --ref-deps   # only if rt.02, M09.5, M09.6, L7.1, or L7.3 is not passing yet
 ss diff  L9.6              # after passing: your code against the reference
 ```
 
@@ -36,7 +36,7 @@ ss diff  L9.6              # after passing: your code against the reference
 
 ## 1. Why now
 
-Your Llama forward (`L7.9`) runs in numpy, and every op in it except the matmuls and attention is elementwise or row-wise: look up the embeddings, normalize, rotate queries and keys, gate the MLP, add the residual, and at the end pick the greedy token. The Python C backend (`L9.7`) dispatches each of these ops to `libtinyllm`, and the Rust engine (`L10.1`) calls them directly. Right now every one of them is a stub that aborts. They are small, but each has one detail that silently changes the model if you get it wrong: where $\varepsilon$ goes, which entries RoPE pairs, how SiLU behaves at large gates, how argmax breaks ties. Your Python modules from Part 7 already settled each of those details; this module ports them to C and holds the port to them.
+Elementwise and row-wise operations include embedding lookup, normalization, rotary position encoding, gated activation, residual addition, and greedy selection. Each operation has details that silently change model output when implemented incorrectly: where $\varepsilon$ goes, which entries RoPE pairs, how SiLU behaves at large gates, and how argmax breaks ties. This optional module implements the C versions as standalone routines, with the Python definitions serving as the behavioral reference.
 
 ## 2. Principles
 
@@ -105,7 +105,7 @@ Written back to positions 0, 2 and 1, 3: $[-1.9841107, 1.9599007, 2.4623779, 4.0
 
 **Argmax** of $[2, 7, 7, -1]$: 7 first appears at index 1, and index 2 is not strictly greater, so the answer is 1.
 
-All four are the first test, `hand_example`; RMSNorm and argmax repeat through ctypes in `test_hand_example_through_ctypes`.
+All four are the first test, `hand_example`; RMSNorm and argmax repeat through the shared fixture in `test_hand_example`.
 
 ## 4. The interface
 
@@ -136,12 +136,7 @@ From Python, declare each with `restype None` (or `c_int32` for argmax) on your 
 | `embedding_gathers_rows` | unit | repeated and out-of-order ids | the first op of the forward |
 | `add_in_place` | unit | $y = a + b$ with `y == a` | the residual stream |
 | `argmax_ties_nan_and_empty` | boundary | ties to the lowest index, NaN skipped, $-1$ for all NaN or empty, all $-\infty$ gives 0 | greedy decoding parity |
-| `test_hand_example_through_ctypes` | unit, smoke | RMSNorm and argmax of section 3 across the boundary | how `L9.7` calls them |
-| `test_rmsnorm_matches_your_l7_1` | differential | $d = 576$, rows from $10^{-3}$ to $10^{3}$, against your `RMSNorm` | P6: Python is the specification |
-| `test_rope_matches_your_l7_3` | differential | $D = 64$, full and partial rotary, positions to 8191, $\mu = 1.2$, both layouts, against your `apply_rope` | SmolLM2's attention |
-| `test_silu_mul_matches_numpy` | differential | 4096 gates in $[-90, 90]$ against float64 | the whole useful range |
-| `test_embedding_and_add_match_numpy` | differential | a 1000-row table, then the residual add | exact copies and sums |
-| `test_argmax_matches_numpy` | differential | 20 vocabulary rows with ties and NaN against `np.nanargmax` | greedy decoding on real sizes |
+| `hand_example` | unit, smoke | RMSNorm and argmax of section 3 in the C test harness | checks standalone routines |
 
 ## 5. Pitfalls
 
@@ -166,15 +161,13 @@ From Python, declare each with `restype None` (or `c_int32` for argmax) on your 
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the loader the Python tests declare these symbols on |
+| Back | `rt.02` | the shared status, error, and allocator support |
 | Back | `M09.5` | `tl_rsqrtf`: the $1/\sqrt{\cdot}$ of RMSNorm |
 | Back | `M09.6` | `tl_expf`: the $e^{-g}$ of SiLU |
 | Back | `L7.1` | `RMSNorm`, the specification of `tl_rmsnorm_f32` |
 | Back | `L7.3` | `rope_cos_sin` and `apply_rope`, the specification of `tl_rope_f32` |
-| Forward | `L9.7` | the Python C backend dispatches embedding, RMSNorm, RoPE, SiLU-mul, add, and argmax here |
-| Forward | `L10.1` | the Rust forward calls the same six kernels through `tl-sys` |
+| Forward | the standalone Rust engine | the Rust forward calls the same six kernels in its independent Rust implementation |
 
-If you skip this module, `ss check L9.7` stops with `BLOCKED ... needs L9.6`: build it, or pass `--ref-deps`.
 
 ## Going further
 

@@ -1,44 +1,44 @@
 <!-- ss:module L10.1 -->
-# tl-sys FFI, model runner (Llama + bigram, int4), Rust sampler and PCG32
+# Candle model runner (Llama + bigram, int4), Rust KV cache, sampler and PCG32
 
 ## Overview
 
 | | |
 |---|---|
 | **Module** | `L10.1` · build · Rust · Pass 7 · 14 to 20 h |
-| **You build** | `rust/crates/tl-sys/src/kernels.rs` and `kv.rs`: the rest of the hand-written binding to `libtinyllm` (the Llama kernels, the status and dtype codes, the allocator hook, the KV pool) with length checks and the RAII owner `KvPool`, declared and re-exported by your `L10.0` crate root · `rust/crates/tl-engine/src/quant.rs` (f16, bf16, int4) · `model.rs` (config.json, the memory-mapped safetensors reader, the weights) · `forward.rs` (the Llama and bigram forwards over the C kernels) · `runner.rs` (`ModelRunner`, `EngineConfig`, the KV pool) · `sample.rs` (PCG32 and the sampler) · the module lines of the crate roots `tl-sys/src/lib.rs` and `tl-engine/src/lib.rs` |
-| **Contract** | C: [`tinyllm/abi.h`](../../../course/contracts/c/include/tinyllm/abi.h), [`matmul.h`](../../../course/contracts/c/include/tinyllm/matmul.h), [`attention.h`](../../../course/contracts/c/include/tinyllm/attention.h), [`qmatmul.h`](../../../course/contracts/c/include/tinyllm/qmatmul.h), [`elementwise.h`](../../../course/contracts/c/include/tinyllm/elementwise.h), [`kv_pool.h`](../../../course/contracts/c/include/tinyllm/kv_pool.h), [`c/ABI.md`](../../../course/contracts/c/ABI.md) · files: [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../course/contracts/formats/config.schema.json), [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md) · determinism: [`spec/sampling.md`](../../../course/contracts/spec/sampling.md), [`spec/pcg32.md`](../../../course/contracts/spec/pcg32.md) |
+| **You build** | `rust/crates/tl-engine/src/kv.rs`: the bounded Rust KV cache · `rust/crates/tl-engine/src/quant.rs` (f16, bf16, int4) · `model.rs` (config.json, the memory-mapped safetensors reader, the weights) · `forward.rs` (the Llama and bigram forwards built with Candle tensors) · `runner.rs` (`ModelRunner`, `EngineConfig`, the KV pool) · `sample.rs` (PCG32 and the sampler) · the module lines of the `tl-engine/src/lib.rs` crate root |
+| **Contract** | files: [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../course/contracts/formats/config.schema.json), [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md) · determinism: [`spec/sampling.md`](../../../course/contracts/spec/sampling.md), [`spec/pcg32.md`](../../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/rust/l10_1.rs`, 24 tests (what they check: section 4); parity suites `ss parity sampler rng` (your Rust against your Python, through one golden file) |
-| **Needs** | `L10.0` tl-sys v0: `TlError`, the error slot, `check_abi`, `matmul_f32` ([chapter](00-your-first-endpoint.md)) · `rt.01` the ABI version, error slot, and allocator hook ([chapter](../p09-kernels/01-the-c-abi.md)) · `L9.1` the matmul · `L9.3` FlashAttention · `L9.5` the int4 product · `L9.6` RMSNorm, RoPE, SwiGLU, embedding, add · `rt.04` the KV block pool · reading: `lang.04` Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `L8.1` the Python sampler you port, `M06.3` PCG32, `L7.9` the Llama model you port, `L8.5` the int4 scheme, `M09.4` f16 rounding, `L9.7` the Python twin of this runner, `L1.5` tl-tok · or `--ref-deps` |
+| **Needs** | `L10.0` the checkpoint contract ([chapter](00-your-first-endpoint.md)) · reading: `lang.04` Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `L8.1` the Python sampler you port, `M06.3` PCG32, `L7.9` the Llama model you port, `L8.5` the int4 scheme, `M09.4` f16 rounding, `L9.7` the Python twin of this runner, `L1.5` tl-tok · or `--ref-deps` |
 | **Used by** | `L10.2` (the scheduler runs this runner), `L10.3` (chunked prefill feeds it), `L10.4` (the block manager hands it blocks), `L10.5` (the engine loop and the server) · later: `L10.6`, `L10.8`, `L10.9` |
 | **Milestone** | `MS-L10` (the engine's greedy stream equals your Python's; `ss parity sampler`) |
-| **Optional depth** | [The Rustonomicon, FFI](https://doc.rust-lang.org/nomicon/ffi.html) (free); [Rust reference, `Drop`](https://doc.rust-lang.org/reference/destructors.html) (free); [safetensors format](https://github.com/huggingface/safetensors) (free); [Hugging Face `modeling_llama.py`](https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py) (free); [Kwon et al. 2023, PagedAttention](https://arxiv.org/abs/2309.06180) (free) |
+| **Optional depth** | [Rust reference, `Drop`](https://doc.rust-lang.org/reference/destructors.html) (free); [safetensors format](https://github.com/huggingface/safetensors) (free); [Hugging Face `modeling_llama.py`](https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py) (free); [Kwon et al. 2023, PagedAttention](https://arxiv.org/abs/2309.06180) (free) |
 
 ## Key Takeaways
 
-- The Rust engine owns the model graph and calls one C kernel per operation; every safe wrapper checks every slice length before a pointer reaches C, and every C status comes back as a `TlError` with `tl_last_error()` (`wrappers_check_lengths_before_c`, `kv_pool_wrappers_map_c_errors`).
-- `KvPool` owns one `tl_kv_pool`, and its `Drop` destroys it exactly once: every allocation the C side made through the allocator hook is freed (`kv_pool_drop_frees_exactly_once`).
+- The Rust engine owns the model graph and uses Candle for tensor operations. The learner writes the Llama layers and owns a bounded Rust KV cache.
+- `KvPool` owns fixed-size f16 K and V slabs, block references, the prefix hash index, and LRU eviction (`kv_pool_bounds_and_cache_lifecycle`).
 - One step runs a batch of sequences, each a run of new tokens at absolute positions; their K and V go into the pool as f16 and are read back for attention, so the logits match Hugging Face's float32 forward within the f16 bound (`tiny_llama_logits_match_hf`).
-- The kernels are batch- and chunk-invariant, so batching sequences together or splitting a prompt into steps changes nothing, bit for bit (`batched_forward_equals_single`, `incremental_decode_equals_full_prefill`).
+- The model forward is batch- and chunk-invariant within the test tolerance, so batching sequences together or splitting a prompt into steps preserves logits (`batched_forward_equals_single`, `incremental_decode_equals_full_prefill`).
 - The sampler follows spec/sampling.md step by step in f64, so the same logits and seed give your Python's id and logprob exactly (`sampler_matches_l81_golden`, `hand_example_sampling`).
 
 ## How to work this chapter
 
 ```bash
-ss start L10.1               # stubs tl-sys kernels.rs and kv.rs, and tl-engine quant, model, forward, runner, sample
+ss start L10.1               # stubs tl-engine kv, quant, model, forward, runner, sample
 ss tests L10.1               # read the test catalog first: rung R0, you write no graded tests here
 ss check L10.1               # exit code is the verdict
-ss check L10.1 --ref-deps    # only if a C kernel or rt.04 is not passing yet
+ss check L10.1 --ref-deps    # only if a referenced module is not passing yet
 ss parity sampler rng        # your Rust sampler and PCG32 against your Python, through the golden files
 ```
 
-`ss start` never rewrites your files, so two crate roots get a few lines from you: in `tl-sys/src/lib.rs` (yours since `L10.0`, whose functions keep their signatures) add `pub mod kernels; pub mod kv;` and `pub use kernels::*; pub use kv::*;`, and in `tl-engine/src/lib.rs` (yours since `L8.4`) one `pub mod` line per new file. Add the dependencies the course's `tl-engine/Cargo.toml` lists to yours: `tl-sys` by path, `anyhow`, `memmap2`, `serde_json` (`contracts/allowed-deps.toml`).
+`ss start` never rewrites your files. Add one `pub mod` line per new file to `tl-engine/src/lib.rs` (yours since `L8.4`). Add Candle, `anyhow`, `memmap2`, and `serde_json` from `contracts/allowed-deps.toml` to `tl-engine/Cargo.toml`.
 
 ---
 
 ## 1. Why now
 
-Your tracer engine (`L10.0`) serves one model, a byte bigram, with one request per thread and a sampler that is not the one your Python uses. Pass 7 turns it into a real inference engine, and everything after it in this part (scheduling, chunked prefill, prefix caching, the OpenAI server) needs one thing first: a component that loads a Llama checkpoint, runs a batch of sequences through it with your C kernels, keeps each sequence's past in the KV pool, and turns logits into tokens exactly as your Python does. That component is the model runner. Rust owns the graph (decision D7); C owns the arithmetic (Part 9); this module is the bridge.
+Your tracer engine (`L10.0`) serves one model, a byte bigram, with one request per thread and a sampler that is not the one your Python uses. Pass 7 turns it into a real inference engine, and everything after it in this part (scheduling, chunked prefill, prefix caching, the OpenAI server) needs one thing first: a component that loads a Llama checkpoint, runs a batch of sequences through it with Candle tensor operations, keeps each sequence's past in the Rust KV pool, and turns logits into tokens exactly as your Python does. That component is the model runner. Rust owns the graph and the production math path. Candle supplies tensor operations, while this module implements the layers and cache.
 
 ## 2. Principles
 
@@ -50,19 +50,15 @@ tl-engine runner.rs    ModelRunner::forward(&ForwardBatch) -> Logits
           model.rs     config.json, model.safetensors (mmap), Weights
           quant.rs     f16 / bf16 / int4 numbers
           sample.rs    Pcg32, SamplingParams, sample()
-tl-sys    lib.rs       extern "C" declarations, safe wrappers, KvPool (RAII)
-libtinyllm (C)         tl_matmul_f32, tl_flash_attn_fwd_f32, tl_matmul_q4_f32, tl_rmsnorm_f32, ..., tl_kv_*
+candle-core + nn       tensor operations: matmul, embedding, RMSNorm, softmax
+kv.rs                   Rust-owned f16 blocks, references, hash index, LRU
 ```
 
-### 2.2 `tl-sys`: binding C safely
+### 2.2 Candle tensors and Rust-owned state
 
-Your `L10.0` crate root bound three functions; `kernels.rs` and `kv.rs` bind the rest, and the crate root re-exports them, so `tl_sys::KvPool` and `tl_sys::kernels::KvPool` name the same type. A binding has three layers. **Declarations** copy each C prototype with the exact types: `int64_t` is `i64`, `int` is `c_int`, `size_t` is `usize`, and `tl_status` and `tl_dtype` are `i32` constants, never Rust enums, because a C value outside the enum would be undefined behavior in Rust (`c/ABI.md` rule 5). Structs that cross the boundary (`tl_kv_cfg`, `tl_kv_stats`, `tl_allocator`) are `#[repr(C)]` with the field order and sizes of the header.
+Candle provides tensor storage, device placement, matrix multiplication, softmax, RMSNorm, and embedding lookup. The engine uses `candle-core` and `candle-nn` 0.10.2. The learner still writes the model structure: the layer order, RoPE positions, grouped-query attention, residual connections, SwiGLU, and final norm. CI uses the CPU device; macOS can select Metal.
 
-**Safe functions** check what C will not: each slice holds at least the elements the dimensions reach (for a row-major matrix of $r$ rows, $c$ columns, and leading dimension $\ell$: $(r - 1)\,\ell + c$), every embedding id is below the table's row count, and a dimension fits in `int64_t`. Only then is a pointer passed. A non-zero status becomes `Err(TlError { status, name, message })`, with `message` read from the thread's error slot **immediately**. Functions that return `void` report misuse only through the error slot, so `KvPool::retain` clears the slot (`tl_set_last_error(NULL)`), calls `tl_kv_ref`, and reads the slot back.
-
-**RAII owners** tie a C object's lifetime to a Rust value. `KvPool` holds a `NonNull<RawKvPool>`; `KvPool::new` is the only way to get one, and `impl Drop for KvPool` calls `tl_kv_pool_destroy` once. Safe code cannot copy a `KvPool` (it is not `Clone`), and a moved-from value is never dropped, so destroy runs exactly once. The pool is not thread-safe (`kv_pool.h`): `KvPool` is `Send` (it may move to another thread) but not `Sync` (it may not be shared), so the runner and the block manager share it as `Arc<Mutex<KvPool>>` (`SharedPool`).
-
-The allocator hook makes the "exactly once" testable: `tl_set_allocator` installs a pair of functions every C allocation goes through, so a test counts allocations and frees, and makes the hook fail to check that a failed constructor frees what it took.
+The KV cache is a separate Rust data structure. `KvPool` allocates fixed-size K and V slabs as f16 values, tracks references, and keeps released full blocks in an LRU cache when prefix caching is enabled. Its methods return `Result` for invalid dimensions, exhausted capacity, invalid block ids, and format errors. No C library or foreign-function boundary is part of the model runner.
 
 ### 2.3 The model directory
 
@@ -95,13 +91,13 @@ Each step computes, for every layer:
 
 $$h = \mathrm{RMSNorm}(x) = \frac{x}{\sqrt{\tfrac{1}{d}\sum_i x_i^2 + \epsilon}} \odot w, \qquad q = h W_q^\top,\; k = h W_k^\top,\; v = h W_v^\top$$
 
-then rotates $q$ and $k$ by RoPE at $\mathrm{pos}(t)$ (`tl_rope_f32`, half layout), writes each token's $k$ and $v$ into its sequence's blocks (position $j$ lives in block $\lfloor j / B \rfloor$ of the block table, slot $j \bmod B$), and for each sequence gathers its keys and values for positions $0$ to $p_s + n_s - 1$ and runs FlashAttention with `q_offset` $= p_s$ and a causal mask:
+then rotates $q$ and $k$ by RoPE at $\mathrm{pos}(t)$ (half-split layout), writes each token's $k$ and $v$ into its sequence's blocks (position $j$ lives in block $\lfloor j / B \rfloor$ of the block table, slot $j \bmod B$), and for each sequence gathers its keys and values for positions $0$ to $p_s + n_s - 1$ and uses Candle matrix multiplication and softmax with `q_offset` $= p_s$ and a causal mask:
 
 $$o_t = \sum_{j \le \mathrm{pos}(t)} \mathrm{softmax}_j\!\Big(\tfrac{q_t \cdot k_j}{\sqrt{D}}\Big)\, v_j, \qquad x \mathrel{+}= o W_o^\top, \qquad x \mathrel{+}= \big(\mathrm{silu}(h_2 W_g^\top) \odot (h_2 W_u^\top)\big) W_d^\top$$
 
 with $h_2 = \mathrm{RMSNorm}(x)$ before the MLP. After the last layer, only each sequence's **last** token goes through the final norm and the LM head (the embedding matrix itself when `tie_word_embeddings` is true), giving one row of logits per sequence.
 
-Two properties carry the rest of this part. **Batch invariance**: the projections run once over all $N$ tokens, and because the matmul reduces each output in one fixed order whatever $M$ is (`c/ABI.md` rule 10), a sequence's rows are the same alone or batched. **Chunk invariance**: positions are absolute, the cache holds the same f16 keys either way, and the attention kernel reduces keys in tiles aligned to absolute positions, so prefilling a prompt in one step or in pieces gives the same logits, bit for bit.
+Two properties carry the rest of this part. **Batch invariance**: the projections run once over all $N$ tokens, and Candle may use different reduction paths for different shapes, so tests compare the results within the model tolerance. **Chunk invariance**: positions are absolute, the cache holds the same f16 keys either way, and absolute positions and the stored f16 keys make prefilling a prompt in one step or in pieces agree within the tested tolerance.
 
 **The f16 bound.** K and V pass through f16, which rounds with relative error at most $2^{-11} \approx 4.9 \times 10^{-4}$. Through two layers this perturbs the logits of the tiny test model (magnitudes up to about 20) by about $7 \times 10^{-3}$, measured; the tests allow $10^{-3}$ of the largest logit, $2 \times 10^{-2}$. Your Python reference (`L7.9`) keeps f32 keys, so this bound, not 1e-4, is what an f16 cache can promise.
 
@@ -111,7 +107,7 @@ A quantized linear weight $W \in \mathbb{R}^{\text{out} \times \text{in}}$ with 
 
 $$s = \mathrm{f16}\Big(\frac{\max |W_{\text{group}}|}{7}\Big), \qquad q = \mathrm{clamp}\big(\mathrm{rint}(W / s), -8, 7\big), \qquad \hat W = q\, s$$
 
-with `rint` rounding half to even and $s$ the f16 value **actually stored**, so $|W - \hat W| \le s/2$. Two values share a byte: column $2b$ in the low nibble, $2b + 1$ in the high nibble, each in 4-bit two's complement. `QLinear::forward` hands the packed bytes and scales to `tl_matmul_q4_f32`, which never widens $W$ to f32 in memory. The runner loads int4 two ways: from an int4 file (`<name>.qweight`, `<name>.scales`, metadata `quant = "int4-g<g>-sym"`), or by quantizing f32 weights at load (`EngineConfig.quant = Some(Quant::Int4 { group })`).
+with `rint` rounding half to even and $s$ the f16 value **actually stored**, so $|W - \hat W| \le s/2$. Two values share a byte: column $2b$ in the low nibble, $2b + 1$ in the high nibble, each in 4-bit two's complement. `QLinear::forward` unpacks the quantized values, widens the effective weight to f32, and uses Candle matrix multiplication. The runner loads int4 two ways: from an int4 file (`<name>.qweight`, `<name>.scales`, metadata `quant = "int4-g<g>-sym"`), or by quantizing f32 weights at load (`EngineConfig.quant = Some(Quant::Int4 { group })`).
 
 ### 2.6 The sampler and PCG32
 
@@ -132,34 +128,20 @@ Each request gets its own generator, `stream(seed, sample)`: $\mathrm{child\_see
 ## 4. The interface
 
 ```rust
-// rust/crates/tl-sys/src/{kernels,kv}.rs, re-exported by the crate root (L10.0's items keep their signatures)
-pub const TL_OK: i32 = 0; /* ... TL_EIO = 10 */  pub const TL_F16: i32 = 1; /* ... */
-#[repr(C)] pub struct KvCfg { pub n_blocks: u32, pub block_tokens: u32, pub n_layers: u32, pub n_kv_heads: u32, pub head_dim: u32, pub dtype: i32, pub format: u32 }
-#[repr(C)] pub struct KvStats { pub free: u32, pub used: u32, pub cached: u32, pub evictions: u32 }
-#[repr(C)] pub struct Allocator { pub alloc: Option<unsafe extern "C" fn(*mut c_void, usize, usize) -> *mut c_void>, pub free: Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>, pub user: *mut c_void }
-pub unsafe fn set_allocator(a: Option<&Allocator>) -> Result<(), TlError>;
-pub fn rmsnorm_f32(x: &[f32], w: &[f32], y: &mut [f32], rows: usize, d: usize, eps: f32) -> Result<(), TlError>;
-pub fn rope_f32(x: &mut [f32], pos: &[i32], t: usize, h: usize, d: usize, d_rot: usize, inv_freq: &[f32], scaling: f32, layout: RopeLayout) -> Result<(), TlError>;
-pub fn silu_mul_f32(gate: &[f32], up: &[f32], y: &mut [f32]) -> Result<(), TlError>;
-pub fn embedding_f32(table: &[f32], rows: usize, ids: &[i32], out: &mut [f32], d: usize) -> Result<(), TlError>;
-pub fn add_assign_f32(acc: &mut [f32], b: &[f32]) -> Result<(), TlError>;
-pub fn argmax_f32(x: &[f32]) -> Option<usize>;
-pub struct AttnShape { pub batch, heads, kv_heads, tq, tk, head_dim: usize, pub scale: f32, pub q_offset: usize, pub causal: bool, pub window: usize }
-pub fn flash_attn_f32(q: &[f32], k: &[f32], v: &[f32], o: &mut [f32], s: &AttnShape) -> Result<(), TlError>;
-pub fn matmul_q4_f32(x: &[f32], wq: &[u8], scales: &[u16], y: &mut [f32], m: usize, n: usize, k: usize, group: usize) -> Result<(), TlError>;
-pub fn kv_block_hash(parent: u64, toks: &[u32]) -> u64;   pub fn crc32c(data: &[u8], crc: u32) -> u32;
-pub struct KvPool { /* NonNull<RawKvPool>, KvCfg */ }      // Send, not Sync; Drop destroys
+// rust/crates/tl-engine/src/kv.rs
+pub struct KvCfg { pub n_blocks: u32, pub block_tokens: u32, pub n_layers: u32,
+                   pub n_kv_heads: u32, pub head_dim: u32, pub dtype: i32, pub format: u32 }
+pub struct KvPool { /* Rust-owned K/V slabs, references, hash index, LRU */ }
 impl KvPool {
-    pub fn new(cfg: KvCfg) -> Result<KvPool, TlError>;  pub fn cfg(&self) -> KvCfg;
-    pub fn alloc(&mut self, n: usize) -> Result<Vec<u32>, TlError>;
-    pub fn retain(&mut self, id: u32) -> Result<(), TlError>;  pub fn release(&mut self, id: u32) -> Result<(), TlError>;
-    pub fn cow(&mut self, id: u32) -> Result<u32, TlError>;
-    pub fn set_fill(&mut self, id: u32, n: u32) -> Result<(), TlError>;  pub fn fill(&self, id: u32) -> u32;
-    pub fn register(&mut self, id: u32, hash: u64) -> Result<bool, TlError>;  pub fn lookup(&mut self, hash: u64) -> Option<u32>;
-    pub fn slab(&self, id: u32, layer: u32, is_v: bool) -> Result<&[u16], TlError>;
-    pub fn slab_mut(&mut self, id: u32, layer: u32, is_v: bool) -> Result<&mut [u16], TlError>;
-    pub fn stats(&self) -> KvStats;  pub fn block_bytes(&self) -> usize;
-    pub fn export(&self, ids: &[u32]) -> Result<Vec<u8>, TlError>;  pub fn import(&mut self, buf: &[u8]) -> Result<Vec<u32>, TlError>;
+    pub fn new(cfg: KvCfg) -> Result<KvPool, KvError>;
+    pub fn alloc(&mut self, n: usize) -> Result<Vec<u32>, KvError>;
+    pub fn retain(&mut self, id: u32) -> Result<(), KvError>;
+    pub fn release(&mut self, id: u32) -> Result<(), KvError>;
+    pub fn set_fill(&mut self, id: u32, n: u32) -> Result<(), KvError>;
+    pub fn slab(&self, id: u32, layer: u32, is_v: bool) -> Result<&[u16], KvError>;
+    pub fn slab_mut(&mut self, id: u32, layer: u32, is_v: bool) -> Result<&mut [u16], KvError>;
+    pub fn export(&self, ids: &[u32]) -> Result<Vec<u8>, KvError>;
+    pub fn import(&mut self, buf: &[u8]) -> Result<Vec<u32>, KvError>;
 }
 ```
 
@@ -215,20 +197,22 @@ pub fn sample(logits: &[f32], p: &SamplingParams, prompt: &[u32], output: &[u32]
 | `top_p_keeps_the_crossing_token` | boundary | mass exactly at $p$ keeps the crossing id | nucleus edge, the most common sampler bug |
 | `penalties_follow_hf_and_openai_semantics` | unit | repetition divides positives and multiplies negatives over prompt and output; presence and frequency over output only | the OpenAI request fields mean what clients expect |
 | `seeded_sampling_matches_the_distribution` | statistical | 4000 draws fit 0.4, 0.3, 0.2, 0.1 (chi-square below 16.27); a seed repeats | the sampler draws from the right distribution |
-| `abi_version_check` | conformance | `tl_abi_version()` is 1 and `check_abi` accepts it | the runner refuses a mismatched library |
-| `kv_pool_drop_frees_exactly_once` | unit, fault | counted allocations equal frees after `Drop`; a failing hook gives `TL_ENOMEM` and leaks nothing | the engine runs for weeks |
-| `kv_pool_wrappers_map_c_errors` | boundary | `TL_EFULL` all or nothing, double release `TL_EINVAL`, `retain` of a free block, slab range checks, register and lookup | the block manager relies on every one |
-| `wrappers_check_lengths_before_c` | boundary | short slices and out-of-range ids are `Err` before any C call | memory safety at the FFI boundary |
+| `kv_pool_bounds_and_cache_lifecycle` | boundary | capacity, references, registration, release, and lookup preserve pool invariants | block manager and prefix cache rely on these transitions |
+| `kv_pool_evicts_the_oldest_cached_block` | boundary | exhausted allocation evicts the oldest cached prefix | cache policy preserves recent prefixes |
+| `kv_pool_rejects_zero_capacity` | boundary | zero blocks is rejected during construction | invalid engine configuration fails early |
+| `kv_pool_exports_and_imports_rust_owned_blocks` | differential | f16 cache data survives the transfer envelope round trip | disaggregated decode resumes the same state |
+| `kv_pool_bounds_and_cache_lifecycle` | boundary | capacity is all-or-nothing, refs balance, full blocks register, release caches, lookup reacquires | scheduler and prefix cache share one pool |
+| `kv_pool_exports_and_imports_rust_owned_blocks` | differential | a written f16 value survives an export/import round trip | disaggregated decode resumes with the same cache |
 | `f16_rounds_to_nearest_even` | boundary | ties, overflow, subnormals, NaN; every f16 pattern round-trips | the KV cache stores f16 |
 | `int4_hand_example` | unit | section 3: nibble order and the stored-scale rule | int4 files written by your Python load here |
-| `q4_linear_matches_its_dequantized_weights` | differential | the C int4 product equals x times the dequantized weights | the packed layout means what the format says |
+| `q4_linear_matches_its_dequantized_weights` | differential | Candle output equals x times the dequantized weights within float tolerance | the packed layout means what the format says |
 | `safetensors_reader_rules` | boundary | offsets from the data buffer, F16 and BF16 widening, gaps and trailing bytes refused | every checkpoint goes through this reader |
 | `config_refuses_what_the_engine_cannot_run` | boundary | scaled RoPE, sliding window, unknown arch, missing tokenizer refused at load | wrong models fail loudly at start |
 | `bigram_checkpoint_still_serves` | conformance | the tracer checkpoint loads and greedy continues `bcd` | the Pass 1 smoke stays green (D32) |
 | `tiny_llama_logits_match_hf` | golden | last-token logits within $2 \times 10^{-2}$ of HF's float32 forward | the whole graph: GQA, tied embeddings, BF16 file |
 | `tiny_llama_greedy_matches_hf` | golden | 32 greedy tokens per prompt equal HF's under the near-tie rule | what MS-L10 compares with your Python |
-| `incremental_decode_equals_full_prefill` | differential | prefill then one token per step equals one prefill, bit for bit | chunked prefill and preemption by recompute |
-| `batched_forward_equals_single` | differential | two sequences in one step get their alone logits exactly | continuous batching changes nothing |
+| `incremental_decode_equals_full_prefill` | differential | prefill then one token per step equals one prefill, within floating-point tolerance | chunked prefill and preemption by recompute |
+| `batched_forward_equals_single` | differential | two sequences in one step agree with their alone logits within float tolerance | continuous batching changes nothing |
 | `run_once_returns_its_blocks` | unit | five one-off forwards leave every block free | embeddings do not leak KV |
 | `int4_runner_matches_its_dequantized_model` | differential | quantize-at-load equals an int4 file bit for bit and its dequantized f32 twin closely | both int4 paths agree |
 | `forward_refuses_bad_batches` | boundary | a short block table or a position past the context is `Err` | the scheduler's mistakes surface, not corrupt KV |
@@ -254,11 +238,11 @@ pub fn sample(logits: &[f32], p: &SamplingParams, prompt: &[u32], output: &[u32]
 | K written to the V slab | logits far from HF | `tiny_llama_logits_match_hf` (mutant `s15`) |
 | Skipping the final norm | logits scaled wrong | `tiny_llama_logits_match_hf` (mutant `s16`) |
 | Not giving temporary blocks back | the pool drains a little per embedding call | `run_once_returns_its_blocks` (mutant `s17`) |
-| No `Drop` for the pool | every engine restart in a test leaks the pool | `kv_pool_drop_frees_exactly_once` (mutant `s18`) |
-| Ignoring a constructor's status | out of memory looks like a bad argument | `kv_pool_drop_frees_exactly_once` (mutant `s19`) |
-| Swapping the two RoPE layout codes | Llama rotates the wrong pairs: logits far from HF | `tiny_llama_logits_match_hf` (mutant `s20`) |
-| Skipping the ABI check at load | a stale `libtinyllm` serves garbage | `abi_version_check` |
-| Checking ids only against 0 | an id past the table reads foreign memory in C | `wrappers_check_lengths_before_c` (mutant `s21`) |
+
+| Accepting a zero-block pool | the first allocation fails far from the invalid configuration | `kv_pool_rejects_zero_capacity` (mutant `s19`) |
+| Evicting the newest prefix instead of the oldest | a useful recent prefix disappears early | `kv_pool_evicts_the_oldest_cached_block` (mutant `s18`) |
+| Reversing RoPE frequency order | Llama logits differ from the reference | `tiny_llama_logits_match_hf` (mutant `s20`) |
+| Not checking token ids against the vocabulary | an invalid id reaches the embedding lookup | `forward_refuses_bad_batches` (mutant `s21`) |
 | `silu` applied to the up projection | close-looking, wrong logits | `tiny_llama_logits_match_hf` (mutant `s22`) |
 
 ## 6. Where it's used next
@@ -268,13 +252,8 @@ pub fn sample(logits: &[f32], p: &SamplingParams, prompt: &[u32], output: &[u32]
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `L10.0` | tl-sys v0: `TlError`, `last_error`, `check_abi`, `matmul_f32`; the crate root that declares `kernels` and `kv` |
-| Back | `rt.01` | `tl_abi_version`, the error slot behind every `TlError`, the allocator hook |
-| Back | `L9.1` | `tl_matmul_f32`: every f32 projection and the LM head |
-| Back | `L9.3` | `tl_flash_attn_fwd_f32` with `q_offset`: prefill, chunks, and decode |
-| Back | `L9.5` | `tl_matmul_q4_f32`: int4 projections |
-| Back | `L9.6` | RMSNorm, RoPE, SwiGLU, embedding, residual add |
-| Back | `rt.04` | the KV pool: allocation, refcounts, slabs, hashes |
+| Back | `L10.0` | checkpoint loading and the byte bigram tracer |
+| Back | `L7.9`, `L8.5`, `M09.4` | the model graph, int4 layout, and f16 conversions reimplemented here |
 | Back | `L8.1`, `M06.3` | the sampler and generator this one reproduces bit for bit |
 | Back | `L7.9` | the Llama graph this one reproduces |
 | Forward | `L10.2` | the scheduler forms each step's `ForwardBatch` |
@@ -288,8 +267,7 @@ If you skip this module, the engine has no model to run past the tracer bigram.
 
 | Your piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
-| a gather of K and V per step | [vLLM PagedAttention](https://github.com/vllm-project/vllm) | attention reads the blocks in place, no copy | `vllm/attention/`; your `L9.4` kernel |
+| a gather of K and V per step | [vLLM PagedAttention](https://github.com/vllm-project/vllm) | attention reads the blocks in place, no copy | `vllm/attention/` |
 | f16 KV | fp8 KV with per-head scales | half the memory, a calibrated error | `craft.13`, `formats/kv-block.md` v2 |
 | int4 groups of 32 | [GPTQ](https://arxiv.org/abs/2210.17323), [AWQ](https://arxiv.org/abs/2306.00978) | error-aware rounding, activation-aware scales | `L8.5` going further |
-| one thread per step | [llama.cpp](https://github.com/ggml-org/llama.cpp) threadpool, [candle](https://github.com/huggingface/candle) | parallel kernels with `tl_pool` (rt.03) | `EngineConfig.threads` |
-| a hand-written binding | [bindgen](https://github.com/rust-lang/rust-bindgen) | declarations generated from headers | the Rustonomicon FFI chapter |
+| CPU tensor operations | [candle](https://github.com/huggingface/candle) Metal backend | device execution with the same layer graph | Candle documentation |

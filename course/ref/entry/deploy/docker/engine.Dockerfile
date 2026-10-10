@@ -2,19 +2,14 @@
 #   docker build -f deploy/docker/engine.Dockerfile -t forge-engine:0.1.0 \
 #     --build-arg VERSION=0.1.0 --build-arg REVISION="$(git rev-parse HEAD)" .
 #
-# Stage 1 builds libtinyllm with your c/Makefile, then tl-serve, which links
-# it through tl-sys. Stage 2 ships the one binary on a small glibc base.
+# Stage 1 builds tl-serve and its Candle-backed Rust engine. Stage 2 ships
+# the one binary on a small glibc base.
 # Base images are pinned by digest (the tag is kept for humans): a tag can be
 # re-pushed, a digest cannot. `docker buildx imagetools inspect <tag>` prints it.
 FROM rust:1.88-slim-bookworm@sha256:38bc5a86d998772d4aec2348656ed21438d20fcdce2795b56ca434cf21430d89 AS build
-RUN apt-get update \
- && apt-get install -y --no-install-recommends make \
- && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
-# Least to most often changed: contracts, then C, then Rust.
+# Least to most often changed: contracts, then Rust.
 COPY contracts/ contracts/
-COPY c/ c/
-RUN make -C c
 COPY rust/ rust/
 RUN cargo build --release --manifest-path rust/Cargo.toml -p tl-serve \
  && cp rust/target/release/tl-serve /tl-serve

@@ -285,10 +285,6 @@ def run_bench(
         src = test_dir / "bench" / f"{name}.py"
         if not src.is_file():
             raise HarnessError(f"{mid}: no bench script {src}")
-        if ov.needs_c_lib(["python"]) and ov._lib is None:
-            lib, err = ov.build_c_lib()
-            if lib is None:
-                return None, err
         prefix, env = ov.py_env()
         ov.work.mkdir(parents=True, exist_ok=True)
         rc, out = ctx.run(

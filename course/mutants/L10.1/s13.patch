@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-engine/src/forward.rs
 +++ b/rust/crates/tl-engine/src/forward.rs
-@@ -162,7 +162,7 @@
-         offs.push(ids.len());
-         for (i, &t) in s.tokens.iter().enumerate() {
-             ids.push(i32::try_from(t).map_err(|_| format!("forward: token id {t}"))?);
--            pos.push(i32::try_from(s.start + i).map_err(|_| "forward: position overflow".to_string())?);
-+            pos.push(i32::try_from(i).map_err(|_| "forward: position overflow".to_string())?);
-         }
-     }
-     let n = ids.len();
+@@ -171,1 +171,1 @@
+-        for (i,&t) in s.tokens.iter().enumerate() { if t as usize >= cfg.vocab_size { return Err(format!("forward: token id {t} outside vocab {}", cfg.vocab_size)); } ids.push(t); positions.push(s.start + i); }
++        for (i,&t) in s.tokens.iter().enumerate() { if t as usize >= cfg.vocab_size { return Err(format!("forward: token id {t} outside vocab {}", cfg.vocab_size)); } ids.push(t); positions.push(i); }

@@ -1,4 +1,4 @@
-//! The block manager (L10.4): each request's KV blocks in the C pool, with
+//! The block manager (L10.4): each request's KV blocks in the Rust pool, with
 //! an optional prefix cache, behind the scheduler's `BlockSpace` (L10.2).
 //!
 //! Many requests start with the same tokens (a system prompt, a few-shot
@@ -13,7 +13,7 @@
 //! - `none`: allocate fresh blocks; free them when the request ends.
 //! - `hash`: each full block is named by the chained FNV-1a hash of its
 //!   tokens and its parent's hash (formats/kv-block.md). On release a full
-//!   block is registered in the pool's index (rt.04); when its refcount
+//!   block is registered in the pool's index (L10.1); when its refcount
 //!   reaches 0 it stays **cached** and `tl_kv_alloc` evicts it LRU-first.
 //!   A new request looks its blocks up one by one, front to back.
 //! - `radix`: a radix tree over token ids at block granularity (L8.4)
@@ -28,6 +28,7 @@
 use std::collections::HashMap;
 
 use crate::prefix::{NodeId, RadixCache};
+use crate::kv::kv_block_hash;
 use crate::runner::{lock, PrefixCache, SharedPool};
 use crate::sched::{Allocation, BlockSpace, NoCapacity, RequestId};
 
@@ -52,7 +53,7 @@ struct Table {
     node: Option<NodeId>,
 }
 
-/// KV blocks for the scheduler, over the shared C pool.
+/// KV blocks for the scheduler, over the shared Rust pool.
 pub struct BlockManager {
     pool: SharedPool,
     mode: PrefixCache,
@@ -157,7 +158,7 @@ impl BlockManager {
                 let mut pool = lock(&self.pool).expect("pool lock");
                 let mut parent = 0u64;
                 for i in 0..usable {
-                    let h = tl_sys::kv::kv_block_hash(parent, &tokens[i * bt..(i + 1) * bt]);
+                    let h = kv_block_hash(parent, &tokens[i * bt..(i + 1) * bt]);
                     match pool.lookup(h) {
                         Some(b) => blocks.push(b),
                         None => break,
@@ -264,11 +265,11 @@ impl BlockSpace for BlockManager {
                     let mut pool = lock(&self.pool).expect("pool lock");
                     let mut parent = 0u64;
                     for i in 0..full {
-                        let h = tl_sys::kv::kv_block_hash(parent, &computed[i * bt..(i + 1) * bt]);
+                        let h = kv_block_hash(parent, &computed[i * bt..(i + 1) * bt]);
                         let b = t.blocks[i];
                         if i >= t.matched {
                             // the block is full of computed K and V; only a
-                            // full block may be registered (rt.04)
+                            // full block may be registered (L10.1)
                             if pool.fill(b) < bt as u32 {
                                 pool.set_fill(b, bt as u32).expect("an unregistered block of ours");
                             }

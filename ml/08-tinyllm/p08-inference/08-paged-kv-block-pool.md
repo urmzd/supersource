@@ -1,17 +1,17 @@
 <!-- ss:module rt.04 -->
-# Paged KV block pool (format v1)
+# Paged KV block pool (format v1, optional C)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `rt.04` · build · C · Pass 6 · 6 to 8 h |
+| **Module** | `rt.04` · side · C · Pass 6 · 6 to 8 h |
 | **You build** | `c/src/runtime/kv_pool.c`: the pool (`tl_kv_pool_create`, `_destroy`, `_cfg`, `tl_kv_alloc`, `tl_kv_ref`, `tl_kv_unref`, `tl_kv_cow`, `tl_kv_set_fill`, `tl_kv_fill`, `tl_kv_block_ptr`, `tl_kv_block_bytes`, `tl_kv_stats_get`), the prefix index (`tl_kv_block_hash`, `tl_kv_register`, `tl_kv_lookup`), and the wire format (`tl_kv_export_bytes`, `tl_kv_export`, `tl_kv_import`, `tl_crc32c`) |
 | **Contract** | [`tinyllm/kv_pool.h`](../../../course/contracts/c/include/tinyllm/kv_pool.h); the hash and the bytes in [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md); rules in [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
 | **Tests** | `course/tests/rt.04/test_kv_pool.c`, 20 tests under ASan and UBSan with the counting allocator (what they check: section 4) · your own tests in `c/tests/rt04-kv-pool/`, rung R3, graded by mutation (threshold 0.70) · parity suite `ss parity kv.wire.v1` |
-| **Needs** | `rt.01` [the C ABI](../p09-kernels/01-the-c-abi.md) · `M06.3` [FNV-1a](../../../math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) (`tl_fnv1a64`) · `ds.01` [`tl_vec`](../../../algorithms/16-systems-data-structures/01-growable-array.md) (the free list) · `ds.02` [the Swiss table](../../../algorithms/16-systems-data-structures/02-swiss-table.md) (the prefix index) · `ds.03` [the intrusive LRU](../../../algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md) (cached blocks) · reading: [`L8.2`'s contiguous cache](README.md) |
-| **Used by** | `L8.3` the Python paged cache over this pool · later: `L9.4` paged attention reads its slabs, `L10.4` the engine's block manager, `L10.6` KV transfer, `craft.13` format v2 · later: `L10.1`, `L10.8` |
-| **Milestone** | `MS-L8` (the paged cache's equivalence), then the engine's `--kv-stats` returning to baseline under load (P7) |
+| **Needs** | `rt.02` (C allocation and error support) · `ds.01` [`tl_vec`](../../../algorithms/16-systems-data-structures/01-growable-array.md) (the free list) · `ds.02` [the Swiss table](../../../algorithms/16-systems-data-structures/02-swiss-table.md) (the prefix index) · `ds.03` [the intrusive LRU](../../../algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md) (cached blocks) · reading: `M06.3` [FNV-1a](../../../math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) and [`L8.2`'s contiguous cache](README.md) |
+| **Used by** | `L9.4` uses the pool in its standalone C paged-attention exercise; cross-language comparisons use fixture files. |
+| **Milestone** | `MS-L9`, the optional standalone C module group |
 | **Optional depth** | Kwon et al., [*Efficient Memory Management for LLM Serving with PagedAttention*](https://arxiv.org/abs/2309.06180) (SOSP 2023), sections 4.1 to 4.4 |
 
 ## Key Takeaways
@@ -38,7 +38,7 @@ Write it in three passes, each green before the next: (1) create, alloc, ref, un
 
 ## 1. Why now
 
-`L8.2` gave every sequence a contiguous K and V array of `max_len` positions per layer. That wastes memory twice: a sequence that stops after 40 tokens still holds `max_len` positions, and two requests that start with the same 500-token system prompt each store it. A serving engine runs hundreds of sequences of unknown length, forks sequences for beam search and parallel sampling, and sees the same prompt prefixes over and over. The fix is the one operating systems use for processes: fixed-size pages and a table per sequence. This module is the C runtime piece every later layer shares: the Python paged cache (`L8.3`), the paged attention kernel (`L9.4`), the Rust block manager (`L10.4`), and the KV transfer between engines (`L10.6`) all reach KV memory through this pool.
+`L8.2` gave every sequence a contiguous K and V array of `max_len` positions per layer. That wastes memory twice: a sequence that stops after 40 tokens still holds `max_len` positions, and two requests that start with the same 500-token system prompt each store it. A serving engine runs hundreds of sequences of unknown length, forks sequences for beam search and parallel sampling, and sees the same prompt prefixes over and over. The fix is the one operating systems use for processes: fixed-size pages and a table per sequence. This optional C module studies a block pool as a standalone exercise. The Python paged cache and Rust Candle engine implement storage independently; shared fixtures compare serialized behavior.
 
 ## 2. Principles
 
@@ -200,12 +200,12 @@ Two choices the header leaves open are fixed here: export refuses a block with f
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | `tl_alloc` for the slab, the records, the free list, and the index; the error slot |
+| Back | `rt.02` | C allocation and error support for the standalone pool |
 | Back | `M06.3` | `tl_fnv1a64`, continued across the parent and the tokens |
 | Back | `ds.01` | the free list is a `tl_vec` of ids |
 | Back | `ds.02` | the prefix index from block hash to block id |
 | Back | `ds.03` | the LRU of cached blocks, embedded in each block's record |
-| Forward | `L8.3` | the Python paged cache allocates, forks, and writes blocks through ctypes |
+| Forward | `L8.3` | the Python paged cache implements its own allocation and block operations; fixture files can compare behavior |
 | Forward | `L9.4` | the paged attention kernel reads K and V slabs through `tl_kv_block_ptr` |
 | Forward | `L10.4` | the engine's block manager with `--prefix-cache=hash` uses register and lookup |
 | Forward | `L10.6` | prefill and decode engines move blocks as export envelopes |

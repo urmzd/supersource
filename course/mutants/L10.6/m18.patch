@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-engine/src/heartbeat.rs
 +++ b/rust/crates/tl-engine/src/heartbeat.rs
-@@ -44,7 +44,7 @@
-         let ep = tonic::transport::Endpoint::from_shared(uri).map_err(|e| e.to_string())?;
-         let ch = ep.connect_timeout(self.timeout).timeout(self.timeout).connect().await.map_err(|e| e.to_string())?;
-         let mut c = WorkerRegistryClient::new(ch);
+@@ -48 +48 @@
 -        c.heartbeat(status).await.map(|r| r.into_inner()).map_err(|s| format!("{:?}: {}", s.code(), s.message()))
 +        c.heartbeat(status).await.map(|_| HeartbeatAck::default()).map_err(|s| format!("{:?}: {}", s.code(), s.message()))
-     }
- }
- 

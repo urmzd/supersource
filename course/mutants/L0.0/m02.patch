@@ -1,11 +1,10 @@
 --- a/python/tinyllm/lm/bigram.py
 +++ b/python/tinyllm/lm/bigram.py
-@@ -87,7 +87,7 @@
+@@ -90,7 +90,7 @@
+         v = self.vocab_size
          a = _as_ids(ids, v)
-         onehot = np.zeros((a.size, v), dtype=np.float32)
-         onehot[np.arange(a.size), a] = 1.0
--        return _matmul_f32(onehot, self.weight)
-+        return _matmul_f32(onehot, self.weight.T)
+-        return self.weight[a]
++        return self.weight[a].T
+         # SOLUTION-END
  
      def nll(self, ids: ArrayLike) -> float:
-         a = _as_ids(ids, self.vocab_size)

@@ -1,7 +1,7 @@
 /* c/src/runtime/pool.c (rt.03): a fixed pthread pool and a blocking
  * parallel for. Contract: tinyllm/pool.h. Rules: c/ABI.md (pthreads only:
  * <threads.h> is missing on macOS). Callers: L9.1's matmul (row blocks),
- * L9.3's attention (heads), L10.1's forward through tl-sys.
+ * L9.3's attention (heads). This pool is never linked into the Rust engine.
  *
  * The pool has n workers: the calling thread is worker 0 and n - 1 pthreads
  * are workers 1 .. n - 1. tl_parallel_for publishes one job (n, grain, fn,

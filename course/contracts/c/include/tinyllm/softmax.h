@@ -21,16 +21,10 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* TL_EINVAL for negative dims or a NULL pointer with rows * cols > 0. */
 tl_status tl_softmax_f32(const float *x, float *y, int64_t rows, int64_t cols);
 tl_status tl_softmax_online_f32(const float *x, float *y, int64_t rows, int64_t cols);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_SOFTMAX_H */

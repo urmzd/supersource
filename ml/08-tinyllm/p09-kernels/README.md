@@ -1,22 +1,28 @@
-# Part 9: Kernels in C
+# Part 9: Optional standalone C kernels
 
-`libtinyllm`: the runtime (ABI, arena, thread pool) and the kernels (matmul, softmax, FlashAttention, paged attention, quantized matmul, elementwise) that the Python backend and the Rust engine call through one C ABI. Pass 1 has one chapter here: the ABI itself, the status codes, the error slot, the allocator hook, and the lazy ctypes loader every later kernel is reached through. The kernels arrive in Pass 6.
+This part contains independent C exercises for data structures, numerical
+routines, and neural-network kernels. The C units compile into standalone test
+programs with shared C support from `rt.02`; Python and Rust implementations
+remain independent. Cross-language parity uses checked-in files and process
+protocols.
 
-**Course passes**: 1 (rt.01, gate [MS-P1](../../../paths/course-p01-tracer/milestone.md)), 6 (rt.02, rt.03, L9.1 to L9.7, gate MS-P6).
+**Course passes**: Pass 6 optional practice, with runtime support in `rt.02`
+and `rt.03`. These modules are not required by the Python or Rust engine paths.
 
-**Build contract**: your `c/Makefile` writes `c/build/libtinyllm.{a,dylib,so}`; `SANITIZE=1` adds ASan and UBSan. The harness builds its own objects for tests, sanitized for the C tests and unsanitized for ctypes and Rust. The rules are in [`c/ABI.md`](../../../course/contracts/c/ABI.md).
+**Build contract**: `c/Makefile` produces a static archive for local C use.
+The harness compiles the declared C units into standalone test executables;
+`SANITIZE=1` enables ASan and UBSan. The rules are in
+[`c/ABI.md`](../../../course/contracts/c/ABI.md).
 
 <!-- ss:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
-| 1 | `rt.01` | [The C ABI: status codes, the error slot, the allocator hook, and a lazy ctypes loader](01-the-c-abi.md) | build | 1 |
-| 2 | `rt.02` | [Arena allocator with marks](02-arena-allocator-with-marks.md) | build | 6 |
-| 3 | `rt.03` | [Thread pool and tl_parallel_for](03-thread-pool-and-parallel-for.md) | build | 6 |
-| 4 | `L9.1` | [Cache-blocked, packed, batch-invariant matmul in C](04-tiled-batch-invariant-matmul.md) | build | 6 |
-| 5 | `L9.2` | [Softmax in C: three-pass and online two-pass](05-softmax-three-pass-and-online.md) | build | 6 |
-| 6 | `L9.3` | [FlashAttention forward in C](06-flash-attention-forward.md) | build | 6 |
-| 7 | `L9.4` | [Paged attention for decode in C](07-paged-attention-decode.md) | build | 6 |
-| 8 | `L9.5` | [Fused int4 and int8 dequantize-matmul in C](08-fused-quantized-matmul.md) | build | 6 |
-| 9 | `L9.6` | [Elementwise kernels in C: RMSNorm, RoPE, SiLU-mul, embedding, add, argmax](09-elementwise-kernels.md) | build | 6 |
-| 10 | `L9.7` | [The Python C backend: the Llama forward through libtinyllm, with a load-time op check](10-python-c-backend.md) | build | 6 |
+| 1 | `rt.02` | [C runtime support and arena allocator with marks (optional)](02-arena-allocator-with-marks.md) | side | 6 |
+| 2 | `rt.03` | [Thread pool and tl_parallel_for (optional C)](03-thread-pool-and-parallel-for.md) | side | 6 |
+| 3 | `L9.1` | [Cache-blocked, packed, batch-invariant matmul in C (optional)](04-tiled-batch-invariant-matmul.md) | side | 6 |
+| 4 | `L9.2` | [Softmax in C: three-pass and online two-pass](05-softmax-three-pass-and-online.md) | side | 6 |
+| 5 | `L9.3` | [FlashAttention forward in C](06-flash-attention-forward.md) | side | 6 |
+| 6 | `L9.4` | [Paged attention for decode in C](07-paged-attention-decode.md) | side | 6 |
+| 7 | `L9.5` | [Fused int4 and int8 dequantize-matmul in C](08-fused-quantized-matmul.md) | side | 6 |
+| 8 | `L9.6` | [Elementwise kernels in C: RMSNorm, RoPE, SiLU-mul, embedding, add, argmax](09-elementwise-kernels.md) | side | 6 |
 <!-- /ss:chapters -->

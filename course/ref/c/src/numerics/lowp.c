@@ -1,6 +1,6 @@
-/* c/src/numerics/lowp.c (M09.4): float32 to and from fp8 (E4M3, E5M2),
+/* c/src/numerics/lowp.c (M09.7): float32 to and from fp8 (E4M3, E5M2),
  * bfloat16, and IEEE binary16, round to nearest with ties to even.
- * Contract: tinyllm/numerics.h (the M09.4 section has the edge rules).
+ * Contract: tinyllm/numerics.h (M09.7 owns the standalone C exercise).
  * The Python twin is python/tinyllm/num/lowp.py (fp8) and M09.1's
  * python/tinyllm/num/fp.py (bf16, f16); the C and Python results must agree
  * on every code and every input the course tests try.
@@ -34,7 +34,7 @@ static uint32_t f32_bits(float x) {
  * `abs` in a format with M fraction bits and bias B. Never overflows a
  * uint32 for M <= 10 and B <= 127. */
 static uint32_t rne_code(uint32_t abs, int M, int B) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t exp = abs >> 23, frac = abs & 0x7FFFFFu;
     uint32_t s;
     int e2;
@@ -69,7 +69,7 @@ static uint32_t rne_code(uint32_t abs, int M, int B) {
 /* Exact value of a magnitude code (no specials): fraction bits mant and
  * exponent field ef, subnormal when ef == 0. */
 static float decode_mag(uint32_t code, int M, int B) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t ef = code >> M, mant = code & ((1u << M) - 1u);
     if (ef == 0) return ldexpf((float)mant, 1 - B - M);
     return ldexpf((float)((1u << M) + mant), (int)ef - B - M);
@@ -77,7 +77,7 @@ static float decode_mag(uint32_t code, int M, int B) {
 }
 
 uint8_t tl_f32_to_e4m3(float x) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t u = f32_bits(x), sign = (u >> 24) & 0x80u, abs = u & 0x7FFFFFFFu;
     if (abs > 0x7F800000u) return 0x7F; /* NaN */
     if (abs == 0x7F800000u) return (uint8_t)(sign | 0x7Eu); /* inf saturates */
@@ -88,7 +88,7 @@ uint8_t tl_f32_to_e4m3(float x) {
 }
 
 float tl_e4m3_to_f32(uint8_t b) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     if ((b & 0x7Fu) == 0x7Fu) return NAN;
     float v = decode_mag(b & 0x7Fu, 3, 7);
     return (b & 0x80u) ? -v : v;
@@ -96,7 +96,7 @@ float tl_e4m3_to_f32(uint8_t b) {
 }
 
 uint8_t tl_f32_to_e5m2(float x) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t u = f32_bits(x), sign = (u >> 24) & 0x80u, abs = u & 0x7FFFFFFFu;
     if (abs > 0x7F800000u) return 0x7F; /* NaN */
     if (abs == 0x7F800000u) return (uint8_t)(sign | 0x7Cu); /* inf stays inf */
@@ -107,7 +107,7 @@ uint8_t tl_f32_to_e5m2(float x) {
 }
 
 float tl_e5m2_to_f32(uint8_t b) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t m = b & 0x7Fu;
     if (m >= 0x7Cu) return m == 0x7Cu ? ((b & 0x80u) ? -INFINITY : INFINITY) : NAN;
     float v = decode_mag(m, 2, 15);
@@ -116,7 +116,7 @@ float tl_e5m2_to_f32(uint8_t b) {
 }
 
 uint16_t tl_f32_to_bf16(float x) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t u = f32_bits(x), sign = (u >> 16) & 0x8000u, abs = u & 0x7FFFFFFFu;
     if (abs > 0x7F800000u) return 0x7FC0; /* NaN: quiet, sign dropped */
     if (abs == 0x7F800000u) return (uint16_t)(sign | 0x7F80u);
@@ -127,7 +127,7 @@ uint16_t tl_f32_to_bf16(float x) {
 }
 
 float tl_bf16_to_f32(uint16_t b) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t u = (uint32_t)b << 16; /* bf16 is the top half of a float32 */
     float x;
     memcpy(&x, &u, sizeof x);
@@ -136,7 +136,7 @@ float tl_bf16_to_f32(uint16_t b) {
 }
 
 uint16_t tl_f32_to_f16(float x) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t u = f32_bits(x), sign = (u >> 16) & 0x8000u, abs = u & 0x7FFFFFFFu;
     if (abs > 0x7F800000u) return 0x7E00; /* NaN */
     if (abs == 0x7F800000u) return (uint16_t)(sign | 0x7C00u);
@@ -147,7 +147,7 @@ uint16_t tl_f32_to_f16(float x) {
 }
 
 float tl_f16_to_f32(uint16_t b) {
-/* SOLUTION-BEGIN M09.4 */
+/* SOLUTION-BEGIN M09.7 */
     uint32_t m = b & 0x7FFFu;
     if (m >= 0x7C00u) return m == 0x7C00u ? ((b & 0x8000u) ? -INFINITY : INFINITY) : NAN;
     float v = decode_mag(m, 10, 15);

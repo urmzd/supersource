@@ -10,7 +10,7 @@
 | **Contract** | none: a primer exercise, not part of the system. The signatures are in the stubs `ss start lang.01` writes |
 | **Tests** | `course/tests/lang.01/`, run by its `check` script (what they check: section 4) |
 | **Needs** | nothing: the course starts here. Python 3.11 or later and `uv` on your PATH (`ss doctor`) |
-| **Used by** | no code call site (a primer). It is the concept prerequisite of `L0.0` (byte bigram from counts), `rt.01` (the ctypes loader hands numpy buffers to C), `M03.1` (row-major matmul in C), and `L0.1` (broadcasting backward) |
+| **Used by** | no code call site (a primer). It is the concept prerequisite of `L0.0` (byte bigram from counts), optional C exercises such as `M03.1` (row-major matmul), and `L0.1` (broadcasting backward) |
 | **Milestone** | MS-P0 (page: `paths/course-p00-setup/milestone.md`) |
 | **Optional depth** | numpy user guide, "Broadcasting", "Copies and views", "Data type objects" (numpy.org/doc, free); Harris et al., "Array programming with NumPy", *Nature* 585, 2020 (free); uv docs, "Working on projects" (docs.astral.sh/uv, free) |
 
@@ -245,7 +245,7 @@ def row_normalize(counts: np.ndarray) -> np.ndarray: ...
 | Direction | Module | How it uses this |
 |---|---|---|
 | Forward | `L0.0` | the byte bigram's training is `bigram_counts` over a corpus, then row normalization with add-one smoothing |
-| Forward | `rt.01` | the ctypes loader's `f32_ptr` hands C a `float*` and refuses an array whose dtype is not `float32` or whose last axis is strided, so callers run the `as_c_float32` conversion first |
+| Forward | `M03.1` | row-major layout and strides help explain the C exercise's matrix buffers; Python and C are checked separately through fixture files |
 | Forward | `M03.1` | `tl_matmul_f32` reads row-major float32 with an explicit leading dimension: the strides of 2.1, counted in elements |
 | Forward | `L0.1` | the backward of every broadcasting op is `unbroadcast`, and its gradient test is the adjoint identity of 2.4 |
 | Forward | `lang.02` | the next primer: the shell, exit codes, signals, and make |

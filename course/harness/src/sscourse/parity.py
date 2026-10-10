@@ -192,10 +192,6 @@ def run_driver(
     cwd, env = ov.work, None
     ov.work.mkdir(parents=True, exist_ok=True)
     if impl.lang == "python":
-        if ov.needs_c_lib(["python"]) and ov._lib is None:
-            lib, err = ov.build_c_lib()
-            if lib is None:
-                return None, "building libtinyllm failed:\n" + err
         prefix, env = ov.py_env()
         cmd = prefix + ["python", str(drv)]
     elif impl.lang == "c":

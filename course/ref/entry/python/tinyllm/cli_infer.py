@@ -88,7 +88,6 @@ def _params(a):
 
 
 def _paged_cache(model, prompt_len: int, max_tokens: int):
-    from tinyllm.ffi.libtinyllm import load as load_lib
     from tinyllm.infer.generate import cache_dims
     from tinyllm.infer.paged import PagedKVCache
 
@@ -96,7 +95,7 @@ def _paged_cache(model, prompt_len: int, max_tokens: int):
     block = 16
     blocks = (prompt_len + max_tokens) // block + 2
     return PagedHook(
-        PagedKVCache(load_lib(), blocks, block, n_layers, n_kv, d_head), n_layers
+        PagedKVCache(blocks, block, n_layers, n_kv, d_head), n_layers
     )
 
 
@@ -351,8 +350,6 @@ def intercept(argv: list[str]) -> int | None:
     """Claim MS-L8's forms on a Llama directory; return None for anything else."""
     if not argv or not is_llama_dir(_model_arg(argv)):
         return None
-    if any(x == "--backend" or x.startswith("--backend=") for x in argv):
-        return None  # MS-L9's forms (cli_kernels)
     claims = argv[0] in ("generate", "eval") and any(
         x.split("=")[0] in CLAIMS for x in argv
     )

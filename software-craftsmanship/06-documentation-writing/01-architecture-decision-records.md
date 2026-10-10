@@ -9,7 +9,7 @@
 | **You build** | `docs/adr/0001-<slug>.md`: ADR-0001, the record of where your four languages meet and why |
 | **Contract** | the ADR template in section 4 (file name, title line, five sections) |
 | **Tests** | `course/tests/craft.02/` (what they check: section 4) |
-| **Needs** | nothing to call; you write about what you built in [`rt.01`](../../ml/08-tinyllm/p09-kernels/01-the-c-abi.md) · [`M03.1`](../../math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md) · [`L10.0`](../../ml/08-tinyllm/p10-serving/00-your-first-endpoint.md) · [`gw.00`](../../ai-platform-engineering/12-gateway/00-streaming-proxy.md), committed with the habits of [`craft.01`](../08-code-review-and-ci/01-your-repo-and-ci-gate.md) |
+| **Needs** | nothing to call; you write about what you built in [`M03.1`](../../math/03-linear-algebra/01-vectors-matrices-and-matmul.md) · [`L10.0`](../../ml/08-tinyllm/p10-serving/00-your-first-endpoint.md) · [`gw.00`](../../ai-platform-engineering/12-gateway/00-streaming-proxy.md), committed with the habits of [`craft.01`](../08-code-review-and-ci/01-your-repo-and-ci-gate.md) |
 | **Used by** | no call site: a practice artifact. Every later ADR (craft.13, craft.14, ops.04) follows this format |
 | **Milestone** | [MS-P1](../../paths/course-p01-tracer/milestone.md) |
 | **Optional depth** | Michael Nygard, [*Documenting Architecture Decisions*](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) (2011, free); [adr.github.io](https://adr.github.io/) (free); *Software Engineering at Google*, ch. 10 [Documentation](https://abseil.io/resources/swe-book/html/ch10.html) (free) |
@@ -20,7 +20,7 @@
 - ADRs are **append-only**. You never rewrite an accepted record; a new ADR supersedes it, and the old one points forward.
 - The status and its date say whether the decision still binds and what its authors could have known.
 - A decision with no rejected alternative and no listed cost is not a decision record. It is a description.
-- ADR-0001 records the decision your whole system rests on: in process, languages meet at the C ABI of `tinyllm.h`; between processes, over HTTP.
+- ADR-0001 records the decision your whole system rests on: languages meet through process and file boundaries.
 
 ## How to work this chapter
 
@@ -36,7 +36,7 @@ git add docs/adr && git commit -m "docs(adr): record where the languages meet"
 
 ## 1. Why now
 
-Your tracer now crosses three language boundaries. Python calls `tl_matmul_f32` in C through ctypes (`rt.01`, `M03.1`). Your Rust engine calls the same C function through `extern "C"` and streams tokens over HTTP and SSE (`L10.0`). Your Go gateway checks a key and proxies that stream (`gw.00`). Each choice was made for a reason that is in your head today and in nobody's head in six months. In Pass 7 you will add gRPC between components, and someone (you, or a reviewer) will ask why the gateway still talks to the engine over HTTP, or why Python does not call Rust instead of C. Without a record, that question gets answered by re-arguing it from scratch, or worse, by "changing it back" and rediscovering the cost. This module writes the record now, while the reasons are fresh, as ADR-0001.
+Your tracer crosses language boundaries through files and processes. Python writes a safetensors checkpoint and tokenizer data; the Rust engine reads them and streams tokens over HTTP and SSE (`L10.0`). Your Go gateway checks a key and proxies that stream (`gw.00`). Each choice was made for a reason that is in your head today and in nobody's head in six months. In Pass 7 you will add gRPC between components, and someone (you, or a reviewer) will ask why the gateway still talks to the engine over HTTP. Without a record, that question gets answered by re-arguing it from scratch, or by changing it and rediscovering the cost. This module writes the record now, while the reasons are fresh, as ADR-0001.
 
 ## 2. Principles
 
@@ -117,7 +117,7 @@ Check it against section 4: file `0002-the-tracer-tokenizer-is-raw-utf-8-bytes.m
 
 ## 4. The artifact and its check
 
-**Path.** `docs/adr/0001-<slug>.md` in your repo, for example `docs/adr/0001-languages-meet-at-a-c-abi-and-http.md`. Commit it with a conventional commit (`docs(adr): ...`, craft.01).
+**Path.** `docs/adr/0001-<slug>.md` in your repo, for example `docs/adr/0001-languages-meet-at-process-and-file-boundaries.md`. Commit it with a conventional commit (`docs(adr): ...`, craft.01).
 
 **Template.** Copy this (your repo also has it at `contracts/templates/ADR.md`), then replace every `<...>`:
 
@@ -194,8 +194,7 @@ The section 3 example is the first case: saved as ADR-0002 next to an ADR-0001, 
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the C ABI rules (status codes, `tl_last_error`, caller-owned buffers) your ADR names |
-| Back | `M03.1` | the first C function both Python and Rust call |
+| Back | `M03.1` | Python matrix operations used in the tracer's model |
 | Back | `L10.0` | the engine's HTTP and SSE surface, the between-process boundary |
 | Back | `gw.00` | the gateway, the other side of that boundary |
 | Back | `craft.01` | commit the record with a conventional commit; CI keeps `ss check --all --ci` green |

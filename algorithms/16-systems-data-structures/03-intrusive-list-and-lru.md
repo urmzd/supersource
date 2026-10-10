@@ -1,17 +1,17 @@
 <!-- ss:module ds.03 -->
-# Intrusive list + LRU
+# Intrusive list + LRU (optional C)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `ds.03` · build · C · Pass 6 · 2 to 3 h |
+| **Module** | `ds.03` · side · C · Pass 6 · 2 to 3 h |
 | **You build** | `c/src/ds/list.c`: `tl_lru_init`, `tl_lru_remove`, `tl_lru_pop_oldest` · `c/src/ds/lru.c`: `tl_lru_touch` |
 | **Contract** | the ds.03 section of [`tinyllm/ds.h`](../../course/contracts/c/include/tinyllm/ds.h) (`tl_list_node`, `TL_CONTAINER_OF`, `tl_lru`) |
 | **Tests** | `course/tests/ds.03/test_lru.c`, 8 tests under ASan and UBSan (what they check: section 4) · your own tests in `c/tests/ds03-lru/`, rung R2, graded by mutation (threshold 0.60) |
 | **Needs** | nothing to call: pointers only · reading: `ds.02` (the chapter before), the [practice C drill 03](../../practice/build/systems/c/03-intrusive-list/) (the same list with splice) |
 | **Used by** | `rt.04` keeps its cached KV blocks on one `tl_lru`, oldest first |
-| **Milestone** | `MS-L8` |
+| **Milestone** | `MS-L9`, the optional standalone C module group |
 | **Optional depth** | Linux kernel, [`include/linux/list.h`](https://github.com/torvalds/linux/blob/master/include/linux/list.h); Cormen et al., *Introduction to Algorithms*, section 10.2 (linked lists with sentinels) |
 
 ## Key Takeaways

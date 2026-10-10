@@ -12,9 +12,6 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* The thread pool of rt.03 (tinyllm/pool.h). Declared here as an
  * incomplete type so this header stands alone; C11 allows the identical
@@ -48,8 +45,5 @@ tl_status tl_matmul_f32(const float *A, const float *B, float *C,
                         int64_t lda, int64_t ldb, int64_t ldc,
                         float alpha, float beta, int trans_b, tl_pool *tp);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_MATMUL_H */

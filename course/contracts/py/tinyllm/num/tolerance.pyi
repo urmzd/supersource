@@ -43,7 +43,7 @@ def matmul_error_bound(A: ArrayLike, B: ArrayLike, dtype: str, dA: ArrayLike = 0
     (dA a scalar or broadcast to A's shape: the quantization step of L8.5 is
     dA = scale / 2): dA @ |B| + gamma_k (|A| + dA) @ |B|, with k = A.shape[1]
     and the products formed in float64. dA = 0 is the plain rounding bound
-    (L9.7's per-op check). ValueError unless A is [m, k], B is [k, n],
+    (the optional L9.1 parity check). ValueError unless A is [m, k], B is [k, n],
     k >= 1, and dA >= 0."""
 
 def assert_close_bounded(
@@ -63,7 +63,7 @@ def assert_close_bounded(
 
 def bound_ratio(actual: ArrayLike, expected: ArrayLike, bound: ArrayLike) -> float:
     """max_i |actual_i - expected_i| / bound_i: <= 1 means within the
-    budget (L9.7 prints it per op). A zero error over a zero bound counts 0;
+    budget (optional C parity reports it per operation). A zero error over a zero bound counts 0;
     a nonzero error over a zero bound is inf; an empty input gives 0.0."""
 
 def cond(A: ArrayLike) -> float:

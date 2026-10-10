@@ -18,7 +18,7 @@ ci        = "pr"
 [tests]
 dir       = "course/tests/data.04"
 smoke     = ["test_hand_example", "test_signature_is_the_spec", "test_invariant_to_worker_count"]
-timeout_s = 120                        # the overlay builds tinyllm_rs for data.03's Bloom on a cold run
+timeout_s = 120                        # the overlay loads Python data.03 and its M06.3 reference
 determinism_runs = 2
 
 [fixtures]

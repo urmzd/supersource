@@ -1,16 +1,16 @@
 <!-- ss:module L9.1 -->
-# Cache-blocked, packed, batch-invariant matmul in C
+# Cache-blocked, packed, batch-invariant matmul in C (optional)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L9.1` · build · C · Pass 6 · 5 to 7 h |
+| **Module** | `L9.1` · side · C · Pass 6 · 5 to 7 h |
 | **You build** | `c/src/kernels/matmul.c`, taken over from `M03.1`: the same `tl_matmul_f32` signature and contract, now with Goto's loop nest (column strips, k-blocks, packed panels, a 4 x 16 register micro-kernel), threads from your `rt.03` pool, and a fixed reduction order that makes every row's bits independent of the batch |
 | **Contract** | [`course/contracts/c/include/tinyllm/matmul.h`](../../../course/contracts/c/include/tinyllm/matmul.h) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) (rule 10, batch invariance) |
-| **Tests** | `course/tests/L9.1/`: `test_matmul_tiled.c` (C, under ASan and UBSan, and ThreadSanitizer for the pool case) and `test_matmul_tiled_ctypes.py` (Python, through your `rt.01` loader, against numpy) (what they check: section 4); `M03.1`'s tests run as your regression. Bench: `course/tests/L9.1/bench/matmul_512.c` |
-| **Needs** | `rt.01` the error slot and the loader · `rt.03` `tl_parallel_for` (or `--ref-deps`). Reading: `M03.1` (your v0 of this file) · `M09.3` (the $\sqrt{K}$ error bound) · `M05.1` (FLOP counting) · `rt.02` (why this kernel does not use an arena) |
-| **Used by** | `L0.0` and `L10.0` keep calling `tl_matmul_f32` and now get the fast version · `L9.5` measures its quantized kernel against this one · later `L9.7` (the Python C backend) and `L10.1` (the Rust forward) run every projection through it |
+| **Tests** | `course/tests/L9.1/`: `test_matmul_tiled.c` (C, under ASan and UBSan, and ThreadSanitizer for the pool case) and shared file fixtures (what they check: section 4); `M03.1`'s tests run as your regression. Bench: `course/tests/L9.1/bench/matmul_512.c` |
+| **Needs** | `rt.02` the error slot and the loader · `rt.03` `tl_parallel_for` (or `--ref-deps`). Reading: `M03.1` (your v0 of this file) · `M09.3` (the $\sqrt{K}$ error bound) · `M05.1` (FLOP counting) · `rt.02` (why this kernel does not use an arena) |
+| **Used by** | `L9.5` measures its quantized kernel against this optional C baseline; Python and Rust have independent implementations |
 | **Milestone** | `MS-L9` (the C backend generates the same tokens as numpy, and faster) |
 | **Optional depth** | Goto and van de Geijn, "Anatomy of High-Performance Matrix Multiplication" (2008); Van Zee and van de Geijn, "BLIS: A Framework for Rapidly Instantiating BLAS Functionality" (2015); Williams, Waterman, and Patterson, "Roofline" (2009); He et al., "Defeating Nondeterminism in LLM Inference" (Thinking Machines, 2025) |
 
@@ -18,7 +18,7 @@
 
 - **The triple loop is slow because of memory, not arithmetic.** Blocking reuses each loaded value many times from cache and registers; your packed version is 10 to 20 times faster at $512^3$ with the same $2MNK$ operations (`ss bench L9.1`).
 - **Packing copies a block into the exact order the micro-kernel reads it,** padded with zeros to whole micro-tiles, so the inner loop is unit-stride and every output element goes through the same code path (`shapes_across_tile_edges`).
-- **Batch invariance is a property of the reduction order.** Each $C_{ij}$ is a sum over k-blocks of fixed size $K_C$, each a sum from 0 in increasing $k$: nothing depends on $M$, on the row's position, or on the threads, so a row has the same bits alone or in a batch of 37 (`batch_invariant_at_1_7_37`, `test_batch_invariance_through_ctypes`).
+- **Batch invariance is a property of the reduction order.** Each $C_{ij}$ is a sum over k-blocks of fixed size $K_C$, each a sum from 0 in increasing $k$: nothing depends on $M$, on the row's position, or on the threads, so a row has the same bits alone or in a batch of 37 (`batch_invariant_rows`, `batch_invariant_at_1_7_37`).
 - **$\beta$ applies once, in the first k-block,** and later blocks add; $\beta = 0$ still never reads $C$ (`beta_applies_once_across_k_blocks`).
 - **Threads split columns, never a sum,** so 1 and 4 threads give identical bits (`pool_result_equals_serial_bitwise`).
 
@@ -38,7 +38,7 @@ ss diff  L9.1              # after passing: your code against the reference
 
 ## 1. Why now
 
-Your `M03.1` kernel computes every product of the course so far, and on a $512 \times 512 \times 512$ product it runs at about 2 to 3 GFLOP/s on a laptop core that can do 50 or more. SmolLM2-135M spends almost all of a forward pass in projections of exactly that size: at 30 layers and seven projections per layer, the naive loop makes the C backend (`L9.7`) slower than numpy, which calls an optimized BLAS. There is a second problem the engine will hit in Pass 7. The Rust engine (`L10.2`) batches several requests into one forward pass, and `L10.3` splits long prompts into chunks. If a row's result depends, even in its last bit, on how many other rows were in the call, then the same prompt at temperature 0 produces different tokens depending on what else the server is doing: near-ties in the logits flip. Commercial inference APIs have exactly this nondeterminism. This module makes the matmul fast and makes its bits a function of the row alone.
+The naive triple loop is easy to understand but slow on large matrices because it repeatedly fetches values far apart in memory. Blocked multiplication reuses a small tile in cache, and a fixed reduction order makes each row's result independent of the batch size. This optional kernel demonstrates those optimizations; the Python and Rust engine paths keep their own implementations.
 
 ## 2. Principles
 
@@ -111,7 +111,7 @@ The packed kernel still does $2MNK$ FLOPs. Packing $B$ costs $KN$ copies per cal
 | 1 | $2 \cdot (9, 10)$, $5 \cdot (9, 10)$ | (25, 28) | (73, 82) |
 | 2 | $3 \cdot (11, 12)$, $6 \cdot (11, 12)$ | (58, 64) | (139, 154) |
 
-Rows 2 and 3 of the accumulator and columns 2 to 15 are zero (padding). The store writes only the $2 \times 2$ corner: $C = \{58, 64, 139, 154\}$, the first test, `hand_example`, and `test_hand_example_through_ctypes`.
+Rows 2 and 3 of the accumulator and columns 2 to 15 are zero (padding). The store writes only the $2 \times 2$ corner: $C = \{58, 64, 139, 154\}$, the first test, `hand_example`, and `test_hand_example`.
 
 **Why the block size must not depend on $M$.** Take one output whose four products are, in order, $1, 10^8, 3, 3$ (float32). With the sum in one block, $((0 + 1) + 10^8) + 3 + 3$: float32 spacing near $10^8$ is 8, so adding 1 or 3 rounds back to $10^8$ each time, and the result is $100{,}000{,}000$. With blocks of 2, $(1 + 10^8) + (3 + 3) = 10^8 + 6$, which rounds up to $100{,}000{,}008$. Same numbers, different grouping, different bits. If the kernel used one block for $M = 1$ and blocks of 2 otherwise, a decode step and a prefill would disagree in exactly this way, which is what `batch_invariant_at_1_7_37` and mutant `s10` are about.
 
@@ -145,10 +145,9 @@ tl_status tl_matmul_f32(const float *A, const float *B, float *C, int64_t M, int
 | `batch_invariant_rows` | property | 16 rows of a Linear layer ($K = 300$): each alone vs inside every batch at every offset, bitwise | batched decode (`L10.2`) |
 | `batch_invariant_at_1_7_37` | property | the catalog's $M = 1, 7, 37$, bitwise | prefill vs decode |
 | `pool_result_equals_serial_bitwise` | property | 4 threads vs serial, three strips (the last partial), under TSan too | threads never change bits |
-| `test_hand_example_through_ctypes` | unit, smoke | section 3 across the boundary | how `L0.0` and `L9.7` call it |
-| `test_matches_numpy_across_tile_edges` | differential | sizes 1 to 257 around the tile constants, both `trans_b`, against float64 | any lost or doubled block fails |
-| `test_strided_views_with_alpha_beta` | differential | numpy views in and out, $\alpha = 2$, $\beta = 0.5$, $K = 300$ | views and accumulation together |
-| `test_batch_invariance_through_ctypes` | property | the frozen helper over batches of 1 to 16 at every offset | the property from Python |
+| `baseline_row_major`, `trans_b_reads_rows_of_b` | unit | original row-major and transposed-B contract cases | the v0 interface remains compatible |
+| `alpha_and_beta_scale_and_accumulate`, `beta_zero_ignores_garbage_in_c` | unit | alpha/beta behavior, including no read of C when beta is zero | preserves the original arithmetic contract |
+| `empty_dimensions`, `bad_arguments_are_einval`, `leading_dimensions_skip_padding` | boundary | empty shapes, invalid arguments, and padded leading dimensions | preserves the original shape and view rules |
 
 The bench (`ss bench L9.1`, a B test, never part of `ss check`) times your kernel against `M03.1`'s loop at $512^3$ and reports `speedup_vs_naive` (budget $\ge 10$) and GFLOP/s. The reference reaches about 19x and 50 GFLOP/s on one Apple M-series core; Apple's Accelerate (`cblas_sgemm`, AMX units) is several times faster again, which is the ceiling to compare against if you are curious, not a budget.
 
@@ -173,13 +172,9 @@ The bench (`ss bench L9.1`, a B test, never part of `ss check`) times your kerne
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the error slot behind `TL_EINVAL`, and the loader |
+| Back | `rt.02` | the error slot behind `TL_EINVAL` |
 | Back | `rt.03` | `tl_parallel_for` runs the column strips |
-| Forward | `L0.0` | `BigramLM.logits` keeps calling `tl_matmul_f32`, now tiled |
-| Forward | `L10.0` | the tracer engine's logits, through `extern "C"` |
 | Forward | `L9.5` | its benchmark and its float32 baseline are this kernel on the dequantized weight |
-| Forward | `L9.7` | (Pass 6) the Python C backend runs every projection of the Llama forward here |
-| Forward | `L10.1` | (Pass 7) the Rust forward does the same through `tl-sys`, batched by `L10.2` and chunked by `L10.3`, which is where invariance pays off |
 
 If you skip this module, `ss check L9.5` stops with `BLOCKED ... needs L9.1`: build it, or pass `--ref-deps`.
 

@@ -7,7 +7,7 @@
 //! | Module | Course module | What |
 //! |---|---|---|
 //! | `prefix` | L8.4 | radix prefix cache over token ids |
-//! | `quant`, `model`, `forward`, `runner`, `sample` | L10.1 | f16 and int4, the model directory, the Llama forward over the C kernels, the runner and its KV pool, the sampler and PCG32 |
+//! | `quant`, `model`, `forward`, `runner`, `sample`, `kv` | L10.1 | f16 and int4, Candle-backed model math, the model directory, a Rust KV cache, the runner, the sampler and PCG32 |
 //! | `sched` | L10.2 | continuous batching: admission, priority with aging, preemption |
 //! | `chunk` | L10.3 | chunked prefill and the mixed prefill + decode batch |
 //! | `block_manager` | L10.4 | KV blocks per request with a prefix cache (none, hash, radix) |
@@ -20,12 +20,16 @@ pub mod block_manager;
 pub mod chunk;
 pub mod engine;
 pub mod forward;
+pub mod heartbeat;
+pub mod kv;
+pub mod kv_transfer;
 pub mod model;
 pub mod prefix;
 pub mod quant;
 pub mod runner;
 pub mod sample;
 pub mod sched;
+pub mod spec;
 
 pub use forward::{ForwardBatch, ForwardSeq, Logits};
 pub use runner::{EngineConfig, KvConfig, ModelRunner, PrefixCache, Quant, SchedPolicy, SharedPool};

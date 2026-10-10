@@ -1,9 +1,9 @@
 # Bloom filter: sizing, hashing, bytes
 
-<!-- modules: ds.08 (rust/crates/tl-ds/src/bloom.rs, exposed to Python by tl-py), data.03 (exact dedup)
+<!-- modules: ds.08 (rust/crates/tl-ds/src/bloom.rs), data.03 (exact dedup)
      conformance: parity/bloom -->
 
-`tinyllm_rs.Bloom` ([`py/tinyllm_rs.pyi`](../py/tinyllm_rs.pyi)) and `tl_ds::bloom::Bloom` follow this page, so a filter serialized by one implementation answers every `contains` identically in another. All integers are little-endian.
+The Rust `tl_ds::bloom::Bloom` implementation and Python dedup implementation follow this page, so serialized filters preserve the same membership behavior. All integers are little-endian.
 
 ## Sizing
 

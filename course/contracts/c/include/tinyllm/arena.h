@@ -10,7 +10,8 @@
  *
  * Not thread-safe: the caller serializes every call on one arena.
  *
- * module: rt.02 (c/src/runtime/arena.c) */
+ * module: rt.02 (c/src/runtime/arena.c)
+ * chapter: ml/08-tinyllm/p09-kernels/02-arena-allocator-with-marks.md */
 #ifndef TINYLLM_ARENA_H
 #define TINYLLM_ARENA_H
 
@@ -19,9 +20,6 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct tl_arena tl_arena;
 
@@ -65,8 +63,5 @@ void tl_arena_stats_get(const tl_arena *a, tl_arena_stats *out);
 /* Frees every block through the hook. NULL does nothing. */
 void tl_arena_destroy(tl_arena *a);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_ARENA_H */

@@ -5,12 +5,12 @@
 
 | | |
 |---|---|
-| **Module** | `L9.5` · build · C · Pass 6 · 4 to 5 h |
+| **Module** | `L9.5` · side · C · Pass 6 · 4 to 5 h |
 | **You build** | `c/src/kernels/qmatmul.c`: `tl_matmul_q4_f32` (W4A32: signed 4-bit weights, one f16 scale per group) and `tl_matmul_q8_f32` (W8A32: int8 weights, one f32 scale per output row), each computing $y = x W^\top$ without ever writing $W$ out in float32 |
 | **Contract** | [`course/contracts/c/include/tinyllm/qmatmul.h`](../../../course/contracts/c/include/tinyllm/qmatmul.h) · byte layout: [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md) (Int4 weights) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/L9.5/`: `test_qmatmul.c` (C, under ASan and UBSan, against dequantize-then-`tl_matmul_f32`) and `test_qmatmul_ctypes.py` (Python, through your `rt.01` loader, against numpy and your `L8.5` quantizer) (what they check: section 4). Bench: `course/tests/L9.5/bench/q4_gemv_2048.c` |
-| **Needs** | `rt.01` the loader · `rt.03` the pool · `M09.4` `tl_f16_to_f32` · `L9.1` your float32 matmul, the baseline · `L8.5` your Python quantizer (or `--ref-deps`). Reading: `M09.3` (error bounds) |
-| **Used by** | `L10.1` (Pass 7): the Rust runner serves `*.q4.safetensors` models through this kernel |
+| **Tests** | `course/tests/L9.5/test_qmatmul.c` (standalone C tests under ASan and UBSan, against dequantize-then-`tl_matmul_f32`) and `course/tests/L9.5/bench/q4_gemv_2048.c` |
+| **Needs** | `rt.02` the loader · `rt.03` the pool · `M09.7` `tl_f16_to_f32` · `L9.1` your float32 matmul, the baseline · `L8.5` your Python quantizer (or `--ref-deps`). Reading: `M09.3` (error bounds) |
+| **Used by** | None: this optional C exercise is tested as a standalone binary; the Rust engine implements quantized inference independently |
 | **Milestone** | `MS-L9` |
 | **Optional depth** | Frantar et al., "GPTQ" (2022); Lin et al., "AWQ" (2023); Dettmers et al., "LLM.int8()" (2022); the llama.cpp `Q4_0` block format (`ggml-quants.c`) |
 
@@ -28,7 +28,7 @@
 ss start L9.5              # stubs c/src/kernels/qmatmul.c into your repo
 ss tests L9.5              # read the test catalog first
 ss check L9.5              # exit code is the verdict
-ss check L9.5 --ref-deps   # only if rt.01, rt.03, M09.4, L9.1, or L8.5 is not passing yet
+ss check L9.5 --ref-deps   # only if rt.02, rt.03, M09.7, L9.1, or L8.5 is not passing yet
 ss bench L9.5 --assert     # at least 2x your float32 kernel on one decode step (local only)
 ss parity quant.int4       # your L8.5 encoder and this decoder against one golden
 ss diff  L9.5              # after passing: your code against the reference
@@ -38,7 +38,7 @@ ss diff  L9.5              # after passing: your code against the reference
 
 ## 1. Why now
 
-`L8.5` taught your Python stack to quantize a Llama: `quantize_int4_group` packs every projection into 4-bit codes with float16 scales, and `export_q4` writes them as `*.qweight` and `*.scales` tensors. But nothing consumes that format at speed. In Python, `QuantLinear` dequantizes back to float32 and calls numpy, so it saves disk, not time. Generating one token reads every weight of the model once; for SmolLM2-135M that is about 540 MB in float32 and about 75 MB in int4. At a laptop's 50 to 100 GB/s, the float32 read alone caps decode at roughly 100 to 200 tokens per second, and int4 raises that cap by seven. This module writes the kernel that reads the packed bytes directly, so the Rust engine (`L10.1`) can serve the quantized model and actually get the speed.
+`L8.5` taught your Python stack to quantize a Llama: `quantize_int4_group` packs every projection into 4-bit codes with float16 scales, and `export_q4` writes them as `*.qweight` and `*.scales` tensors. Python's `QuantLinear` dequantizes to float32 and calls numpy, so it saves disk, not time. This optional standalone C exercise reads packed bytes directly and compares its output with dequantize-then-matmul. The Rust serving path is a separate implementation that consumes the same safetensors format without calling this C kernel.
 
 ## 2. Principles
 
@@ -59,11 +59,11 @@ A decode step multiplies one activation row by every weight matrix: $2NK$ FLOPs 
 
 ### 2.2 The int4 layout
 
-`formats/safetensors.md` (shared with `L8.5`, which writes it, and `L10.1`, which loads it) fixes:
+`formats/safetensors.md` (shared with `L8.5`, which writes it, and the Rust engine, which loads the same file format independently) fixes:
 
 - `qweight`: `uint8 [N, K/2]`. Byte $b$ of row $n$ holds column $2b$ in its **low** nibble (bits 0 to 3) and column $2b + 1$ in its **high** nibble (bits 4 to 7).
 - Each nibble is **signed 4-bit two's complement**: the unsigned value $u \in [0, 15]$ means $u$ when $u < 8$ and $u - 16$ otherwise, so `0x8` is $-8$ and `0xF` is $-1$. In C: `u - ((u & 8) << 1)`.
-- `scales`: `f16 [N, K/G]`, the raw bit patterns of IEEE half precision (1 sign, 5 exponent, 10 mantissa bits). Decoded by your `tl_f16_to_f32` from `M09.4`, not by shifting into the top of a float32, which is what bfloat16 would be.
+- `scales`: `f16 [N, K/G]`, the raw bit patterns of IEEE half precision (1 sign, 5 exponent, 10 mantissa bits). Decoded by your `tl_f16_to_f32` from `M09.7`, not by shifting into the top of a float32, which is what bfloat16 would be.
 
 The kernel validates the shape before touching anything: $K$ even (two codes per byte), $G$ even and positive (a group is whole bytes), $K$ a multiple of $G$ (whole groups); otherwise `TL_ESHAPE`.
 
@@ -106,7 +106,7 @@ $$y_0 = 0.5\,(1 \cdot 1 + 2 \cdot (-2)) + 2\,(3 \cdot 3 + 4 \cdot (-8)) = 0.5 \c
 
 $$y_1 = 1\,(1 \cdot 7 + 2 \cdot 0) + 0.25\,(3 \cdot (-1) + 4 \cdot 4) = 7 + 0.25 \cdot 13 = 10.25$$
 
-Every value is exact in float32. With the same codes as int8 and one scale per row ($0.5$ and $0.25$): $y = [0.5 \cdot (1 - 4 + 9 - 32), 0.25 \cdot (7 + 0 - 3 + 16)] = [-13, 5]$. These are `hand_example`, `q8_hand_example`, and `test_hand_example_through_ctypes` (which also checks numpy packs the bytes above).
+Every value is exact in float32. With the same codes as int8 and one scale per row ($0.5$ and $0.25$): $y = [0.5 \cdot (1 - 4 + 9 - 32), 0.25 \cdot (7 + 0 - 3 + 16)] = [-13, 5]$. These are the values checked by `hand_example` and `q8_hand_example`.
 
 ## 4. The interface
 
@@ -133,11 +133,7 @@ tl_status tl_matmul_q8_f32(const float *x, const int8_t *wq, const float *scales
 | `batch_invariant_rows` | property | 12 rows alone vs in batches, bitwise | decode and batched decode agree |
 | `shape_and_argument_errors` | boundary | `TL_ESHAPE` and `TL_EINVAL` cases leave $y$ untouched; empty dims; $K = 0$ | errors before any read |
 | `pool_result_equals_serial_bitwise` | property | 4 threads vs serial, $N = 37$ | threads never change bits |
-| `test_hand_example_through_ctypes` | unit, smoke | numpy packs section 3's bytes; the kernel returns $[-47.5, 10.25]$ | the layout from Python |
-| `test_q4_matches_dequantize_then_numpy` | differential | $K = 576$, groups 32, 64, 192, $M = 1$ and 5, against float64 | SmolLM2-sized projections |
-| `test_q8_matches_dequantize_then_numpy` | differential | int8, $K = 300$ | the int8 scheme |
-| `test_matches_your_l8_5_quantizer` | differential | your `quantize_int4_group` and `quantize_int8_per_channel` output, against `dequantize` | P6: exactly what `L10.1` will feed it |
-| `test_eshape_raises_through_the_loader` | boundary | a group that does not divide $K$ arrives as `TlError` with `TL_ESHAPE` | the error path end to end |
+| `hand_example` | unit, smoke | numpy packs section 3's bytes; the kernel returns $[-47.5, 10.25]$ | the layout from Python |
 
 The bench (`ss bench L9.5`, local only) runs one decode step, $M = 1$, $N = K = 2048$, group 32, and reports `q4_speedup_vs_f32` (budget $\ge 2$; the reference reaches about 3.9) and the int8 ratio.
 
@@ -163,12 +159,11 @@ The bench (`ss bench L9.5`, local only) runs one decode step, $M = 1$, $N = K = 
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the loader and the error slot |
+| Back | `rt.02` | the error slot and allocator support |
 | Back | `rt.03` | `tl_parallel_for` over output rows |
-| Back | `M09.4` | `tl_f16_to_f32` decodes every scale (and `tl_f32_to_f16` encodes them in the tests) |
+| Back | `M09.7` | `tl_f16_to_f32` decodes every scale (and `tl_f32_to_f16` encodes them in the tests) |
 | Back | `L9.1` | the float32 baseline: dequantize, then `tl_matmul_f32`; the bench's comparison |
 | Back | `L8.5` | the quantizer and the byte layout this kernel decodes |
-| Forward | `L10.1` | (Pass 7) the Rust runner loads `*.q4.safetensors` and calls `tl_matmul_q4_f32` for every quantized projection; its logits are compared with your `L8.5` Python on the same weights |
 
 ## Going further
 

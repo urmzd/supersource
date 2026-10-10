@@ -118,7 +118,7 @@ pub struct InfoResponse {
     /// tokens per KV block
     #[prost(int32, tag = "5")]
     pub block_size: i32,
-    /// tl_abi_version() of the linked libtinyllm
+    /// Engine protocol revision.
     #[prost(uint32, tag = "6")]
     pub abi: u32,
     /// from craft.13: \[1, 2\] during a migration window

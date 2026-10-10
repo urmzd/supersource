@@ -1,26 +1,26 @@
 <!-- ss:module M09.5 -->
-# Fixed-point iteration and a fast inverse square root in C
+# Fast inverse square root in standalone C (optional)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M09.5` · build · C · Pass 6 · 2 to 3 h |
+| **Module** | `M09.5` · side · C · Pass 6 · 2 to 3 h |
 | **You build** | `c/src/numerics/rsqrt.c`: `tl_rsqrtf` and `tl_rsqrt_f32` (and the helper `rsqrt_normal`) |
 | **Contract** | [`course/contracts/c/include/tinyllm/numerics.h`](../../course/contracts/c/include/tinyllm/numerics.h) (the M09.5 section) · rules: [`c/ABI.md`](../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/M09.5/`: `test_rsqrt.c` (C, under ASan and UBSan) and `test_rsqrt_ctypes.py` (Python, through your loader) (what they check: section 4) |
-| **Needs** | [`rt.01` the C ABI](../../ml/08-tinyllm/p09-kernels/01-the-c-abi.md) (error slot, ctypes loader), [`M01.2` Newton's method](../01-calculus-1/02-newtons-method.md) (`rsqrt_newton`, the Python twin) (or `--ref-deps`). Reading: [`M09.1` IEEE 754](01-ieee-754.md) |
-| **Used by** | `L9.6` `tl_rmsnorm_f32` scales every row by $1/\sqrt{\text{mean}(x^2) + \epsilon}$ |
-| **Milestone** | `MS-P6` (the Pass 6 gate: inference and kernels) |
+| **Tests** | `course/tests/M09.5/test_rsqrt.c`, a standalone C suite under sanitizers |
+| **Needs** | [`M01.2` Newton's method](../01-calculus-1/02-newtons-method.md) for the iteration; `M09.1` for float32 bit patterns and subnormals |
+| **Used by** | Optional `L9.6` includes this module in its standalone C build |
+| **Milestone** | `MS-L9`, the optional C module group |
 | **Optional depth** | Lomont, *Fast Inverse Square Root* (2003, free); Higham, *Accuracy and Stability of Numerical Algorithms*, ch. 1; Süli and Mayers, *An Introduction to Numerical Analysis*, ch. 1 (fixed-point iteration) |
 
 ## Key Takeaways
 
-- **Newton's method is a fixed-point iteration** $y \leftarrow g(y)$ whose map has $g'(r) = 0$ at the root, so the relative error squares every step: $e_{n+1} = \tfrac32 e_n^2 - \tfrac12 e_n^3$ (`test_two_float_steps_are_not_enough`).
+- **Newton's method is a fixed-point iteration** $y \leftarrow g(y)$ whose map has $g'(r) = 0$ at the root, so the relative error squares every step: $e_{n+1} = \tfrac32 e_n^2 - \tfrac12 e_n^3$ (`every_input_of_two_binades`).
 - **A float's bit pattern is a piecewise-linear $\log_2$**, so one integer subtraction, `0x5F3759DF - (bits >> 1)`, computes a first guess for $x^{-1/2}$ within 3.5% (`hand_example`).
 - **Two float32 Newton steps reach 4.7e-6 relative error, which is still about 73 ulp**; one more step in float64 lands within 0.5004 ulp of the true value, checked on every input (`every_input_of_two_binades`).
 - **Two binades decide every normal input**, because $\mathrm{rsqrt}(4x) = \mathrm{rsqrt}(x)/2$ holds bit for bit for this algorithm (`scaling_by_four_halves_the_result`); subnormals need a rescale first (`subnormal_inputs`).
-- **The C kernel is a port, not a reinvention**: on the same input it returns the same bits as your M01.2 `rsqrt_newton` (`test_matches_rsqrt_newton_bit_for_bit`).
+- **This remains a standalone C kernel**: its numerical contract is derived from M01.2 and checked in the C test process (`hand_example`, `special_values`).
 
 ## How to work this chapter
 
@@ -28,11 +28,11 @@
 ss start M09.5              # stubs rsqrt.c into your repo
 ss tests M09.5              # read the test catalog first: rung R0, you write no tests here
 ss check M09.5              # exit code is the verdict
-ss check M09.5 --ref-deps   # only if you skipped rt.01 or M01.2
+ss check M09.5 --ref-deps   # only if you skipped M01.2
 ss diff  M09.5              # after passing: your code against the reference
 ```
 
-`ss check` compiles `rsqrt.c` twice: into an ASan and UBSan binary with `test_rsqrt.c`, and into the `-O2` library your rt.01 loader opens for `test_rsqrt_ctypes.py`. The Python test calls your M01.2 `rsqrt_newton`, so that module must pass first.
+The check compiles `rsqrt.c` into a standalone ASan and UBSan test binary. Python and C do not call into each other.
 
 ---
 
@@ -131,14 +131,11 @@ Write `rsqrt_normal` (steps 1 to 3 for a positive normal input) as a `static` he
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `hand_example` | unit, smoke | section 3: 4, 0.25, 1, 2, 0.15625 give the bits above | you and the test agree on the algorithm |
-| `every_input_of_two_binades` | property | all $2^{24}$ floats of $[1, 4)$ within 2 ulp | together with the next test, every normal input |
+| `every_input_of_two_binades` | property | all $2^{24}$ floats of $[1, 4)$ within 2 ulp | checks worst-case error over two complete binades |
 | `scaling_by_four_halves_the_result` | property | `rsqrt(4x) == rsqrt(x)/2` bitwise on 2000 seeded normals | why two binades are enough |
 | `subnormal_inputs` | boundary | all $2^{23} - 1$ positive subnormals within 2 ulp | RMSNorm of a nearly-zero row |
 | `special_values` | boundary | $\pm 0$, $\pm\infty$, negatives, NaN, `FLT_MAX`, `FLT_TRUE_MIN` | a zero row with $\epsilon = 0$ gives $\infty$, visibly |
 | `array_matches_scalar_and_aliases` | unit | the array form gives the scalar's bits, writes exactly $n$, works in place, $n = 0$ is a no-op | L9.6 runs it on a whole row in place |
-| `test_hand_example_through_ctypes` | unit, smoke | $x = 4$ through your loader; your `rsqrt_newton` reaches `0.49999782` in two steps | Python and C agree on the example |
-| `test_matches_rsqrt_newton_bit_for_bit` | differential | 20000 normals over every binade: C equals M01.2's `rsqrt_newton` (two float32 steps, one float64 step) | the kernel is your Python, ported |
-| `test_two_float_steps_are_not_enough` | property | $e_0 < 0.035$, $e_1 < 1.8 \times 10^{-3}$, $e_2 < 5 \times 10^{-6}$, each within $\frac32 e^2$ plus rounding; C below $1.2 \times 10^{-7}$ | why step 3 exists |
 
 ## 5. Pitfalls
 
@@ -158,10 +155,9 @@ A fused multiply-add in the float32 steps is worth trying once: it changes $y_2$
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the error slot every stub reports through, and the loader the Python test declares `tl_rsqrt_f32` on |
-| Back | `M01.2` | `rsqrt_newton` is the same iteration; the differential test holds the C to it bit for bit |
+| Back | `M01.2` | derives the same Newton iteration in Python |
 | Back | `M09.1` | bit patterns, exponent and mantissa fields, ulps, subnormals (reading) |
-| Forward | `L9.6` | `tl_rmsnorm_f32` multiplies each row by `tl_rsqrtf(mean(x^2) + eps)` |
+| Forward | Optional `L9.6` | its standalone C normalization kernel uses `tl_rsqrtf(mean(x^2) + eps)` |
 | Forward | `M09.6` | the same pattern, a reduction then a cheap approximation, for $e^x$ |
 
 If you skip this module, `ss check L9.6` stops with `BLOCKED ... needs M09.5`: build it, or pass `--ref-deps`.

@@ -13,7 +13,7 @@ deps      = ["L0.1", "L0.2", "L0.4"]
 reading   = ["M08.3", "M09.2", "L5.5"]
 # L7.6 (MLA's latent norms) and L7.9 (every Llama norm) call RMSNorm. L9.6
 # parity and L10.1 join with their rows.
-used_by   = ["L7.6", "L7.9", "L9.6"]
+used_by   = ["L7.6", "L7.9"]
 units     = ["python/tinyllm/modern/norm.py"]
 upgrades  = []
 milestone = "MS-L7"

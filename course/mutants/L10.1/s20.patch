@@ -1,13 +1,5 @@
---- a/rust/crates/tl-sys/src/kernels.rs
-+++ b/rust/crates/tl-sys/src/kernels.rs
-@@ -191,8 +191,8 @@
-     need("rope_f32: pos", pos.len(), t)?;
-     need("rope_f32: inv_freq", inv_freq.len(), d_rot / 2)?;
-     let lay = match layout {
--        RopeLayout::Half => 0,
--        RopeLayout::Interleaved => 1,
-+        RopeLayout::Half => 1,
-+        RopeLayout::Interleaved => 0,
-     };
-     // SAFETY: sizes checked above; the kernel rotates in place.
-     unsafe {
+--- a/rust/crates/tl-engine/src/forward.rs
++++ b/rust/crates/tl-engine/src/forward.rs
+@@ -90 +90 @@
+-            let angle = positions[r] as f32 * inv[i];
++            let angle = positions[r] as f32 * inv[half - 1 - i];

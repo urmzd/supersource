@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-serve/src/control.rs
 +++ b/rust/crates/tl-serve/src/control.rs
-@@ -121,7 +121,7 @@
- 
-     /// The Prefill RPC without the gRPC wrapper.
-     pub async fn run_prefill(&self, r: pb::PrefillRequest) -> Result<pb::PrefillResponse, Status> {
+@@ -133 +133 @@
 -        if !self.roles.iter().any(|x| x == "prefill") {
 +        if self.roles.is_empty() {
-             return Err(Status::failed_precondition(format!("this engine serves {:?}, not prefill", self.roles)));
-         }
-         if r.prompt_ids.is_empty() {

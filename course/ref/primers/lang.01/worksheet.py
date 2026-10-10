@@ -4,7 +4,7 @@ Three functions the rest of the course leans on:
 
   broadcast_shape  the broadcasting rule, by hand
   unbroadcast      its adjoint: sum a gradient back down to an operand's shape (L0.1)
-  as_c_float32     a C-contiguous float32 array, copied only when needed (rt.01, M03.1)
+  as_c_float32     a C-contiguous float32 array, copied only when needed (M03.1)
 """
 
 from __future__ import annotations

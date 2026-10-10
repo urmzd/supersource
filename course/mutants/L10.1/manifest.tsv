@@ -16,8 +16,8 @@ s14	rust/crates/tl-engine/src/forward.rs	semantic	pitfall-14	198	y	attention for
 s15	rust/crates/tl-engine/src/forward.rs	semantic	statement-swap	84	n	K and V land in each other's slab	write_kv swaps the K and V slabs
 s16	rust/crates/tl-engine/src/forward.rs	semantic	statement-deletion	230	n	the final norm is skipped	logits from the un-normed last hidden state
 s17	rust/crates/tl-engine/src/runner.rs	semantic	pitfall-15	207	y	a one-off forward leaks its blocks	run_once never releases its temporary blocks
-s18	rust/crates/tl-sys/src/kv.rs	semantic	pitfall-16	300	y	a dropped pool is never destroyed	Drop does not call tl_kv_pool_destroy
-s19	rust/crates/tl-sys/src/kv.rs	semantic	pitfall-17	119	y	a C status is lost	tl_kv_pool_create's status ignored
-s20	rust/crates/tl-sys/src/kernels.rs	semantic	pitfall-19	194	y	the rotary layout codes are swapped	Half passed as layout 1 (interleaved)
-s21	rust/crates/tl-sys/src/kernels.rs	semantic	pitfall-18	219	y	an id past the table reaches C	embedding ids checked against 0 only
-s22	rust/crates/tl-engine/src/forward.rs	semantic	swapped-arguments	214	n	the MLP gates the wrong projection	silu applied to up, not gate
+s18	rust/crates/tl-engine/src/kv.rs	semantic	pitfall-16	99	y	allocation evicts a newer cached block	alloc pops the newest LRU entry instead of the oldest
+s19	rust/crates/tl-engine/src/kv.rs	semantic	pitfall-17	75	y	a zero-capacity cache is accepted	KvPool::new accepts zero blocks
+s20	rust/crates/tl-engine/src/forward.rs	semantic	pitfall-19	90	y	RoPE uses frequencies in reverse order	frequency index is reversed across rotary pairs
+s21	rust/crates/tl-engine/src/forward.rs	semantic	pitfall-18	171	y	an out-of-range token id reaches the embedding	token ids are not checked against the vocabulary
+s22	rust/crates/tl-engine/src/forward.rs	semantic	swapped-arguments	195	n	the MLP gates the wrong projection	silu is applied to the up projection instead of the gate

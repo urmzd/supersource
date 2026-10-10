@@ -7,9 +7,6 @@ s05	rust/crates/tl-serve/src/http.rs	semantic	pitfall-5	192	y	a JSON escape is m
 s06	rust/crates/tl-serve/src/http.rs	semantic	pitfall-6	726	y	incomplete UTF-8 is not held back	an incomplete sequence is flushed as U+FFFD at once
 s07	rust/crates/tl-serve/src/http.rs	semantic	pitfall-7	53	y	header lookup changed	header names compared case-sensitively
 s08	rust/crates/tl-serve/src/http.rs	semantic	pitfall-8	1055	y	SSE framing changed	an event ends in one newline instead of a blank line
-s09	rust/crates/tl-sys/src/lib.rs	semantic	pitfall-9	144	y	a safety check before the FFI call is gone	slice lengths never checked before tl_matmul_f32
-s10	rust/crates/tl-sys/src/lib.rs	semantic	pitfall-10	172	y	a C status is lost	TL_EINVAL from C reported as Ok
-s11	rust/crates/tl-sys/src/lib.rs	semantic	condition-negation	98	y	the ABI check is inverted	check_abi refuses the matching version
 s12	rust/crates/tl-serve/src/http.rs	semantic	pitfall-11	595	y	a safetensors reader rule is gone	trailing bytes after the last tensor accepted
 s13	rust/crates/tl-serve/src/http.rs	semantic	pitfall-12	1108	y	usage counts the prompt wrongly	prompt_tokens counts characters, not bytes
 s14	rust/crates/tl-serve/src/http.rs	semantic	pitfall-13	1048	y	Content-Length miscounted	Content-Length counts characters, not bytes

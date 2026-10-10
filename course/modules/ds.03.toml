@@ -1,6 +1,6 @@
 id        = "ds.03"
-title     = "Intrusive list + LRU"
-kind      = "build"
+title     = "Intrusive list + LRU (optional C)"
+kind      = "side"
 lang      = ["c"]
 pass      = 6
 chapter   = "algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md"
@@ -12,7 +12,7 @@ reading   = ["ds.02"]
 used_by   = ["rt.04"]                 # the cached KV blocks, oldest first
 units     = ["c/src/ds/list.c", "c/src/ds/lru.c"]
 upgrades  = []
-milestone = "MS-L8"
+milestone = "MS-L9"
 ci        = "pr"
 
 [tests]

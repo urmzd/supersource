@@ -904,3 +904,119 @@ B3 group 1 (M01.1, M01.2, M02.1, M01.3, M02.2, M04.1, M04.2):
 | B124-03 | `L12.3` exposes group advantage normalization and the clipped scalar GRPO objective independently of rollouts and optimizer updates. | Its unit tests pin the objective and boundary behavior; reward execution belongs to the training workflow. |
 | B124-04 | `L12.4` exposes forward and reverse KL over logits with temperature scaling, without teacher queries or student-prefix generation. | Its tests pin divergence direction and numerical behavior; data generation belongs to the training workflow. |
 | B124-05 | `rt.03` resolves `n_threads = 0` to one thread on platforms without `_SC_NPROCESSORS_ONLN`, including macOS under strict C11. An explicit positive thread count still enables the pool. | The macOS SDK does not expose that `sysconf` constant, and its `sysctl` headers fail the course's strict C11 compile flags. The portable fallback keeps the standalone C reference buildable. |
+
+## Step B: process boundaries and optional C modules
+
+## L1.5: tokenizer parity uses files and a Rust process
+
+L1.5 no longer owns the Python extension. Its course tests now target the Rust
+learner file and consume the shared frozen tokenizer fixtures, so stub checks
+exercise `tl-tok` itself. Python BPE parity remains covered by L1.2's tests
+against those same fixture vectors. The conformance suite compares the Python
+L1.2 driver with a standalone Rust `tl-tok` driver over the process boundary.
+
+The guarded L1.5 verification completed its reference, determinism, and 18
+mutant checks, then hit the 120-second guard before remaining checks. Its
+earlier stub failure came from the independent Python parity test being listed
+as an L1.5 test; moving the L1.5 card to the Rust test file addresses that
+scope mismatch. Per runner rules the guard-killed full verifier was not retried; the full module verdict remains incomplete.
+
+## L8.3: paged-cache mutants target the Python block store
+
+After removing the native KV pool, the axis-order mutant now swaps the
+`n_kv_heads` and `block_size` dimensions when allocating NumPy blocks. This
+preserves the original layout pitfall against the pure-Python implementation.
+
+## M03.1: matrix multiplication moved to Python core
+
+`M03.1` is now the core Python matrix-product module used by `L0.0` and
+`L0.5`. Its prior C unit was moved to optional `L9.1` as a baseline C test;
+the Python implementation owns the semantic contract, while parity between
+languages uses fixture files rather than a loaded native library.
+
+## M06.3: Python core and process based language parity
+
+The former `ctypes` differential test loaded a C RNG into Python. M06.3 now owns only the Python implementation and its tests retain the published PCG32 and FNV golden vectors. Rust and Go implementations check the same vectors through their module-owned process drivers. The standalone C RNG and its parity driver were removed because no active module owns that implementation; runtime key-value hashing uses a local FNV-1a routine in rt.04.
+
+## M09.7: optional C conversions split from M09.4
+
+`M09.4` is the core Python lesson for FP8 and microscaling rules. Its C
+conversion source and C tests were moved into optional `M09.7`, because
+cross-language runtime parity would require a native binding. The optional C
+module keeps standalone sanitizer tests and consumes the checked-in
+`M09.4` golden fixture. The Python and C implementations are not linked at
+runtime.
+
+## data.03: Bloom mutants target the local Python screen
+
+The dedup stage now uses its private `_Bloom` implementation. The empty-input
+and document-count sizing mutants were retargeted to that class's constructor,
+so they still exercise the intended sizing boundaries without a Rust binding.
+
+## data.07: tokenizer mutants target file-based Python loading
+
+The generation-config precedence and byte-tokenizer hash mutants now target
+`BPETokenizer` and `_Bytes` in the Python corpus tokenizer. Rust tokenizer
+parity is covered separately through frozen fixtures and the standalone Rust
+driver.
+
+## lang.04: Rust byte lengths without FFI
+
+The original primer called C `strlen` from Rust with `extern "C"` and
+`CString`. The no-FFI decision removes that call. `LEN` now teaches the
+difference between UTF-8 byte length (`str.len()`) and Unicode scalar count
+(`chars().count()`); NUL is valid Rust string content and counts as one byte.
+The TCP echo server and Cargo workspace exercise remain. Forward references
+now describe the candle engine and file-based tokenizer parity.
+
+## rt.02: C support and arena ownership
+
+The former `rt.01` shared-library and language-loader lesson is retired under
+the no-FFI course design. `abi.c` remains as standalone C support for status
+codes, error messages, and allocator hooks, and is now owned by optional
+`rt.02` alongside `arena.c`. Consumers declare `rt.02` as a C dependency and
+test binaries link the needed C units directly. Python and Rust implementations
+communicate with optional C exercises through fixture files or process
+protocols.
+
+## rt.04: local block-hash implementation
+
+The paged KV pool previously linked `tl_fnv1a64` from C `M06.3`. The core
+M06.3 module is now Python-only, so rt.04 implements the same FNV-1a 64-bit
+byte update locally and uses it for the chained block hash. This keeps the
+optional C pool self-contained while retaining M06.3 as reading for the hash
+definition. The existing block-hash fixture tests verify the byte contract.
+
+# L10.1 deviations
+
+- Replaced `tl-sys`/C kernel operations with `candle-core` and `candle-nn` 0.10.2 while keeping the model layers learner-written, as required by the Step B design decision.
+- Candle's tensor kernels produce small floating-point differences between incremental decode and full prefill (observed maximum absolute difference: `0.000007390976`). The test now uses a `2e-5` tolerance instead of bit-for-bit equality.
+- The final guarded `ss verify course L10.1` passed after adjusting the tolerance, title, annotation, and dependency mirrors: all 22 mutants were killed and all checks passed.
+
+# L10.3 deviations
+
+- Chunked prefill uses the Candle-backed `ModelRunner` from L10.1; the chunk planner remains learner-written Rust.
+- L10.1's Candle kernels differ slightly across chunk boundaries, so the prefill equivalence test uses a `2e-2` logit tolerance rather than exact equality.
+- Guarded `ss verify course L10.3` passed, including all 5 mutants.
+
+# L10.4 deviations
+
+- Prefix and block management now operate on L10.1's Rust-owned KV cache. There is no dependency on the retired C runtime pool.
+- Guarded `ss verify course L10.4` passed, including all 8 mutants.
+
+# L10.5 deviations
+
+- The optional L10.8 serving path runs one complete request on the engine thread and buffers generated tokens until completion; ordinary requests still use the batched scheduler.
+- The guarded `ss verify course L10.5` reached the reference suite and failed the new speculative test because the byte-bigram runner returns one row per sequence (`extend returned 1 rows for 5 ids`). `RunnerTarget` now scores bigram positions sequentially. The same verifier later hit the 120-second guard during its mutant batch. Per runner rules, it was not retried, so the fix remains unverified by the full module verifier.
+
+# L10.6 deviations
+
+- Disaggregated KV transfer uses L10.1's Rust-owned cache and file/protobuf contracts. Rust tests compare the envelope against golden parity fixtures; no C exporter or FFI is required.
+- Mutant patches were statically dry-run. After export and gateway call-site fixes, a guarded `ss verify course L10.6` timed out at 120 seconds after markers, reference, stub, and determinism passed. Per runner rules it was not retried; the earlier pre-fix run killed all 32 mutants.
+
+# L10.8 deviations
+
+- Speculative decoding remains learner-written Rust over the L10.1 sampler and Rust-owned KV cache; model execution uses the Candle-backed runner without `candle-transformers`.
+- `L10.5` routes configured requests through `RunnerTarget` on the engine thread. Speculative mode currently serializes requests and buffers tokens until that request completes; the ordinary batched scheduler remains the default when speculation is disabled.
+- Guarded `ss verify course L10.8` passed: 27 mutants killed, reference and stub checks passed, deterministic tests passed, and the L10.5 call site was recognized.
+- The L10.5 integration verifier found that Bigram emits one row per sequence; RunnerTarget now handles that model with sequential one-token forwards. The L10.5 verifier was later guard-killed at 120 seconds, so this final change has not been reverified.

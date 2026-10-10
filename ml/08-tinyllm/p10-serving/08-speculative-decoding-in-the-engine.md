@@ -9,8 +9,8 @@
 | **You build** | `rust/crates/tl-engine/src/spec.rs`: prompt-lookup and n-gram drafts over the request's own context, the verifier (greedy acceptance, and M07.6's accept-or-resample at temperature > 0), KV rollback on rejection, and a generation loop over a `Target` |
 | **Contract** | the Python specification you port: [`py/tinyllm/infer/spec.pyi`](../../../course/contracts/py/tinyllm/infer/spec.pyi) (L8.6) · sampling order and draws: [`spec/sampling.md`](../../../course/contracts/spec/sampling.md), [`spec/pcg32.md`](../../../course/contracts/spec/pcg32.md) · configuration `[engine].speculative`: [`config/runtime.schema.json`](../../../course/contracts/config/runtime.schema.json) · the gauge `tl.engine.spec_accept_rate`: [`otel/metrics.yaml`](../../../course/contracts/otel/metrics.yaml) |
 | **Tests** | `course/tests/rust/l10_8.rs`, 14 tests (what they check: section 4) |
-| **Needs** | `L8.6` your Python speculative decoding, the specification this port is held to ([chapter](../p08-inference/06-speculative-decoding.md)) · `L10.1` the sampler (`apply_penalties`, `distribution`, `sample`, `stream`) and tl-sys's `KvPool` ([chapter](01-model-runner-and-sampler.md)) · `rt.04` the C pool behind the rollback ([chapter](../p08-inference/08-paged-kv-block-pool.md)) · reading: `L10.2`, `L10.4` the scheduler and block manager it plugs into, `M07.6` rejection and residuals ([chapter](../../../math/07-probability-statistics/06-rejection-sampling-and-residual-distributions.md)) · or `--ref-deps` |
-| **Used by** | the serve loop (`[engine].speculative`); `MS-L10` checks greedy output is unchanged with prompt lookup on |
+| **Needs** | `L8.6` your Python speculative decoding, the specification this port is held to ([chapter](../p08-inference/06-speculative-decoding.md)) · `L10.1` the sampler (`apply_penalties`, `distribution`, `sample`, `stream`) and `KvPool` ([chapter](01-model-runner-and-sampler.md)) · `L10.1` the Rust pool behind the rollback ([chapter](../p08-inference/08-paged-kv-block-pool.md)) · reading: `L10.2`, `L10.4` the scheduler and block manager it plugs into, `M07.6` rejection and residuals ([chapter](../../../math/07-probability-statistics/06-rejection-sampling-and-residual-distributions.md)) · or `--ref-deps` |
+| **Used by** | `L10.5`'s runner-backed serving path (`[engine].speculative`); `MS-L10` checks greedy output is unchanged with prompt lookup on |
 | **Milestone** | `MS-L10` |
 | **Optional depth** | [Leviathan et al., Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192) (free); [Chen et al., Accelerating LLM Decoding with Speculative Sampling](https://arxiv.org/abs/2302.01318) (free); [Prompt Lookup Decoding](https://github.com/apoorvumang/prompt-lookup-decoding) (free) |
 
@@ -28,7 +28,7 @@
 ss start L10.8               # stubs spec.rs
 ss tests L10.8
 ss check L10.8               # exit code is the verdict
-ss check L10.8 --ref-deps    # only if L8.6, L10.1, or rt.04 is not passing yet
+ss check L10.8 --ref-deps    # only if L8.6, L10.1, or L10.1 is not passing yet
 ss diff  L10.8
 ```
 
@@ -160,9 +160,10 @@ pub fn generate(target: &mut dyn Target, cfg: &SpecConfig, prompt: &[u32], p: &S
 |---|---|---|
 | Back | `L8.6` | the Python verifier and prompt lookup this port is held to, case by case |
 | Back | `L10.1` | `apply_penalties`, `distribution`, `argmax`, `sample`, `stream`, and `KvPool` |
-| Back | `rt.04` | release and fill on the C pool during rollback |
+| Back | `L10.1` | release and fill on the Rust pool during rollback |
+| Forward | `L10.5` | runtime config enables speculative decoding through the request-serving path |
 
-The serve loop (`L10.5`'s engine) runs a round per sequence when `[engine].speculative` names a draft; `L10.7` exports `SpecStats::accept_rate` as `tl_engine_spec_accept_rate`; `MS-L10` checks greedy output is unchanged with `prompt_lookup` on.
+The serve loop (`L10.5`) routes requests through `RunnerTarget` when `[engine].speculative` names a draft. This path holds one request on the engine thread until generation completes; the ordinary scheduler path remains active when speculation is absent. `L10.7` exports `SpecStats::accept_rate` as `tl_engine_spec_accept_rate`; `MS-L10` checks greedy output is unchanged with `prompt_lookup` on.
 
 ## Going further
 

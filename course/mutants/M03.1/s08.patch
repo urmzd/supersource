@@ -1,13 +1,11 @@
---- a/c/src/kernels/matmul.c	2026-10-08 23:00:32
-+++ b/c/src/kernels/matmul.c	2026-10-08 23:00:32
-@@ -29,10 +29,6 @@
-         return TL_EINVAL;
-     }
-     if (K > 0) {
--        if (lda < K) {
--            tl_set_last_error("tl_matmul_f32: lda < K");
--            return TL_EINVAL;
--        }
-         if (trans_b ? ldb < K : ldb < N) {
-             tl_set_last_error(trans_b ? "tl_matmul_f32: ldb < K (trans_b)" : "tl_matmul_f32: ldb < N");
-             return TL_EINVAL;
+--- a/python/tinyllm/linalg/matmul.py
++++ b/python/tinyllm/linalg/matmul.py
+@@ -42,7 +42,7 @@
+         cc = np.empty((m, n), dtype=np.float32)
+     else:
+         cc = np.asarray(c)
+-        if cc.dtype != np.float32 or cc.shape != (m, n) or not cc.flags.writeable:
++        if cc.dtype != np.float32 or not cc.flags.writeable:
+             raise ValueError(f"C must be a writable float32 array of shape {(m, n)}")
+     al, be = np.float32(alpha), np.float32(beta)
+     for i in range(m):

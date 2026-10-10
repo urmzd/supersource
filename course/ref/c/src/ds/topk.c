@@ -1,6 +1,6 @@
 /* c/src/ds/topk.c (ds.04): top-k by a binary min-heap of size k.
- * Contract: tinyllm/topk.h. The Rust sampler (L10.1) calls it through
- * tl-sys for top_k (spec/sampling.md step 6).
+ * Contract: tinyllm/topk.h. This optional C unit has a standalone test
+ * binary; the Rust sampler has its own implementation.
  *
  * The heap lives in the caller's idx and val arrays: no allocation. Its
  * root is the WORST kept entry, so one comparison decides whether a new

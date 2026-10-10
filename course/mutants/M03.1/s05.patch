@@ -1,11 +1,10 @@
---- a/c/src/kernels/matmul.c	2026-10-08 23:00:32
-+++ b/c/src/kernels/matmul.c	2026-10-08 23:00:32
-@@ -46,7 +46,7 @@
-     /* 2. One dot product per output element. op(B)[k][j] is B[k*ldb + j]
-      *    when B is stored K x N, and B[j*ldb + k] when it is stored N x K. */
-     for (int64_t i = 0; i < M; i++) {
--        float *c = C + i * ldc; /* row i of C */
-+        float *c = C + i * N; /* row i of C */
-         for (int64_t j = 0; j < N; j++) {
-             float acc = 0.0f;
-             for (int64_t k = 0; k < K; k++) {
+--- a/python/tinyllm/linalg/matmul.py
++++ b/python/tinyllm/linalg/matmul.py
+@@ -52,6 +52,6 @@
+                 rhs = bb[j, q] if trans_b else bb[q, j]
+                 acc = np.float32(acc + np.float32(aa[i, q] * rhs))
+             prior = np.float32(0.0) if be == 0 else np.float32(be * cc[i, j])
+-            cc[i, j] = np.float32(al * acc + prior)
++            cc.ravel()[i * n + j] = np.float32(al * acc + prior)
+     return cc
+     # SOLUTION-END

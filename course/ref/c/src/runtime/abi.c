@@ -1,5 +1,5 @@
-/* c/src/runtime/abi.c (rt.01): the ABI version, status names, the error
- * slot, and the allocator hook. Contract: tinyllm/abi.h. Rules: c/ABI.md.
+/* Shared C test support: ABI version, status names, error slot, and
+ * allocator hooks. Contract: tinyllm/abi.h. Rules: c/ABI.md.
  *
  * Every other C unit reaches this file only through the names in abi.h:
  * tl_set_last_error to report a failure, tl_alloc and tl_free to get memory.
@@ -33,7 +33,7 @@ const char *tl_last_error(void) { return err_slot; }
 
 /* The default hook: the C library allocator, through aligned_alloc. */
 static void *default_alloc(void *user, size_t n, size_t align) {
-/* SOLUTION-BEGIN rt.01 */
+/* SOLUTION-BEGIN rt.02 */
     (void)user;
     /* aligned_alloc wants align >= sizeof(void *) on some libcs and a size
      * that is a multiple of align (C11 7.22.3.1), so round both up. */
@@ -45,7 +45,7 @@ static void *default_alloc(void *user, size_t n, size_t align) {
 }
 
 static void default_free(void *user, void *p) {
-/* SOLUTION-BEGIN rt.01 */
+/* SOLUTION-BEGIN rt.02 */
     (void)user;
     free(p);
 /* SOLUTION-END */
@@ -55,13 +55,13 @@ static void default_free(void *user, void *p) {
 static tl_allocator hook = {default_alloc, default_free, NULL};
 
 uint32_t tl_abi_version(void) {
-/* SOLUTION-BEGIN rt.01 */
+/* SOLUTION-BEGIN rt.02 */
     return TL_ABI_VERSION;
 /* SOLUTION-END */
 }
 
 const char *tl_status_str(tl_status s) {
-/* SOLUTION-BEGIN rt.01 */
+/* SOLUTION-BEGIN rt.02 */
     /* A switch, not an array indexed by s: s comes from the caller and may be
      * any int32_t, including negative values and codes from a newer ABI. */
     switch (s) {
@@ -82,7 +82,7 @@ const char *tl_status_str(tl_status s) {
 }
 
 tl_status tl_set_allocator(const tl_allocator *a) {
-/* SOLUTION-BEGIN rt.01 */
+/* SOLUTION-BEGIN rt.02 */
     if (a == NULL) {
         hook.alloc = default_alloc;
         hook.free = default_free;
@@ -99,7 +99,7 @@ tl_status tl_set_allocator(const tl_allocator *a) {
 }
 
 void *tl_alloc(size_t n, size_t align) {
-/* SOLUTION-BEGIN rt.01 */
+/* SOLUTION-BEGIN rt.02 */
     if (n == 0) {
         tl_set_last_error("tl_alloc: size 0");
         return NULL;
@@ -115,7 +115,7 @@ void *tl_alloc(size_t n, size_t align) {
 }
 
 void tl_free(void *p) {
-/* SOLUTION-BEGIN rt.01 */
+/* SOLUTION-BEGIN rt.02 */
     if (p == NULL) return;
     hook.free(hook.user, p);
 /* SOLUTION-END */

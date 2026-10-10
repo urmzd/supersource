@@ -3,8 +3,7 @@
 The model is one table, `weight`, of shape [V, V]. Row i holds the logits of
 the next token after token i, so softmax(weight[i]) is the model's
 distribution over what follows i. fit_counts fills the table with the log of
-add-alpha smoothed bigram frequencies; logits reads rows through the C matmul
-(onehot(ids) @ weight) so the tracer exercises libtinyllm end to end.
+add-alpha smoothed bigram frequencies; logits gathers the requested rows with NumPy.
 
 Contract: contracts/py/tinyllm/lm/bigram.pyi.
 """
@@ -14,7 +13,6 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tinyllm.ffi.libtinyllm import f32_ptr, load
 
 
 def _as_ids(ids: ArrayLike, vocab_size: int) -> NDArray[np.int64]:
@@ -35,25 +33,9 @@ def _as_ids(ids: ArrayLike, vocab_size: int) -> NDArray[np.int64]:
     # SOLUTION-END
 
 
-def _matmul_f32(a: NDArray, b: NDArray) -> NDArray:
-    """a @ b for float32 matrices, computed by tl_matmul_f32 in libtinyllm.
-    A failing call raises the loader's TlError (a RuntimeError)."""
-    # SOLUTION-BEGIN L0.0
-    a = np.ascontiguousarray(a, dtype=np.float32)
-    b = np.ascontiguousarray(b, dtype=np.float32)
-    m, k = a.shape
-    k2, n = b.shape
-    if k != k2:
-        raise ValueError(f"inner dimensions differ: {a.shape} @ {b.shape}")
-    c = np.empty((m, n), dtype=np.float32)
-    # C = 1 * A @ B + 0 * C, row-major with no padding: lda = k, ldb = n, ldc = n.
-    load().tl_matmul_f32(f32_ptr(a), f32_ptr(b), f32_ptr(c), m, n, k, k, n, n, 1.0, 0.0, 0, None)
-    return c
-    # SOLUTION-END
-
 
 class BigramLM:
-    """A [V, V] table of next-token logits. Fit by counting, read through C."""
+    """A [V, V] table of next-token logits. Fit by counting, read with NumPy."""
 
     def __init__(self, weight: ArrayLike | None = None) -> None:
         # SOLUTION-BEGIN L0.0
@@ -65,7 +47,7 @@ class BigramLM:
             if w.ndim != 2 or w.shape[0] != w.shape[1] or w.shape[0] == 0:
                 raise ValueError(f"weight must be a non-empty square matrix, got shape {w.shape}")
             if not np.isfinite(w).all():
-                raise ValueError("weight must be finite (a -inf logit makes 0 * -inf = nan in the matmul)")
+                raise ValueError("weight must be finite (weights must be finite)")
             self.weight = np.ascontiguousarray(w)
         # SOLUTION-END
 
@@ -96,9 +78,7 @@ class BigramLM:
         # SOLUTION-BEGIN L0.0
         v = self.vocab_size
         a = _as_ids(ids, v)
-        onehot = np.zeros((a.size, v), dtype=np.float32)
-        onehot[np.arange(a.size), a] = 1.0
-        return _matmul_f32(onehot, self.weight)
+        return self.weight[a]
         # SOLUTION-END
 
     def nll(self, ids: ArrayLike) -> float:

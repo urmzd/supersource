@@ -7,8 +7,8 @@ chapter   = "ai-platform-engineering/12-gateway/05-routing.md"
 # proto/tl/control/v1 (served), tl/engine/v1 and tl/kv/v1 (called), and
 # openapi/admin.v1.yaml (Route, Worker) are linked from the card (B82-02).
 contract  = []
-deps      = ["ds.09", "gw.01", "gw.02", "gw.04"]
-reading   = ["S-M07d", "ai-platform-engineering/11-model-routing-and-cascades"]   # L10.6 (the engine side of disaggregation) joins when it is registered
+deps      = ["ds.09", "gw.01", "gw.02", "gw.04", "L10.6"]
+reading   = ["S-M07d", "ai-platform-engineering/11-model-routing-and-cascades"]
 # The composition root plugs Middleware, Proxy, the registry's gRPC server,
 # and the admin handlers in; load.01, ops.01, and dur.12 exercise it over
 # HTTP. No library module calls it yet (DEVIATIONS B93-05).

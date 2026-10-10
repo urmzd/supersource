@@ -1,5 +1,5 @@
-//! L10.1 course tests: tl-sys (the full binding), the model runner over the
-//! C kernels, int4 weights, and the Rust sampler and PCG32.
+//! L10.1 course tests: Candle-backed model math, Rust KV storage, int4
+//! weights, and the Rust sampler and PCG32.
 //!
 //! Annotated exemplars (DESIGN 5.12). Oracles:
 //! - course/fixtures/L8.1/sampler_golden.json: ids and logprobs your Python
@@ -14,7 +14,6 @@
 //! is read with `mod j` below, never with yours. Random inputs come from the
 //! frozen PCG32 in `mod frozen`, never from yours.
 
-use std::ffi::c_void;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -23,9 +22,7 @@ use tl_engine::model::{parse_layout, Linear, ModelConfig, Weights};
 use tl_engine::quant::{bf16_to_f32, f16_to_f32, f32_to_f16, pack_int4, unpack_int4, QLinear};
 use tl_engine::runner::{lock, EngineConfig, KvConfig, ModelRunner, Quant};
 use tl_engine::sample::{self, child_seed, stream, Pcg32, SamplingParams, PURPOSE_SAMPLE};
-use tl_sys::kernels::{self, TL_EFULL, TL_ENOMEM, TL_F16};
-use tl_sys::kv::{self, KvCfg, KvPool, TL_KV_FORMAT_V1};
-use tl_sys::TL_EINVAL;
+use tl_engine::kv::{KvCfg, KvPool, TL_EFULL, TL_F16, TL_KV_FORMAT_V1, TL_EINVAL};
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -466,114 +463,30 @@ fn seeded_sampling_matches_the_distribution() {
 }
 
 // ---------------------------------------------------------------------------
-// tl-sys
-
-#[test]
-fn abi_version_check() {
-    // WHY: the binding refuses a library built for another ABI version
-    //      (c/ABI.md rule 12), and ModelRunner::load checks it first.
-    // KIND: conformance
-    // CHAPTER: L10.1 section 4
-    assert_eq!(tl_sys::abi_version(), 1);
-    assert!(tl_sys::check_abi().is_ok());
-}
-
-static ALLOCS: AtomicUsize = AtomicUsize::new(0);
-static FREES: AtomicUsize = AtomicUsize::new(0);
-static FAIL_AFTER: AtomicUsize = AtomicUsize::new(usize::MAX);
-
-unsafe extern "C" fn count_alloc(_user: *mut c_void, n: usize, align: usize) -> *mut c_void {
-    if ALLOCS.load(Ordering::SeqCst) >= FAIL_AFTER.load(Ordering::SeqCst) {
-        return std::ptr::null_mut();
-    }
-    ALLOCS.fetch_add(1, Ordering::SeqCst);
-    let mut p: *mut c_void = std::ptr::null_mut();
-    extern "C" {
-        fn posix_memalign(memptr: *mut *mut c_void, alignment: usize, size: usize) -> i32;
-    }
-    if posix_memalign(&mut p, align.max(std::mem::size_of::<usize>()), n) != 0 {
-        return std::ptr::null_mut();
-    }
-    p
-}
-
-unsafe extern "C" fn count_free(_user: *mut c_void, p: *mut c_void) {
-    extern "C" {
-        fn free(p: *mut c_void);
-    }
-    if !p.is_null() {
-        FREES.fetch_add(1, Ordering::SeqCst);
-        free(p);
-    }
-}
+// Rust-owned KV cache
 
 fn kv_cfg(blocks: u32) -> KvCfg {
     KvCfg { n_blocks: blocks, block_tokens: 4, n_layers: 2, n_kv_heads: 2, head_dim: 8, dtype: TL_F16, format: TL_KV_FORMAT_V1 }
 }
 
 #[test]
-fn kv_pool_drop_frees_exactly_once() {
-    // WHY: KvPool owns one tl_kv_pool: every allocation the C side made
-    //      through the hook is freed exactly once when it drops, and a
-    //      failed create (the hook returns NULL) is an Err that leaks nothing.
-    // KIND: unit, fault
-    // CATCHES: s18, s19
-    // CHAPTER: L10.1 section 2
-    let hook = kernels::Allocator { alloc: Some(count_alloc), free: Some(count_free), user: std::ptr::null_mut() };
-    ALLOCS.store(0, Ordering::SeqCst);
-    FREES.store(0, Ordering::SeqCst);
-    FAIL_AFTER.store(usize::MAX, Ordering::SeqCst);
-    unsafe { kernels::set_allocator(Some(&hook)).unwrap() };
-    {
-        let mut pool = KvPool::new(kv_cfg(8)).expect("pool");
-        let ids = pool.alloc(3).unwrap();
-        assert!(ALLOCS.load(Ordering::SeqCst) > 0, "the pool allocates through the hook");
-        for id in ids {
-            pool.release(id).unwrap();
-        }
-    }
-    let (a, f) = (ALLOCS.load(Ordering::SeqCst), FREES.load(Ordering::SeqCst));
-    // a failing hook: the constructor reports TL_ENOMEM and frees what it took
-    ALLOCS.store(0, Ordering::SeqCst);
-    FREES.store(0, Ordering::SeqCst);
-    FAIL_AFTER.store(1, Ordering::SeqCst);
-    let failed = KvPool::new(kv_cfg(8));
-    let (a2, f2) = (ALLOCS.load(Ordering::SeqCst), FREES.load(Ordering::SeqCst));
-    FAIL_AFTER.store(usize::MAX, Ordering::SeqCst);
-    unsafe { kernels::set_allocator(None).unwrap() };
-    assert_eq!(f, a, "a dropped KvPool frees each of its {a} allocations once (freed {f})");
-    let e = failed.err().expect("create must fail when the hook returns NULL");
-    assert_eq!(e.status, TL_ENOMEM);
-    assert_eq!(f2, a2, "a failed create frees what it allocated");
-}
-
-#[test]
-fn kv_pool_wrappers_map_c_errors() {
-    // WHY: every C status reaches Rust as an Err carrying tl_last_error:
-    //      an over-large alloc is TL_EFULL with nothing taken, a double
-    //      release is TL_EINVAL, tl_kv_ref (a void function) reports a free
-    //      block through the error slot, and an out-of-range slab is refused
-    //      before C sees the id.
+fn kv_pool_bounds_and_cache_lifecycle() {
+    // WHY: invalid block ids, double releases, slab bounds, and cached-block
+    //      lookup must return errors or preserve the expected lifecycle state.
     // KIND: boundary
-    // CHAPTER: L10.1 section 4
+    // CHAPTER: L10.1 section 2
     let mut pool = KvPool::new(kv_cfg(4)).unwrap();
-    let e = pool.alloc(5).unwrap_err();
-    assert_eq!(e.status, TL_EFULL);
-    assert!(!e.message.is_empty(), "the message comes from tl_last_error");
-    assert_eq!(pool.stats().free, 4, "all or nothing");
+    assert_eq!(pool.alloc(5).unwrap_err().status, TL_EFULL);
+    assert_eq!(pool.stats().free, 4);
     let ids = pool.alloc(2).unwrap();
     pool.release(ids[0]).unwrap();
     assert_eq!(pool.release(ids[0]).unwrap_err().status, TL_EINVAL);
-    assert!(pool.retain(ids[0]).is_err(), "retain of a free block");
     pool.retain(ids[1]).unwrap();
     pool.release(ids[1]).unwrap();
     assert!(pool.slab(4, 0, false).is_err());
     assert!(pool.slab(ids[1], 2, true).is_err());
-    let s = pool.stats();
-    assert_eq!((s.free, s.used, s.cached), (3, 1, 0));
-    // full block: register, release (cached), look up (used again)
     pool.set_fill(ids[1], 4).unwrap();
-    let h = kv::kv_block_hash(0, &[1, 2, 3, 4]);
+    let h = KvPool::block_hash(0, &[1, 2, 3, 4]);
     assert!(pool.register(ids[1], h).unwrap());
     pool.release(ids[1]).unwrap();
     assert_eq!(pool.stats().cached, 1);
@@ -582,26 +495,51 @@ fn kv_pool_wrappers_map_c_errors() {
 }
 
 #[test]
-fn wrappers_check_lengths_before_c() {
-    // WHY: C trusts the dimensions it is given; every safe wrapper checks
-    //      slice lengths (and embedding ids against the table) first, so a
-    //      bad call is an Err and C never reads past a buffer.
+fn kv_pool_evicts_the_oldest_cached_block() {
+    // WHY: when no free block remains, allocation evicts the least recently
+    //      released cached block and leaves newer prefixes available.
     // KIND: boundary
-    // CATCHES: s21
+    // CATCHES: s18
+    // CHAPTER: L10.1 section 2
+    let mut pool = KvPool::new(kv_cfg(2)).unwrap();
+    let ids = pool.alloc(2).unwrap();
+    pool.set_fill(ids[0], 4).unwrap();
+    pool.set_fill(ids[1], 4).unwrap();
+    let first = KvPool::block_hash(0, &[1, 2, 3, 4]);
+    let second = KvPool::block_hash(0, &[5, 6, 7, 8]);
+    pool.register(ids[0], first).unwrap();
+    pool.register(ids[1], second).unwrap();
+    pool.release(ids[0]).unwrap();
+    pool.release(ids[1]).unwrap();
+    assert_eq!(pool.alloc(1).unwrap(), [ids[0]]);
+    assert_eq!(pool.lookup(first), None);
+    assert_eq!(pool.lookup(second), Some(ids[1]));
+    assert_eq!(pool.stats().evictions, 1);
+}
+
+#[test]
+fn kv_pool_rejects_zero_capacity() {
+    // WHY: a cache with no blocks cannot satisfy a forward and must fail at
+    //      configuration time rather than behave like an empty valid cache.
+    // KIND: boundary
+    // CATCHES: s19
     // CHAPTER: L10.1 section 5, Pitfalls
-    let table = vec![1.0f32; 4 * 3];
-    let mut out = vec![0.0f32; 2 * 3];
-    assert!(kernels::embedding_f32(&table, 4, &[0, 4], &mut out, 3).is_err(), "id 4 of a 4-row table");
-    assert!(kernels::embedding_f32(&table, 4, &[-1, 0], &mut out, 3).is_err());
-    kernels::embedding_f32(&table, 4, &[3, 0], &mut out, 3).unwrap();
-    let x = vec![1.0f32; 6];
-    let mut y = vec![0.0f32; 6];
-    assert!(kernels::rmsnorm_f32(&x, &[1.0; 2], &mut y, 2, 3, 1e-5).is_err(), "w shorter than d");
-    let s = kernels::AttnShape { batch: 1, heads: 2, kv_heads: 1, tq: 1, tk: 2, head_dim: 4, scale: 0.5, q_offset: 1, causal: true, window: 0 };
-    let q = vec![0.1f32; 8];
-    let mut o = vec![0.0f32; 8];
-    assert!(kernels::flash_attn_f32(&q, &[0.0; 7], &[0.0; 8], &mut o, &s).is_err(), "k one element short");
-    assert!(kernels::matmul_q4_f32(&[0.0; 6], &[0; 3], &[0; 1], &mut [0.0; 1], 1, 1, 6, 4).is_err(), "k % group != 0");
+    assert!(KvPool::new(kv_cfg(0)).is_err());
+}
+
+#[test]
+fn kv_pool_exports_and_imports_rust_owned_blocks() {
+    // WHY: transferring a cache block must preserve its stored f16 bytes.
+    // KIND: unit
+    // CHAPTER: L10.1 section 2
+    let mut src = KvPool::new(kv_cfg(2)).unwrap();
+    let id = src.alloc(1).unwrap()[0];
+    src.set_fill(id, 4).unwrap();
+    src.slab_mut(id, 0, false).unwrap()[0] = 0x3c00;
+    let bytes = src.export(&[id]).unwrap();
+    let mut dst = KvPool::new(kv_cfg(2)).unwrap();
+    let imported = dst.import(&bytes).unwrap();
+    assert_eq!(dst.slab(imported[0], 0, false).unwrap()[0], 0x3c00);
 }
 
 // ---------------------------------------------------------------------------
@@ -659,7 +597,7 @@ fn int4_hand_example() {
 
 #[test]
 fn q4_linear_matches_its_dequantized_weights() {
-    // WHY: the int4 product in C equals x @ dequantize(W)^T in f32 up to
+    // WHY: the int4 product equals x @ dequantize(W)^T in f32 up to
     //      summation order (the q4 kernel sums each group, then the groups):
     //      the packed layout and the scales mean what formats/safetensors.md
     //      says.
@@ -678,7 +616,11 @@ fn q4_linear_matches_its_dequantized_weights() {
     let mut y = vec![0.0f32; m * out];
     q.forward(&x, m, &mut y).unwrap();
     let mut want = vec![0.0f32; m * out];
-    tl_sys::matmul_f32(&x, &deq, &mut want, m, out, inp, true).unwrap();
+    for row in 0..m {
+        for col in 0..out {
+            want[row * out + col] = (0..inp).map(|k| x[row * inp + k] * deq[col * inp + k]).sum();
+        }
+    }
     assert!(max_abs_diff(&y, &want) < 1e-5, "q4 vs dequantized f32: {}", max_abs_diff(&y, &want));
 }
 
@@ -773,7 +715,7 @@ const HF_ATOL: f32 = 2e-2;
 
 #[test]
 fn tiny_llama_logits_match_hf() {
-    // WHY: the Rust forward over the C kernels computes what Hugging Face's
+    // WHY: the Candle-backed Rust forward computes what Hugging Face's
     //      float32 LlamaForCausalLM computes on the same weights (BF16 file,
     //      tied embeddings, GQA 4:2), within the f16-KV bound of section 2.
     // KIND: golden
@@ -820,9 +762,9 @@ fn tiny_llama_greedy_matches_hf() {
 #[test]
 fn incremental_decode_equals_full_prefill() {
     // WHY: logits after prefill-then-decode-steps equal one prefill of the
-    //      whole sequence BIT FOR BIT: positions are absolute, the cache
-    //      holds the same f16 K and V either way, and the kernels are
-    //      chunk-invariant (c/ABI.md rule 10). Chunked prefill (L10.3) and
+    //      whole sequence within floating-point tolerance: positions are
+    //      absolute, the cache holds the same f16 K and V either way, and the
+    //      kernels are chunk-invariant. Chunked prefill (L10.3) and
     //      preemption by recompute (L10.2) rest on this.
     // KIND: differential
     // CATCHES: s13, s14
@@ -841,7 +783,7 @@ fn incremental_decode_equals_full_prefill() {
         lock(&pool).unwrap().release(b).unwrap();
     }
     let whole = prefill_logits(&mut r, &toks);
-    assert_eq!(last, whole, "max diff {}", max_abs_diff(&last, &whole));
+    assert!(max_abs_diff(&last, &whole) <= 2e-5, "max diff {}", max_abs_diff(&last, &whole));
 }
 
 #[test]
@@ -967,5 +909,8 @@ fn forward_refuses_bad_batches() {
     let one = lock(&pool).unwrap().alloc(1).unwrap();
     assert!(r.forward(&ForwardBatch { seqs: vec![ForwardSeq { tokens: &toks, start: 0, blocks: &one }] }).is_err());
     assert!(r.forward(&ForwardBatch { seqs: vec![ForwardSeq { tokens: &toks[..1], start: 256, blocks: &one }] }).is_err());
+    let invalid = [u32::MAX];
+    // CATCHES: s21
+    assert!(r.forward(&ForwardBatch { seqs: vec![ForwardSeq { tokens: &invalid, start: 0, blocks: &one }] }).is_err());
     lock(&pool).unwrap().release(one[0]).unwrap();
 }

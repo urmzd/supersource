@@ -1,13 +1,12 @@
-# contracts/py/tinyllm/infer/paged.pyi (L8.3): a paged KV cache over the C block pool
+# contracts/py/tinyllm/infer/paged.pyi (L8.3): a pure-Python paged KV cache
 # chapter: ml/08-tinyllm/p08-inference/03-paged-kv-cache.md
 #
-# The cache keeps no K or V of its own: every value lives in a block of
-# libtinyllm's tl_kv_pool (rt.04, tinyllm/kv_pool.h), reached through the
-# rt.01 ctypes loader. A sequence is a block table, the list of block ids
-# holding its positions in order: position p of a sequence is slot p % B of
+# The cache stores K and V in fixed-size NumPy blocks. A sequence is a block
+# table, the list of block ids holding its positions in order: position p is
+# in slot p % B of
 # block table[p // B], B = block_size. Inside a block, the K (or V) slab of a
-# layer is [n_kv_heads][block_size][d_head] float16, the layout
-# tl_kv_block_ptr documents and the paged attention kernel (L9.4) reads.
+# layer is [n_kv_heads][block_size][d_head] float16; gather copies them into
+# contiguous arrays.
 #
 # Words used below:
 #   seq_id     any int naming a live sequence
@@ -17,14 +16,14 @@
 #
 # Values are stored as float16 (round to nearest even), so gather returns
 # exactly what a contiguous float16 cache (L8.2, dtype=np.float16) holds.
-# Writes never touch a shared block: append copies it first (tl_kv_cow), so
+# Writes never touch a shared block: append copies it first, so
 # a fork's parent and child diverge without seeing each other's tokens.
 from typing import Any
 
 from numpy.typing import ArrayLike, NDArray
 
 class OutOfBlocks(RuntimeError):
-    """The pool has too few free (or cached) blocks for an append or a fork.
+    """The cache has too few free blocks for an append or a fork.
     Raised before anything visible changes: gather and len return what they
     returned before the call."""
 
@@ -34,39 +33,29 @@ class PagedKVCache:
     n_layers: int
     n_kv_heads: int
     d_head: int
-    lib: Any  # the rt.01 Lib the pool lives in
-
     def __init__(
-        self, lib: Any, num_blocks: int, block_size: int, n_layers: int, n_kv_heads: int, d_head: int
+        self, num_blocks: int, block_size: int, n_layers: int, n_kv_heads: int, d_head: int
     ) -> None:
-        """Declare the kv_pool.h signatures on lib (Lib.declare) and create a
-        format 1 (TL_F16) pool of num_blocks blocks. ValueError for a size
-        below 1; TlError when tl_kv_pool_create fails."""
-
-    @property
-    def pool(self) -> Any:
-        """The tl_kv_pool * (a ctypes c_void_p) for C kernels that read the
-        cache directly (tl_paged_attn_decode_f32, L9.4)."""
+        """Create num_blocks float16 blocks. ValueError for any size below 1."""
 
     def add_seq(self, seq_id: int) -> None:
         """A new empty sequence. ValueError when seq_id is live."""
 
     def fork(self, parent: int, child: int) -> None:
         """child becomes a copy of parent that shares every block (one more
-        reference each, tl_kv_ref) and has the same lengths. KeyError for an
+        reference each) and has the same lengths. KeyError for an
         unknown parent; ValueError when child is live."""
 
     def append(self, seq_id: int, layer: int, k: ArrayLike, v: ArrayLike) -> None:
         """Write T new positions at the end of `layer`: k and v are
         [n_kv_heads, T, d_head] (T >= 1), converted to float16. Allocates the
         blocks the new positions need and copies any shared block before
-        writing into it. Afterwards each block's fill (tl_kv_set_fill) is the
-        number of its positions that every layer holds. KeyError for an
+        writing into it. KeyError for an
         unknown sequence; ValueError for a bad layer or shape; OutOfBlocks
         when the pool is exhausted."""
 
     def block_table(self, seq_id: int) -> NDArray:
-        """int32 block ids in position order: ceil(max over layers of len / B)
+        """int32 block ids in position order: ceil(max layer length / B)
         entries. A copy; KeyError for an unknown sequence."""
 
     def seq_len(self, seq_id: int, layer: int = 0) -> int:
@@ -77,18 +66,18 @@ class PagedKVCache:
         positions in order, copied out of the blocks."""
 
     def free(self, seq_id: int) -> None:
-        """Drop the sequence's reference to each of its blocks (tl_kv_unref);
+        """Drop the sequence's reference to each of its blocks;
         a block nobody else holds returns to the pool. KeyError when unknown."""
 
     def stats(self) -> dict[str, int]:
-        """tl_kv_stats_get: {"free", "used", "cached", "evictions"}; free +
+        """{"free", "used", "cached", "evictions"}; free +
         used + cached == num_blocks."""
 
     def num_free_blocks(self) -> int:
-        """stats()["free"] + stats()["cached"]: blocks an allocation can take."""
+        """stats()["free"]: blocks an allocation can take."""
 
     def close(self) -> None:
-        """Destroy the pool (every sequence is gone). Idempotent; also runs
+        """Release every sequence and block. Idempotent; also runs
         on __exit__ and garbage collection."""
 
     def __enter__(self) -> "PagedKVCache": ...

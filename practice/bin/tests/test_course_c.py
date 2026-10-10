@@ -1,4 +1,4 @@
-"""C modules: compiling stubs, two builds, counting allocator, symbol drift."""
+"""C modules: compiling stubs, two builds, counting allocator, staleness."""
 
 import subprocess
 
@@ -36,7 +36,7 @@ def test_stub_compiles_fails_then_reference_passes(ss):
     assert "PASS rt.90" in ss("check", "rt.90", rc=0).out
 
 
-def test_leaks_symbols_and_staleness(ss):
+def test_leaks_and_staleness(ss):
     ss.init()
     for mid, unit in (
         ("rt.90", "c/src/runtime/abi.c"),
@@ -56,12 +56,6 @@ def test_leaks_symbols_and_staleness(ss):
         "leak: 1 allocation(s) still live" in out
         and "FAIL alloc_failure_is_clean" in out
     )
-    demo.write_text(good + "\nint tl_helper(void) { return 1; }\n")
-    assert (
-        "exports tl_helper, which no contract header declares"
-        in ss("check", "rt.91", rc=4).out
-    )
-    demo.write_text(good)
     abi = ss.learner / "c/src/runtime/abi.c"
     abi.write_text(abi.read_text() + "\n/* touched */\n")
     assert "rt.91 needs rt.90 (stale" in ss("check", "rt.91", rc=3).out

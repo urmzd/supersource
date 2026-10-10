@@ -5,12 +5,12 @@
 
 | | |
 |---|---|
-| **Module** | `L9.3` · build · C · Pass 6 · 6 to 8 h |
+| **Module** | `L9.3` · side · C · Pass 6 · 6 to 8 h |
 | **You build** | `c/src/kernels/flash_attn.c`: `tl_flash_attn_fwd_f32`, attention for a whole prefill (or a chunk of one) that never stores the score matrix: GQA head sharing, causal masking at absolute positions (`q_offset`), a sliding window, learned sinks, and the log-sum-exp of every row, with scratch from your arena and threads from your pool |
 | **Contract** | [`course/contracts/c/include/tinyllm/attention.h`](../../../course/contracts/c/include/tinyllm/attention.h) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) (rule 10, invariance) |
-| **Tests** | `course/tests/L9.3/`: `test_flash_attn.c` (C, under ASan and UBSan, and ThreadSanitizer for the pool case, against a naive oracle built on your `L9.2` softmax) and `test_flash_attn_ctypes.py` (Python, through your `rt.01` loader, against your `L7.7` and `L5.1` attention) (what they check: section 4) |
-| **Needs** | `rt.01` the loader · `rt.02` the arena · `rt.03` the pool · `M09.6` `tl_expf` · `L9.2` `tl_softmax_f32` (the C oracle) · `L7.7` `windowed_attention` · `L5.1` `sdpa_forward` (or `--ref-deps`). Reading: `L5.2` (mask flags), `L7.5` (GQA) |
-| **Used by** | `L9.7` runs prefill attention through it · `L9.4` holds paged decode to it, bit for bit · later `L10.1` (prefill) and `L10.3` (chunked prefill, which needs the chunk invariance proved here) |
+| **Tests** | `course/tests/L9.3/`: `test_flash_attn.c` (C, under ASan and UBSan, and ThreadSanitizer for the pool case, against a naive oracle built on your `L9.2` softmax) and shared file fixtures (what they check: section 4) |
+| **Needs** | `rt.02` the loader · `rt.02` the arena · `rt.03` the pool · `M09.6` `tl_expf` · `L9.2` `tl_softmax_f32` (the C oracle) · `L7.7` `windowed_attention` · `L5.1` `sdpa_forward` (or `--ref-deps`). Reading: `L5.2` (mask flags), `L7.5` (GQA) |
+| **Used by** | `L9.4` checks paged decode against this kernel, bit for bit · `L10.3` relies on the chunk invariance proved here |
 | **Milestone** | `MS-L9` |
 | **Optional depth** | Dao et al., "FlashAttention" (2022) and "FlashAttention-2" (2023); Milakov and Gimelshein, "Online normalizer calculation for softmax" (2018); Rabe and Staats, "Self-attention Does Not Need $O(n^2)$ Memory" (2021) |
 
@@ -37,7 +37,7 @@ ss diff  L9.3              # after passing: your code against the reference
 
 ## 1. Why now
 
-Your numpy attention (`L5.1`, `L7.5`, `L7.7`) forms the score matrix $S = QK^\top$ for every head: $T_q \times T_k$ floats, then a softmax over each row, then $PV$. For a 2048-token prompt that is 4 million floats (16 MB) per head per layer, written once and read twice, and most of the prefill time goes to moving it rather than computing it. The C backend (`L9.7`) and then the Rust engine (`L10.1`) need prefill attention that is fast and whose memory does not grow with the prompt. There is a second requirement from Pass 7. `L10.3` splits long prompts into chunks so a long prefill does not stall everyone else's decode, and each chunk's queries attend to the cache built so far. That only gives the same tokens as an unchunked prefill if every query row comes out bit for bit the same however the prompt was split. This module writes the kernel that does both.
+Your numpy attention (`L5.1`, `L7.5`, `L7.7`) forms the score matrix $S = QK^\top$ for every head: $T_q \times T_k$ floats, then a softmax over each row, then $PV$. For a 2048-token prompt that is 4 million floats (16 MB) per head per layer, written once and read twice, and most of the prefill time goes to moving it rather than computing it. This standalone C exercise makes memory use independent of prompt length. `L10.3` additionally splits long prompts into chunks so prefill does not stall decode; chunk invariance ensures every query row's output is stable across split choices.
 
 ## 2. Principles
 
@@ -110,7 +110,7 @@ $$\ell = 1.3678794 + 1 = 2.3678794, \qquad a = [2.1036383 + 5, 3.4715177 + 6] = 
 
 **Normalize**: $o = a / \ell = [3, 4]$ exactly (because $(6 + 3e^{-1})/(2 + e^{-1}) = 3$ and $(8 + 4e^{-1})/(2 + e^{-1}) = 4$), and $\mathrm{lse} = m + \log \ell = 1 + \log 2.3678794 = 1.8619948$.
 
-This is `hand_example` and `test_hand_example_through_ctypes`. With a causal mask and $q_{\text{offset}} = 1$ the row would see only keys 0 and 1 (tile 0), giving $o = [2.1036383, 3.4715177]/1.3678794 = [1.5378828, 2.5378828]$.
+This is `hand_example` and `test_hand_example`. With a causal mask and $q_{\text{offset}} = 1$ the row would see only keys 0 and 1 (tile 0), giving $o = [2.1036383, 3.4715177]/1.3678794 = [1.5378828, 2.5378828]$.
 
 ## 4. The interface
 
@@ -138,10 +138,6 @@ tl_status tl_flash_attn_fwd_f32(const float *q, const float *k, const float *v, 
 | `arena_rewound_and_scratch_independent_of_tk` | property | the arena is back at its mark; high water equal for $T_k = 16$ and 1000 | memory flat in the context length |
 | `pool_result_equals_serial_bitwise` | property | 4 threads vs serial (also under TSan) | threads never change bits |
 | `shape_and_argument_errors` | boundary | `TL_ESHAPE` for 6 heads on 4 KV heads and $H_{kv} > H$; `TL_EINVAL` cases leave $o$ alone; $T_k = 0$ gives zeros | errors before any write |
-| `test_hand_example_through_ctypes` | unit, smoke | section 3 across the boundary | how `L9.7` calls it |
-| `test_matches_your_l7_7_windowed_attention` | differential | SmolLM2's 9:3 heads, MQA at the end of a cache, window 7, window plus sinks; $D = 64$; $o$ and lse | P6: your Python is the specification |
-| `test_non_causal_matches_your_l5_1_sdpa` | differential | causal = 0 against `sdpa_forward` | encoders and cross attention |
-| `test_chunked_prefill_is_bitwise_equal_through_ctypes` | property | a 25-token prompt in chunks of 4 equals one call, bitwise | what `L10.3` relies on |
 
 ## 5. Pitfalls
 
@@ -168,7 +164,7 @@ tl_status tl_flash_attn_fwd_f32(const float *q, const float *k, const float *v, 
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the loader and the error slot |
+| Back | `rt.02` | the error slot and allocator support |
 | Back | `rt.02` | the arena that holds the tiles, with a mark taken and rewound around each call |
 | Back | `rt.03` | `tl_parallel_for` over (sequence, head, query tile) |
 | Back | `M09.6` | `tl_expf` for every weight and rescale factor |
@@ -176,10 +172,9 @@ tl_status tl_flash_attn_fwd_f32(const float *q, const float *k, const float *v, 
 | Back | `L7.7` | `windowed_attention`, the specification of every flag |
 | Back | `L5.1` | `sdpa_forward`, the specification without a causal mask |
 | Forward | `L9.4` | paged attention for decode performs the same tile update on blocks; its tests hold it to this kernel bit for bit |
-| Forward | `L9.7` | the Python C backend sends prefill attention here |
-| Forward | `L10.1` | (Pass 7) the Rust forward's prefill; `L10.3`'s chunked prefill relies on the chunk invariance |
+| Forward | the standalone Rust engine | (Pass 7) the Rust forward's prefill; `L10.3`'s chunked prefill relies on the chunk invariance |
 
-If you skip this module, `ss check L9.7` stops with `BLOCKED ... needs L9.3`: build it, or pass `--ref-deps`.
+If you use the optional C paged-attention exercise, its `L9.3` prerequisite supplies this standalone C kernel.
 
 ## Going further
 

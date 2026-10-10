@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-engine/src/spec.rs
 +++ b/rust/crates/tl-engine/src/spec.rs
-@@ -327,7 +327,7 @@
- 
- /// Blocks of `block_tokens` positions needed for `tokens` positions.
- pub fn blocks_for(tokens: usize, block_tokens: usize) -> usize {
+@@ -351 +351 @@
 -    tokens.div_ceil(block_tokens)
 +    tokens / block_tokens + 1
- }
- 
- /// Cuts a sequence's KV back to its first `keep` positions after a

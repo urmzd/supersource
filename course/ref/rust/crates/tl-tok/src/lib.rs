@@ -1,7 +1,7 @@
 //! tl-tok: the Rust tokenizer of the system (L1.5).
 //!
 //! * [`Tokenizer`]: the trait the engine (L10.1, L10.5) and the binding
-//!   (`tl-py`) program against.
+//!   program against.
 //! * [`ByteTokenizer`]: the tracer's byte tokenizer (D32, formats/tokenizer.md):
 //!   id = byte value, 256 ids, no specials.
 //! * [`bpe::ByteBpe`]: byte-level BPE, exact against GPT-2 and SmolLM2, with

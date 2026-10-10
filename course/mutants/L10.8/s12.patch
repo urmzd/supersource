@@ -1,11 +1,5 @@
 --- a/rust/crates/tl-engine/src/spec.rs
 +++ b/rust/crates/tl-engine/src/spec.rs
-@@ -215,7 +215,7 @@
-     if u_accept < p[x] / q[x] {
-         return Ok((x, true));
-     }
+@@ -233 +233 @@
 -    Ok((sample_dense(&residual(p, q), u_resample), false))
 +    Ok((sample_dense(p, u_resample), false))
- }
- 
- /// L8.1's sampling_distribution as a dense vector: the penalized logits'

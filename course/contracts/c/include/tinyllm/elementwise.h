@@ -15,9 +15,6 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* RMSNorm over the last axis of x [rows, d]:
  *   y[r, i] = x[r, i] / sqrt(mean_i(x[r, i]^2) + eps) * w[i]
@@ -52,8 +49,5 @@ void tl_add_f32(const float *a, const float *b, float *y, int64_t n);
  * (spec/sampling.md, temperature 0). */
 int32_t tl_argmax_f32(const float *x, int64_t n);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_ELEMENTWISE_H */

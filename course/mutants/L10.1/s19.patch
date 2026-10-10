@@ -1,11 +1,5 @@
---- a/rust/crates/tl-sys/src/kv.rs
-+++ b/rust/crates/tl-sys/src/kv.rs
-@@ -116,7 +116,7 @@
-     pub fn new(cfg: KvCfg) -> Result<KvPool, TlError> {
-         let mut out: *mut RawKvPool = std::ptr::null_mut();
-         // SAFETY: cfg is a valid tl_kv_cfg; out receives the new pool.
--        check(unsafe { tl_kv_pool_create(&cfg, &mut out) })?;
-+        let _ = unsafe { tl_kv_pool_create(&cfg, &mut out) };
-         let raw = NonNull::new(out).ok_or_else(|| invalid("tl_kv_pool_create returned TL_OK and NULL".to_string()))?;
-         Ok(KvPool { raw, cfg })
-     }
+--- a/rust/crates/tl-engine/src/kv.rs
++++ b/rust/crates/tl-engine/src/kv.rs
+@@ -75 +75 @@
+-        if cfg.n_blocks == 0 || cfg.block_tokens == 0 || cfg.n_layers == 0 || cfg.n_kv_heads == 0 || cfg.head_dim == 0 {
++        if cfg.block_tokens == 0 || cfg.n_layers == 0 || cfg.n_kv_heads == 0 || cfg.head_dim == 0 {

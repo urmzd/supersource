@@ -10,7 +10,6 @@ course_version = "0.1.0"
 # model directory the engine entry serves (MS-P1).
 [build]
 steps = [
-  ["make", "-C", "c"],
   ["cargo", "build", "--release", "--quiet", "--manifest-path", "rust/Cargo.toml", "-p", "tl-serve"],
   ["go", "build", "-C", "go", "-o", "bin/gateway", "./cmd/gateway"],
   ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py",
@@ -23,7 +22,7 @@ engine  = ["rust/target/release/tl-serve", "--model-dir", "artifacts/models/bigr
 gateway = ["go/bin/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
 # Pass 3 (MS-L1): built on first use, so the earlier passes' [build] stays as it was.
 tl-tok  = ["cargo", "run", "--release", "--quiet", "--manifest-path", "rust/Cargo.toml", "-p", "tl-tok", "--"]
-# Pass 3 (MS-corpus): the corpus CLI; it builds tinyllm_rs on first use, like cli_tok.
+# Pass 3 (MS-corpus): the Python corpus CLI.
 corpus  = ["uv", "run", "--quiet", "--project", "python", "python", "python/corpus/__main__.py"]
 
 [services.engine]

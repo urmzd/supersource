@@ -1,7 +1,7 @@
 """The Tokenizer protocol and the byte tokenizer (L1.1).
 
-Every tokenizer in the course (bytes, char, BPE, WordPiece, Unigram, and the
-Rust `tl-tok` behind PyO3) has the same shape: `encode` turns text into ids,
+Every Python tokenizer in the course (bytes, char, BPE, WordPiece, Unigram)
+has the same shape: `encode` turns text into ids,
 `decode` turns ids back into text, and `save`/`load` move it through a model
 directory. Code that consumes tokens (the corpus pipeline, the trainers, the
 metrics of L1.6, the engine) is written against `Tokenizer` only.

@@ -2,8 +2,7 @@
  * tinyllm/elementwise.h, under ASan and UBSan. These kernels return void
  * (the caller guarantees the preconditions), so every test checks values,
  * and a stub (which aborts) fails the whole binary.
- * The ctypes tests against your L7.1 RMSNorm and L7.3 RoPE are in
- * test_elementwise_ctypes.py.
+ * Deterministic vectors exercise normalization and position encoding.
  */
 #include <math.h>
 #include <string.h>

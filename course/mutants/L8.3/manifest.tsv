@@ -1,7 +1,7 @@
 # mid	unit	tier	operator	line	required	public	private
 s01	python/tinyllm/infer/paged.py	semantic	pitfall-1	205	n	a block is allocated one position early	last block index from end // B
 s02	python/tinyllm/infer/paged.py	semantic	pitfall-2	248	n	gather reads whole blocks	the last block is read to block_size
-s03	python/tinyllm/infer/paged.py	semantic	pitfall-3	170	n	the slab is viewed in the wrong axis order	[block_size, n_kv_heads, d_head] view
+s03	python/tinyllm/infer/paged.py	semantic	pitfall-3	113	n	block axes are swapped during allocation	[n_layers, block_size, n_kv_heads, d_head] shape
 s04	python/tinyllm/infer/paged.py	semantic	pitfall-4	218	n	V is written with K	the V slab gets k16
 s05	python/tinyllm/infer/paged.py	semantic	pitfall-5	215	n	a chunk overruns its block	n ignores the slot offset
 s06	python/tinyllm/infer/paged.py	semantic	pitfall-6	141	y	a fork copies the table without references	fork skips tl_kv_ref

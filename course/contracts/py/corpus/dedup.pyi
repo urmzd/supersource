@@ -8,9 +8,9 @@
 #               paragraph_hash) occurred earlier: in an earlier document, or
 #               earlier in the same document
 #
-# The Bloom filter is tinyllm_rs.Bloom (ds.08, contracts/py/tinyllm_rs.pyi,
-# formats/bloom.md). Its positives are candidates only: a paragraph is
-# removed only when a second occurrence of its exact hash is confirmed.
+# data.03 uses a private Python Bloom screen. Its positives are candidates
+# only: a paragraph is removed only when a second occurrence of its exact
+# hash is confirmed.
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
@@ -46,7 +46,7 @@ def exact_dedup(
     repeat removed. A document that loses nothing is yielded unchanged; one
     that loses some paragraphs is yielded with the rest joined by "\\n\\n";
     one that loses all is dropped; order is input order. The screen is one
-    tinyllm_rs.Bloom.with_rate(max(N, 1), bloom_rate(B)) over the N
+    Python Bloom filter sized for max(N, 1) and bloom_rate(B) over the N
     paragraphs of the input. The input is spooled to a temporary directory
     (under spool_dir when given, removed afterwards), so memory does not
     grow with the corpus; nothing is yielded before the input is exhausted.

@@ -246,7 +246,7 @@ int main(int argc, char **argv) {
 | Direction | Module | How it uses this |
 |---|---|---|
 | Forward | `craft.01` | CI jobs are processes whose exit status is the gate; the `commit-msg` hook is a script that rejects with a nonzero status |
-| Forward | `M03.1` | your `c/Makefile` builds `libtinyllm` from one object per unit, with header prerequisites on `tinyllm.h` |
+| Forward | `M03.1` | the C exercise's Makefile builds standalone test binaries from source files and headers |
 | Forward | `rt.01` | the same Makefile gains `SANITIZE=1` (a variable, 2.5) to add AddressSanitizer |
 | Forward | `L10.0` | your Rust engine handles SIGTERM: stop accepting, finish in-flight streams, exit |
 | Forward | `dep.00` | Kubernetes sends SIGTERM, waits the grace period (30 s by default), then SIGKILL; status 137 in `kubectl describe` means SIGKILL |

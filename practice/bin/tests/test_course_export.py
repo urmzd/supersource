@@ -55,9 +55,7 @@ def test_python_and_c_vendored_and_run_natively(ss):
     _pass(ss, "M90.1", "python/tinyllm/demo/scale.py", owner="M90.1")
     _pass(ss, "rt.90", "c/src/runtime/abi.c")
     _pass(ss, "rt.91", "c/src/runtime/demo.c")
-    _pass(
-        ss, "M90.2", "python/tinyllm/demo/norm.py"
-    )  # Python calling the C sum through ctypes
+    _pass(ss, "M90.2", "python/tinyllm/demo/norm.py")
     ss("milestone", "MS-M90", rc=0)
     ss.commit_learner("feat: scale, abi, C sum, normalize")
     dest, res = _export(
@@ -79,9 +77,7 @@ def test_python_and_c_vendored_and_run_natively(ss):
     ):
         assert (v / f).is_file(), f
     assert not (v / "tests/M90.3").exists()  # not passed, not vendored
-    assert (
-        "libtinyllm" in res["commands"]["python"][0]
-    )  # the ctypes tests get YOUR library built first
+    assert res["commands"]["python"][0].startswith("uv run --project python")
     assert not list(dest.rglob("SOLUTION-BEGIN*")) and not (dest / ".ss").exists()
     assert not any(
         "SOLUTION-BEGIN" in p.read_text(errors="ignore")

@@ -4,9 +4,8 @@ descent (L0.5, which took this unit over).
 The model is one table, `weight`, of shape [V, V]. Row i holds the logits of
 the next token after token i, so softmax(weight[i]) is the model's
 distribution over what follows i. BigramLM.fit_counts fills the table with
-the log of add-alpha smoothed bigram frequencies; logits reads rows through
-the C matmul (onehot(ids) @ weight) so the tracer exercises libtinyllm end to
-end. BigramLogits is the same table as a Module (L0.4) trained with the
+the log of add-alpha smoothed bigram frequencies; logits gathers rows with
+NumPy. BigramLogits is the same table as a Module (L0.4) trained with the
 course's autograd; to_lm() turns it into a BigramLM the CLI saves and the
 unchanged tracer engine serves. Sampling draws from PCG32 (M06.3) exactly as
 the Rust tracer engine does (L10.0), so a seed means the same text in both.
@@ -23,7 +22,6 @@ from numpy.typing import ArrayLike, NDArray
 
 from tinyllm.autograd import functional as F
 from tinyllm.autograd.tensor import Tensor
-from tinyllm.ffi.libtinyllm import f32_ptr, load
 from tinyllm.nn.module import Module
 from tinyllm.num.rng import PCG32
 
@@ -46,25 +44,8 @@ def _as_ids(ids: ArrayLike, vocab_size: int) -> NDArray[np.int64]:
     # SOLUTION-END
 
 
-def _matmul_f32(a: NDArray, b: NDArray) -> NDArray:
-    """a @ b for float32 matrices, computed by tl_matmul_f32 in libtinyllm.
-    A failing call raises the loader's TlError (a RuntimeError)."""
-    # SOLUTION-BEGIN L0.5
-    a = np.ascontiguousarray(a, dtype=np.float32)
-    b = np.ascontiguousarray(b, dtype=np.float32)
-    m, k = a.shape
-    k2, n = b.shape
-    if k != k2:
-        raise ValueError(f"inner dimensions differ: {a.shape} @ {b.shape}")
-    c = np.empty((m, n), dtype=np.float32)
-    # C = 1 * A @ B + 0 * C, row-major with no padding: lda = k, ldb = n, ldc = n.
-    load().tl_matmul_f32(f32_ptr(a), f32_ptr(b), f32_ptr(c), m, n, k, k, n, n, 1.0, 0.0, 0, None)
-    return c
-    # SOLUTION-END
-
-
 class BigramLM:
-    """A [V, V] table of next-token logits. Fit by counting, read through C."""
+    """A [V, V] table of next-token logits. Fit by counting, read with NumPy."""
 
     def __init__(self, weight: ArrayLike | None = None) -> None:
         # SOLUTION-BEGIN L0.5
@@ -107,9 +88,7 @@ class BigramLM:
         # SOLUTION-BEGIN L0.5
         v = self.vocab_size
         a = _as_ids(ids, v)
-        onehot = np.zeros((a.size, v), dtype=np.float32)
-        onehot[np.arange(a.size), a] = 1.0
-        return _matmul_f32(onehot, self.weight)
+        return self.weight[a]
         # SOLUTION-END
 
     def nll(self, ids: ArrayLike) -> float:

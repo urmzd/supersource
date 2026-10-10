@@ -42,7 +42,7 @@ A data structure in a production system is chosen by its worst case under the sy
 
 **Key ideas**:
 - **Lazy-deletion heap** (`ds.06`, Rust): generation counters invalidate stale entries; the BPE merge queue and the engine's waiting queue.
-- **Top-k** (`ds.04`, C): a size-$k$ min-heap over logits with ties to the lower index; the Rust sampler calls it through `tl-sys`.
+- **Top-k** (`ds.04`, optional C): a standalone size-$k$ min-heap over logits with ties to the lower index; parity uses fixture files from the Python reference.
 
 ## 4. Prefixes, membership, and placement
 
@@ -72,10 +72,10 @@ The engine flag `--prefix-cache=hash|radix` gives both `ds.02` (hash index in C)
 <!-- ss:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
-| 1 | `ds.01` | [Growable array tl_vec (type-erased)](01-growable-array.md) | build | 6 |
-| 2 | `ds.02` | [Swiss table tl_map (u64 to u64)](02-swiss-table.md) | build | 6 |
-| 3 | `ds.03` | [Intrusive list + LRU](03-intrusive-list-and-lru.md) | build | 6 |
-| 4 | `ds.04` | [Binary heap top-k in C](04-binary-heap-top-k.md) | build | 6 |
+| 1 | `ds.01` | [Growable array tl_vec (type-erased, optional C)](01-growable-array.md) | side | 6 |
+| 2 | `ds.02` | [Swiss table tl_map (u64 to u64, optional C)](02-swiss-table.md) | side | 6 |
+| 3 | `ds.03` | [Intrusive list + LRU (optional C)](03-intrusive-list-and-lru.md) | side | 6 |
+| 4 | `ds.04` | [Binary heap top-k in C (optional)](04-binary-heap-top-k.md) | side | 6 |
 | 5 | `ds.05` | [Robin Hood hash map with backward-shift deletion](05-robin-hood-hash-map.md) | build | 3 |
 | 6 | `ds.06` | [Binary heap with lazy deletion](06-binary-heap-lazy-deletion.md) | build | 3 |
 | 7 | `ds.07` | [Radix tree over token ids with index-linked LRU leaf list](07-radix-tree.md) | build | 6 |

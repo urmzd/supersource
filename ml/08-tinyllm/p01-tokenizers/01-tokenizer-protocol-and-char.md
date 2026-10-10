@@ -198,7 +198,7 @@ def test_byte_tokenizer_utf8_and_replacement():
 | Forward | `L1.4` | Unigram implements the protocol; `<unk>` is id 0 there too |
 | Forward | `L1.6` | fertility, bytes per token, and the fallback rate take any `Tokenizer` |
 
-`L1.5` (the Rust `tl-tok` behind PyO3) and `L3.6` (char-level language models) arrive in later batches and use the same protocol. If you skip this module, `ss check L1.2` stops with `needs L1.1`: build it, or rerun with `--ref-deps`.
+`L1.5` implements a Rust tokenizer independently; Python and Rust compare tokenization through shared `tokenizer.json` files and fixtures. `L3.6` (char-level language models) arrives in a later batch and uses this protocol. If you skip this module, `ss check L1.2` stops with `needs L1.1`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

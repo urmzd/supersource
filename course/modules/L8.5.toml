@@ -14,7 +14,7 @@ reading   = ["M09.1", "M09.3", "M07.4"]
 # Call sites (DESIGN 4.3): L9.5's int4 and int8 kernels take these bytes
 # (parity quant.int4); L10.1's *.q4.safetensors runner and craft.13's KV v2
 # oracle join with their batches.
-used_by   = ["L9.5"]
+used_by   = ["L10.1"]
 units     = ["python/tinyllm/infer/quant.py"]
 upgrades  = []
 milestone = "MS-L8"

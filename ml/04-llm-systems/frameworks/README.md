@@ -23,7 +23,7 @@ Where you *run* an LLM. This maps the inference/serving ecosystem across languag
 
 - Run the *same* GGUF model under llama.cpp (`llama-server`), candle, and mistral.rs; compare tokens/sec, memory, and binary/footprint
 - For each framework, identify its three layers and which it borrows (e.g. mistral.rs borrows candle's kernels; Ollama borrows llama.cpp's runtime)
-- Build one example from [`code/`](code/) per language to feel the FFI/interop boundaries
+- Build one example from [`code/`](code/) per language to compare each language's runtime and file interfaces
 
 ---
 
@@ -77,7 +77,7 @@ Rust trades ecosystem breadth for **memory safety + a single static binary + no 
 | **[burn](https://burn.dev/)** | kernels + runtime | backend-agnostic train **and** infer | WGPU/CUDA/NdArray/LibTorch; own quantization API ([Quant §7](../quantization/)) |
 | **[ratchet](https://github.com/huggingface/ratchet)** | kernels + runtime | web/cross-platform GPU | wgpu-based, browser-first inference |
 | **[luminal](https://github.com/jafioti/luminal)** | compiler + runtime | search-compiled kernels | tiny graph IR, compiles to fast kernels |
-| **[llama-cpp-2](https://github.com/utilityai/llama-cpp-rs)** | bindings | reuse llama.cpp from Rust | low-level FFI mirroring `llama.h`; `llama_cpp` is the higher-level wrapper |
+| **[llama-cpp-2](https://github.com/utilityai/llama-cpp-rs)** | Rust interface | reuse llama.cpp from Rust | `llama_cpp` is the higher-level wrapper |
 
 > **Deprecated**: `rustformers/llm` (and the old `llama-rs`) are unmaintained -- the ecosystem consolidated onto **candle** + **mistral.rs**. Use those.
 
@@ -123,7 +123,7 @@ Zig's pitch: **trivial C interop** (`@cImport` reads C headers directly -- no bi
 | **Quant formats** | GGUF k/i-quants | GPTQ/AWQ/FP8 | GGUF, ISQ | GGUF (via C), native |
 | **Server** | `llama-server` | vLLM/TGI/SGLang | mistralrs-server | LLMD |
 | **Best at** | portability | throughput | safe single binary | native compile + C interop |
-| **C interop** | n/a | ctypes/pybind | bindgen/FFI | `@cImport` (best-in-class) |
+| **File exchange** | checkpoint files | safetensors, tokenizer.json | safetensors, tokenizer.json | serialized model formats |
 
 ## Connections to Other Tracks
 
@@ -131,7 +131,7 @@ Zig's pitch: **trivial C interop** (`@cImport` reads C headers directly -- no bi
 |---------|-----------------|-------------|
 | GGUF k-quants, ISQ, FP8 | [Quantization: Math → Code](../quantization/) | The formats these frameworks load |
 | Continuous batching, KV cache, SLOs | [LLM Systems & Inference](../) | What the runtime/server layers implement |
-| FFI, memory safety, SIMD, allocators | [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/) | C/Rust/Zig interop and hot loops |
+| memory safety, SIMD, allocators | [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/) | systems concepts and hot loops |
 | Polyglot idioms (C, Rust, Zig) | [Polyglot Practice](../../../practice/) | Same algorithm, different language tradeoffs |
 | K8s, autoscaling, OpenAI API | [Cloud Native](../../../systems/03-cloud-native/) | Deploying any of these servers |
 

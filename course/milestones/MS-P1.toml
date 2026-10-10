@@ -1,16 +1,16 @@
 # MS-P1: the Pass 1 gate (DESIGN 5.7 milestone catalog, 7.2, 7.4).
 # Page: paths/course-p01-tracer/milestone.md
 #
-# Every layer of the tracer is yours and runs end to end: your byte bigram
-# (L0.0) through your C matmul (M03.1, rt.01), served by your Rust engine
+# Every core layer of the tracer is yours and runs end to end: your byte bigram
+# (L0.0) and Python matrix operations (M03.1), served by your Rust engine
 # (L10.0) behind your Go gateway (gw.00), deployed on kind (dep.00), traced in
 # Jaeger (obs.00), kept alive by your runbook (ops.00), and explained by your
 # ADR-0001 (craft.02).
 #
 # Your system.toml must declare (spec/cli-roles.md, DESIGN 2.16):
-#   [build].steps        build libtinyllm, the engine, and the gateway, and
+#   [build].steps        build the engine and the gateway, and
 #                        train the model directory your engine entry serves
-#   [entry].tinyllm      the Python CLI (train bigram, generate, info --native)
+#   [entry].tinyllm      the Python CLI (train bigram, generate)
 #   [entry].engine       tracer form: --model-dir <your trained dir> --port {port} --health-port {health_port}
 #   [entry].gateway      tracer form: --port {port} --health-port {health_port} --upstream http://127.0.0.1:{engine.port}
 #   [services.engine]    health = "http://127.0.0.1:{health_port}/healthz"
@@ -24,22 +24,13 @@
 # Every later pass gate reruns the smoke steps (the spiral invariant).
 id       = "MS-P1"
 title    = "Tracer: every layer is yours and runs end to end"
-requires = ["lang.03", "rt.01", "M03.1", "L0.0", "lang.04", "lang.05", "L10.0", "lang.06", "gw.00",
+requires = ["M03.1", "L0.0", "lang.04", "lang.05", "L10.0", "lang.06", "gw.00",
             "lang.07", "dep.00", "obs.00", "ops.00", "craft.02"]
 pass     = 1
 ci       = "pr"
 services = ["engine", "gateway"]
 
 # -- your entry points, from a clean shell (local processes) -------------------
-
-[[step]]
-name     = "native-library"
-smoke    = true
-services = []
-run      = "tinyllm"
-argv     = ["info", "--native"]
-expect   = { match = "json-last-line", metrics = { abi_version = "== 1" } }
-timeout_s = 60
 
 # The count-MLE NLL of the add-one bigram on the fixture corpus is 3.199389
 # nats per byte (course/oracle/MS-P1/bigram_greedy.py); 1e-3 covers float32.

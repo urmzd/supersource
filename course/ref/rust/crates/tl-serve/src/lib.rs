@@ -13,6 +13,7 @@
 //! <runtime.toml>` (from L10.5) calls `server::run`.
 
 pub mod http;
+pub mod control;
 pub mod openai;
 pub mod server;
 pub mod sse;

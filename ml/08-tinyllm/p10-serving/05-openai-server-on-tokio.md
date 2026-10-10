@@ -8,9 +8,9 @@
 | **Module** | `L10.5` · build · Rust · Pass 7 · 16 to 24 h |
 | **You build** | `rust/crates/tl-engine/src/engine.rs`: `Engine`, the step loop over runner, scheduler, block manager, and per-request samplers · `rust/crates/tl-serve/src/server.rs`: the v1 server on tokio and hyper (runtime.toml, the engine thread, bounded admission, abort on disconnect, drain on SIGTERM, health, readiness, `/metrics`) · `openai.rs` (validation and the response and chunk documents) · `sse.rs` (SSE framing, incremental UTF-8, stop strings) · `template.rs` (the chat-template Jinja subset) · the module lines of your `L10.0` crate root `tl-serve/src/lib.rs` · your entry point's `--config` form |
 | **Contract** | HTTP: [`openapi/openai-subset.v1.yaml`](../../../course/contracts/openapi/openai-subset.v1.yaml) (engine tier) · the `engine` role, config form: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) · `[engine]`: [`config/runtime.schema.json`](../../../course/contracts/config/runtime.schema.json) · chat templates: [`formats/generation-config.schema.json`](../../../course/contracts/formats/generation-config.schema.json) · metric names: [`otel/metrics.yaml`](../../../course/contracts/otel/metrics.yaml) |
-| **Tests** | `course/tests/rust/l10_5.rs`, 18 tests (what they check: section 4); conformance `ss conform openapi:v1 --target engine` from `MS-L10`, including the official `openai` Python client |
-| **Needs** | `L10.1` runner and sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.2` scheduler ([chapter](02-continuous-batching.md)) · `L10.3` chunked prefill ([chapter](03-chunked-prefill.md)) · `L10.4` block manager ([chapter](04-block-manager-and-prefix-cache.md)) · `L1.5` tl-tok: the byte tokenizer and tokenizer.json BPE ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · reading: `lang.09` async Rust and tokio ([primer](../../../software-craftsmanship/12-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.05` HTTP and SSE, `L10.0` the tracer server, `L8.2` generate and the detokenizer · or `--ref-deps` |
-| **Used by** | no registered call site yet: `L10.6` (disaggregation), `L10.7` (metrics and tracing), and `L10.9` (tool calls) build on this server, and `gw.04`, `ag.01`, `load.01`, and `L12.3` reach it over HTTP |
+| **Tests** | `course/tests/rust/l10_5.rs`, 19 tests (what they check: section 4); conformance `ss conform openapi:v1 --target engine` from `MS-L10`, including the official `openai` Python client |
+| **Needs** | `L10.1` runner and sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.2` scheduler ([chapter](02-continuous-batching.md)) · `L10.3` chunked prefill ([chapter](03-chunked-prefill.md)) · `L10.4` block manager ([chapter](04-block-manager-and-prefix-cache.md)) · `L10.8` speculative decoding ([chapter](08-speculative-decoding-in-the-engine.md)) · `L1.5` tl-tok: the byte tokenizer and tokenizer.json BPE ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · reading: `lang.09` async Rust and tokio ([primer](../../../software-craftsmanship/12-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.05` HTTP and SSE, `L10.0` the tracer server, `L8.2` generate and the detokenizer · or `--ref-deps` |
+| **Used by** | `L10.6` (disaggregation), `L10.7` (metrics and tracing), and `L10.9` (tool calls) build on this server, and `gw.04`, `ag.01`, `load.01`, and `L12.3` reach it over HTTP |
 | **Milestone** | `MS-L10` (`ss conform openapi:v1 --target engine` 100%) |
 | **Optional depth** | [OpenAI API reference: chat completions and streaming](https://platform.openai.com/docs/api-reference/chat) (free); [hyper 1.x guide](https://hyper.rs/guides/1/) (free); [Tokio tutorial: channels, select](https://tokio.rs/tokio/tutorial) (free); [Jinja template designer docs](https://jinja.palletsprojects.com/en/stable/templates/) (free); [vLLM's OpenAI server](https://github.com/vllm-project/vllm/tree/main/vllm/entrypoints/openai) (free) |
 
@@ -202,6 +202,7 @@ Your `main.rs`: `--config <path>` loads `ServeConfig::load` (with `TL_ENGINE__<K
 | `template_errors_are_caught_at_parse` | boundary | unclosed blocks, unknown statements and filters refused at parse | a broken template fails at load |
 | `text_stream_holds_back_stop_prefixes` | unit | stop-prefix hold-back and incremental UTF-8, byte by byte | streams never leak a stop string |
 | `runtime_toml_and_env_overrides` | unit | `[engine]` keys, defaults, `TL_ENGINE__` overrides, refused keys and values | the config form of spec/cli-roles.md |
+| `speculative_runtime_config_drives_the_serving_path` | integration | `[engine].speculative` selects the runner-backed L10.8 path; greedy output matches ordinary serving | prompt lookup can be enabled without changing greedy answers |
 
 ## 5. Pitfalls
 
@@ -233,6 +234,7 @@ Your `main.rs`: `--config <path>` loads `ServeConfig::load` (with `TL_ENGINE__<K
 | Back | `L10.2` | the scheduler: `add`, `abort`, `schedule`, `on_step`; `QueueFull` becomes 429 |
 | Back | `L10.3` | `plan` builds every step; `prefill_chunk` turns chunking on |
 | Back | `L10.4` | the block manager in the mode `prefix_cache` names; hit ratio and block counts in `/metrics` |
+| Back | `L10.8` | runner-backed speculative generation when `[engine].speculative` is configured |
 | Back | `L1.5` | tl-tok: byte tokenizer and tokenizer.json BPE for prompts and token bytes |
 | Forward | `L10.6` | disaggregated prefill and decode add `EngineControl` and the `X-TL-KV-Handle` resume to this server |
 | Forward | `L10.7` | histograms, OpenTelemetry spans, and trace propagation join `/metrics` |

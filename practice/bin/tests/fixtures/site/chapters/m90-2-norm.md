@@ -1,5 +1,5 @@
 <!-- ss:module M90.2 -->
-# L1 normalize through the C sum
+# L1 normalize
 
 ## Overview
 
@@ -9,7 +9,7 @@
 | **You build** | `python/tinyllm/demo/norm.py`: `l1_normalize` |
 | **Contract** | [`contracts/py/tinyllm/demo/norm.pyi`](../course/contracts/py/tinyllm/demo/norm.pyi) |
 | **Tests** | `course/tests/M90.2/` (what they check: section 4) |
-| **Needs** | `M90.1` · `rt.91` |
+| **Needs** | `M90.1` |
 | **Used by** | `craft.90` |
 | **Optional depth** | none: this is a harness fixture |
 
@@ -70,7 +70,6 @@ def l1_normalize(xs: list[float]) -> list[float]: ...
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M90.1` | scale a vector |
-| Back | `rt.91` | demo float sum and owned buffer |
 | Forward | `craft.90` | document the demo system |
 
 ## Going further

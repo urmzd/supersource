@@ -1,4 +1,4 @@
-"""Course tests for M06.3, Python half: tinyllm/num/rng.py against
+"""Course tests for M06.3: tinyllm/num/rng.py against
 spec/pcg32.md.
 
 Rung R0: read these before you write code. Each test names why it exists
@@ -7,8 +7,8 @@ mutants in course/mutants/M06.3), and the chapter section it comes from.
 
 The reference vectors are a copy of contracts/spec/pcg32.vectors.json
 (fixture course/fixtures/M06.3/pcg32.vectors.json, rebuilt from the spec by
-course/oracle/M06.3/vectors.py). The C half is test_rng.c; the C stream is
-compared with this one in test_rng_c_vs_python.py.
+course/oracle/M06.3/vectors.py). Rust and Go ports consume the same frozen
+vectors through their own process-based conformance drivers.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ def test_oneill_demo_line():
 @pytest.mark.parametrize("seed", SEEDS)
 def test_first_1024_outputs_match_spec_vectors(seed):
     # WHY: every language's PCG32 must produce this exact stream (D10): the
-    #      Rust sampler, the Go load generator, and your C twin are all
+    #      Rust sampler and Go load generator are both
     #      checked against the same file. 1024 outputs walk the state far past
     #      the first wrap mod 2^64, so a missing mask shows up.
     # KIND: golden

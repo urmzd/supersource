@@ -325,15 +325,15 @@ def test_alternatives_name_a_rejected_option(repo: Path) -> None:
 
 def test_adr_0001_records_the_language_boundaries(repo: Path) -> None:
     # WHY: ADR-0001 is the record of how the four languages meet, the decision
-    #      every later module builds on: in process through the C ABI, between
-    #      processes over HTTP.
+    #      every later module builds on: files for model data and HTTP between
+    #      processes.
     # KIND: unit
     # CHAPTER: craft.02 section 1, Why now
     p = adr0001(repo)
     text = prose(p.read_text())
     missing = [
         w
-        for w, pat in (("the C ABI", r"\bABI\b"), ("HTTP", r"\bHTTP\b"))
+        for w, pat in (("file exchange", r"\b(file|safetensors)\b"), ("HTTP", r"\bHTTP\b"))
         if not re.search(pat, text)
     ]
     if missing:

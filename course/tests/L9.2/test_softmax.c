@@ -2,7 +2,7 @@
  * tinyllm/softmax.h, under ASan and UBSan. Every case runs both versions,
  * the three-pass tl_softmax_f32 and the online tl_softmax_online_f32,
  * through one table of kernels, because they promise the same function.
- * The ctypes tests against your M09.2 softmax are in test_softmax_ctypes.py.
+ * Standalone cases cover row maxima, normalization, and non-finite inputs.
  */
 #include <math.h>
 #include <string.h>

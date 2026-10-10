@@ -2,8 +2,7 @@
  * under ASan and UBSan with the counting allocator, so a read one past x or
  * a write one past idx stops the run with a report, and any allocation
  * that is not freed fails the case (the contract says it allocates
- * nothing). The ctypes tests against numpy and the L8.1 sampler are in
- * test_topk_ctypes.py.
+ * nothing). Standalone vectors check the same ordering contract as L8.1.
  */
 #include <math.h>
 #include <stdlib.h>

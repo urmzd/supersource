@@ -34,11 +34,8 @@ class BigramLM:
         or alpha <= 0."""
 
     def logits(self, ids: ArrayLike) -> NDArray:
-        """float32 [T, V] = onehot(ids) @ weight, computed by tl_matmul_f32 (M03.1)
-        through the rt.01 ctypes loader; row t equals weight[ids[t]] exactly.
-        ValueError for an id outside [0, V). The loader's errors pass through:
-        TlError (a RuntimeError) when the C call fails, and OSError or
-        AbiMismatch when libtinyllm cannot be loaded. There is no numpy fallback."""
+        """float32 [T, V] = weight[ids], a NumPy row gather. Row t equals
+        weight[ids[t]] exactly. ValueError for an id outside [0, V)."""
 
     def nll(self, ids: ArrayLike) -> float:
         """Mean negative log-likelihood in nats per predicted token:

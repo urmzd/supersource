@@ -1,13 +1,13 @@
-/* tinyllm/numerics.h: the random generator, hashing, low-precision formats,
- * and the two transcendental kernels the runtime needs. Rules in c/ABI.md.
+/* tinyllm/numerics.h: low-precision formats and the two transcendental
+ * kernels the runtime needs. Rules in c/ABI.md.
  *
- *   tl_pcg32_*, tl_fnv1a64   M06.3  c/src/numerics/rng.c     spec/pcg32.md
- *   tl_f32_to_* / tl_*_to_f32 M09.4  c/src/numerics/lowp.c
+ *   tl_f32_to_* / tl_*_to_f32 M09.7  c/src/numerics/lowp.c
  *   tl_rsqrtf, tl_rsqrt_f32   M09.5  c/src/numerics/rsqrt.c   (Newton)
  *   tl_expf, tl_exp_f32       M09.6  c/src/numerics/expf.c    (range reduction + polynomial)
  *
  * Every function here is pure or touches only its own generator, so all are
- * reentrant. */
+ * reentrant.
+ * chapter: math/09-numerical-methods-and-floating-point/07-low-precision-c-conversions.md */
 #ifndef TINYLLM_NUMERICS_H
 #define TINYLLM_NUMERICS_H
 
@@ -16,33 +16,8 @@
 
 #include "tinyllm/abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-/* -- M06.3: PCG32 and FNV-1a (spec/pcg32.md) -------------------------------- */
-
-typedef struct {
-    uint64_t state, inc;
-} tl_pcg32; /* 16 bytes */
-
-/* O'Neill's pcg32_srandom_r(r, seed, seq): inc = (seq << 1) | 1, state = 0,
- * one step, state += seed, one step. The default stream is seq = 54. */
-void tl_pcg32_seed(tl_pcg32 *r, uint64_t seed, uint64_t seq);
-
-/* PCG-XSH-RR 64/32: one step, then the permuted output of the old state. */
-uint32_t tl_pcg32_next(tl_pcg32 *r);
-
-/* Two draws a, b: ((a >> 5) * 2^26 + (b >> 6)) * 2^-53, in [0, 1). */
-double tl_pcg32_uniform(tl_pcg32 *r);
-
-/* FNV-1a 64 over n bytes, continuing from h (pass TL_FNV1A64_OFFSET to
- * start): for each byte, h ^= byte, then h *= 0x100000001B3 (mod 2^64).
- * tl_fnv1a64("a", 1, TL_FNV1A64_OFFSET) == 0xAF63DC4C8601EC8C. */
-#define TL_FNV1A64_OFFSET 0xCBF29CE484222325ull
-uint64_t tl_fnv1a64(const void *data, size_t n, uint64_t h);
-
-/* -- M09.4: low-precision conversions ------------------------------------------ */
+/* -- M09.7: low-precision conversions ------------------------------------------ */
 
 /* f32 to 8- and 16-bit formats round to nearest, ties to even. Edge rules:
  *
@@ -87,8 +62,5 @@ void tl_rsqrt_f32(const float *x, float *y, int64_t n);
 float tl_expf(float x);
 void tl_exp_f32(const float *x, float *y, int64_t n);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* TINYLLM_NUMERICS_H */

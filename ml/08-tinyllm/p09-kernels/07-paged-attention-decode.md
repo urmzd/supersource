@@ -5,12 +5,12 @@
 
 | | |
 |---|---|
-| **Module** | `L9.4` · build · C · Pass 6 · 4 to 6 h |
+| **Module** | `L9.4` · side · C · Pass 6 · 4 to 6 h |
 | **You build** | `c/src/kernels/paged_attn.c`: `tl_paged_attn_decode_f32`, one decode step of attention for a batch of sequences whose K and V live in blocks of your `rt.04` pool, reached through block tables, read as f16, with GQA and a sliding window, allocating nothing |
 | **Contract** | [`course/contracts/c/include/tinyllm/attention.h`](../../../course/contracts/c/include/tinyllm/attention.h) · the pool: [`kv_pool.h`](../../../course/contracts/c/include/tinyllm/kv_pool.h) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/L9.4/`: `test_paged_attn.c` (C, under ASan and UBSan, and TSan for the pool case, against a naive oracle and, bitwise, against your `L9.3`) and `test_paged_attn_ctypes.py` (Python, through your `L8.3` cache, against your `L7.7` attention) (what they check: section 4) |
-| **Needs** | `rt.01` the loader · `rt.03` the pool · `rt.04` the block pool · `M09.4` `tl_f16_to_f32` · `M09.6` `tl_expf` · `L9.2` `tl_softmax_f32` (the C oracle) · `L9.3` FlashAttention (the bitwise oracle) · `L8.3` `PagedKVCache` · `L7.7` `windowed_attention` (or `--ref-deps`). Reading: `L7.5` (GQA) |
-| **Used by** | `L10.1` (decode) and `L10.2` (batched decode) in Pass 7: every generated token of every sequence goes through this kernel |
+| **Tests** | `course/tests/L9.4/`: `test_paged_attn.c` (C, under ASan and UBSan, and TSan for the pool case, against a naive oracle and, bitwise, against your `L9.3`) and shared file fixtures (what they check: section 4) |
+| **Needs** | `rt.02` the loader · `rt.03` the pool · `rt.04` the block pool · `M09.7` `tl_f16_to_f32` · `M09.6` `tl_expf` · `L9.2` `tl_softmax_f32` (the C oracle) · `L9.3` FlashAttention (the bitwise oracle) · `L8.3` `PagedKVCache` · `L7.7` `windowed_attention` (or `--ref-deps`). Reading: `L7.5` (GQA) |
+| **Used by** | None: this optional C exercise is tested as a standalone binary; the Rust engine implements decode independently |
 | **Milestone** | `MS-L9` |
 | **Optional depth** | Kwon et al., "Efficient Memory Management for Large Language Model Serving with PagedAttention" (vLLM, 2023); Dao et al., "Flash-Decoding" (2023) |
 
@@ -36,7 +36,7 @@ ss diff  L9.4              # after passing: your code against the reference
 
 ## 1. Why now
 
-`L8.3` moved your Python KV cache into the C block pool (`rt.04`): each sequence owns a block table, prefix blocks are shared after a fork, and a block is copied only when someone writes into a shared one. But attention still reads the cache by calling `gather`, which copies every position of every sequence into a contiguous numpy array on every decode step, and that copy grows with the context. The Rust engine (`L10.1`, `L10.2`) runs one decode step for a whole batch of sequences, each with its own length and its own table, 30 layers per token. It needs a kernel that reads K and V straight out of the blocks, one query per sequence and head, with no copy and no allocation. And because the engine prefills with your FlashAttention (`L9.3`) and decodes with this kernel, the two must agree in every bit, or the same prompt would generate different tokens depending on whether its last token came from prefill or decode.
+`L8.3` defines the logical paged-cache behavior in Python: each sequence owns a block table, prefix blocks are shared after a fork, and a block is copied only when someone writes into a shared one. This optional C exercise implements the same layout for a standalone decode kernel. Its tests compare the C result with a naive oracle and the C prefill kernel, so the implementation can be checked without binding C into Python or Rust. The Rust engine owns an independent Rust KV block manager and attention implementation.
 
 ## 2. Principles
 
@@ -77,7 +77,7 @@ The contract gives this kernel no arena: a decode step is small and frequent, an
 
 ### 2.5 Batch invariance and threads
 
-Each $(s, h)$ row reads only its own query, its own table, and the pool, and writes only its own output: a sequence's result is the same alone or in a batch of 16 (`L10.2` batches decode steps), and the same whichever `rt.03` worker computes it.
+Each $(s, h)$ row reads only its own query, its own table, and the pool, and writes only its own output: a sequence's result is the same alone or in a test batch of 16, and the same whichever `rt.03` worker computes it.
 
 ### 2.6 Validate the tables first
 
@@ -99,7 +99,7 @@ All values are exact in f16. The query $q = [1, 0]$ is position $p = 2$ and sees
 
 **Block id 1** (position 2; slot 1 is empty and not visible): score 1, $m' = 1$, $\alpha = 1$, $\ell = 2.3678794$, $a = [7.1036383, 9.4715177]$.
 
-$o = a / \ell = [3, 4]$: the first test, `hand_example`, and `test_hand_example_through_ctypes` (written through your `PagedKVCache`).
+$o = a / \ell = [3, 4]$: the first test, `hand_example`, computes this exact result through the C interface.
 
 ## 4. The interface
 
@@ -125,11 +125,10 @@ From Python, `PagedKVCache.pool` (`L8.3`) is the `tl_kv_pool *` and `block_table
 | `hand_example` | unit, smoke | section 3 through table $[3, 1]$ | the indirection and the slot arithmetic |
 | `matches_naive_over_the_gathered_cache` | differential | GQA 6:2, $D = 32$, two layers, lengths 1, 37, 70 in shuffled blocks, window 0 and 20 | every flag against plain attention |
 | `equals_flash_attention_bitwise` | differential, property | your `L9.3` on the gathered values with $B_c = 16$, bitwise | prefill and decode agree |
-| `shared_blocks_and_batch_invariance` | property | 16 sequences sharing two prefix blocks; each alone vs in the batch, bitwise | forks (`L8.3`) and batched decode (`L10.2`) |
+| `shared_blocks_and_batch_invariance` | property | 16 sequences sharing two prefix blocks; each alone vs in the test batch, bitwise | forked prefix blocks and sequence isolation |
 | `pool_result_equals_serial_bitwise` | property | 4 threads vs serial (also under TSan) | threads never change bits |
 | `bad_tables_and_shapes` | boundary | empty context, short table, id 9 in a 4-block pool, layer out of range (`TL_EINVAL`); head or width mismatch (`TL_ESHAPE`); `out` untouched | a table bug fails loudly |
-| `test_hand_example_through_ctypes` | unit, smoke | section 3 written through your `PagedKVCache` | the cache and the kernel share one layout |
-| `test_matches_your_l8_3_gather_and_l7_7_attention` | differential | SmolLM2's 9:3 heads, $D = 64$, block 16, a fork with its own tail, lengths 1 to 41, window 0 and 12, against `gather` + `windowed_attention` | P6: your Python is the specification |
+| `hand_example` | unit, smoke | section 3 written through your `PagedKVCache` | the cache and the kernel share one layout |
 
 ## 5. Pitfalls
 
@@ -155,17 +154,16 @@ From Python, `PagedKVCache.pool` (`L8.3`) is the `tl_kv_pool *` and `block_table
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the loader and the error slot |
+| Back | `rt.02` | the error slot and allocator support |
 | Back | `rt.03` | `tl_parallel_for` over (sequence, head) |
 | Back | `rt.04` | the block pool: `tl_kv_pool_cfg` and `tl_kv_block_ptr` |
-| Back | `M09.4` | `tl_f16_to_f32` decodes every key and value |
+| Back | `M09.7` | `tl_f16_to_f32` decodes every key and value in this standalone C module |
 | Back | `M09.6` | `tl_expf` |
 | Back | `L9.2` | the online update; `tl_softmax_f32` is the naive oracle's softmax |
 | Back | `L9.3` | the bitwise oracle: decode must equal FlashAttention with one query |
 | Back | `L8.3` | `PagedKVCache` writes the blocks the Python tests read |
 | Back | `L7.7` | `windowed_attention`, the specification |
-| Forward | `L10.1` | (Pass 7) the Rust forward's decode step calls this kernel for every layer |
-| Forward | `L10.2` | (Pass 7) batched decode: one call per layer for the whole batch, each sequence with its own table |
+| Forward | None | the production Rust engine uses its own Rust implementation; this optional C exercise has no production caller |
 
 ## Going further
 

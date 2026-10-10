@@ -1,19 +1,17 @@
 id        = "L8.3"
-title     = "Paged KV cache in Python over the C block pool"
+title     = "Paged KV cache in Python"
 kind      = "build"
 lang      = ["python"]
 pass      = 6
 chapter   = "ml/08-tinyllm/p08-inference/03-paged-kv-cache.md"
 contract  = ["contracts/py/tinyllm/infer/paged.pyi"]
-# tl_kv_* through the rt.01 ctypes loader; the course tests' decoding
-# differential runs L8.2's contiguous KVCache(dtype=np.float16) as the
-# catalog's oracle.
-deps      = ["L8.2", "rt.04", "rt.01"]
+# This pure-Python implementation owns its page table, allocation, and
+# copy-on-write behavior; the optional C pool is a separate exercise.
+deps      = ["L8.2"]
 reading   = []
-# Call sites (DESIGN 4.3): L9.4's differential oracle (its tests build the
-# paged cache and run the C kernel over cache.pool). L10.4's semantics and
-# L8.2's generate(cache="paged") join with their batches.
-used_by   = ["L9.4"]
+# The engine reimplements this behavior in Rust; L9.4 consumes file fixtures
+# and is not a runtime call site.
+used_by   = []
 units     = ["python/tinyllm/infer/paged.py"]
 upgrades  = []
 milestone = "MS-L8"

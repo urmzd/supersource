@@ -3,7 +3,8 @@
 Everything here is modular arithmetic on Python ints: the generator state
 lives in Z / 2^64, outputs in Z / 2^32, and `& MASK64` is the reduction mod
 2^64 that C gets for free from uint64_t overflow. The exact algorithms are in
-contracts/spec/pcg32.md; the C twin is c/src/numerics/rng.c.
+contracts/spec/pcg32.md; Python, Rust, and Go implementations share its
+published vectors through process and file-based conformance checks.
 
     g = PCG32(0)                  # pcg32_srandom_r(0, 54)
     g.next_u32()                  # 0x47C28B93 = 1203932051

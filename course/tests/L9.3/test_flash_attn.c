@@ -2,9 +2,8 @@
  * tinyllm/attention.h, under ASan and UBSan (and ThreadSanitizer for the
  * pool case). The oracle is the naive attention: the whole score row with
  * masks as -inf and the sink as one extra column, normalized by your L9.2
- * tl_softmax_f32, then the weighted sum of values. The ctypes tests against
- * your L7.7 windowed_attention and L5.1 sdpa_forward are in
- * test_flash_attn_ctypes.py.
+ * tl_softmax_f32, then the weighted sum of values. Fixed input/output
+ * vectors are exchanged with the Python oracle as files.
  */
 #include <math.h>
 #include <stdlib.h>

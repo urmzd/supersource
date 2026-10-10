@@ -1,12 +1,12 @@
---- a/c/src/kernels/matmul.c	2026-10-08 23:00:32
-+++ b/c/src/kernels/matmul.c	2026-10-08 23:00:32
-@@ -47,8 +47,8 @@
-      *    when B is stored K x N, and B[j*ldb + k] when it is stored N x K. */
-     for (int64_t i = 0; i < M; i++) {
-         float *c = C + i * ldc; /* row i of C */
-+        float acc = 0.0f;
-         for (int64_t j = 0; j < N; j++) {
--            float acc = 0.0f;
-             for (int64_t k = 0; k < K; k++) {
-                 float b = trans_b ? B[j * ldb + k] : B[k * ldb + j];
-                 acc += A[i * lda + k] * b;
+--- a/python/tinyllm/linalg/matmul.py
++++ b/python/tinyllm/linalg/matmul.py
+@@ -46,8 +46,8 @@
+             raise ValueError(f"C must be a writable float32 array of shape {(m, n)}")
+     al, be = np.float32(alpha), np.float32(beta)
+     for i in range(m):
++        acc = np.float32(0.0)
+         for j in range(n):
+-            acc = np.float32(0.0)
+             for q in range(k):
+                 rhs = bb[j, q] if trans_b else bb[q, j]
+                 acc = np.float32(acc + np.float32(aa[i, q] * rhs))

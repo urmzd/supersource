@@ -5,11 +5,11 @@
 
 | | |
 |---|---|
-| **Module** | `L9.2` · build · C · Pass 6 · 2 to 3 h |
+| **Module** | `L9.2` · side · C · Pass 6 · 2 to 3 h |
 | **You build** | `c/src/kernels/softmax.c`: `tl_softmax_f32` (three passes over each row: max, exponentiate and sum, normalize) and `tl_softmax_online_f32` (two passes: a running max with a rescaled running sum, then normalize) |
 | **Contract** | [`course/contracts/c/include/tinyllm/softmax.h`](../../../course/contracts/c/include/tinyllm/softmax.h) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/L9.2/`: `test_softmax.c` (C, under ASan and UBSan, both kernels through one table) and `test_softmax_ctypes.py` (Python, through your `rt.01` loader, against your `M09.2` softmax) (what they check: section 4) |
-| **Needs** | `rt.01` the error slot and the loader · `M09.6` your `tl_expf` · `M09.2` your Python `softmax`, the specification (or `--ref-deps`). Reading: `S-M05` (loop invariants) |
+| **Tests** | `course/tests/L9.2/`: `test_softmax.c` (C, under ASan and UBSan, both kernels through one table) and shared file fixtures (what they check: section 4) |
+| **Needs** | `rt.02` the error slot and the loader · `M09.6` your `tl_expf` · `M09.2` your Python `softmax`, the specification (or `--ref-deps`). Reading: `S-M05` (loop invariants) |
 | **Used by** | `L9.3` and `L9.4` build their C-side attention oracle from `tl_softmax_f32`, and apply the online update of this chapter to tiles of keys |
 | **Milestone** | `MS-L9` (the C backend generates the same tokens as numpy) |
 | **Optional depth** | Milakov and Gimelshein, "Online normalizer calculation for softmax" (2018); Dao et al., "FlashAttention" (2022), section 3.1; Higham, *Accuracy and Stability of Numerical Algorithms*, chapter 4 (summation) |
@@ -28,7 +28,7 @@
 ss start L9.2              # stubs c/src/kernels/softmax.c into your repo
 ss tests L9.2              # read the test catalog first
 ss check L9.2              # exit code is the verdict
-ss check L9.2 --ref-deps   # only if rt.01, M09.6, or M09.2 is not passing yet
+ss check L9.2 --ref-deps   # only if rt.02, M09.6, or M09.2 is not passing yet
 ss parity softmax.online   # the golden parity suite against a float64 oracle
 ss diff  L9.2              # after passing: your code against the reference
 ```
@@ -37,7 +37,7 @@ ss diff  L9.2              # after passing: your code against the reference
 
 ## 1. Why now
 
-Your Python sampler and every attention layer you wrote in Parts 5 to 7 call `softmax` from `M09.2`, in numpy. Part 9 moves the forward pass into C so that the Rust engine (`L10.1`) can run it, and attention is where most of the softmax work is: one row of scores per query, per head, per layer, per step. A C softmax that overflows on a large score, turns a fully masked row into NaN, or reads its row three times when two would do, shows up later as a garbage token or as a slow decode. This module writes the row softmax in C twice. The three-pass version is the textbook. The online version is the one idea FlashAttention (`L9.3`) and paged attention (`L9.4`) are built on: you can normalize a row you are still reading, as long as you remember what maximum you normalized against.
+Your Python sampler and every attention layer you wrote in Parts 5 to 7 call `softmax` from `M09.2`, in numpy. Part 9 moves the forward pass into C so that the Rust engine (the standalone Rust engine) can run it, and attention is where most of the softmax work is: one row of scores per query, per head, per layer, per step. A C softmax that overflows on a large score, turns a fully masked row into NaN, or reads its row three times when two would do, shows up later as a garbage token or as a slow decode. This module writes the row softmax in C twice. The three-pass version is the textbook. The online version is the one idea FlashAttention (`L9.3`) and paged attention (`L9.4`) are built on: you can normalize a row you are still reading, as long as you remember what maximum you normalized against.
 
 ## 2. Principles
 
@@ -112,7 +112,7 @@ $$y = [0.1353353, 0.3678794, 1] \times 0.6652410 = [0.0900306, 0.2447285, 0.6652
 | 1 | 2 | $2 > 1$: $s = 1 \cdot e^{-1} + 1$ | 1.3678794 | 2 |
 | 2 | 3 | $3 > 2$: $s = 1.3678794 \cdot e^{-1} + 1 = 0.5032147 + 1$ | 1.5032147 | 3 |
 
-The same $m$ and $s$ as the three-pass version, and pass 2 writes the same $y$. These are the numbers of the first test, `hand_example`, which runs both kernels, and of `test_hand_example_through_ctypes`.
+The same $m$ and $s$ as the three-pass version, and pass 2 writes the same $y$. These are the numbers of the first test, `hand_example`, which runs both kernels, and of `test_hand_example`.
 
 ## 4. The interface
 
@@ -125,7 +125,7 @@ tl_status tl_softmax_online_f32(const float *x, float *y, int64_t rows, int64_t 
    when rows * cols > 0. */
 ```
 
-From Python, declare the two symbols on your `rt.01` loader and pass `f32_ptr` buffers, as for `tl_matmul_f32`.
+From Python, declare the two symbols on your loader and pass `f32_ptr` buffers, as for `tl_matmul_f32`.
 
 ### What the tests check
 
@@ -139,10 +139,6 @@ From Python, declare the two symbols on your `rt.01` loader and pass `f32_ptr` b
 | `in_place` | unit | `y == x` | normalizing a score buffer in place |
 | `bad_arguments_are_einval` | boundary | negative dims and NULL buffers give `TL_EINVAL`; empty work with NULL is fine | errors instead of crashes |
 | `rows_sum_to_one_and_versions_agree` | property, differential | 200 random rows: non-negative, sum to 1 within $2nu$, zeros on masks, the two kernels agree | the definition, for every length up to 501 |
-| `test_hand_example_through_ctypes` | unit, smoke | section 3 across the boundary, both kernels | how `L9.7` calls it |
-| `test_matches_your_m09_2_softmax` | differential | lengths 1 to 4096, scales 0.01 to $10^4$, masked entries, against your Python softmax | P6: Python is the specification |
-| `test_in_place_through_ctypes` | unit | one numpy buffer as input and output | the Python backend |
-| `test_einval_raises_through_the_loader` | boundary | a NULL output arrives as `TlError` with `TL_EINVAL` | the error path end to end |
 
 ## 5. Pitfalls
 
@@ -164,7 +160,7 @@ From Python, declare the two symbols on your `rt.01` loader and pass `f32_ptr` b
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `rt.01` | the error slot behind `TL_EINVAL`, and the loader the Python tests use |
+| Back | `rt.02` | the error slot behind `TL_EINVAL` the Python tests use |
 | Back | `M09.6` | `tl_expf`, your exponential: every $e^{x}$ in this file |
 | Back | `M09.2` | the Python `softmax` that is the specification |
 | Forward | `L9.3` | FlashAttention: the online update over tiles of keys, with the output rescaled by the same factor; its C tests build the naive attention oracle from `tl_softmax_f32` |

@@ -17,7 +17,6 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-tl-sys = { path = "../tl-sys" }
 tl-engine = { path = "../tl-engine" }
 tl-tok = { path = "../tl-tok" }
 bytes = "1"
@@ -27,3 +26,4 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 toml = "1"
+tonic = "0.14"

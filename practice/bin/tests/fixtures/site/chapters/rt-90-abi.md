@@ -54,7 +54,7 @@ void tl_free(void *p);
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `alloc_goes_through_the_hook` | fault | the counting allocator only sees allocations that use tl_alloc, and 64-byte alignment is what the kernels rely on | rt.91 |
-| `abi_version_matches_header` | unit | bindings refuse a library whose major ABI version differs from the header they were written against | rt.91 |
+| `abi_version_matches_header` | unit | a C consumer can compare the library version with the header's version before using the interface | rt.91 |
 | `status_strings` | unit | every status has a readable name and an unknown code still gets one | rt.91 |
 | `set_allocator_rejects_half_a_hook` | boundary | a hook with alloc but no free would leak every block it hands out | rt.91 |
 

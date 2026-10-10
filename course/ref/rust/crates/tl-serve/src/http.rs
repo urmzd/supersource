@@ -3,7 +3,7 @@
 //! One request per TCP connection, one thread per connection:
 //!
 //!   bytes --read_request--> Request --parse_completion--> CompletionRequest
-//!         --Bigram::logits (tl_matmul_f32 in C) + sample--> byte ids
+//!         --Bigram::logits (row lookup) + sample--> byte ids
 //!         --Utf8Stream--> text --JSON / SSE--> bytes back to the client
 //!
 //! then, when OTEL_EXPORTER_OTLP_ENDPOINT is set, one SERVER span per
@@ -574,15 +574,12 @@ impl Bigram {
         // SOLUTION-END
     }
 
-    /// The next-token logits after byte `prev`, computed in C:
-    /// `onehot(prev) @ W` through `tl_matmul_f32` (M = 1, K = N = 256).
+    /// The next-token logits after byte `prev`: row `prev` of the stored
+    /// transition matrix. A one-hot row times W selects that same row.
     pub fn logits(&self, prev: u8) -> Result<Vec<f32>, String> {
         // SOLUTION-BEGIN L10.0
-        let mut onehot = vec![0.0f32; VOCAB];
-        onehot[prev as usize] = 1.0;
-        let mut out = vec![0.0f32; VOCAB];
-        tl_sys::matmul_f32(&onehot, &self.weight, &mut out, 1, VOCAB, VOCAB, false).map_err(|e| e.to_string())?;
-        Ok(out)
+        let start = prev as usize * VOCAB;
+        Ok(self.weight[start..start + VOCAB].to_vec())
         // SOLUTION-END
     }
 }
@@ -1235,32 +1232,5 @@ fn complete(req: &Request, server: &Server, out: &mut TcpStream, extra: &[(Strin
     }
     let _ = out.write_all(sse_event("[DONE]").as_bytes());
     outcome
-    // SOLUTION-END
-}
-
-// ===========================================================================
-// Shutdown
-
-extern "C" {
-    fn signal(signum: i32, handler: usize) -> usize;
-    fn _exit(status: i32) -> !;
-}
-
-const SIGTERM: i32 = 15; // the same number on Linux and macOS
-
-extern "C" fn on_sigterm(_signum: i32) {
-    // SOLUTION-BEGIN L10.0
-    // Only async-signal-safe calls are allowed here: _exit, not exit.
-    unsafe { _exit(0) }
-    // SOLUTION-END
-}
-
-/// Makes SIGTERM exit the process with status 0 (spec/cli-roles.md).
-pub fn exit_on_sigterm() {
-    // SOLUTION-BEGIN L10.0
-    // SAFETY: installs a handler that only calls the async-signal-safe _exit.
-    unsafe {
-        signal(SIGTERM, on_sigterm as *const () as usize);
-    }
     // SOLUTION-END
 }

@@ -24,7 +24,7 @@ practice/bin/ss check lang.01                  # grade it
 | Pass | Path | What your system does after it | Gate |
 |---|---|---|---|
 | P0 | [course-p00-setup](../course-p00-setup/) | an empty repo whose CI lints commits, runs native tests, and runs `ss check --all --ci` | MS-P0 |
-| P1 | [course-p01-tracer](../course-p01-tracer/) | a byte bigram trained by your CLI, served by your Rust engine through your C matmul, behind your Go gateway, on kind, with one trace and one runbook | MS-P1 |
+| P1 | [course-p01-tracer](../course-p01-tracer/) | a byte bigram trained by your CLI, served by your Rust engine, behind your Go gateway, on kind, with one trace and one runbook | MS-P1 |
 
 Passes 2 to 11 (autograd, tokenizers and data, sequence models, the transformer, inference and kernels, the serving platform, durable workflows, the capstone training run, agents, operations) arrive batch by batch; their pass paths are added to [`path.tsv`](path.tsv) as they land.
 

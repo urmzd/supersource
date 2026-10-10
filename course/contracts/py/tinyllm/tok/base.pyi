@@ -2,7 +2,7 @@
 # chapter: ml/08-tinyllm/p01-tokenizers/01-tokenizer-protocol-and-char.md
 #
 # The Tokenizer protocol every tokenizer implements (bytes, char, BPE,
-# WordPiece, Unigram, and tinyllm_rs.Tokenizer from L1.5), and the tracer's
+# WordPiece, Unigram, and the Python BPE from L1.5), and the tracer's
 # byte tokenizer (D32, formats/tokenizer.md), whose token strings come from
 # M05.2 (tinyllm.tok.bytes_unicode). Ids are ints in [0, vocab_size).
 from typing import Optional, Protocol, Sequence, runtime_checkable

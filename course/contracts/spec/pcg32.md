@@ -1,6 +1,6 @@
 # PCG32: the one random generator
 
-<!-- modules: M06.3 (Python tinyllm/num/rng.py and C c/src/numerics/rng.c), L10.1 (Rust port), load.01 (Go port go/ds/rng)
+<!-- modules: M06.3 (Python tinyllm/num/rng.py), L10.1 (Rust port), load.01 (Go port go/ds/rng)
      conformance: parity/rng (vectors: spec/pcg32.vectors.json) -->
 
 Every random draw in the system, in every language, comes from this generator (D10, P11), so a seed means the same thing in Python training, the Rust sampler, and the Go load generator. Course tests draw from the frozen copy in `course/tests/_lib/pcg32.py` (D35), never from yours.

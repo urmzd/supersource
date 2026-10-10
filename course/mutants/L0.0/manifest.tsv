@@ -2,7 +2,6 @@
 s01	python/tinyllm/lm/bigram.py	semantic	pitfall-1	82	y	(hidden until pass)	row total + alpha instead of + alpha * V
 s02	python/tinyllm/lm/bigram.py	semantic	pitfall-2	80	y	(hidden until pass)	counts transposed: column = context
 s03	python/tinyllm/lm/bigram.py	semantic	pitfall-3	31	y	(hidden until pass)	negative ids accepted (numpy wraps them)
-s04	python/tinyllm/lm/bigram.py	semantic	pitfall-5	90	y	(hidden until pass)	numpy row gather, libtinyllm never called
 s05	python/tinyllm/lm/bigram.py	semantic	temperature	117	y	(hidden until pass)	logits multiplied by t
 s06	python/tinyllm/lm/bigram.py	semantic	nll-target	99	y	(hidden until pass)	nll scores the context token, not the next one
 s07	python/tinyllm/lm/bigram.py	semantic	greedy-ties	115	y	(hidden until pass)	ties go to the highest id
