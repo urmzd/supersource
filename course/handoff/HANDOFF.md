@@ -1,5 +1,21 @@
 # Course build handoff
 
+## Status update (2026-10-09, 22:30): read this first
+
+A Codex session ran steps A and part of B, then stopped. Pick up from here:
+
+- **Step A is done** (commit cec5587): all 284 non-milestone modules are registered.
+- **Step B is in progress** (commit 012a495): active code no longer uses ctypes, PyO3, tl-sys, or Rust-to-C calls; DESIGN.md alignment (the M09.x entries and others) is only partly done. Finish B by re-checking every item in section 4 Step B below.
+- **CI infrastructure is fixed** (commits 842a438, ddb0cd3, 1e3fcbb, 06e90eb): Linux POSIX compile flags, pcg32 float tolerance, uv offline cache, the gateway pepper secret, and 60-minute timeouts for the e2e and kind jobs. Lint, Test, Build Exercises, Predict, Book PDF and Build site pass. Do not redo these.
+- **Known CI failures, all course content (they are step D and E work):**
+  1. `ss lint --links`: 21 broken links, mostly chapters pointing at `course/milestones/MS-C2.toml`, `paths/course-p10-agents/milestone.md`, post-training `.pyi` contracts, and gateway chapter siblings that do not exist.
+  2. `ss verify course --e2e`: 38 failing checks. The reference learner has 29 failing modules (L0.0 L0.3 L0.4 L1.1 ds.05 ds.06 L2.3 L3.1 L4.5 L5.1 L5.2 L7.3 L7.4 L8.1 ds.01 ds.02 ds.03 rt.02 ds.09 dur.01 ethics.04 L11.2 craft.02 gw.00, OpenAPI v1/v2 conformance on engine and gateway) with about 120 blocked behind them, so every milestone after MS-P0 fails. Example: L0.0's test_safetensors expects ValueError for a malformed f16 file and the reference does not raise.
+  3. `ss export` does not vendor `course/fixtures/ASSETS.tsv` or `contracts/formats/policy.v1.schema.json` into `third_party/supersource`, so ethics.03 and ethics.05 vendored tests fail.
+  4. Harness gaps logged in `open-items.txt`: on Linux the C ASan build does not fail rt.91 on a planted off-by-one (test marked xfail on Linux); the TSan rt.92 test is flaky on macOS.
+- **Reproduce CI locally** with isolated scratch: `SS_SCRATCH=$PWD/.scratchpad/w/e2e SS_CACHE=$PWD/.scratchpad/w/e2e/cache practice/bin/ss verify course --e2e --keep $PWD/.scratchpad/w/e2e/keep`. The kept learner's `.ss/verdicts.jsonl` lists every verdict. It takes about 15 minutes.
+- **Disk:** the Go build cache and the uv cache regrow by tens of GB during verification. When free disk drops under 30 GB, `go clean -cache` is approved; ask before pruning anything else.
+- **Priority if time runs short:** finish B, then D, E, F on the existing 307 modules; B14 (step C) comes last.
+
 You are taking over the build of the supersource course from a Claude Code session. Finish everything below, in order. This file is the brief; `course/DESIGN.md` is the spec.
 
 Repo: this git worktree (`.worktrees/course`, branch `feat/course`, PR urmzd/supersource#19). Work only inside it.
