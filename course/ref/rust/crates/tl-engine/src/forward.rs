@@ -6,7 +6,7 @@ use candle_core::{D, Device, Tensor};
 use candle_nn::{ops, Module};
 
 use crate::kv::KvPool;
-use crate::model::{Linear, LlamaWeights, ModelConfig};
+use crate::model::{matmul_rows, Linear, LlamaWeights, ModelConfig};
 use crate::quant::{f16_to_f32, f32_to_f16};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,23 +100,25 @@ fn rope(data: &mut [f32], positions: &[usize], heads: usize, head_dim: usize, in
 
 fn attention(q: &[f32], k: &[f32], v: &[f32], ns: usize, tk: usize, heads: usize, kv_heads: usize, hd: usize, q_offset: usize, scale: f32, device: &Device) -> Result<Vec<f32>, String> {
     // SOLUTION-BEGIN L10.1
+    if q_offset + ns > tk { return Err(format!("attention: {ns} queries from position {q_offset} see past the {tk} cached keys")); }
     let mut out = vec![0.0f32; ns * heads * hd];
     for h in 0..heads {
         let kh = h / (heads / kv_heads);
-        let qh: Vec<f32> = (0..ns).flat_map(|i| q[(i * heads + h) * hd..(i * heads + h + 1) * hd].iter().copied()).collect();
         let khv: Vec<f32> = (0..tk).flat_map(|i| k[(kh * tk + i) * hd..(kh * tk + i + 1) * hd].iter().copied()).collect();
         let vhv: Vec<f32> = (0..tk).flat_map(|i| v[(kh * tk + i) * hd..(kh * tk + i + 1) * hd].iter().copied()).collect();
-        let qt = Tensor::from_vec(qh, (ns, hd), device).map_err(|e| e.to_string())?;
-        let kt = Tensor::from_vec(khv, (tk, hd), device).map_err(|e| e.to_string())?;
-        let scores = qt.matmul(&kt.transpose(0, 1).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-        let mut score_rows = scores.to_vec2::<f32>().map_err(|e| e.to_string())?;
-        for i in 0..ns { for j in q_offset + i + 1..tk { score_rows[i][j] = f32::NEG_INFINITY; } }
-        for row in &mut score_rows { for x in row { *x *= scale; } }
-        let scores = Tensor::from_vec(score_rows.into_iter().flatten().collect(), (ns, tk), device).map_err(|e| e.to_string())?;
-        let probs = ops::softmax(&scores, D::Minus1).map_err(|e| e.to_string())?;
-        let vt = Tensor::from_vec(vhv, (tk, hd), device).map_err(|e| e.to_string())?;
-        let result = probs.matmul(&vt).map_err(|e| e.to_string())?.to_vec2::<f32>().map_err(|e| e.to_string())?;
-        for i in 0..ns { out[(i * heads + h) * hd..(i * heads + h + 1) * hd].copy_from_slice(&result[i]); }
+        // Query i at absolute position q_offset + i sees keys 0..=q_offset + i
+        // and nothing else: no masked tail, so its sums run over the same
+        // keys in the same shapes whether it is decoded or prefilled.
+        for i in 0..ns {
+            let seen = q_offset + i + 1;
+            let kt = Tensor::from_slice(&khv[..seen * hd], (seen, hd), device).and_then(|t| t.transpose(0, 1)).map_err(|e| e.to_string())?;
+            let qrow = &q[(i * heads + h) * hd..(i * heads + h + 1) * hd];
+            let scores: Vec<f32> = matmul_rows(qrow, 1, hd, &kt, device)?.into_iter().map(|x| x * scale).collect();
+            let scores = Tensor::from_vec(scores, (1, seen), device).map_err(|e| e.to_string())?;
+            let probs = tensor_vec(ops::softmax(&scores, D::Minus1).map_err(|e| e.to_string())?)?;
+            let vt = Tensor::from_slice(&vhv[..seen * hd], (seen, hd), device).map_err(|e| e.to_string())?;
+            out[(i * heads + h) * hd..(i * heads + h + 1) * hd].copy_from_slice(&matmul_rows(&probs, 1, seen, &vt, device)?);
+        }
     }
     Ok(out)
     // SOLUTION-END
@@ -199,9 +201,8 @@ pub fn llama_forward(w: &LlamaWeights, cfg: &ModelConfig, inv_freq: &[f32], devi
     for (r,(s,&off)) in batch.seqs.iter().zip(&offsets).enumerate() { let i = off + s.tokens.len() - 1; last[r*d..(r+1)*d].copy_from_slice(&x[i*d..(i+1)*d]); }
     let normed = rms_norm(&last, &w.norm, rows, d, cfg.rms_norm_eps, device)?;
     let data = match &w.lm_head { Some(head) => project(head, &normed, rows, device)?, None => {
-        let input = Tensor::from_vec(normed, (rows,d), device).map_err(|e| e.to_string())?;
         let embed = Tensor::from_vec(w.embed.clone(), (cfg.vocab_size,d), device).map_err(|e| e.to_string())?;
-        tensor_vec(input.matmul(&embed.transpose(0,1).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?)?
+        matmul_rows(&normed, rows, d, &embed.transpose(0,1).map_err(|e| e.to_string())?, device)?
     }};
     Ok(Logits { vocab: cfg.vocab_size, data })
     // SOLUTION-END

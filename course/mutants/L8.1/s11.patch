@@ -5,7 +5,7 @@
      if len(xs) == 0:
          return 0.0
 -    return float(np.cumsum(np.asarray(xs, dtype=np.float64))[-1])
-+    return float(sum(xs))
++    return math.fsum(xs)
  
  
  def _softmax_over(l: NDArray, keep: Sequence[int]) -> list[float]:

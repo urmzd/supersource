@@ -12,7 +12,7 @@ s10	rust/crates/tl-engine/src/quant.rs	semantic	pitfall-10	138	y	int4 values are
 s11	rust/crates/tl-engine/src/model.rs	semantic	pitfall-11	288	y	tensor bytes located wrongly	data_offsets read from the start of the file
 s12	rust/crates/tl-engine/src/model.rs	semantic	pitfall-12	303	y	BF16 weights are widened as if they were F16	bf16 bytes through f16_to_f32
 s13	rust/crates/tl-engine/src/forward.rs	semantic	pitfall-13	165	y	RoPE positions restart at every step	positions relative to the step, not absolute
-s14	rust/crates/tl-engine/src/forward.rs	semantic	pitfall-14	198	y	attention forgets where the new tokens sit	q_offset 0 for every step
+s14	rust/crates/tl-engine/src/forward.rs	semantic	pitfall-14	94	y	attention forgets where the new tokens sit	q_offset 0 for every step
 s15	rust/crates/tl-engine/src/forward.rs	semantic	statement-swap	84	n	K and V land in each other's slab	write_kv swaps the K and V slabs
 s16	rust/crates/tl-engine/src/forward.rs	semantic	statement-deletion	230	n	the final norm is skipped	logits from the un-normed last hidden state
 s17	rust/crates/tl-engine/src/runner.rs	semantic	pitfall-15	207	y	a one-off forward leaks its blocks	run_once never releases its temporary blocks

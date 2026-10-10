@@ -23,7 +23,7 @@ SS_TEST(baseline_row_major) {
      *      C[i][j] = sum over k of A[i*3 + k] * B[k*2 + j]. You and the test
      *      agree on the definition before anything harder.
      * KIND: unit, smoke
-     * CATCHES: s01, m001, m002
+     * CATCHES: s02, m01, m02, m03
      * CHAPTER: L9.1 section 3 */
     float C[4] = {0};
     SS_EQ(tl_matmul_f32(HA, HB, C, 2, 2, 3, 3, 2, 2, 1.0f, 0.0f, 0, NULL), TL_OK);
@@ -35,7 +35,7 @@ SS_TEST(trans_b_reads_rows_of_b) {
      *      standalone C callers may store their weights as [out, in].
      *      trans_b = 1 must give the same product with B stored transposed.
      * KIND: unit
-     * CATCHES: s02
+     * CATCHES: s03
      * CHAPTER: L9.1 section 2 */
     float C[4] = {0};
     SS_EQ(tl_matmul_f32(HA, HBT, C, 2, 2, 3, 3, 3, 2, 1.0f, 0.0f, 1, NULL), TL_OK);
@@ -47,7 +47,7 @@ SS_TEST(beta_zero_ignores_garbage_in_c) {
      *      code that computes beta * C[i][j] turns a NaN already in C into NaN
      *      in the result, because 0 * NaN is NaN.
      * KIND: boundary
-     * CATCHES: s03
+     * CATCHES: s07
      * CHAPTER: L9.1 section 5, Pitfalls */
     float C[4] = {NAN, INFINITY, -NAN, NAN};
     SS_EQ(tl_matmul_f32(HA, HB, C, 2, 2, 3, 3, 2, 2, 1.0f, 0.0f, 0, NULL), TL_OK);
@@ -59,7 +59,7 @@ SS_TEST(alpha_and_beta_scale_and_accumulate) {
      *      uses; beta = 1 accumulates into C (a residual add), alpha scales.
      *      Values are chosen so every step is exact in float32.
      * KIND: unit
-     * CATCHES: s04
+     * CATCHES: m01, m03
      * CHAPTER: L9.1 section 2 */
     float C[4] = {2, 4, 6, 8};
     SS_EQ(tl_matmul_f32(HA, HB, C, 2, 2, 3, 3, 2, 2, 2.0f, 0.5f, 0, NULL), TL_OK);
@@ -73,7 +73,7 @@ SS_TEST(leading_dimensions_skip_padding) {
      *      buffer (one head of a fused QKV projection). Using N or K instead
      *      of ldc or lda reads the padding and writes over it.
      * KIND: unit
-     * CATCHES: s05, s06
+     * CATCHES: s04, s06
      * CHAPTER: L9.1 section 3 */
     const float P = 1e30f; /* padding sentinel: a product with it is obviously wrong */
     const float A[2 * 5] = {1, 2, 3, P, P, 4, 5, 6, P, P};                /* lda = 5 */
@@ -93,7 +93,7 @@ SS_TEST(empty_dimensions) {
      *      must not touch C; K = 0 is an empty sum, so C becomes beta * C.
      *      A prompt of length 0 and a model with no heads hit these.
      * KIND: boundary
-     * CATCHES: s07
+     * CATCHES: s08
      * CHAPTER: L9.1 section 4 */
     float C[4] = {1, 2, 3, 4};
     SS_EQ(tl_matmul_f32(NULL, NULL, C, 0, 2, 3, 3, 2, 2, 1.0f, 0.0f, 0, NULL), TL_OK);
@@ -114,7 +114,7 @@ SS_TEST(bad_arguments_are_einval) {
      *      says TL_EINVAL with the error slot naming the function, and C left
      *      exactly as it was, instead of a crash three layers later.
      * KIND: boundary
-     * CATCHES: s08, m003
+     * CATCHES: s09
      * CHAPTER: L9.1 section 4 */
     float C[4] = {1, 2, 3, 4};
     SS_EQ(tl_matmul_f32(HA, HB, C, -1, 2, 3, 3, 2, 2, 1.0f, 0.0f, 0, NULL), TL_EINVAL);

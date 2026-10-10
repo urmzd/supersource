@@ -41,9 +41,12 @@ SAN_FLAGS = [
     "-D_POSIX_C_SOURCE=200809L",
     "-O1",
     "-g",
-    "-fsanitize=address,undefined",
+    # float-cast-overflow (a float to int conversion out of range, NaN
+    # included) is in clang's `undefined` group but not in gcc's, so name it,
+    # or the same code is undefined behaviour on macOS and silent on Linux.
+    "-fsanitize=address,undefined,float-cast-overflow",
     "-fno-omit-frame-pointer",
-    "-fno-sanitize-recover=undefined",
+    "-fno-sanitize-recover=undefined,float-cast-overflow",
     "-Wall",
     "-Wextra",
     "-Wno-unused-parameter",

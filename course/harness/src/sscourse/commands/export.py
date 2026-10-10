@@ -344,7 +344,7 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         ]
     if c_ids:
         langs["c"] = [
-            f"mkdir -p c/build && cc -std=c11 -D_POSIX_C_SOURCE=200809L -g -fsanitize=address,undefined -DSS_COUNTING_ALLOC=1 -Icontracts/c/include "
+            f"mkdir -p c/build && cc -std=c11 -D_POSIX_C_SOURCE=200809L -g -fsanitize=address,undefined,float-cast-overflow -DSS_COUNTING_ALLOC=1 -Icontracts/c/include "
             f"{VENDOR}/tests/{mid}/*.c {' '.join(c_units)} -o c/build/test-{mid} -lm && c/build/test-{mid}"
             for mid in c_ids
         ]

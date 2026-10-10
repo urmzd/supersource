@@ -9,7 +9,7 @@ s07	python/tinyllm/infer/sample.py	semantic	pitfall-3	112	y	(hidden until pass)	
 s08	python/tinyllm/infer/sample.py	semantic	min-p	144	y	(hidden until pass)	min-p as an absolute threshold
 s09	python/tinyllm/infer/sample.py	semantic	pitfall-4	149	y	(hidden until pass)	greedy ties go to the highest id
 s10	python/tinyllm/infer/sample.py	semantic	pitfall-5	188	y	(hidden until pass)	greedy consumes a uniform
-s11	python/tinyllm/infer/sample.py	semantic	pitfall-7	79	y	(hidden until pass)	normalizer by builtin sum (compensated since 3.12)
+s11	python/tinyllm/infer/sample.py	semantic	pitfall-7	79	y	(hidden until pass)	normalizer by a compensated sum (math.fsum; builtin sum does this since 3.12)
 s12	python/tinyllm/infer/sample.py	semantic	pitfall-7	79	y	(hidden until pass)	normalizer by numpy's pairwise sum
 s13	python/tinyllm/infer/sample.py	semantic	pitfall-8	133	y	(hidden until pass)	top-p over the distribution before top-k
 s14	python/tinyllm/infer/sample.py	semantic	parity	192	y	(hidden until pass)	a valid but different map from u to ids (1 - u)

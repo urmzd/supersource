@@ -1,5 +1,5 @@
 --- a/rust/crates/tl-engine/src/forward.rs
 +++ b/rust/crates/tl-engine/src/forward.rs
-@@ -113,1 +113,1 @@
--        for i in 0..ns { for j in q_offset + i + 1..tk { score_rows[i][j] = f32::NEG_INFINITY; } }
-+        for i in 0..ns { for j in i + 1..tk { score_rows[i][j] = f32::NEG_INFINITY; } }
+@@ -94,1 +94,1 @@
+-            let seen = q_offset + i + 1;
++            let seen = i + 1;

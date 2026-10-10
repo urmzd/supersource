@@ -348,6 +348,26 @@ impl SafeTensors {
     }
 }
 
+/// x [m, k] @ b [k, n], one row at a time. Candle picks its reduction path
+/// from the shape (a one-row product takes a matrix-vector kernel, a taller
+/// one a blocked kernel that sums in another order), so a row's result would
+/// depend on how many rows share the call. Sending every row through the same
+/// [1, k] x [k, n] product makes the result batch-invariant: a token's
+/// projection is bit-identical whether it is decoded alone, prefilled with
+/// its prompt, or batched with other sequences.
+pub(crate) fn matmul_rows(x: &[f32], m: usize, k: usize, b: &Tensor, device: &Device) -> Result<Vec<f32>, String> {
+    // SOLUTION-BEGIN L10.1
+    if x.len() != m * k { return Err(format!("matmul: input length {} is not [{m}, {k}]", x.len())); }
+    let mut out = Vec::new();
+    for r in 0..m {
+        let a = Tensor::from_slice(&x[r * k..(r + 1) * k], (1, k), device).map_err(|e| e.to_string())?;
+        let y = a.matmul(b).and_then(|y| y.flatten_all()).and_then(|y| y.to_vec1::<f32>()).map_err(|e| e.to_string())?;
+        out.extend_from_slice(&y);
+    }
+    Ok(out)
+    // SOLUTION-END
+}
+
 /// A linear layer W [out, inp]: `forward` computes y = x @ W^T.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Linear {
@@ -378,12 +398,9 @@ impl Linear {
             return Err(format!("linear: input/output lengths do not match [{m}, {inp}] -> [{m}, {out}]"));
         }
         let weight = match self { Linear::F32 { w, .. } => w.clone(), Linear::Q4(q) => q.dequantize() };
-        let a = Tensor::from_vec(x.to_vec(), (m, inp), device).map_err(|e| e.to_string())?;
         let b = Tensor::from_vec(weight, (out, inp), device).map_err(|e| e.to_string())?;
         let transposed = b.transpose(0, 1).map_err(|e| e.to_string())?;
-        let product = a.matmul(&transposed).map_err(|e| e.to_string())?;
-        let rows = product.to_vec2::<f32>().map_err(|e| e.to_string())?;
-        for (dst, row) in y.chunks_exact_mut(out).zip(rows) { dst.copy_from_slice(&row); }
+        y.copy_from_slice(&matmul_rows(x, m, inp, &transposed, device)?);
         Ok(())
         // SOLUTION-END
     }

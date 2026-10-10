@@ -139,6 +139,14 @@ def _copy_dropping_markers(src: Path, dest: Path) -> None:
 
 
 def commit_all(lr: Path, msg: str) -> tuple[int, str]:
+    # Only ever commit the learner repo itself: a learner assembled inside
+    # another checkout (a scratch dir under a worktree) without its own .git
+    # would otherwise commit into that outer repository.
+    rc, top = ctx.git(["rev-parse", "--show-toplevel"], lr)
+    if rc != 0 or Path(top.strip()).resolve() != lr.resolve():
+        rc, out = ctx.git(["init", "-q"], lr)
+        if rc != 0:
+            return rc, out
     rc, out = ctx.git(["add", "-A"], lr)
     if rc != 0:
         return rc, out
