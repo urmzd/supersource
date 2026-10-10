@@ -62,7 +62,7 @@ run        = "tinyllm"
 argv       = ["train", "transformer", "--task", "{fixture:small-corpora/add3.tsv}", "--cfg", "{fixture:configs/xfmr-small.json}",
               "--steps", "{steps}", "--seed", "{seed}", "--out", "{out}/xfmr"]
 vars       = { steps = "3500" }
-smoke_vars = { steps = "1200" }
+smoke_vars = { steps = "2000" }
 expect     = { match = "json-last-line", metrics = { diverged = "== 0", loss_ratio = "< 0.5" } }
 timeout_s  = 600
 
@@ -71,10 +71,11 @@ name   = "xfmr-is-a-model-dir"
 smoke  = true
 expect = { match = "file-produced", glob = "{out:xfmr-train}/xfmr/config.json", schema = "course/contracts/formats/config.schema.json", contains = "\"transformer\"" }
 
-# Beam 4 on 500 unseen sums. The bar is the reference's mean - 3 sd after the
-# smoke run's 1200 updates over seeds 0 to 4 (EM 0.832, 0.952, 0.948, 0.998,
-# 0.964: mean 0.9388, sd 0.0629, so 0.750), written as a fixed number because
-# the full run's five seeds all reach 1.000 (sd 0 would make `calibrated` 1.0).
+# Beam 4 on 500 unseen sums. The bar was the reference's mean - 3 sd after
+# 1200 updates over seeds 0 to 4 on macOS (EM 0.832, 0.952, 0.948, 0.998,
+# 0.964: 0.750). Linux numpy took seed 0 to 0.684 there, so the smoke run now
+# trains 2000 updates (seeds 0 and 1: EM 0.986 and 1.000) and keeps the 0.75
+# bar, written as a fixed number because the full run's seeds all reach 1.000.
 [[step]]
 name      = "xfmr-translate"
 smoke     = true
