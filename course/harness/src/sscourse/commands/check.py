@@ -335,6 +335,10 @@ def _mutation_grade(
         # under --ci: the reference learner's full grade is verify check 6.
         sample = not ci or os.environ.get("SS_MUTATION_SAMPLE") == "1"
         g = grader.grade(sample=sample, sample_seed=seed)
+        if ci and g.sampled and not g.passed:
+            # An estimate below the bar is not a verdict under --ci: grade
+            # every mutant before failing.
+            g = grader.grade(sample=False, sample_seed=seed)
         label = "mutation grade" + (" (estimate)" if g.sampled else "")
     mut_cmd.report(g, False, say, label)
     revealed = bool(ledger.fresh_pass(s.learner, s.reg, m.id)) or ledger.has_event(
