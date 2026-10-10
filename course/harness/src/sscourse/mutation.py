@@ -544,13 +544,28 @@ class Grader:
         patch = self.course / "mutants" / self.m.id / f"{mu.mid}.patch"
         conf = json.dumps(self.spec.classes.get(mu.klass, {}), sort_keys=True)
         return _sha(
-            "mutant/v1",
+            "mutant/v2",
             self.thash,
+            self.closure_hash(),
             self.ref_unit_text(mu.unit) if mu.unit in self.reg.all_units() else mu.unit,
             patch.read_bytes() if patch.is_file() else b"",
             mu.klass,
             conf,
         )
+
+    def closure_hash(self) -> str:
+        """The reference code a mutant runs beside: every unit of the module and
+        its closure. Part of each mutant's cache key, so a shared cache
+        (SS_MUTATION_CACHE) never answers for a changed dependency."""
+        if not hasattr(self, "_closure_hash"):
+            owners = set(self.ref_sources)
+            us = sorted(
+                u for u, chain in self.reg.all_units().items() if owners & set(chain)
+            )
+            self._closure_hash = _sha(
+                "closure/v1", *[u + "\0" + self.ref_unit_text(u) for u in us]
+            )
+        return self._closure_hash
 
     def one(self, mu: Mutant, baseline_s: float) -> MutantResult:
         k = self.key(mu)
@@ -770,7 +785,14 @@ def _first_failure(out: str) -> str:
 
 
 def find_grade_cache(learner: Path) -> Cache:
-    return Cache(learner / ".ss" / "cache" / "mutation.json")
+    """The learner's mutation cache, or SS_MUTATION_CACHE when set. Entries are
+    keyed by content (graded tests, the reference unit, the patch), so one file
+    can serve many repos and CI runs: the reference learner's e2e job keeps it
+    between runs."""
+    shared = os.environ.get("SS_MUTATION_CACHE")
+    return Cache(
+        Path(shared) if shared else learner / ".ss" / "cache" / "mutation.json"
+    )
 
 
 def scratch_tests_root(course: Path, m: Module, work: Path) -> Path | None:

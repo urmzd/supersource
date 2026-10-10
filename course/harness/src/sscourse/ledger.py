@@ -172,6 +172,46 @@ def tree_hash(learner: Path, reg: Registry, mid: str) -> str:
     return "sha256:" + h.hexdigest()
 
 
+def repo_hash(learner: Path, reg: Registry) -> str:
+    """Hash of every module's tree (`tree_hash`): what the learner owns in the
+    whole repo. A verdict recorded with the same repo hash, course commit, and
+    harness ran on exactly the files there are now, so `ss check --all` can
+    reuse it instead of running it again (`reusable`)."""
+    h = hashlib.sha256(b"repo/v1\0")
+    for m in reg.ordered():
+        h.update(m.id.encode() + b"\0" + tree_hash(learner, reg, m.id).encode() + b"\0")
+    return "sha256:" + h.hexdigest()
+
+
+def reusable(
+    v: dict | None,
+    repo: str,
+    course_sha: str,
+    tainted: bool,
+    ci: bool,
+    sample_ok: bool = False,
+) -> bool:
+    """A pass that a new check of the same module would repeat: recorded on
+    the same repo (`repo_hash`), course commit, and harness, from a clean
+    course tree, with no reference code substituted. Under --ci it must be a
+    --ci verdict (practice checks then skip their cluster tier, and a sampled
+    mutation estimate counts only when `sample_ok`, SS_MUTATION_SAMPLE=1);
+    outside --ci a smoke-mode practice pass does not count."""
+    if not v or v.get("result") != "pass" or tainted or v.get("tainted"):
+        return False
+    if v.get("repo") != repo or v.get("course_sha") != course_sha:
+        return False
+    if v.get("ss") != ctx.harness_sha() or v.get("assisted") or v.get("kind_filter"):
+        return False
+    if ci:
+        if not v.get("ci"):
+            return False
+        if (v.get("mutation") or {}).get("sampled") and not sample_ok:
+            return False
+        return True
+    return not is_smoke(v)
+
+
 def matching(learner: Path, reg: Registry, mid: str) -> dict | None:
     """The newest verdict recorded for the files as they are now (same tree
     hash). A failed check of an edit you since reverted does not hide the

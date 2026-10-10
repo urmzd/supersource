@@ -93,6 +93,30 @@ def test_check_all_ci(ss):
     assert data["exit"] == 0 and data["verdict"]["result"] == "pass"
 
 
+def test_check_all_reuses_passes_on_unchanged_files(ss):
+    # --all reports a pass earned on exactly the current files (every owned
+    # unit in the repo) from its verdict; any edit makes every module run
+    # again, since a check builds more than the module's own files; --fresh
+    # runs everything.
+    ss.init()
+    ss("start", "M90.1", rc=0)
+    ss.implement("python/tinyllm/demo/scale.py", owner="M90.1")
+    ss("start", "M90.2", rc=0)
+    ss.implement("python/tinyllm/demo/norm.py")
+    first = ss("check", "--all", "--ci", rc=0).out
+    assert "unchanged since" not in first
+    again = ss("check", "--all", "--ci", rc=0).out
+    assert "M90.1        pass       unchanged since" in again
+    assert "M90.2        pass       unchanged since" in again
+    unit = ss.learner / "python/tinyllm/demo/norm.py"
+    unit.write_text(unit.read_text() + "\n# touched\n")
+    assert "unchanged since" not in ss("check", "--all", "--ci", rc=0).out
+    assert "unchanged since" in ss("check", "--all", "--ci", rc=0).out
+    # A non-CI pass never stands in for --ci, and --fresh reruns every module.
+    assert "unchanged since" not in ss("check", "--all", "--ci", "--fresh", rc=0).out
+    assert "unchanged since" in ss("check", "--all", rc=0).out
+
+
 def test_next_and_learn_check_column(ss):
     ss.init()
     assert "next: stage 0" in ss("next", rc=0).out

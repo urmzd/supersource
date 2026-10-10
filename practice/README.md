@@ -193,7 +193,7 @@ ss status                     # every module: todo, started, pass, stale, assist
 | `ss check <ID>` | Contract pre-check, smoke tests of every dependency you built, then the course tests through the overlay, then (with `[learner_tests]`) the red-then-green journal and the mutation grade of your tests; for a solve set, the answer checker and the proof rubric | 0 pass, 1 fail, 2 not started, 3 blocked by deps, 4 contract drift, 5 harness or toolchain |
 | `ss check <ID> --ref-deps[=all\|ID,...]` | Use the hidden reference for unfinished (or named, or all) deps; the verdict is `assisted` | as above |
 | `ss check <ID> --no-cumulative --kind K --json --seed N` | Skip the dependency smoke tests; run only tests of one KIND; machine output; seed | as above |
-| `ss check --all [--ci]` | Every started module in pass order, each after its deps; `--ci` forbids `--ref-deps` and runs practice checks with `SS_SMOKE=1` (no cluster tier) | worst code |
+| `ss check --all [--ci] [--fresh]` | Every started module in pass order, each after its deps; `--ci` forbids `--ref-deps` and runs practice checks with `SS_SMOKE=1` (no cluster tier). A module whose last verdict is a pass on exactly the current files (every owned unit in the repo, the same course commit and harness, no reference code) is reported from that verdict, and a dependency that passed on these files skips its cumulative smoke rerun; `--fresh` checks everything | worst code |
 | `ss tests <ID>` | The annotated test catalog: name, KIND, WHY, smoke tests | 0 |
 | `ss diff <ID> [--spoil]` | Your units against the reference, after a pass (before one, only with `--spoil`) | 0, 1 |
 | `ss show <ID>` / `ss reveal <ID>` | Print the reference; recorded as `spoiled` | 0 |
@@ -212,7 +212,7 @@ ss status                     # every module: todo, started, pass, stale, assist
 | `ss export <DIR> [--remote URL] [--allow-incomplete]` | Clone your repo with its history and vendor the course tests of every passed module, with test glue | 0, 1 |
 | `ss doctor [--pass N] [--json]` | The toolchain each pass needs, Docker's CPU and memory from Pass 7 | 0, 5 |
 | `ss course ci [--upstream URL]` | Print the learner CI recipe (below) | 0 |
-| `ss verify course [ID..] [--changed REF] [--global] [--nightly] [--e2e\|--kind [--keep DIR]] [--assemble DIR]` | Maintainer checks 1 to 14 of course/DESIGN.md 5.14; `--e2e` runs a learner assembled from `course/ref` end to end, `--kind` adds the kind steps against a deployed reference, `--assemble DIR` only builds that learner | 0, 1 |
+| `ss verify course [ID..] [--changed REF] [--global] [--nightly] [--e2e\|--kind [MS-ID..] [--keep DIR]] [--assemble DIR]` | Maintainer checks 1 to 14 of course/DESIGN.md 5.14; `--e2e` runs a learner assembled from `course/ref` end to end, `--kind` adds the kind steps against a deployed reference (milestone ids limit either to those milestones), `--assemble DIR` only builds that learner. `SS_MUTATION_CACHE=<file>` shares mutation results across runs (CI keeps it between jobs) | 0, 1 |
 
 **Grading your tests.** A module with `[learner_tests]` (rung R2 and up)
 grades the tests you write, not your code: they run against the reference

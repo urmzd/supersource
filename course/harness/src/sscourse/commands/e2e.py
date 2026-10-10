@@ -268,11 +268,19 @@ def assemble(
 
 
 def run(
-    reg, course: Path, work: Path, rep, kind: bool = False, keep: Path | None = None
+    reg,
+    course: Path,
+    work: Path,
+    rep,
+    kind: bool = False,
+    keep: Path | None = None,
+    only: list[str] | None = None,
 ) -> None:
     """kind=False: milestones in --smoke mode (PR CI). kind=True: every milestone
     with a `ci = "kind"` step in full mode against the [deploy] cluster.
-    keep: assemble the reference learner there and leave it for later runs."""
+    keep: assemble the reference learner there and leave it for later runs.
+    only: run just these milestones (the PR kind job deploys the Pass 1
+    system, so it runs MS-P1; the nightly job deploys more and runs all)."""
     ctx.say(
         f"{ctx.BLD}verify course --{'kind' if kind else 'e2e'}{ctx.RST}  reference learner from {course / 'ref'}"
     )
@@ -329,6 +337,8 @@ def run(
         rep.ok("e2e", "ss check --all --ci")
 
     for msid in milestones.all_ids(course):
+        if only and msid not in only:
+            continue
         ms = milestones.load(course, msid)
         if kind and not any(
             s.kind for s in milestones.plan(course, msid, smoke=False).steps

@@ -1,11 +1,16 @@
 """ss check <ID> [--ref-deps[=all|ID,...]] [--no-cumulative] [--kind K] [--json] [--seed N]
-ss check --all [--ci]
+ss check --all [--ci] [--fresh]
 
 --all checks every started module in pass order. --ci is what the learner's
 own CI runs (`ss course ci` prints that recipe): it forbids --ref-deps, skips
 interactive proof rubrics (reported `self`), and runs practice checks with
 SS_SMOKE=1 (no cluster tier; a practice verdict whose check skipped its
 cluster tier is recorded with mode "smoke"). With nothing started it is trivially green.
+--all reuses a pass recorded on exactly the current files (every owned unit,
+artifact, and graded test in the repo, the same course commit and harness,
+no reference code); --fresh checks every module again. Under --all the same
+rule skips a dependency's cumulative smoke tests when that dependency passed
+on these files (a single `ss check <ID>` always reruns them).
 
 Order (DESIGN 5.3, 5.4): not started (2), contracts content hash (4), dependency
 resolution (3), unit contract pre-check (4), cumulative smoke of every
@@ -113,8 +118,16 @@ def check_one(
     quiet: bool = False,
     ci: bool = False,
     regrade: bool = False,
+    reuse_deps: bool = False,
 ) -> int:
+    """reuse_deps (set by --all): skip a dependency's cumulative smoke tests
+    when it passed on exactly these files (it was just checked in the same
+    run), instead of running them again for every dependent."""
     m = s.module(mid)
+    # The whole repo as it is now: recorded with the verdict, so a later
+    # `ss check --all` (or a dependent's regression step) can tell that a pass
+    # was earned on exactly these files (ledger.reusable).
+    repo = ledger.repo_hash(s.learner, s.reg)
     say = (lambda *_: None) if as_json else ctx.say
     if m.kind in ("solve", "proof"):
         return check_solve(s, m, ci, as_json, say, regrade)
@@ -158,6 +171,8 @@ def check_one(
                 **({"mode": "smoke"} if smoke else {}),
                 "tainted": s.tree.tainted,
                 "course_sha": s.tree.sha[:12],
+                "repo": repo,
+                "ci": ci,
                 **extra,
             },
         )
@@ -246,6 +261,13 @@ def check_one(
     for d, names in regress:
         if not ov.test_langs(d):
             continue
+        if reuse_deps and names is not None and _passed_here(s, d, repo, ci):
+            # d passed on exactly these files (same repo hash, course, and
+            # harness): its smoke tests would run the same code to the same
+            # result. A unit this module took over (names None) always reruns.
+            if not quiet:
+                say(f"  {ctx.DIM}ok   {d} smoke (passed on this tree){ctx.RST}")
+            continue
         runs = ov.run_tests(d, names, rust_tests=rust_ids)
         label = f"{d} " + (
             f"smoke: {', '.join(names)}" if names else f"tests (taken over by {mid})"
@@ -311,6 +333,20 @@ def check_one(
         )
         say(f"  {ctx.DIM}ss tests {mid}  reads what each test checks and why{ctx.RST}")
     return finish(EXIT_PASS if ok else EXIT_FAIL, v)
+
+
+def _passed_here(s: Session, mid: str, repo: str, ci: bool) -> dict | None:
+    """The latest verdict of `mid` when it is a pass a rerun would repeat."""
+    v = ledger.latest(s.learner, mid)
+    ok = ledger.reusable(
+        v,
+        repo,
+        s.tree.sha[:12],
+        s.tree.tainted,
+        ci,
+        sample_ok=os.environ.get("SS_MUTATION_SAMPLE") == "1",
+    )
+    return v if ok else None
 
 
 def _mutation_grade(
@@ -435,7 +471,10 @@ def check_solve(
     return EXIT_PASS if result == "pass" else EXIT_FAIL
 
 
-def check_all(s: Session, ci: bool, as_json: bool) -> int:
+def check_all(s: Session, ci: bool, as_json: bool, fresh: bool = False) -> int:
+    """Every started module in pass order. A module whose latest verdict is a
+    pass earned on exactly the current files (ledger.reusable) is reported
+    from that verdict instead of being checked again; --fresh checks all."""
     rows = []
     worst = 0
     if ci:
@@ -464,7 +503,23 @@ def check_all(s: Session, ci: bool, as_json: bool) -> int:
             if code != EXIT_NOT_STARTED:
                 worst = max(worst, code)
             continue
-        code = check_one(s, m.id, "none", set(), True, None, False, quiet=True, ci=ci)
+        if not fresh:
+            v = _passed_here(s, m.id, ledger.repo_hash(s.learner, s.reg), ci)
+            if v:
+                rows.append((m.id, "pass", f"unchanged since {v.get('ts', '?')}"))
+                continue
+        code = check_one(
+            s,
+            m.id,
+            "none",
+            set(),
+            True,
+            None,
+            False,
+            quiet=True,
+            ci=ci,
+            reuse_deps=not fresh,
+        )
         st = {0: "pass", 1: "fail", 2: "not started", 3: "blocked", 4: "drift"}.get(
             code, "error"
         )
@@ -493,6 +548,11 @@ def main(argv: list[str]) -> int:
     ap.add_argument("id", nargs="?")
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--ci", action="store_true")
+    ap.add_argument(
+        "--fresh",
+        action="store_true",
+        help="--all: check every module, even one that passed on these exact files",
+    )
     ap.add_argument("--ref-deps", nargs="?", const="", default=None)
     ap.add_argument("--no-cumulative", action="store_true")
     ap.add_argument("--kind")
@@ -513,7 +573,7 @@ def _run(s: Session, a, ap) -> int:
     if a.all:
         if a.ref_deps is not None and a.ci:
             raise HarnessError("--ci forbids --ref-deps")
-        return check_all(s, a.ci, a.json)
+        return check_all(s, a.ci, a.json, a.fresh)
     if not a.id:
         ap.print_usage()
         return EXIT_HARNESS

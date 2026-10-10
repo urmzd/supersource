@@ -1,4 +1,4 @@
-"""ss verify course [ID...] [--changed REF] [--global] [--nightly] [--e2e|--kind [--keep DIR]] [--assemble DIR]
+"""ss verify course [ID...] [--changed REF] [--global] [--nightly] [--e2e|--kind [MS-ID...] [--keep DIR]] [--assemble DIR]
 maintainer checks (DESIGN 5.14)
 
 Per module (checks 1 to 14):
@@ -21,7 +21,8 @@ reverse dependents. --nightly uses three determinism runs.
 ref/entry, ref/system.toml) and runs it as a learner would: check --all --ci,
 every `ci = "pr"` milestone with --smoke, ss conform on each declared tier, then
 ss export and the vendored tests natively. --kind does the same assembly and
-runs every milestone with a kind step in full; it needs the reference kind
+runs every milestone with a kind step in full (or only the milestone ids
+given, e.g. `--kind MS-P1`); it needs the reference kind
 cluster. A milestone that requires a drill runs with --ref-deps (drills are
 graded by `ss drill end`). --keep DIR leaves that learner at DIR; --assemble DIR
 only builds it there (the milestone-p1-kind CI job deploys it to kind).
@@ -1156,10 +1157,19 @@ def main(argv: list[str]) -> int:
             raise HarnessError("--record-thresholds needs module ids")
         return record_thresholds(reg, course, work, a.ids, a.seeds)
     if a.e2e or a.kind:
+        from .. import milestones
         from . import e2e
 
         rep = Report()
-        e2e.run(reg, course, work, rep, kind=a.kind, keep=a.keep)
+        only = [x for x in a.ids if x.startswith("MS-")]
+        if len(only) != len(a.ids):
+            raise HarnessError(
+                "--e2e and --kind take milestone ids only (MS-<name>), to run just those"
+            )
+        unknown = sorted(set(only) - set(milestones.all_ids(course)))
+        if unknown:
+            raise HarnessError(f"no such milestone: {', '.join(unknown)}")
+        e2e.run(reg, course, work, rep, kind=a.kind, keep=a.keep, only=only or None)
         if rep.failures:
             ctx.say(f"{ctx.RED}{rep.failures} check(s) failed{ctx.RST}")
             return EXIT_FAIL

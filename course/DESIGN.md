@@ -2532,7 +2532,7 @@ tl_status tl_matmul_f32(/* ... */) {
 | `ss start <ID>` | stub the owned units into the learner repo; print chapter, contract, tests, rung | 0, 5 |
 | `ss tests <ID>` | print the annotated test catalog (name, KIND, WHY) | 0 |
 | `ss check <ID> [--ref-deps[=all\|ID,...]] [--no-cumulative] [--kind K] [--json]` | contract pre-check, cumulative smoke, course tests through the overlay, then the mutation grade if `[learner_tests]` exists (required mutants plus a sample, 5.6); for `solve` ids, the answer checker | 0 pass, 1 fail, 2 not started, 3 blocked by deps, 4 contract drift, 5 harness or toolchain |
-| `ss check --all [--ci]` | every started module (owned units present and not stubs), in pass order; `--ci` forbids `--ref-deps`, skips the interactive proof rubrics (reported as `self` skipped), and uses the cached full mutation grade | as above |
+| `ss check --all [--ci] [--fresh]` | every started module (owned units present and not stubs), in pass order; `--ci` forbids `--ref-deps`, skips the interactive proof rubrics (reported as `self` skipped), and uses the cached full mutation grade; a pass recorded on exactly the current repo (every owned unit, the same course commit and harness, no reference code) is reused, and dependencies that passed on these files skip their cumulative smoke rerun; `--fresh` checks everything | as above |
 | `ss mutate <ID> [-j N] [--reveal-survivors]` | mutation grade only | 0, 1 |
 | `ss tdd red\|green <ID>` | 5.12 | 0, 1 |
 | `ss diff <ID>` | learner units against the reference with markers dropped (after passing) | 0 |

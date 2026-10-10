@@ -311,11 +311,32 @@ jobs:
 
       - uses: azure/setup-helm@v4
 
+      # Mutation results are keyed by content (graded tests, the reference
+      # code of the module's closure, the patch), so the last run's file
+      # answers every unchanged mutant (SS_MUTATION_CACHE).
+      - name: Restore the mutation cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ss-mutation
+          key: ss-mutation-e2e-${{ github.run_id }}
+          restore-keys: ss-mutation-
+
       # A learner repo assembled from course/ref + course/ref/entry: ss check
       # --all --ci, every `ci = "pr"` milestone with --smoke, ss conform on both
       # tiers, then ss export and the vendored tests natively.
       - name: Reference learner, smoke milestones, conformance, export
-        run: practice/bin/ss verify course --e2e
+        env:
+          SS_MUTATION_CACHE: ${{ runner.temp }}/ss-mutation/mutation.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/ss-mutation"
+          practice/bin/ss verify course --e2e
+
+      - name: Save the mutation cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ss-mutation
+          key: ss-mutation-e2e-${{ github.run_id }}
 
   milestone-p1-kind:
     name: MS-P1 on kind (reference system)
@@ -386,13 +407,33 @@ jobs:
           helm upgrade --install forge-gateway deploy/helm/forge-gateway -n forge --wait --timeout 5m
           kubectl -n forge rollout status deploy/jaeger --timeout 3m || kubectl -n forge get pods
 
+      - if: steps.changed.outputs.run == 'true'
+        name: Restore the mutation cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ss-mutation
+          key: ss-mutation-kind-${{ github.run_id }}
+          restore-keys: ss-mutation-
+
       # ss check --all --ci, then MS-P1 in full: local steps, documents, and the
       # kind steps (stream through NodePort 30080, one trace in Jaeger at 30686).
       # ops.00 is graded by `ss drill end` in the nightly kind job, so MS-P1
-      # runs with --ref-deps for it.
+      # runs with --ref-deps for it. This job deploys the Pass 1 system only;
+      # the nightly kind job deploys the rest and runs every kind milestone.
       - if: steps.changed.outputs.run == 'true'
         name: MS-P1 with kind steps
-        run: practice/bin/ss verify course --kind
+        env:
+          SS_MUTATION_CACHE: ${{ runner.temp }}/ss-mutation/mutation.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/ss-mutation"
+          practice/bin/ss verify course --kind MS-P1
+
+      - if: always() && steps.changed.outputs.run == 'true'
+        name: Save the mutation cache
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ss-mutation
+          key: ss-mutation-kind-${{ github.run_id }}
 
       - if: failure() && steps.changed.outputs.run == 'true'
         name: Cluster state on failure
