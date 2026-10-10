@@ -12,7 +12,7 @@ reading   = ["M00.1", "S-M05"]
 # L1.4 (Unigram EM re-estimates piece probabilities with mle) is in this
 # batch. L2.1 (Kneser-Ney) and M11.4 (PMI) join used_by with B5: the mirror
 # rule only accepts call sites in the registry.
-used_by   = ["L1.4"]
+used_by   = ["L1.4", "L2.1"]
 units     = ["python/tinyllm/prob/mle.py"]
 upgrades  = []
 milestone = "MS-P3"

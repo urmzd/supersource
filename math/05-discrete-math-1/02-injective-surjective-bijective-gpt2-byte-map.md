@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/tok/bytes_unicode.pyi`](../../course/contracts/py/tinyllm/tok/bytes_unicode.pyi) |
 | **Tests** | `course/tests/M05.2/` (what they check: section 4) |
 | **Needs** | no code from earlier modules · reading: `S-M05` (functions and bijections problems) |
-| **Used by** | `L1.1` the tokenizer protocol · `L1.2` byte-level BPE stores its vocabulary and merges in this alphabet · later: `L1.5` re-implements the table in Rust |
+| **Used by** | `L1.1` the tokenizer protocol · `L1.2` byte-level BPE stores its vocabulary and merges in this alphabet · later: `L1.5` re-implements the table in Rust · later: `L8.7` |
 | **Milestone** | `MS-P3` (tokens and data) |
 | **Optional depth** | Rosen, *Discrete Mathematics and Its Applications*, section 2.3 "Functions"; Radford et al., "Language Models are Unsupervised Multitask Learners" (2019), section 2.2 |
 
@@ -154,6 +154,7 @@ Write `bytes_to_unicode` from the rule in section 2, not by pasting a table: the
 | 11. an off-by-one range end (`0x7E` vs `0x7D`) | `~` is remapped | `test_matches_gpt2_table` (mutant `m01`) |
 
 ## 6. Where it's used next
+| Forward | `L8.7` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

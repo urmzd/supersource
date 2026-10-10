@@ -14,7 +14,7 @@ deps      = []
 reading   = ["lang.06", "gw.00", "ai-platform-engineering/12-gateway"]
 # Every stage package uses server.Middleware, the Exchange, and WriteError;
 # gw.07 also the chain's meter slot.
-used_by   = ["gw.02", "gw.03", "gw.04", "gw.05", "gw.06", "gw.07"]
+used_by   = ["gw.02", "gw.03", "gw.04", "gw.05", "gw.06", "gw.07", "gw.08"]
 units     = ["go/gateway/server/chain.go", "go/gateway/server/server.go", "go/config/config.go"]
 upgrades  = []
 milestone = "MS-gateway"

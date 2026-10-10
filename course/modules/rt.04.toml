@@ -17,7 +17,7 @@ reading   = ["ml/08-tinyllm/p08-inference/README.md"]   # L8.2's contiguous cach
 # L8.3 is the Python cache over the pool; L9.4's paged attention kernel
 # reads its slabs. L10.4 (block manager), L10.6 (KV transfer), and craft.13
 # (format v2, upgrades kv_pool.c) join with their batches.
-used_by   = ["L8.3", "L9.4"]
+used_by   = ["L10.1", "L10.4", "L10.6", "L10.8", "L8.3", "L9.4"]
 units     = ["c/src/runtime/kv_pool.c"]
 upgrades  = []
 milestone = "MS-L8"

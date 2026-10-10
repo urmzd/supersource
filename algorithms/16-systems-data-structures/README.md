@@ -70,7 +70,17 @@ The engine flag `--prefix-cache=hash|radix` gives both `ds.02` (hash index in C)
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B4 (ds.05, ds.06, ds.08), B8 (ds.01 to ds.04, ds.07), and B9 (ds.09) (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ds.01` | [Growable array tl_vec (type-erased)](01-growable-array.md) | build | 6 |
+| 2 | `ds.02` | [Swiss table tl_map (u64 to u64)](02-swiss-table.md) | build | 6 |
+| 3 | `ds.03` | [Intrusive list + LRU](03-intrusive-list-and-lru.md) | build | 6 |
+| 4 | `ds.04` | [Binary heap top-k in C](04-binary-heap-top-k.md) | build | 6 |
+| 5 | `ds.05` | [Robin Hood hash map with backward-shift deletion](05-robin-hood-hash-map.md) | build | 3 |
+| 6 | `ds.06` | [Binary heap with lazy deletion](06-binary-heap-lazy-deletion.md) | build | 3 |
+| 7 | `ds.07` | [Radix tree over token ids with index-linked LRU leaf list](07-radix-tree.md) | build | 6 |
+| 8 | `ds.08` | [Bloom filter](08-bloom-filter.md) | build | 3 |
+| 9 | `ds.09` | [Consistent hash ring with bounded loads](09-consistent-hash-ring.md) | build | 7 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

@@ -13,7 +13,7 @@ reading   = ["S-M06a"]   # counting: V ** L sequences, why exhaustive search is 
 # Call site (DESIGN 4.3): L6.7 zoo, beam decoding of seq2seq and transformer
 # checkpoints. Not registered yet, so verify check 9 fails until L6.7 (B7)
 # lists L4.4 in deps (B62-03).
-used_by   = []
+used_by   = ["L5.5", "L6.7"]
 units     = ["python/tinyllm/infer/beam.py"]
 upgrades  = []
 milestone = "MS-L4"

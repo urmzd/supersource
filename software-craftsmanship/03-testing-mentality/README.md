@@ -137,7 +137,17 @@ In the course this topic hosts the testing ladder: one practice module per rung,
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B3 (craft.03), B4 (craft.04), B6 (craft.07), B7 (craft.05), B8 (craft.06), B9 (craft.20), B10 (craft.21), B11 (craft.22), and B12 (craft.23) (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `craft.03` | [TDD, unit tests, and how your tests are graded](01-tdd-unit-tests-and-mutation-grading.md) | practice | 2 |
+| 2 | `craft.04` | [Property-based tests (R4) with Hypothesis, proptest, rapid, and ss_prop.h](02-property-based-tests.md) | practice | 3 |
+| 3 | `craft.05` | [Oracles, golden and differential tests, gradcheck as a test (R5)](03-oracles-golden-and-gradcheck.md) | practice | 5 |
+| 4 | `craft.06` | [Benchmarks and perf gates (R7)](04-benchmarks-and-perf-gates.md) | practice | 6 |
+| 5 | `craft.07` | [Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors](05-mutation-testing-in-depth.md) | practice | 4 |
+| 6 | `craft.20` | [Contract tests (R6): consumer-driven tests for gateway to engine](06-contract-tests.md) | practice | 7 |
+| 7 | `craft.21` | [Resilience tests (R10)](07-resilience-tests.md) | practice | 8 |
+| 8 | `craft.22` | [Model evals as tests (R8)](08-model-evals-as-tests.md) | practice | 9 |
+| 9 | `craft.23` | [Agent evals as tests (R9)](23-agent-evals-as-tests.md) | practice | 10 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

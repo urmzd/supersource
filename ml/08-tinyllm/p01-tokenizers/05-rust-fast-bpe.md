@@ -10,7 +10,7 @@
 | **Contract** | Python surface: [`py/tinyllm_rs.pyi`](../../../course/contracts/py/tinyllm_rs.pyi) (`Bpe`, and the build contract) · the files: [`formats/tokenizer.md`](../../../course/contracts/formats/tokenizer.md) (bytes tokenizer, BPE subset, incremental decoding) · the roles: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) (`tl-tok`) · the Rust interface in section 4 |
 | **Tests** | `course/tests/rust/l1_5.rs` (16 tests) and `course/tests/L1.5/test_tinyllm_rs.py` (6 tests, one of them run for both tokenizers); what they check: section 4 · parity suite `tokenizer.bpe` · your own tests in `rust/crates/tl-tok/tests/l1_5_props.rs`, rung R4 (proptest), graded by mutation (threshold 0.80) |
 | **Needs** | `L1.2` your Python BPE, the specification every id is checked against ([chapter](02-byte-level-bpe.md)) · `ds.05` the Robin Hood map ([chapter](../../../algorithms/16-systems-data-structures/05-robin-hood-hash-map.md)) · `ds.06` the lazy heap ([chapter](../../../algorithms/16-systems-data-structures/06-binary-heap-lazy-deletion.md)) · reading: `lang.04` the [Rust primer](../../../software-craftsmanship/12-language-and-tool-primers/04-rust.md), `M05.2` the [GPT-2 byte map](../../../math/05-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md) · or `--ref-deps` |
-| **Used by** | `ds.08` adds `tinyllm_rs.Bloom` to the `tl-py` crate this module creates · `data.07` packs the corpus into token streams with `encode_batch` · later: `L10.1` and `L10.5` tokenize every request and stream with `StreamDecoder`, `C1` serves the tokenizer it trains |
+| **Used by** | `ds.08` adds `tinyllm_rs.Bloom` to the `tl-py` crate this module creates · `data.07` packs the corpus into token streams with `encode_batch` · later: `L10.1` and `L10.5` tokenize every request and stream with `StreamDecoder`, `C1` serves the tokenizer it trains · later: `L10.9` |
 | **Milestone** | `MS-L1` (`tl-tok encode` and `tinyllm tok encode` against the GPT-2 and SmolLM2 oracles; the speedups are local perf steps) |
 | **Optional depth** | the [PyO3 user guide](https://pyo3.rs/) (free); [Unicode Standard Annex #44](https://www.unicode.org/reports/tr44/) (general categories, free); Hugging Face [tokenizers](https://github.com/huggingface/tokenizers) source |
 
@@ -246,6 +246,7 @@ The binary is yours (D16): `tl-tok encode --tokenizer <file> --in <texts>` and `
 | Generating the category tables with a different Python than your `L1.2` | a handful of characters assigned in a newer Unicode version split differently | the parity suite tokenizer.bpe in fuzz mode (the golden strings avoid those characters) |
 
 ## 6. Where it's used next
+| Forward | `L10.9` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

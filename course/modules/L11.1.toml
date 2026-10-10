@@ -14,9 +14,9 @@ deps      = ["L0.1", "L0.3", "L0.4", "M09.1", "M10.2", "M10.3", "M10.4", "M08.4"
 # The memory plan of M05.1 (bytes per parameter in mixed precision) and
 # L0.5's train_step, which train_step_mixed extends, are read, not called.
 reading   = ["M05.1", "L0.5"]
-# Catalog call site: the C1 trainer (`--bf16 --accum --checkpoint-activations`).
-# C1 joins when its row lists L11.1 in deps (DEVIATIONS B111-03).
-used_by   = []
+# C1's short and full train specs request bf16, accumulation, and activation
+# recompute; its smoke tier stays fp32 (DESIGN D20).
+used_by   = ["C1"]
 units     = ["python/tinyllm/train/precision.py", "python/tinyllm/train/recompute.py"]
 upgrades  = []
 milestone = "MS-L11"

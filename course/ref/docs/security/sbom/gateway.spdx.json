@@ -1,0 +1,51 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "tinyllm-gateway-reference-sbom",
+  "documentNamespace": "https://example.invalid/spdx/tinyllm-gateway-reference-2026-10-09",
+  "creationInfo": {
+    "creators": ["Tool: supersource-course-reference"],
+    "created": "2026-10-09T00:00:00Z",
+    "comment": "Reference example only. Release automation must replace this inventory with the exact image digest and resolved Go module graph."
+  },
+  "packages": [
+    {
+      "name": "tinyllm-gateway",
+      "SPDXID": "SPDXRef-Package-Gateway",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "APPLICATION"
+    },
+    {
+      "name": "github.com/BurntSushi/toml",
+      "SPDXID": "SPDXRef-Package-Toml",
+      "versionInfo": "1.6.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:golang/github.com/%21burnt%21sushi/toml@1.6.0"}]
+    },
+    {
+      "name": "google.golang.org/grpc",
+      "SPDXID": "SPDXRef-Package-Grpc",
+      "versionInfo": "1.83.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:golang/google.golang.org/grpc@1.83.1"}]
+    }
+  ],
+  "relationships": [
+    {"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES", "relatedSpdxElement": "SPDXRef-Package-Gateway"},
+    {"spdxElementId": "SPDXRef-Package-Gateway", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-Package-Toml"},
+    {"spdxElementId": "SPDXRef-Package-Gateway", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-Package-Grpc"}
+  ]
+}

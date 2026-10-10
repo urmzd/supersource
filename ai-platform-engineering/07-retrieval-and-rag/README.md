@@ -173,3 +173,13 @@ Retrieval has its own metrics, separate from generation (full treatment in [LLM 
 | Cohere / Voyage | Bi-encoder embeddings + cross-encoder rerankers | Retrieval-as-a-service |
 | Glean / enterprise search | Permission-filtered, metadata-rich RAG | Secure multi-tenant retrieval |
 | saige (reference) | RRF over vector + BM25 + graph, multimodal variants | Go SDK for agents/KG/RAG |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ag.06` | [RAG ingest: crawler with SSRF allowlist, chunker, embedder, store](06-rag-ingest.md) | build | 10 |
+| 2 | `ag.07` | [Retrieval: BM25, flat and IVF vectors, RRF, MMR](07-retrieval.md) | build | 10 |
+| 3 | `ag.08` | [Context assembly, citations, search_docs tool](08-context-assembly.md) | build | 10 |
+<!-- /ss:chapters -->

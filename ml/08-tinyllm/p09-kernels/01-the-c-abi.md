@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/c/include/tinyllm/abi.h`](../../../course/contracts/c/include/tinyllm/abi.h) · [`course/contracts/py/tinyllm/ffi/libtinyllm.pyi`](../../../course/contracts/py/tinyllm/ffi/libtinyllm.pyi) · rules: [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
 | **Tests** | `course/tests/rt.01/`: `test_abi.c` (C, under ASan and UBSan) and `test_loader.py` (Python) (what they check: section 4) |
 | **Needs** | nothing in code. Reading: `lang.03` (pointers, linkage, ctypes) and `lang.01` (numpy buffers) |
-| **Used by** | `M03.1` reports errors through the slot and is called through the loader · `L0.0` computes its logits through `load().tl_matmul_f32` · `L10.0` links `libtinyllm` from Rust and checks `tl_abi_version` · later every `tl_*` unit, `L9.7`, `L10.1` |
+| **Used by** | `M03.1` reports errors through the slot and is called through the loader · `L0.0` computes its logits through `load().tl_matmul_f32` · `L10.0` links `libtinyllm` from Rust and checks `tl_abi_version` · later every `tl_*` unit, `L9.7`, `L10.1` · later: `L0.5`, `L8.3`, `L9.1`, `L9.2`, `L9.3`, `L9.4`, `L9.5`, `L9.6`, `M09.5`, `M09.6`, `ds.01`, `ds.02`, `ds.04`, `rt.02`, `rt.03`, `rt.04` |
 | **Milestone** | `MS-P1` (the tracer: every layer is yours and runs end to end) |
 | **Optional depth** | Ulrich Drepper, *How To Write Shared Libraries* (free, sections 1 and 2); the System V AMD64 and AAPCS64 calling conventions; the Python `ctypes` documentation, "Return types" and "errcheck" |
 
@@ -209,6 +209,23 @@ Your own `c/Makefile` (entry-point territory: the course ships none) builds `c/b
 | 12. `tl_set_allocator(NULL)` that keeps the old hook | memory keeps coming from a hook whose owner is gone | `set_allocator_null_restores_the_default` |
 
 ## 6. Where it's used next
+| Forward | `L0.5` | Registered call site uses this module. |
+| Forward | `L10.1` | Registered call site uses this module. |
+| Forward | `L8.3` | Registered call site uses this module. |
+| Forward | `L9.1` | Registered call site uses this module. |
+| Forward | `L9.2` | Registered call site uses this module. |
+| Forward | `L9.3` | Registered call site uses this module. |
+| Forward | `L9.4` | Registered call site uses this module. |
+| Forward | `L9.5` | Registered call site uses this module. |
+| Forward | `L9.6` | Registered call site uses this module. |
+| Forward | `M09.5` | Registered call site uses this module. |
+| Forward | `M09.6` | Registered call site uses this module. |
+| Forward | `ds.01` | Registered call site uses this module. |
+| Forward | `ds.02` | Registered call site uses this module. |
+| Forward | `ds.04` | Registered call site uses this module. |
+| Forward | `rt.02` | Registered call site uses this module. |
+| Forward | `rt.03` | Registered call site uses this module. |
+| Forward | `rt.04` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

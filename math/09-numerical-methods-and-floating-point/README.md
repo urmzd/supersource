@@ -70,7 +70,16 @@ Real numbers do not fit in 32 bits, so every computation is an approximation, an
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B3 (M09.1, M09.2, S-M09a) and B8 (M09.3 to M09.6, S-M09b) (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `M09.1` | [IEEE 754 anatomy, ulp, round to nearest even, and bf16 and fp16 emulation](01-ieee-754.md) | build | 2 |
+| 2 | `M09.2` | [Stable numerics: logsumexp, softmax, compensated sums](02-stable-numerics.md) | build | 2 |
+| 3 | `M09.3` | [Error analysis, condition numbers, tolerance budgets](03-error-analysis-condition-numbers-and-tolerance-budgets.md) | build | 6 |
+| 4 | `M09.4` | [FP8 E4M3/E5M2, MXFP4/MXFP8 with E8M0 scales, and the C conversions](04-fp8-and-microscaling-formats.md) | build | 6 |
+| 5 | `M09.5` | [Fixed-point iteration and a fast inverse square root in C](05-fixed-point-iteration-and-rsqrt.md) | build | 6 |
+| 6 | `M09.6` | [Polynomial approximation and range reduction: expf in C](06-polynomial-approximation-and-expf.md) | build | 6 |
+| 7 | `S-M09a` | [Floating point problem set, part a: representation, rounding, cancellation](90-problem-set-a.md) | solve | 2 |
+| 8 | `S-M09b` | [Floating point problem set, part b: condition numbers, error bounds, Newton, polynomial approximation, low precision](91-problem-set-b.md) | solve | 6 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

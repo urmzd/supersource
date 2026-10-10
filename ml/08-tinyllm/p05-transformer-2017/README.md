@@ -25,7 +25,13 @@ Attention is all you need, built from its parts. Scaled dot-product attention wi
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B7 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `L5.1` | [Scaled dot-product attention (forward and backward)](01-scaled-dot-product-attention.md) | build | 5 |
+| 2 | `L5.2` | [Masks: causal, padding, sliding window, additive](02-masks.md) | build | 5 |
+| 3 | `L5.3` | [Multi-head attention](03-multi-head-attention.md) | build | 5 |
+| 4 | `L5.4` | [Positional encodings: sinusoidal, learned](04-positional-encodings.md) | build | 5 |
+| 5 | `L5.5` | [Encoder-decoder Transformer: post-LN and pre-LN, Noam, label smoothing](05-encoder-decoder-transformer.md) | build | 5 |
 <!-- /ss:chapters -->
 
 ## Going further

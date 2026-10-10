@@ -10,7 +10,7 @@
 | **Contract** | 401 `invalid_api_key` and 403 `insufficient_scope` in [`course/contracts/openapi/openai-subset.v1.yaml`](../../course/contracts/openapi/openai-subset.v1.yaml) · `KeyCreate`, `KeyInfo`, `KeyCreated` and the keys rules in [`course/contracts/openapi/admin.v1.yaml`](../../course/contracts/openapi/admin.v1.yaml) · `[gateway]` `keys_file`, `pepper_env`, `key_cache_ttl_s` in [`course/contracts/config/runtime.schema.json`](../../course/contracts/config/runtime.schema.json) |
 | **Tests** | `course/tests/go/gw_02/` (what they check: section 4) |
 | **Needs** | [`gw.01` server skeleton](../12-gateway/01-server-skeleton.md) (the `Middleware` type, the `Exchange`, `WriteError`) |
-| **Used by** | `gw.03` keys budgets by `Principal.KeyID` · `gw.05` shows `X-TL-Route` to debug keys · `gw.06` scopes the cache by `Principal.Tenant` · `gw.07` records tenant and key id and checks the admin scope |
+| **Used by** | `gw.03` keys budgets by `Principal.KeyID` · `gw.05` shows `X-TL-Route` to debug keys · `gw.06` scopes the cache by `Principal.Tenant` · `gw.07` records tenant and key id and checks the admin scope · later: `gw.08` |
 | **Milestone** | MS-gateway |
 | **Optional depth** | RFC 2104 (HMAC, free); OWASP *Authentication Cheat Sheet* and *API Security Top 10* (free); `craft.19` reviews this module as a security review |
 
@@ -158,6 +158,7 @@ The catalog sketched `Create(ctx, tenant, scopes)`; `Create` takes a `KeySpec` b
 | 6. forwarding `Authorization`, or no `X-TL-Priority` from the key | the key reaches engine logs; the engine scheduler (`L10.2`) treats every tenant alike | `TestMiddleware401And403` (mutants `s13`, `s14`) |
 
 ## 6. Where it's used next
+| Forward | `gw.08` | Registered module relationship. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

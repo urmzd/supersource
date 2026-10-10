@@ -30,7 +30,7 @@
 # whichever pod the NodePort picks.
 id       = "MS-durable-ha"
 title    = "Your durable log survives leader kills and partitions on three Raft replicas"
-requires = ["dur.10", "MS-durable"]
+requires = ["dur.10", "MS-durable", "ops.12"]
 pass     = 8
 ci       = "nightly"
 
@@ -71,3 +71,11 @@ timeout_s = 60
 # chaos     = { kill = ["leader:durable-*"], partition = ["leader:durable-*"], every_s = "3..8", count = 12, seed = 1 }
 # expect    = { match = "effects", keys = "0..499", exactly_once = true, linearizable = true }
 # timeout_s = 900
+
+# ops.12 is an optional end-to-end partition drill. The module verdict covers
+# fault detection and its postmortem; this step keeps its runbook present in
+# the learner's Raft HA deployment.
+[[step]]
+name   = "ops.12-raft-partition-runbook-present"
+ci     = "kind"
+expect = { match = "file-produced", glob = "docs/runbooks/RaftPartition.md", contains = "linearizability" }

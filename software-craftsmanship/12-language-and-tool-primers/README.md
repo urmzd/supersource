@@ -48,4 +48,8 @@ Just enough of each language and tool to build the course system, each placed im
 | 5 | `lang.05` | [HTTP/1.1, JSON, and Server-Sent Events from the wire up](05-http-and-sse.md) | practice | 1 |
 | 6 | `lang.06` | [Go: packages, interfaces, goroutines, channels, context, net/http, testing](06-go.md) | practice | 1 |
 | 7 | `lang.07` | [Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind](07-containers-and-kubernetes.md) | practice | 1 |
+| 8 | `lang.08` | [Python asyncio: event loop, tasks, cancellation, bounded concurrency](08-python-asyncio.md) | practice | 3 |
+| 9 | `lang.09` | [Async Rust and tokio: futures, tasks, channels, cancellation, hyper](09-async-rust-and-tokio.md) | practice | 7 |
+| 10 | `lang.10` | [Protocol Buffers and gRPC: schema evolution, unary and streaming RPCs, stubs](10-protocol-buffers-and-grpc.md) | practice | 7 |
+| 11 | `lang.11` | [SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates](11-sql-and-sqlite.md) | practice | 7 |
 <!-- /ss:chapters -->

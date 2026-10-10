@@ -138,6 +138,45 @@ func TestHandExampleSegmentsAndEvals(t *testing.T) {
 	}
 }
 
+func TestEvalIntervalUsesDurableSleepAndReplaysOnce(t *testing.T) {
+	// WHY: evaluation cadence is workflow time, not a worker sleep. A crash
+	//      during that wait must replay the recorded timer once and preserve
+	//      the same gap before the next training segment.
+	// KIND: fault
+	// CATCHES: s13
+	// CHAPTER: dur.11 section 2.1
+	s := newSim(t, "train/timed")
+	d := newRunDir()
+	fakeTraining(s, d)
+	in := workflows.TrainRunInput{
+		Spec:       json.RawMessage(`{"name":"tiny","steps":1200,"eval_every":500,"eval_interval_seconds":30,"seed":7}`),
+		EvalSuites: []string{"ppl"},
+	}
+	want, err := runTrain(t, s, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.hist) != 8 {
+		t.Fatalf("history has %d steps, want 3 train, 3 eval, and 2 timer waits", len(s.hist))
+	}
+	for i, wantKind := range []string{"activity", "activity", "sleep", "activity", "activity", "sleep", "activity", "activity"} {
+		if s.hist[i].Kind != wantKind {
+			t.Fatalf("history[%d] kind = %q, want %q", i, s.hist[i].Kind, wantKind)
+		}
+		if wantKind == "sleep" && s.hist[i].ID != "30s" {
+			t.Fatalf("history[%d] timer = %q, want 30s", i, s.hist[i].ID)
+		}
+	}
+	evalCount := len(d.evals)
+	got, err := runTrain(t, s, in)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("replay result = (%+v, %v), want (%+v, nil)", got, err, want)
+	}
+	if len(s.hist) != 8 || len(d.evals) != evalCount {
+		t.Fatalf("replay appended history or repeated evaluations: history=%d evals=%d", len(s.hist), len(d.evals))
+	}
+}
+
 func TestSegmentsMath(t *testing.T) {
 	// WHY: segment boundaries decide when evaluations happen; they must end
 	//      exactly at steps, never repeat or skip a boundary, and eval_every
@@ -297,12 +336,12 @@ func TestCorpusFirst(t *testing.T) {
 }
 
 func TestBadSpecFailsFast(t *testing.T) {
-	// WHY: a spec with no name or no steps can never train; the run fails
-	//      non-retryable before any activity.
+	// WHY: a spec with no name, no steps, or a negative cadence can never
+	//      train; the run fails non-retryably before any activity.
 	// KIND: boundary
 	// CATCHES: s09
 	// CHAPTER: dur.11 section 5, Pitfalls
-	for _, sp := range []string{`{"steps":10}`, `{"name":"x","steps":0}`, `{"name":"x","steps":10,"eval_every":-1}`, `[]`} {
+	for _, sp := range []string{`{"steps":10}`, `{"name":"x","steps":0}`, `{"name":"x","steps":10,"eval_every":-1}`, `{"name":"x","steps":10,"eval_interval_seconds":-1}`, `[]`} {
 		s, d := newSim(t, "train/x"), newRunDir()
 		fakeTraining(s, d)
 		_, err := runTrain(t, s, workflows.TrainRunInput{Spec: json.RawMessage(sp)})

@@ -184,6 +184,7 @@ def test_vocab_without_unk_is_rejected():
 | 8. matching specials after normalization, or case-insensitively | `[mask]` typed by a user becomes the mask id | `test_specials_match_as_written` (mutant `s10`) |
 
 ## 6. Where it's used next
+| Forward | `L6.2` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

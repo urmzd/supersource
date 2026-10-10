@@ -10,7 +10,7 @@
 | **Contract** | `tl.durable.v1.TaskService` in [`proto/tl/durable/v1/durable.proto`](../../course/contracts/proto/tl/durable/v1/durable.proto); the Go SDK surface of DESIGN 2.7; the package API is section 4 |
 | **Tests** | `course/tests/go/dur_04/` (what they check: section 4) |
 | **Needs** | `dur.02` the server core, `dur.03` the queue; reading: [`obs.01` tracing](../../systems/04-observability/01-tracing-for-the-serving-path.md), [`lang.10` gRPC](../../software-craftsmanship/12-language-and-tool-primers/10-protocol-buffers-and-grpc.md), [RPC and protocols](../02-rpc-and-protocols/) |
-| **Used by** | `dur.05` activity failures, retries, and heartbeats go through this worker and these leases |
+| **Used by** | `dur.05` activity failures, retries, and heartbeats and `dur.08` cancellation go through these task and activity handlers |
 | **Milestone** | MS-durable |
 | **Optional depth** | the Temporal worker docs (pollers, slots, graceful shutdown); Brooker, *Exponential Backoff and Jitter* (AWS Architecture Blog, 2015) |
 
@@ -178,6 +178,7 @@ func ReconnectDelay(n int, initial, max time.Duration) time.Duration
 | Back | `dur.03` | every delivery is a lease; `Check` fences completions |
 | Forward | `dur.05` | `FailActivityTask` and `RecordHeartbeat` complete the protocol; `activity.IdempotencyKey` reads `Info` |
 | Forward | `dur.06` | `workflow.Registry` is the `WorkflowHandler`; `dur.07` and `dur.08` register more commands |
+| Forward | `dur.08` | cancellation and signals extend these task handlers and the worker's activity context |
 | Forward | `dur.09` | the subprocess runner is an `ActivityFunc` that heartbeats checkpoints |
 
 ## Going further

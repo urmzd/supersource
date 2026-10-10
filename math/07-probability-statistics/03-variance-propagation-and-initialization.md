@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/nn/init.pyi`](../../course/contracts/py/tinyllm/nn/init.pyi) · draw order: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/M07.3/test_init.py` (what they check: section 4); torch's gain table and fan rule in `course/fixtures/M07.3/init_torch.json` |
 | **Needs** | `M07.0` its `normal(rng, n)` draws every normal weight (or `--ref-deps`). Reading: `M01.3` (activations), `M06.3` (PCG32), `S-M02` and `S-M04` (the Gaussian integrals) |
-| **Used by** | `L0.4` initializes every `Linear` and `Embedding` with it · later `L3.2` (LSTM), `L7.9` (the modern decoder), `C1` |
+| **Used by** | `L0.4` initializes every `Linear` and `Embedding` with it · later `L3.2` (LSTM), `L7.9` (the modern decoder), `C1` · later: `L3.3`, `L3.6`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3` |
 | **Milestone** | `MS-P2` (Pass 2 closes with every math module it teaches passing) |
 | **Optional depth** | Glorot and Bengio, "Understanding the difficulty of training deep feedforward neural networks" (2010), section 4.2; He et al., "Delving Deep into Rectifiers" (2015), section 2.2; Radford et al., "Language Models are Unsupervised Multitask Learners" (GPT-2, 2019), section 2.3 |
 
@@ -152,6 +152,13 @@ def scaled_residual_std(base_std: float, n_layers: int) -> float        # base /
 | making a new generator inside the initializer | every layer gets the same weights, and the seed does nothing | `test_same_seed_same_weights` (mutant `s13`) |
 
 ## 6. Where it's used next
+| Forward | `L3.3` | Registered call site uses this module. |
+| Forward | `L3.6` | Registered call site uses this module. |
+| Forward | `L5.4` | Registered call site uses this module. |
+| Forward | `L5.5` | Registered call site uses this module. |
+| Forward | `L6.1` | Registered call site uses this module. |
+| Forward | `L6.2` | Registered call site uses this module. |
+| Forward | `L6.3` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

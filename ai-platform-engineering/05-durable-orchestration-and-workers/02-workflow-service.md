@@ -10,7 +10,7 @@
 | **Contract** | `tl.durable.v1.WorkflowService` in [`proto/tl/durable/v1/durable.proto`](../../course/contracts/proto/tl/durable/v1/durable.proto) (generated Go in `contracts/go/gen/tl/durable/v1`); storage is [`formats/wal.md`](../../course/contracts/formats/wal.md); the Go API of the package is section 4 |
 | **Tests** | `course/tests/go/dur_02/` (what they check: section 4); recorded runs in `course/fixtures/dur/histories/` |
 | **Needs** | `dur.01` the log, `dur.03` the task queue; reading: [`lang.10` gRPC](../../software-craftsmanship/12-language-and-tool-primers/10-protocol-buffers-and-grpc.md), [case study 03, exactly-once event API](../../case-studies/03-exactly-once-event-api/) |
-| **Used by** | `dur.04` the task protocol commits through this core |
+| **Used by** | `dur.04` task RPCs and `dur.08` signals commit through this core |
 | **Milestone** | MS-durable |
 | **Optional depth** | Fowler, *Event Sourcing*; Kleppmann, *DDIA* ch. 11 (derived data); the Temporal docs on workflow id reuse and conflict policies |
 

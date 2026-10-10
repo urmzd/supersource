@@ -16,7 +16,7 @@ contract  = []
 deps      = ["ag.01", "ag.02", "ag.03", "ag.05", "load.01"]
 # M07.4 (bootstrap CIs) is re-implemented in Go, never called.
 reading   = ["M07.4", "ai-platform-engineering/09-llm-evaluation"]
-used_by   = ["ag.10", "ag.11", "ag.12"]
+used_by   = ["ag.10", "ag.11", "ag.12", "craft.23"]
 units     = [
   "go/agent/eval/eval.go",
   "go/agent/eval/stats.go",

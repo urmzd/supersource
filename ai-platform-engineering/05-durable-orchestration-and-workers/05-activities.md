@@ -10,7 +10,7 @@
 | **Contract** | `RetryPolicy`, `ActivityOptions`, `Failure`, and the heartbeat and fail rpcs in [`durable.proto`](../../course/contracts/proto/tl/durable/v1/durable.proto); the Go API is section 4 |
 | **Tests** | `course/tests/go/dur_05/` (what they check: section 4) |
 | **Needs** | `dur.04` the protocol and the worker; reading: [`S-M07a`](../../math/07-probability-statistics/90-problem-set-a.md) (the expected value of a jittered backoff) |
-| **Used by** | `dur.06` workflows see activity failures, retries, and dead letters through this |
+| **Used by** | `dur.06` workflows and `dur.08` cancellation use these activity failure and heartbeat handlers |
 | **Milestone** | MS-durable |
 | **Optional depth** | Brooker, *Exponential Backoff and Jitter* (AWS Architecture Blog, 2015); Helland, *Idempotence Is Not a Medical Condition* (ACM Queue, 2012) |
 
@@ -162,6 +162,7 @@ func (s *Server) RedriveDeadLetter(ctx context.Context, req *durablev1.RedriveDe
 | Back | `dur.04` | the worker reports failures and heartbeats with these rpcs; `Info` carries the key and the details |
 | Back | `S-M07a` | the expected value of a uniform draw, $d/2$ |
 | Forward | `dur.06` | `ExecuteActivity` futures resolve with `ActivityTaskFailed`; options carry the `RetryPolicy` |
+| Forward | `dur.08` | cancellation uses these activity failure and heartbeat handlers |
 | Forward | `dur.09` | the subprocess runner heartbeats checkpoint paths and maps exit codes to failure types |
 
 ## Going further

@@ -11,7 +11,7 @@ reading   = []
 # diagnostic, M10.5. None is registered with M03.4 in its deps yet (M10.1
 # lists it in reading), so verify check 9 fails until one is (DEVIATIONS
 # M034-02).
-used_by   = []
+used_by   = ["L3.1"]
 units     = ["python/tinyllm/linalg/eig.py"]
 upgrades  = []
 milestone = "MS-P2"

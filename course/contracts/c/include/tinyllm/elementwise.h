@@ -5,7 +5,9 @@
  * pointers, non-negative sizes), and a stub unit does nothing. Outputs may
  * alias their first input exactly, never partly.
  *
- * module: L9.6 (c/src/kernels/elementwise.c) */
+ * module: L9.6 (c/src/kernels/elementwise.c)
+ * chapter: ml/08-tinyllm/p09-kernels/09-elementwise-kernels.md
+ */
 #ifndef TINYLLM_ELEMENTWISE_H
 #define TINYLLM_ELEMENTWISE_H
 

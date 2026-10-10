@@ -13,7 +13,7 @@ reading   = ["M00.3", "M10.2"]
 # L0.5's train loop calls the schedule and clipping. L3.6 (clipping), L5.5
 # (Noam), and C1 (WSD) join with their batches: the mirror rule only accepts
 # call sites in the registry.
-used_by   = ["L0.5"]
+used_by   = ["L0.5", "L11.1", "L5.5", "L6.1"]
 units     = ["python/tinyllm/optim/schedule.py"]
 upgrades  = []
 milestone = "MS-P2"

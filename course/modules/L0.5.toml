@@ -15,7 +15,7 @@ reading   = ["L0.0"]   # the tracer bigram whose unit this module takes over
 # Inherited with bigram.py (DESIGN 3.4 upgrade exemption): L10.0 serves the
 # table. L0.6 runs L0.0's suite (bigram.py included) as its regression. L2.2,
 # L3.6, L6.1, and C1 join with their batches.
-used_by   = ["L10.0", "L0.6"]
+used_by   = ["L0.6", "L2.2", "L3.6", "L5.5", "L6.1", "L6.7"]
 units     = ["python/tinyllm/train/loop.py"]
 upgrades  = ["python/tinyllm/lm/bigram.py"]
 milestone = "MS-L0"

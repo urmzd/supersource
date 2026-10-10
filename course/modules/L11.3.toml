@@ -1,6 +1,6 @@
 id        = "L11.3"
 title     = "Data parallelism and ZeRO stages 1 to 3"
-kind      = "build"
+kind      = "side"
 lang      = ["python"]
 pass      = 9
 chapter   = "ml/08-tinyllm/p11-training-at-scale/03-ddp-and-zero.md"
@@ -17,7 +17,7 @@ reading   = ["M05.1", "L11.1"]
 used_by   = []
 units     = ["python/tinyllm/dist/zero.py"]
 upgrades  = []
-milestone = "MS-L11"
+milestone = ""
 ci        = "pr"
 
 [tests]

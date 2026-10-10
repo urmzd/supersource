@@ -49,7 +49,11 @@ Security is a property of the whole system, so it is reviewed against the whole 
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B13 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `craft.17` | [Threat model (STRIDE on your DFD)](01-threat-model-stride.md) | practice | 11 |
+| 2 | `craft.18` | [SBOM and supply chain](02-sbom-and-supply-chain.md) | practice | 11 |
+| 3 | `craft.19` | [Secrets and authorization review](03-secrets-and-authorization-review.md) | practice | 11 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

@@ -1,0 +1,6 @@
+# chapter: ml/08-tinyllm/p12-post-training/02-direct-preference-optimization.md
+from __future__ import annotations
+import numpy as np
+
+def dpo_loss(policy_chosen: np.ndarray, policy_rejected: np.ndarray, reference_chosen: np.ndarray, reference_rejected: np.ndarray, beta: float = 0.1) -> float: ...
+def ipo_loss(policy_chosen: np.ndarray, policy_rejected: np.ndarray, reference_chosen: np.ndarray, reference_rejected: np.ndarray, beta: float = 0.1) -> float: ...

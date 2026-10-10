@@ -14,7 +14,7 @@ reading   = ["M00.1"]
 # C1 (vocab ADR and tokenizer ablation) and data.07 (manifest stats) are the
 # catalog call sites; they join used_by with B5 and B11: the mirror rule only
 # accepts call sites in the registry (DEVIATIONS L1-02).
-used_by   = []
+used_by   = ["data.07"]
 units     = ["python/tinyllm/tok/metrics.py"]
 upgrades  = []
 milestone = "MS-L1"

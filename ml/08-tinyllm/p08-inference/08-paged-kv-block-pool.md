@@ -10,7 +10,7 @@
 | **Contract** | [`tinyllm/kv_pool.h`](../../../course/contracts/c/include/tinyllm/kv_pool.h); the hash and the bytes in [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md); rules in [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
 | **Tests** | `course/tests/rt.04/test_kv_pool.c`, 20 tests under ASan and UBSan with the counting allocator (what they check: section 4) · your own tests in `c/tests/rt04-kv-pool/`, rung R3, graded by mutation (threshold 0.70) · parity suite `ss parity kv.wire.v1` |
 | **Needs** | `rt.01` [the C ABI](../p09-kernels/01-the-c-abi.md) · `M06.3` [FNV-1a](../../../math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) (`tl_fnv1a64`) · `ds.01` [`tl_vec`](../../../algorithms/16-systems-data-structures/01-growable-array.md) (the free list) · `ds.02` [the Swiss table](../../../algorithms/16-systems-data-structures/02-swiss-table.md) (the prefix index) · `ds.03` [the intrusive LRU](../../../algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md) (cached blocks) · reading: [`L8.2`'s contiguous cache](README.md) |
-| **Used by** | `L8.3` the Python paged cache over this pool · later: `L9.4` paged attention reads its slabs, `L10.4` the engine's block manager, `L10.6` KV transfer, `craft.13` format v2 |
+| **Used by** | `L8.3` the Python paged cache over this pool · later: `L9.4` paged attention reads its slabs, `L10.4` the engine's block manager, `L10.6` KV transfer, `craft.13` format v2 · later: `L10.1`, `L10.8` |
 | **Milestone** | `MS-L8` (the paged cache's equivalence), then the engine's `--kv-stats` returning to baseline under load (P7) |
 | **Optional depth** | Kwon et al., [*Efficient Memory Management for LLM Serving with PagedAttention*](https://arxiv.org/abs/2309.06180) (SOSP 2023), sections 4.1 to 4.4 |
 
@@ -195,6 +195,8 @@ Two choices the header leaves open are fixed here: export refuses a block with f
 | Losing a freed id | the pool shrinks by one block per request | `random_ops_keep_the_invariants` (mutant `m03`) |
 
 ## 6. Where it's used next
+| Forward | `L10.1` | Registered call site uses this module. |
+| Forward | `L10.8` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

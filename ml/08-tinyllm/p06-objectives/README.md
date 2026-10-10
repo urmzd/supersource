@@ -27,7 +27,15 @@ One architecture, many objectives. GPT's causal language modeling (with GPT-2 we
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B7 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `L6.1` | [GPT decoder-only, causal LM loss, GPT-2 weight loading](01-gpt-decoder-only.md) | build | 5 |
+| 2 | `L6.2` | [BERT encoder and MLM masking](02-bert-masked-lm.md) | build | 5 |
+| 3 | `L6.3` | [ELECTRA replaced-token detection](03-electra-replaced-token-detection.md) | build | 5 |
+| 4 | `L6.4` | [T5 span corruption and relative position buckets](04-t5-span-corruption-and-relative-buckets.md) | side | 5 |
+| 5 | `L6.5` | [Fine-tuning heads and the linear-head export](05-fine-tuning-heads-and-the-linear-head-export.md) | build | 5 |
+| 6 | `L6.6` | [LoRA with PiSSA init and merge](06-lora-pissa-and-merge.md) | build | 5 |
+| 7 | `L6.7` | [LM evaluation harness and the model zoo](07-lm-evaluation-harness-and-the-model-zoo.md) | build | 5 |
 <!-- /ss:chapters -->
 
 ## Going further

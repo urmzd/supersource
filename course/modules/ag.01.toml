@@ -16,7 +16,7 @@ deps      = []
 reading   = ["lang.06", "gw.04", "L10.9", "ai-platform-engineering/13-agent-sdk"]
 # ag.09: ProviderSubject streams through Provider and Accumulator. ag.11's
 # judge generator joins with its batch (registered callers only).
-used_by   = ["ag.02", "ag.03", "ag.04", "ag.05", "ag.06", "ag.09"]
+used_by   = ["ag.02", "ag.03", "ag.04", "ag.05", "ag.06", "ag.09", "ag.11"]
 units     = ["go/agent/types/types.go", "go/agent/provider/openai.go", "go/agent/provider/sse.go", "go/agent/provider/retry.go"]
 upgrades  = []
 milestone = "MS-agent"

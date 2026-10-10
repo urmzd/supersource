@@ -10,7 +10,7 @@
 | **Contract** | the Tool and ToolCall schemas of [`course/contracts/openapi/openai-subset.v1.yaml`](../../course/contracts/openapi/openai-subset.v1.yaml); the Go API is section 4 |
 | **Tests** | `course/tests/go/ag_02/` (what they check: section 4) |
 | **Needs** | [`ag.01` types and provider](01-types-and-provider.md) (`ToolDef`, `ToolCall`, `Message`) · reading: the JSON-schema subset the engine constrains to (`L8.7`) |
-| **Used by** | `ag.03` runs every call through `Registry.Call` · `ag.04` the `query_usage` tool · `ag.05` a reconciled write's `Result` · `ag.08` the `search_docs` tool · `ag.09` agent subjects carry a registry |
+| **Used by** | `ag.03` runs every call through `Registry.Call` · `ag.04` the `query_usage` tool · `ag.05` a reconciled write's `Result` · `ag.08` the `search_docs` tool · `ag.09` agent subjects carry a registry · `ag.10` JSON schema scorer |
 | **Milestone** | MS-agent |
 | **Optional depth** | [JSON Schema Validation, draft 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation) (free), sections 6.1 to 6.5 |
 
@@ -175,6 +175,7 @@ Use only the standard library (`regexp` is RE2; JSON Schema's patterns are ECMA-
 | Forward | `ag.05` | a reconciled write is recorded as a `Result` the loop replays |
 | Forward | `ag.08` | `search_docs` is a `tool.Tool` in the same registry |
 | Forward | `ag.09` | the evaluation suites build the agents they score with a registry |
+| Forward | `ag.10` | schema scorers validate JSON outputs against the same subset |
 
 ## Going further
 

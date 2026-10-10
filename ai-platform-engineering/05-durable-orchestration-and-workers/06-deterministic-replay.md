@@ -10,7 +10,7 @@
 | **Contract** | the Go SDK surface of DESIGN 2.7, the `Command` and history messages of [`durable.proto`](../../course/contracts/proto/tl/durable/v1/durable.proto); the package API is section 4 |
 | **Tests** | `course/tests/go/dur_06/` (what they check: section 4); recorded runs of the course test workflows in `course/fixtures/dur/histories/` |
 | **Needs** | `dur.05` activities and their failures (and through it the whole server) |
-| **Used by** | `dur.07` `workflow.Sleep` is the SDK half of durable timers |
+| **Used by** | `dur.07` timers and `dur.08` signal/cancel handling extend this workflow SDK |
 | **Milestone** | MS-durable |
 | **Optional depth** | the Temporal docs on deterministic constraints and versioning; Fateev and Abbas, *Temporal: durable execution* talks; Hellerstein et al. on deterministic replay |
 

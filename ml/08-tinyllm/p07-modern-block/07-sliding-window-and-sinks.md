@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/modern/window.pyi`](../../../course/contracts/py/tinyllm/modern/window.pyi) |
 | **Tests** | `course/tests/L7.7/test_window.py` (what they check: section 4), golden values from transformers 5.19.0 `MistralAttention` (sliding window) and gpt-oss's eager attention with learned sinks in `course/fixtures/L7.7/window_hf.npz` (`course/oracle/L7.7/window_hf.py`); your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
 | **Needs** | `L5.2` `causal_mask`, `sliding_window_mask` · `M09.2` `logsumexp` · `L7.5` `GQAttention`, `ConcatKVCache` (the tests stream through them) · `L7.3` `RopeSpec` · `L0.1` `Tensor` (or `--ref-deps`) |
-| **Used by** | `L7.9` places `tl_sliding_window` and `tl_sink_tokens` · later: `L8.2` eviction policy, `L9.3` the C kernel's `window` and `sink_logits` |
+| **Used by** | `L7.9` places `tl_sliding_window` and `tl_sink_tokens` · later: `L8.2` eviction policy, `L9.3` the C kernel's `window` and `sink_logits` · later: `L9.4` |
 | **Milestone** | `MS-L7` (your decoder loads and matches Hugging Face checkpoints) |
 | **Optional depth** | Xiao et al., "Efficient Streaming Language Models with Attention Sinks" (2023); Jiang et al., "Mistral 7B" (2023), section 2; OpenAI, "gpt-oss-120b and gpt-oss-20b model card" (2025), attention sinks |
 
@@ -135,6 +135,7 @@ Your oracles: the visibility rule written as a double loop; attention with a sin
 | a bounded cache given the full-history mask | shapes or windows disagree | `test_attention_mask_dispatch` (mutant `s11`) |
 
 ## 6. Where it's used next
+| Forward | `L9.4` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

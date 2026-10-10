@@ -159,6 +159,7 @@ course/fixtures/parity/sampler.json	cd76cc5e05e246e5e5d96e62df3413b41f9ee99d2cec
 course/fixtures/parity/ring_hash.json	c09f07bf0372403aa906e368e4558e819f274cb671b5bb7c5009c56b667f482f	20638	course/oracle/ds.09/ring_golden.py	-	-	Apache-2.0
 course/fixtures/gw.04/streams.json	1fc72a38f301d210207ba306034864c162484571fdd767d13a5294f907654935	6630	course/oracle/gw.04/streams.py	-	-	Apache-2.0
 course/fixtures/gw.05/cascade_sweep.json	e3b1cc9d69641ce90fc20e34726f56f6e80be13011414829ff3b73857a5a0c29	29654	course/oracle/gw.05/cascade_sweep.py	-	-	Apache-2.0
+course/fixtures/gw.08/policy_cases.json	2fb7d24a6903ca956da438639b5d812fa21d67b8984da610808e4115f6a35b5e	446	-	-	-	Apache-2.0
 course/fixtures/L10.7/engine_metrics.json	b66da0d647348f31cc50c0f7462dca7c969ad7e08f05206a77dcd79eba00c236	4856	course/oracle/L10.7/engine_metrics.py	PyYAML	-	Apache-2.0
 course/fixtures/L10.8/spec_golden.json	a94accea0ce6be6d41a132f62f03a8dd85d8a770afff24a6eab66ac84c3a375e	87593	course/oracle/L10.8/spec_golden.py	numpy	-	Apache-2.0
 course/fixtures/L10.9/constrain_golden.json	532a40140bd659a5e3e3aad70a64ca5e820dc59a1f55dd0a8df3ac8bec199fec	85107	course/oracle/L10.9/constrain_golden.py	-	-	Apache-2.0
@@ -188,3 +189,8 @@ course/fixtures/configs/llama-2m.json	c71c25251bc4c24a0cb6f9ac6e88bd5c6f5454f68b
 course/fixtures/ag.01/streams.json	a2d2e7cf2890076dea8ec6dd1254ff2736a726ba06b89d371ee94cd25fda81ad	8110	course/oracle/ag.01/streams.py	-	-	Apache-2.0
 course/fixtures/ag.04/sql_corpus.json	165400771be4807197c955bb7f05cdad1f153d98a39be6e61716762ee4155496	6528	course/oracle/ag.04/sql_corpus.py	-	-	Apache-2.0
 course/fixtures/ag.04/injection.json	1258615614f53b3dc9293bd47fc487d719c06877db44853c38d28a4a4c1f38fb	13984	course/oracle/ag.04/injection.py	-	-	Apache-2.0
+course/fixtures/ag.10/helpdesk.json	b76432c8f82fc09dbe06a453415ca9d31eee3025c627049862c12c4ca745cdf5	18203	course/oracle/ag.10/helpdesk.py	-	-	Apache-2.0
+course/fixtures/ag.11/judge-labels.jsonl	010e922b237ec373b019f2466df251487a1b3d0f32e3ca09888eda181ce88811	234	-	-	-	Apache-2.0
+course/fixtures/ag.12/experiments.json	2284a591f7439a74e33b9ce2000fcb8250eff93c66d81ae467d686f5f10de55b	231	-	-	-	Apache-2.0
+course/fixtures/craft.13/v1-worked.bin	dd5a2d9371695b7c8c04b6222179e2dff6dd080409485e844853268ddef1a2fe	60	hand	-	-	Apache-2.0
+course/fixtures/craft.13/v2-worked.bin	7d9cabe8284e48cbbcb78f03512c696ec1077e299b250b1f65c11ad061bf73c3	60	hand	-	-	Apache-2.0

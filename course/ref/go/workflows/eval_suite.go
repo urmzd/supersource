@@ -22,11 +22,30 @@ type EvalSubject struct {
 
 // EvalSuiteInput is EvalSuite's input.
 type EvalSuiteInput struct {
-	Name     string        `json:"name,omitempty"` // eval-spec name; default "evalsuite"
-	Tag      string        `json:"tag,omitempty"`  // part of every activity id: TrainRun uses the step
-	Suites   []string      `json:"suites"`
-	Subjects []EvalSubject `json:"subjects"`
-	Seed     int64         `json:"seed"`
+	Name       string             `json:"name,omitempty"` // eval-spec name; default "evalsuite"
+	Tag        string             `json:"tag,omitempty"`  // part of every activity id: TrainRun uses the step
+	Suites     []string           `json:"suites"`
+	Subjects   []EvalSubject      `json:"subjects"`
+	Seed       int64              `json:"seed"`
+	Scorers    []string           `json:"scorers,omitempty"`
+	Judge      *EvalJudge         `json:"judge,omitempty"`
+	AB         *EvalAB            `json:"ab,omitempty"`
+	Thresholds map[string]float64 `json:"thresholds,omitempty"`
+}
+
+type EvalJudge struct {
+	BaseURL  string `json:"base_url"`
+	Model    string `json:"model"`
+	Rubric   string `json:"rubric"`
+	Samples  int    `json:"samples,omitempty"`
+	Pairwise bool   `json:"pairwise,omitempty"`
+}
+
+type EvalAB struct {
+	Base  string  `json:"base"`
+	Exp   string  `json:"exp"`
+	NBoot int     `json:"n_boot,omitempty"`
+	Alpha float64 `json:"alpha,omitempty"`
 }
 
 // EvalSuiteResult maps each suite to its eval activity's outputs
@@ -43,16 +62,20 @@ type SuiteOutputs struct {
 
 // evalSpec is the spec.json one eval activity gets.
 type evalSpec struct {
-	Name     string        `json:"name"`
-	Suites   []string      `json:"suites"`
-	Subjects []EvalSubject `json:"subjects"`
-	Seed     int64         `json:"seed"`
+	Name       string             `json:"name"`
+	Suites     []string           `json:"suites"`
+	Subjects   []EvalSubject      `json:"subjects"`
+	Seed       int64              `json:"seed"`
+	Scorers    []string           `json:"scorers,omitempty"`
+	Judge      *EvalJudge         `json:"judge,omitempty"`
+	AB         *EvalAB            `json:"ab,omitempty"`
+	Thresholds map[string]float64 `json:"thresholds,omitempty"`
 }
 
 // EvalOptions are one suite's activity options: "eval-<tag>-<suite>" as
 // activity id ("eval-<suite>" without a tag).
 func EvalOptions(tag, suite string) StepOptions {
-	// SOLUTION-BEGIN dur.11
+	// SOLUTION-BEGIN ag.12
 	id := "eval-" + suite
 	if tag != "" {
 		id = fmt.Sprintf("eval-%s-%s", tag, suite)
@@ -64,7 +87,7 @@ func EvalOptions(tag, suite string) StepOptions {
 // EvalSuite runs the suites one activity each, in the order given, and
 // fails with the first suite that fails for good.
 func EvalSuite(rt Runtime, in EvalSuiteInput) (EvalSuiteResult, error) {
-	// SOLUTION-BEGIN dur.11
+	// SOLUTION-BEGIN ag.12
 	if len(in.Suites) == 0 || len(in.Subjects) == 0 {
 		return EvalSuiteResult{}, &SpecError{Reason: "an eval suite needs suites and subjects"}
 	}
@@ -75,6 +98,7 @@ func EvalSuite(rt Runtime, in EvalSuiteInput) (EvalSuiteResult, error) {
 	var res EvalSuiteResult
 	for _, suite := range in.Suites {
 		spec := evalSpec{Name: name, Suites: []string{suite}, Subjects: in.Subjects, Seed: in.Seed}
+		applyAdvancedSpecOptions(&spec, in)
 		var done StageDone
 		if err := rt.ExecuteActivity(ActivityEval, spec, EvalOptions(in.Tag, suite), &done); err != nil {
 			return res, fmt.Errorf("suite %s: %w", suite, err)
@@ -88,11 +112,21 @@ func EvalSuite(rt Runtime, in EvalSuiteInput) (EvalSuiteResult, error) {
 // MarshalSpec is the eval-spec JSON EvalSuite gives one suite's activity
 // (exported for the worker's tests and the CLI's dry run).
 func MarshalSpec(in EvalSuiteInput, suite string) ([]byte, error) {
-	// SOLUTION-BEGIN dur.11
+	// SOLUTION-BEGIN ag.12
 	name := in.Name
 	if name == "" {
 		name = "evalsuite"
 	}
-	return json.Marshal(evalSpec{Name: name, Suites: []string{suite}, Subjects: in.Subjects, Seed: in.Seed})
+	spec := evalSpec{Name: name, Suites: []string{suite}, Subjects: in.Subjects, Seed: in.Seed}
+	applyAdvancedSpecOptions(&spec, in)
+	return json.Marshal(spec)
+	// SOLUTION-END
+}
+
+// applyAdvancedSpecOptions adds the judge and A/B options to a durable
+// suite's per-suite subprocess request.
+func applyAdvancedSpecOptions(spec *evalSpec, in EvalSuiteInput) {
+	// SOLUTION-BEGIN ag.12
+	spec.Scorers, spec.Judge, spec.AB, spec.Thresholds = in.Scorers, in.Judge, in.AB, in.Thresholds
 	// SOLUTION-END
 }

@@ -72,7 +72,17 @@ Milestone `MS-corpus` closes the pipeline: shards, manifest, ledger, and `.bin` 
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B5 (data.01 to data.08) and B10 (data.09) (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `data.01` | [Async fetch with resume, checksums, license capture](01-async-fetch-resume-checksums.md) | build | 3 |
+| 2 | `data.02` | [Extract, normalize, quality filters (generator stages)](02-extract-normalize-and-quality-filters.md) | build | 3 |
+| 3 | `data.03` | [Exact dedup: paragraph hashes, Bloom screen, sort-merge confirm](03-exact-dedup-bloom-and-sort-merge.md) | build | 3 |
+| 4 | `data.04` | [Near-duplicate dedup: MinHash, LSH, union-find, and decontamination](04-near-dedup-minhash-lsh.md) | build | 3 |
+| 5 | `data.05` | [PII scrub with typed placeholders and audit spans](05-pii-scrub.md) | build | 3 |
+| 6 | `data.06` | [Parquet shards, manifest, and the document-hash split](06-parquet-shards-and-manifest.md) | build | 3 |
+| 7 | `data.07` | [Tokenize and pack to llm.c .bin](07-tokenize-and-pack.md) | build | 3 |
+| 8 | `data.08` | [Licensing ledger verification and the datasheet](08-ledger-and-datasheet.md) | build | 3 |
+| 9 | `data.09` | [Pipeline as a durable workflow CorpusBuild](09-corpusbuild-as-a-durable-workflow.md) | build | 8 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

@@ -68,7 +68,14 @@ Training is minimization of an average loss with noisy gradients. Everything in 
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B3 (M10.1 to M10.4, S-M10a) and B11/B12 (optional M10.5, M10.6, S-M10b) (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `M10.1` | [Convexity, smoothness, gradient descent, and Armijo line search](01-gradient-descent-and-line-search.md) | build | 2 |
+| 2 | `M10.2` | [The Optimizer protocol: SGD, momentum, Nesterov, weight decay](02-optimizer-protocol-and-sgd.md) | build | 2 |
+| 3 | `M10.3` | [Adam and AdamW: bias correction and decoupled weight decay](03-adam-and-adamw.md) | build | 2 |
+| 4 | `M10.4` | [Learning-rate schedules (cosine, WSD, Noam) and gradient clipping](04-schedules-and-gradient-clipping.md) | build | 2 |
+| 5 | `S-M10a` | [Optimization problem set, part a: convexity, GD rates, momentum, Adam](90-problem-set-a.md) | solve | 2 |
+| 6 | `S-M10b` | [Optimization problem set, part b: constrained optimization, duality, and DPO](91-problem-set-b.md) | solve | 10 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

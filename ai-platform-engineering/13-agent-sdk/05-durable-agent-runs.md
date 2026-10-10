@@ -161,6 +161,7 @@ Use only the standard library and the `ag.01` to `ag.04` packages.
 | Back | `ag.03` | `Run` invokes the loop with the journal as its step runner and resumes from the recorded input |
 | Back | `ag.04` | `IsWrite` decides which unrecorded steps are writes |
 | Forward | `ag.09` | `DurableSubject` runs each case as a durable run, so a killed eval worker resumes without re-calling the model |
+| Forward | `dep.07` | the deployed agent worker runs durable agent workflows |
 
 The catalog also places `AgentRun` on the durable engine (`dur.06` replay, `dur.08` signals); until those modules are registered the run keeps its own journal, and adapting `Store` to the engine's event log is the step that joins them (DEVIATIONS B121-04).
 

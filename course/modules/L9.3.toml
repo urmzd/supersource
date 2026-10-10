@@ -14,7 +14,7 @@ reading   = ["L5.2", "L7.5"]   # mask flags and GQA head sharing, as concepts
 # L9.7 runs prefill attention through it; L9.4's tests hold paged decode to
 # it bitwise. L10.1 (prefill) and L10.3 (chunked prefill) join when they
 # list L9.3 in deps (B9, DEVIATIONS B84-01).
-used_by   = ["L9.4", "L9.7"]
+used_by   = ["L10.1", "L9.4", "L9.7"]
 units     = ["c/src/kernels/flash_attn.c"]
 upgrades  = []
 milestone = "MS-L9"

@@ -1,0 +1,6 @@
+# chapter: ml/08-tinyllm/p12-post-training/03-grpo-with-verifiable-rewards.md
+from __future__ import annotations
+import numpy as np
+
+def group_advantages(rewards: np.ndarray, eps: float = 1e-8) -> np.ndarray: ...
+def grpo_loss(logp_new: np.ndarray, logp_old: np.ndarray, advantages: np.ndarray, kl: np.ndarray, beta: float = 0.0, clip: float = 0.2) -> float: ...

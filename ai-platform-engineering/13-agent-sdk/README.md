@@ -64,7 +64,13 @@ Retrieval (`ag.06` to `ag.08`) lives in [Retrieval & RAG](../07-retrieval-and-ra
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B12 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ag.01` | [Types, OpenAI-compatible provider, retry wrapper](01-types-and-provider.md) | build | 10 |
+| 2 | `ag.02` | [Tools, registry, JSON Schema argument validation](02-tools-and-schemas.md) | build | 10 |
+| 3 | `ag.03` | [Agent loop](03-agent-loop.md) | build | 10 |
+| 4 | `ag.04` | [Tool gate, SQL safety gate, prompt-injection suite](04-tool-gate-and-injection.md) | build | 10 |
+| 5 | `ag.05` | [Durable agent runs (AgentRun)](05-durable-agent-runs.md) | build | 10 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

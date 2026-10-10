@@ -48,7 +48,10 @@ Shipping is a contract with everyone downstream. Versions, changelogs, and depre
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B13 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `craft.11` | [Commits, semver, releases (v1.0.0)](01-commits-semver-and-releases.md) | practice | 11 |
+| 2 | `craft.12` | [Deprecation policy](02-deprecation-policy.md) | practice | 11 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

@@ -9,7 +9,7 @@ deps      = ["gw.01"]               # server.Usage, the Exchange the chain obser
 reading   = ["L10.5", "gw.00", "ai-platform-engineering/03-streaming-sse"]
 # gw.05 forwards every attempt through Forward and its commitment boundary.
 # Through the upgrade it inherits gw.00's call sites (dep.00, obs.00).
-used_by   = ["gw.05", "dep.00", "obs.00"]
+used_by   = ["gw.05"]
 units     = []
 upgrades  = ["go/gateway/proxy/proxy.go"]
 milestone = "MS-gateway"

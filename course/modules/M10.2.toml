@@ -9,7 +9,7 @@ deps      = ["M10.1"]   # the course tests compare plain SGD with gradient_desce
 reading   = []
 # L0.5 trains with it; L2.2 and L3.6 join with their batches. M10.3 and
 # M10.4 read the protocol (reading, not deps).
-used_by   = ["L0.5"]
+used_by   = ["L0.5", "L0.6", "L11.1", "L2.2"]
 units     = ["python/tinyllm/optim/sgd.py"]
 upgrades  = []
 milestone = "MS-P2"

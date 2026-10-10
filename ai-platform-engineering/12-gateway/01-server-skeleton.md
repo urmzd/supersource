@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/config/runtime.schema.json`](../../course/contracts/config/runtime.schema.json) (the file and the override rule) · the `gateway` role's `--config` form in [`course/contracts/spec/cli-roles.md`](../../course/contracts/spec/cli-roles.md) · health and error rules of [`course/contracts/openapi/openai-subset.v1.yaml`](../../course/contracts/openapi/openai-subset.v1.yaml) |
 | **Tests** | `course/tests/go/gw_01/` (what they check: section 4) |
 | **Needs** | reading: [`lang.06` Go](../../software-craftsmanship/12-language-and-tool-primers/06-go.md), [`gw.00` the tracer gateway](00-streaming-proxy.md) |
-| **Used by** | `gw.02` authn stage · `gw.03` ratelimit stage · `gw.04` proxy stage and its observer · `gw.05` route stage · `gw.06` cache stage · `gw.07` meter stage and admin API: every one is a `server.Middleware` that reads the `Exchange` and answers errors with `WriteError` |
+| **Used by** | `gw.02` authn stage · `gw.03` ratelimit stage · `gw.04` proxy stage and its observer · `gw.05` route stage · `gw.06` cache stage · `gw.07` meter stage and admin API: every one is a `server.Middleware` that reads the `Exchange` and answers errors with `WriteError` · later: `gw.08` |
 | **Milestone** | MS-gateway |
 | **Optional depth** | Mat Ryer, *How I write HTTP services in Go after 13 years* (free, 2024); RFC 9110 section 15 (status codes); the Kubernetes docs on [pod termination](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination) (free) |
 
@@ -243,6 +243,7 @@ func (c Config) Validate() error
 | 11. reading the body without putting it back, or `max_tokens` over `max_completion_tokens` | the engine receives an empty body; limits reserve the wrong count | `TestExchangeRequestParsing` (mutants `s10`, `s11`) |
 
 ## 6. Where it's used next
+| Forward | `gw.08` | Registered module relationship. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

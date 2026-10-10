@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/infer/beam.pyi`](../../../course/contracts/py/tinyllm/infer/beam.pyi) |
 | **Tests** | `course/tests/L4.4/test_beam.py` (what they check: section 4); the oracle is exhaustive enumeration of every output of a toy model; your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
 | **Needs** | `M09.2` `log_softmax` · `L4.1` `Seq2Seq.decode_step` and `L4.3` `LuongAttention` (the real decoder the tests search over) · reading: `S-M06a` (counting sequences) (or `--ref-deps`) |
-| **Used by** | later: `L6.7` the zoo's beam decoding of seq2seq and transformer checkpoints (joins the registry with B7) |
+| **Used by** | later: `L6.7` the zoo's beam decoding of seq2seq and transformer checkpoints (joins the registry with B7) · later: `L5.5` |
 | **Milestone** | `MS-L4` (`{tinyllm} translate --beam 5` must beat greedy) |
 | **Optional depth** | Graves, "Sequence Transduction with Recurrent Neural Networks" (2012), section 3.2; Wu et al., "Google's Neural Machine Translation System" (2016), section 7 (length penalty); Meister, Cotterell, and Vieira, "If beam search is the answer, what was the question?" (EMNLP 2020) |
 
@@ -167,6 +167,7 @@ Rung R5 asks for **oracles**: tests whose expected values come from an independe
 | the model called after every hypothesis finished | a call with zero rows, wasted work | `test_search_stops_when_the_last_hypothesis_finishes` (mutant `s16`) |
 
 ## 6. Where it's used next
+| Forward | `L5.5` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

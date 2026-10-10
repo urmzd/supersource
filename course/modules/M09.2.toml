@@ -13,7 +13,7 @@ reading   = ["M09.1", "M02.1"]
 # (cross_entropy_vjp via softmax), L0.2 (softmax and log-softmax ops), L0.3
 # (fused cross-entropy). L8.1, L6.7, and L9.2 join with their batches
 # (mirror rule, DEVIATIONS L00-03, B33-01).
-used_by   = ["M11.1", "M08.3", "L0.2", "L0.3"]
+used_by   = ["L0.2", "L0.3", "L4.4", "L5.1", "L7.7", "L9.2", "M08.3", "M11.1"]
 units     = ["python/tinyllm/num/stable.py"]
 upgrades  = []
 milestone = "MS-P2"

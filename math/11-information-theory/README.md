@@ -140,7 +140,13 @@ Huffman coding (`M11.3`, optional) has its interview-pattern version in [Greedy]
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B3 (M11.1, S-M11a), B4 (M11.2), and B5 (M11.4, S-M11b) (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `M11.1` | [Entropy, cross-entropy, KL, JS, and the k3 estimator](01-entropy-cross-entropy-and-kl.md) | build | 2 |
+| 2 | `M11.2` | [Perplexity, bits per byte, NLL accumulator](02-perplexity-bits-per-byte-nll-accumulator.md) | build | 3 |
+| 3 | `M11.4` | [Mutual information, PMI, and PPMI](04-mutual-information-pmi-ppmi.md) | build | 3 |
+| 4 | `S-M11a` | [Information theory problem set, part a: entropy, chain rules, KL and cross-entropy](90-problem-set-a.md) | solve | 2 |
+| 5 | `S-M11b` | [Information theory problem set, part b: coding and Huffman, mutual information, maximum entropy, rate-distortion](91-problem-set-b.md) | solve | 3 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

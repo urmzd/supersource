@@ -10,7 +10,7 @@
 | **Contract** | `StartTimer`, `CancelTimer`, `TimerStarted`, `TimerFired`, `TimerCanceled` in [`durable.proto`](../../course/contracts/proto/tl/durable/v1/durable.proto), and `POST /debug/clock` of DESIGN 2.7; the Go API is section 4 |
 | **Tests** | `course/tests/go/dur_07/` (what they check: section 4) |
 | **Needs** | `dur.06` the SDK whose `workflow.Sleep` issues `StartTimer` |
-| **Used by** | `dur.11` eval cadence, `dur.12` canary wait, and `ag.05` approval TTL use `workflow.Sleep` (no module lists `dur.07` in its deps yet) |
+| **Used by** | `dur.08` integrates timer-backed `workflow.Sleep` with the runtime; `dur.11`, `dur.12`, and `ag.05` use it for evaluation cadence, canary wait, and approval TTL |
 | **Milestone** | MS-durable |
 | **Optional depth** | Cormen et al., *Introduction to Algorithms*, ch. 6 (heaps); Varghese and Lauck, *Hashed and Hierarchical Timing Wheels* (SOSP 1987) |
 
@@ -128,6 +128,12 @@ func (s *Server) FireTimer(k TimerKey)
 // registers "start_timer" and "cancel_timer" with the dur.04 command table
 ```
 
+For the milestone's `SleepDemo`, register a workflow that reads its input as
+an integer duration in milliseconds, calls `workflow.Sleep`, and returns
+`workflow.Now(ctx).UnixMilli()` as JSON. The milestone passes `1000` as input
+and checks that the run completes with a fired time. This exercises the whole
+path from the `dur.02` workflow service through the worker and timer service.
+
 Wiring in your server's main: `ts := timer.New[server.TimerKey](clk)`, pass `Timers: ts` to `server.Open`, then `go ts.Run(ctx, srv.FireTimer)`; with `--test-clock`, `clk := timer.NewOffsetClock(wall)`, `clk.OnShift(ts.Wake)`, and mount `clk.Handler()` at `/debug/clock` on the health port.
 
 ### What the tests check
@@ -167,6 +173,7 @@ Wiring in your server's main: `ts := timer.New[server.TimerKey](clk)`, pass `Tim
 |---|---|---|
 | Back | `dur.06` | `workflow.Sleep` issues `StartTimer` and waits for `TimerFired` |
 | Back | `dur.02` | commit arms, recovery re-arms; `Options.Timers` is this service |
+| Forward | `dur.08` | the Runtime seam exposes timer-backed sleep and cancellation |
 | Forward (call site in the catalog) | `dur.11`, `dur.12`, `ag.05` | periodic evaluation, the canary wait, approval expiry; they call `workflow.Sleep` through the `dur.08` runtime seam |
 | Forward | drills | the `clock-skew` injector posts to `/debug/clock` |
 

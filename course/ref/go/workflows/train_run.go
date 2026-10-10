@@ -55,9 +55,10 @@ type Segment struct {
 }
 
 type trainSpec struct {
-	Name      string `json:"name"`
-	Steps     int    `json:"steps"`
-	EvalEvery int    `json:"eval_every"`
+	Name                string `json:"name"`
+	Steps               int    `json:"steps"`
+	EvalEvery           int    `json:"eval_every"`
+	EvalIntervalSeconds int    `json:"eval_interval_seconds"`
 }
 
 // SpecError is a spec the workflow refuses before any activity runs.
@@ -117,8 +118,8 @@ func TrainRun(rt Runtime, in TrainRunInput) (TrainRunResult, error) {
 	if err := json.Unmarshal(in.Spec, &spec); err != nil {
 		return TrainRunResult{}, &SpecError{Reason: "spec is not a JSON object: " + err.Error()}
 	}
-	if spec.Name == "" || spec.Steps < 1 || spec.EvalEvery < 0 {
-		return TrainRunResult{}, &SpecError{Reason: fmt.Sprintf("spec needs a name and steps >= 1 (name %q, steps %d, eval_every %d)", spec.Name, spec.Steps, spec.EvalEvery)}
+	if spec.Name == "" || spec.Steps < 1 || spec.EvalEvery < 0 || spec.EvalIntervalSeconds < 0 {
+		return TrainRunResult{}, &SpecError{Reason: fmt.Sprintf("spec needs a name, steps >= 1, and non-negative evaluation intervals (name %q, steps %d, eval_every %d, eval_interval_seconds %d)", spec.Name, spec.Steps, spec.EvalEvery, spec.EvalIntervalSeconds)}
 	}
 	res := TrainRunResult{Name: spec.Name, Steps: spec.Steps}
 	if len(in.Corpus) > 0 {
@@ -128,7 +129,8 @@ func TrainRun(rt Runtime, in TrainRunInput) (TrainRunResult, error) {
 		}
 		res.Corpus = &cb
 	}
-	for _, until := range Segments(spec.Steps, spec.EvalEvery) {
+	segments := Segments(spec.Steps, spec.EvalEvery)
+	for i, until := range segments {
 		seg, err := withField(in.Spec, "steps", until)
 		if err != nil {
 			return res, &SpecError{Reason: err.Error()}
@@ -150,6 +152,11 @@ func TrainRun(rt Runtime, in TrainRunInput) (TrainRunResult, error) {
 				return res, fmt.Errorf("eval at step %d: %w", until, err)
 			}
 			s.Evals = &ev
+			if spec.EvalIntervalSeconds > 0 && i+1 < len(segments) {
+				if err := rt.Sleep(time.Duration(spec.EvalIntervalSeconds) * time.Second); err != nil {
+					return res, fmt.Errorf("eval cadence after step %d: %w", until, err)
+				}
+			}
 		}
 		res.Segments = append(res.Segments, s)
 		res.Checkpoint = s.Checkpoint

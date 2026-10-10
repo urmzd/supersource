@@ -12,7 +12,7 @@ deps      = ["dur.02", "dur.03"]
 # hands ActivityTask.trace_context to activities in Info and calls no otelx
 # code itself (deviation B101-09), so obs.01 is reading here.
 reading   = ["obs.01", "lang.10", "ai-platform-engineering/02-rpc-and-protocols"]
-used_by   = ["dur.05"]
+used_by   = ["dur.05", "dur.08"]
 units     = ["go/durable/server/tasks.go", "go/durable/worker/worker.go"]
 upgrades  = []
 milestone = "MS-durable"

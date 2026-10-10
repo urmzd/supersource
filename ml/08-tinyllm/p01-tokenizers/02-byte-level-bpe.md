@@ -216,6 +216,7 @@ def test_round_trip_any_text():
 | 8. Latin-1 instead of the byte map | `é` and every non-ASCII text get the wrong symbols | `test_gpt2_ids_match_oracle` (mutant `s12`) |
 
 ## 6. Where it's used next
+| Forward | `L8.2` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

@@ -9,7 +9,7 @@
 | **You build** | nothing new in the library: you **run** your system on one goal and write up what it measured. Artifacts: `specs/c1/` (the full, short, and release specs), `docs/capstone/c1/` (`report.json`, `zoo.json`, `samples.jsonl`, the model card and data ledger the release names), and two ADRs in `docs/adr/` |
 | **Contract** | [`formats/train-spec.schema.json`](../../../course/contracts/formats/train-spec.schema.json), [`formats/eval-results.schema.json`](../../../course/contracts/formats/eval-results.schema.json) (the zoo table), [`formats/ledger.schema.json`](../../../course/contracts/formats/ledger.schema.json), [`templates/ADR.md`](../../../course/contracts/templates/ADR.md), [`templates/MODEL_CARD.md`](../../../course/contracts/templates/MODEL_CARD.md), and the report schema `course/tests/C1/capstone-report.schema.json` |
 | **Tests** | `course/tests/C1/`: the artifact check (section 4), which recomputes what can be recomputed and runs your `dur.12` preflight; the run itself is MS-C1's |
-| **Needs** | [`dur.12`](../../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md) (your release workflow: its preflight runs on your release spec); reading: every pass before this one, above all `data.07` and `data.08`, `L1.2`, `L1.4`, `L1.6`, `L2.1`, `L6.7`, `L7.4`, `L7.6`, `L7.8`, `L7.9`, `M03.5`, `M05.1`, `M07.5`, `M10.3`, `M10.4`, `dur.09`, `craft.22` |
+| **Needs** | [`dur.12`](../../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md) (release workflow preflight), [`L11.1`](../p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md) (bf16, accumulation, activation recompute in the full and short train specs), [`ethics.04`](../../../responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md) (safety suite in the release report); reading: every pass before this one, above all `data.07` and `data.08`, `L1.2`, `L1.4`, `L1.6`, `L2.1`, `L6.7`, `L7.4`, `L7.6`, `L7.8`, `L7.9`, `M03.5`, `M05.1`, `M07.5`, `M10.3`, `M10.4`, `dur.09`, `craft.22` |
 | **Used by** | no call site (the capstone): `C2` post-trains its release, and the `ops.08` data-incident drill retrains it |
 | **Milestone** | `MS-C1` (part of MS-P9) |
 | **Optional depth** | Eldan and Li, [*TinyStories*](https://arxiv.org/abs/2305.07759) (2023, free); Kaplan et al., [*Scaling Laws for Neural Language Models*](https://arxiv.org/abs/2001.08361) (2020, free); Hoffmann et al., [*Training Compute-Optimal Large Language Models*](https://arxiv.org/abs/2203.15556) (2022, free); DeepSeek-AI, [*DeepSeek-V2*](https://arxiv.org/abs/2405.04434) (MLA, free) |
@@ -169,6 +169,8 @@ The report is written by your tooling from the runs' outputs (a few lines of Pyt
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `dur.12` | the release workflow the capstone ships through |
+| Back | `L11.1` | the full and short training specs use bf16, accumulation, and checkpointed activations |
+| Back | `ethics.04` | the release report carries the capstone's safety suite rows |
 | Forward | `C2` (optional) | post-trains the released model into an instruction follower |
 | Forward | `ops.08` | revokes a source of this model's data and drives the retrain decision through `ModelRelease` |
 

@@ -225,6 +225,12 @@
       "minimum": 0,
       "default": 0
     },
+    "eval_interval_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Durable wait between a segment's evaluation and the next training segment; 0 disables the wait."
+    },
     "ckpt_every": {
       "type": "integer",
       "minimum": 0,

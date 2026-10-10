@@ -15,7 +15,7 @@ deps      = ["L0.1", "L0.2", "L0.3", "L0.4", "L0.5", "L0.6", "M03.3", "M06.3", "
 reading   = ["M10.4", "M11.2"]   # clipping runs inside train_step; bits per character
 # Call site (DESIGN 4.3): the L6.7 zoo's rnnlm bpb rows. Not registered yet,
 # so verify check 9 fails until L6.7 (B7) lists L3.6 in deps (B62-03).
-used_by   = []
+used_by   = ["L6.7"]
 units     = ["python/tinyllm/rnn/rnnlm.py"]
 upgrades  = []
 milestone = "MS-L3"

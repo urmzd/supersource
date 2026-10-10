@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/linalg/qr.pyi`](../../course/contracts/py/tinyllm/linalg/qr.pyi) |
 | **Tests** | `course/tests/M03.3/test_qr.py` (what they check: section 4) |
 | **Needs** | `M07.0` normal draws for the Gaussian matrix (or `--ref-deps`). Reading: `M03.2` (elimination, the contrast) |
-| **Used by** | `M03.4` the QR algorithm for the spectral radius · later `L0.4` default initializers, `L3.1` and `L3.2` recurrent weight init, `M03.5` least squares |
+| **Used by** | `M03.4` the QR algorithm for the spectral radius · later `L0.4` default initializers, `L3.1` and `L3.2` recurrent weight init, `M03.5` least squares · later: `L3.3`, `L3.6` |
 | **Milestone** | `MS-P2` (the foundations gate) |
 | **Optional depth** | Trefethen and Bau, *Numerical Linear Algebra*, lectures 7 to 10 (QR, Gram-Schmidt, Householder); Saxe, McClelland, and Ganguli, "Exact solutions to the nonlinear dynamics of learning in deep linear neural networks" (2014); Mezzadri, "How to generate random matrices from the classical compact groups" (2007) |
 
@@ -153,6 +153,9 @@ def orthogonal_init(shape: tuple[int, int], gain: float, rng) -> NDArray:
 | applying the gain twice (or squared) | every weight scaled by $g^2$ | `test_orthogonal_init_is_orthogonal_and_scaled` (mutant `s08`) |
 
 ## 6. Where it's used next
+| Forward | `L3.2` | Registered call site uses this module. |
+| Forward | `L3.3` | Registered call site uses this module. |
+| Forward | `L3.6` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

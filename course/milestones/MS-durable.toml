@@ -38,6 +38,8 @@
 #       RUNNING. Final line: {"workflow_id", "run_id", "started", "status",
 #       "result"} where started is StartWorkflowResponse.started and result
 #       is the run's result parsed as JSON (null until COMPLETED).
+#       SleepDemo is registered with the durable timers: input JSON is an
+#       integer duration in milliseconds and its result is the fired time.
 #   {ctl} wf describe <workflow id> --json
 #       DescribeWorkflow. Final line: {"workflow_id", "run_id", "status",
 #       "history_length", "pending_activities", "dead_lettered"} (the last two
@@ -81,16 +83,15 @@
 #                       "deploy/<system>-worker" (dep.06); the durable NodePort
 #                       is 30733 (dep.02)
 #
-# `ss milestone MS-durable --smoke` runs the six local steps with the
+# `ss milestone MS-durable --smoke` runs the local steps with the
 # services started by the runner. The full run (nightly kind job, or your own
 # cluster) adds the `ci = "kind"` steps; without a cluster they are skipped
 # and the verdict is `incomplete`.
 id       = "MS-durable"
 title    = "Your durable engine runs workflows to completion through your CLI, locally and on kind"
-# dur.01 to dur.08, dur.11, and data.09 join `requires` when their modules
-# are registered (DEVIATIONS B103-04). The drills are graded on a cluster
-# (`ss drill end`), so --smoke does not wait for them.
-requires = ["dur.09", "dep.06", "obs.05", "craft.21", "ops.02", "ops.03"]
+# The local run exercises the workflow service (dur.02) and a durable timer
+# (dur.07) along with the complete CorpusBuild and TrainRun paths.
+requires = ["dur.01", "dur.02", "dur.03", "dur.04", "dur.05", "dur.06", "dur.07", "dur.08", "dur.09", "data.09", "dur.11", "dep.06", "obs.05", "craft.21", "ops.02", "ops.03"]
 pass     = 8
 ci       = "pr"
 services = ["durable", "worker"]
@@ -120,6 +121,14 @@ smoke     = true
 run       = "ctl"
 argv      = ["wf", "history", "ms-durable-echo", "--durable", "127.0.0.1:{durable.grpc_port}", "--json"]
 expect    = { match = "json-schema", schema = { type = "object", required = ["events", "first", "last"], properties = { events = { type = "integer", minimum = 3 }, first = { const = "WorkflowExecutionStarted" }, last = { const = "WorkflowExecutionCompleted" } } } }
+timeout_s = 30
+
+[[step]]
+name      = "durable-timer-completes"
+smoke     = true
+run       = "ctl"
+argv      = ["wf", "start", "SleepDemo", "--id", "ms-durable-sleep", "--input-json", "1000", "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+expect    = { match = "json-schema", schema = { type = "object", required = ["workflow_id", "status", "result"], properties = { workflow_id = { const = "ms-durable-sleep" }, status = { const = "COMPLETED" }, result = { type = "integer", minimum = 1 } } } }
 timeout_s = 30
 
 # -- 2. the platform workflows --------------------------------------------------------

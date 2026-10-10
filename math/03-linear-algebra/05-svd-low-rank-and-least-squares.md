@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/linalg/svd.pyi`](../../course/contracts/py/tinyllm/linalg/svd.pyi) |
 | **Tests** | `course/tests/M03.5/test_svd.py` (what they check: section 4) |
 | **Needs** | `M03.3` `qr_householder`, which `lstsq` factors with (or `--ref-deps`). Reading: `M03.4` (eigenvalues; singular values are their square roots for $A^\top A$), `S-M03a` |
-| **Used by** | later `L2.3` PPMI-SVD word vectors, `L6.6` LoRA's PiSSA initialization, `L7.6` the MLA conversion, `C1` the scaling-law fit, `M10.6` Muon (each joins the registry with its batch) |
+| **Used by** | later `L2.3` PPMI-SVD word vectors, `L6.6` LoRA's PiSSA initialization, `L7.6` the MLA conversion, `C1` the scaling-law fit, `M10.6` Muon (each joins the registry with its batch) · later: `M09.3` |
 | **Milestone** | `MS-P3` (the tokens-and-data gate) |
 | **Optional depth** | Trefethen and Bau, *Numerical Linear Algebra*, lectures 4, 5, 11, 31; Demmel and Veselic, "Jacobi's method is more accurate than QR" (1992); Eckart and Young, "The approximation of one matrix by another of lower rank" (1936); Meng, Wang, and Zhang, "PiSSA" (2024) |
 
@@ -198,6 +198,7 @@ def lstsq(A: ArrayLike, b: ArrayLike) -> NDArray:
 | rotating the caller's array in place | the weight you decomposed is now $U\Sigma$ | `test_inputs_not_modified_and_validated` (mutant `s10`) |
 
 ## 6. Where it's used next
+| Forward | `M09.3` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

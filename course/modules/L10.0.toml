@@ -12,7 +12,7 @@ reading   = ["lang.04", "lang.05"]       # primers: Rust and std::net; HTTP, JSO
 # Call sites (DESIGN 4.3): dep.00 builds the engine into its image and obs.00
 # traces it; gw.00 only proxies to it over HTTP (reading). L10.1 and L10.5
 # take the units over later.
-used_by   = ["dep.00", "obs.00"]
+used_by   = ["L10.1", "dep.00", "obs.00"]
 units     = [
   "rust/crates/tl-serve/src/http.rs",    # v0, std only; L10.5 takes it over
   "rust/crates/tl-serve/src/lib.rs",     # crate root (glue: `pub mod http;`), 2.15

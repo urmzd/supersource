@@ -70,7 +70,13 @@ Precalculus is the toolbox the rest of the math is written in: exponents and log
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B2 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `S-M00` | [Solve set: functions, exp/log, trig and Euler, series, polynomials, inequalities](00-solve-set.md) | solve | 2 |
+| 2 | `M00.1` | [Exponents, logs, change of base, units of information](01-exponents-logs-and-units-of-information.md) | build | 2 |
+| 3 | `M00.2` | [Trig, unit circle, 2D rotations, complex numbers, Euler's formula](02-trig-rotations-and-eulers-formula.md) | build | 2 |
+| 4 | `M00.3` | [Sequences, geometric series, frequency ladders](03-sequences-and-frequency-ladders.md) | build | 2 |
+| 5 | `M00.4` | [Polynomials, Horner, stable quadratic roots](04-polynomials-horner-and-stable-roots.md) | build | 2 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

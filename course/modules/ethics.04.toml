@@ -12,11 +12,9 @@ deps      = ["M07.4", "M07.7"]
 # precision is a step sum instead); L6.7's log_probs is the score function the
 # CLI passes; M07.5's paired tests are the other way to read a paired gap.
 reading   = ["M01.4", "L6.7", "M07.5"]
-# Catalog call site: dur.12's release gate reads the safety rows EvalSuite
-# writes with `{tinyllm} eval --suite safety`. dur.12 reaches them through a
-# subprocess and a JSON report, so its row does not list ethics.04 in deps,
-# and C1 joins when it does (DEVIATIONS B111-03).
-used_by   = []
+# C1's release spec runs the safety suite and includes its rows in the
+# release report. dur.12 reads that safety JSON through EvalSuite.
+used_by   = ["C1"]
 units     = ["python/tinyllm/eval/safety.py", "python/tinyllm/eval/bias.py"]
 upgrades  = []
 milestone = "MS-C1"

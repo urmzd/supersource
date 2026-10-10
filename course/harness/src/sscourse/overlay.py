@@ -839,7 +839,7 @@ class Overlay:
 
     def _go_env(self, work: Path) -> dict:
         env = self.env()
-        env["GOWORK"] = str(work)
+        env["GOWORK"] = str(work.resolve())
         env["GOTOOLCHAIN"] = "local"
         env["GOFLAGS"] = "-count=1"
         return env

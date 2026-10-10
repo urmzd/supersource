@@ -10,7 +10,7 @@ reading   = ["M06.2"]
 # Call site (DESIGN 4.3): L10.4's block manager (--prefix-cache=radix);
 # gw.05 reads its hit metrics over gRPC. Neither is registered yet: verify
 # check 9 fails until L10.4 lists L8.4 in deps (DEVIATIONS B82-05).
-used_by   = []
+used_by   = ["L10.4"]
 units     = [
   "rust/crates/tl-engine/src/prefix.rs",
   "rust/crates/tl-engine/src/lib.rs",   # crate root (glue: `pub mod prefix;`); L10.1 takes it over

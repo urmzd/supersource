@@ -45,7 +45,9 @@ Responsibility is the part of engineering that does not compile. The codes, the 
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B13 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ethics.06` | [Professional responsibility and disclosure](01-professional-responsibility.md) | proof | 11 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

@@ -10,7 +10,7 @@
 | **Contract** | chat completions with tools and the Streaming rules of [`course/contracts/openapi/openai-subset.v1.yaml`](../../course/contracts/openapi/openai-subset.v1.yaml); the Go API is section 4 of this chapter |
 | **Tests** | `course/tests/go/ag_01/` (what they check: section 4), fixtures `course/fixtures/ag.01/streams.json` |
 | **Needs** | reading: the Go primer (`lang.06`), the gateway's SSE proxy (`gw.04`), the engine's tool-call stream (`L10.9`) |
-| **Used by** | `ag.02` tool definitions · `ag.03` the loop calls the model through `Provider` · `ag.04` the gate's `Verdict` · `ag.05` the `StepRunner` seam · `ag.06` the embedder's retry policy · `ag.09` evaluation subjects stream through `Provider` and `Accumulator` |
+| **Used by** | `ag.02` tool definitions · `ag.03` the loop calls the model through `Provider` · `ag.04` the gate's `Verdict` · `ag.05` the `StepRunner` seam · `ag.06` the embedder's retry policy · `ag.09` evaluation subjects stream through `Provider` and `Accumulator` · `ag.11` judge generator |
 | **Milestone** | MS-agent |
 | **Optional depth** | OpenAI, [function calling guide](https://platform.openai.com/docs/guides/function-calling) (free); WHATWG HTML, [server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html) (free); AWS Architecture Blog, *Exponential backoff and jitter* (free) |
 
@@ -204,6 +204,7 @@ Use only the standard library. The request is `POST {BaseURL}/chat/completions` 
 | Forward | `ag.05` | the durable runner implements `StepRunner` and parses `StepToolName` |
 | Forward | `ag.06` | the embedder retries with `Retryable` and `RetryPolicy.Delay` |
 | Forward | `ag.09` | `ProviderSubject` evaluates a bare model through `Provider` and `Accumulator` |
+| Forward | `ag.11` | the judge generator uses the shared provider types |
 
 The provider reaches `gw.04` and `L10.9` over HTTP only, so they are reading, not dependencies: `ss check ag.01` never needs them built.
 

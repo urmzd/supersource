@@ -15,7 +15,7 @@ reading   = ["S-M07a", "L0.0"]
 # with perplexity, so data.02 is not a caller). None is registered yet, so
 # verify check 9 fails until L6.7 (B7) or L8.6 (B8) lists L2.1 in deps
 # (B53-02).
-used_by   = []
+used_by   = ["L6.7", "L8.6"]
 units     = ["python/tinyllm/lm/ngram.py"]
 upgrades  = []
 milestone = "MS-L2"

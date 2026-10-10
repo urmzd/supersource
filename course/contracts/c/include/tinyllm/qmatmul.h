@@ -7,7 +7,9 @@
  * W is never materialized in f32. Each y element sums over k in increasing
  * order within each group (batch invariance, c/ABI.md rule 10).
  *
- * module: L9.5 (c/src/kernels/qmatmul.c) */
+ * module: L9.5 (c/src/kernels/qmatmul.c)
+ * chapter: ml/08-tinyllm/p09-kernels/08-fused-quantized-matmul.md
+ */
 #ifndef TINYLLM_QMATMUL_H
 #define TINYLLM_QMATMUL_H
 

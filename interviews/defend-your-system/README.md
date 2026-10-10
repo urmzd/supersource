@@ -41,7 +41,9 @@ System design interviews test judgment under questioning. Defending a system you
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B13 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `iv.01` | [Defend your system](01-defend-your-system.md) | proof | 11 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

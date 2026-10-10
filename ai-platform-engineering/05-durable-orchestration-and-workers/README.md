@@ -223,7 +223,20 @@ In the course you build the durable engine this topic describes, in Go, and run 
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B10 (dur.01 to dur.11) and B11 (dur.12) (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `dur.01` | [Append-only segmented event log](01-event-log.md) | build | 8 |
+| 2 | `dur.02` | [Workflow service + idempotent start, describe, list, paged history](02-workflow-service.md) | build | 8 |
+| 3 | `dur.03` | [Task queue: visibility timeout, fenced leases, retries to DLQ, long poll](03-task-queue.md) | build | 8 |
+| 4 | `dur.04` | [Task gRPC protocol, Go worker SDK, worker pool](04-task-protocol-and-workers.md) | build | 8 |
+| 5 | `dur.05` | [Activities: retries, backoff + jitter, timeouts, heartbeats, idempotency keys](05-activities.md) | build | 8 |
+| 6 | `dur.06` | [Deterministic replay workflows, ContinueAsNew, history paging, payload limits](06-deterministic-replay.md) | build | 8 |
+| 7 | `dur.07` | [Durable timers and the test clock](07-durable-timers.md) | build | 8 |
+| 8 | `dur.08` | [Signals, cancellation, sagas (compensation)](08-signals-cancellation-and-sagas.md) | build | 8 |
+| 9 | `dur.09` | [Subprocess activity runner (Go) and the Python activity helper](09-subprocess-activities.md) | build | 8 |
+| 10 | `dur.10` | [Raft HA for the durable log (optional)](10-raft-ha.md) | side | 8 |
+| 11 | `dur.11` | [Platform workflows TrainRun and EvalSuite](11-trainrun-and-evalsuite.md) | build | 8 |
+| 12 | `dur.12` | [ModelRelease: gates, canary, PromQL burn check, rollback](12-model-release.md) | build | 9 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

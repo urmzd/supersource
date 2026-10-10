@@ -15,7 +15,8 @@
 //
 // Contract: openapi/openai-subset.v1.yaml (gateway tier), spec/cli-roles.md
 // (role gateway, --config form). Chapter:
-// ai-platform-engineering/12-gateway/01-server-skeleton.md.
+// ai-platform-engineering/12-gateway/01-server-skeleton.md; policy wiring:
+// ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md.
 package server
 
 import (
@@ -136,7 +137,7 @@ type exchangeKey struct{}
 
 // ExchangeFrom returns the request's Exchange, or nil outside the chain.
 func ExchangeFrom(ctx context.Context) *Exchange {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	e, _ := ctx.Value(exchangeKey{}).(*Exchange)
 	return e
 	// SOLUTION-END
@@ -144,7 +145,7 @@ func ExchangeFrom(ctx context.Context) *Exchange {
 
 // WithExchange returns ctx carrying e (for tests of a single stage).
 func WithExchange(ctx context.Context, e *Exchange) context.Context {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	return context.WithValue(ctx, exchangeKey{}, e)
 	// SOLUTION-END
 }
@@ -152,7 +153,7 @@ func WithExchange(ctx context.Context, e *Exchange) context.Context {
 // NewExchange makes an Exchange outside the chain (for tests of a single
 // stage); maxBody 0 means DefaultMaxBody.
 func NewExchange(requestID string, clock Clock, maxBody int64) *Exchange {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	if clock == nil {
 		clock = WallClock
 	}
@@ -166,7 +167,7 @@ func NewExchange(requestID string, clock Clock, maxBody int64) *Exchange {
 // SetUsage records the upstream's usage (the proxy calls it at the end of
 // the stream; a cache hit records the cached usage).
 func (e *Exchange) SetUsage(u Usage) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	e.mu.Lock()
 	e.usage = u
 	e.mu.Unlock()
@@ -176,7 +177,7 @@ func (e *Exchange) SetUsage(u Usage) {
 // MarkFirstByte records when the first response byte reached the client
 // (once; later calls are ignored).
 func (e *Exchange) MarkFirstByte() {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	e.mu.Lock()
 	if e.firstByte.IsZero() {
 		e.firstByte = e.clock.Now()
@@ -187,7 +188,7 @@ func (e *Exchange) MarkFirstByte() {
 
 // SetWorker records the worker the router chose.
 func (e *Exchange) SetWorker(id string) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	e.mu.Lock()
 	e.worker = id
 	e.mu.Unlock()
@@ -196,7 +197,7 @@ func (e *Exchange) SetWorker(id string) {
 
 // SetAttr records a span attribute (tl.ratelimit.decision, tl.cache.hit, ...).
 func (e *Exchange) SetAttr(key string, v any) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	e.mu.Lock()
 	e.attrs[key] = v
 	e.mu.Unlock()
@@ -204,7 +205,7 @@ func (e *Exchange) SetAttr(key string, v any) {
 }
 
 func (e *Exchange) setStatus(code int) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	e.mu.Lock()
 	if e.status == 0 {
 		e.status = code
@@ -215,7 +216,7 @@ func (e *Exchange) setStatus(code int) {
 
 // Snapshot copies the mutable fields.
 func (e *Exchange) Snapshot() ExchangeState {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	attrs := make(map[string]any, len(e.attrs))
@@ -235,7 +236,7 @@ const DefaultMaxBody = 4 << 20
 // can forward it. Later calls return the cached result. An error means a
 // 400: the body is too large or is not a JSON object.
 func (e *Exchange) Request(r *http.Request) (*Request, error) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.req != nil || e.reqErr != nil {
@@ -272,7 +273,7 @@ func (e *Exchange) Request(r *http.Request) (*Request, error) {
 // seed from a JSON request body. Unknown fields are ignored (the contract
 // says so); a body that is not one JSON object is an error.
 func ParseRequest(body []byte) (Request, error) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	var f struct {
 		Model               string   `json:"model"`
 		Stream              bool     `json:"stream"`
@@ -313,7 +314,7 @@ type apiError struct {
 // code}} and Content-Type application/json; an empty param or code is null.
 // Every gateway stage answers errors through it.
 func WriteError(w http.ResponseWriter, status int, typ, code, param, msg string) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	var e apiError
 	e.Error.Message, e.Error.Type = msg, typ
 	if code != "" {
@@ -336,21 +337,21 @@ type statusWriter struct {
 }
 
 func (s *statusWriter) WriteHeader(code int) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	s.ex.setStatus(code)
 	s.ResponseWriter.WriteHeader(code)
 	// SOLUTION-END
 }
 
 func (s *statusWriter) Write(b []byte) (int, error) {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	s.ex.setStatus(http.StatusOK)
 	return s.ResponseWriter.Write(b)
 	// SOLUTION-END
 }
 
 func (s *statusWriter) Unwrap() http.ResponseWriter {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	return s.ResponseWriter
 	// SOLUTION-END
 }
@@ -358,7 +359,7 @@ func (s *statusWriter) Unwrap() http.ResponseWriter {
 // validRequestID keeps a caller's X-Request-Id when it is printable ASCII
 // (0x21 to 0x7E) of at most 128 bytes, the gw.00 rule.
 func validRequestID(s string) bool {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	if s == "" || len(s) > 128 {
 		return false
 	}
@@ -372,7 +373,7 @@ func validRequestID(s string) bool {
 }
 
 func newID() string {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		panic("server: crypto/rand failed: " + err.Error())
@@ -386,7 +387,7 @@ func newID() string {
 // toward engines), picks the request id, sets it on the request (so the
 // proxy forwards it) and on the response, and creates the Exchange.
 func (s *Server) requestID(next http.Handler) http.Handler {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for k := range r.Header {
 			if strings.HasPrefix(strings.ToLower(k), "x-tl-") {
@@ -408,7 +409,7 @@ func (s *Server) requestID(next http.Handler) http.Handler {
 // otel starts the SERVER span "<METHOD> <path>" and ends it with the status
 // and every attribute the later stages recorded on the Exchange.
 func (s *Server) otel(next http.Handler) http.Handler {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	if s.deps.Tracer == nil {
 		return next
 	}
@@ -434,7 +435,7 @@ func (s *Server) otel(next http.Handler) http.Handler {
 // nothing was written yet) and keeps the process serving. A handler that
 // panics with http.ErrAbortHandler wants the connection aborted: re-panic.
 func (s *Server) recoverer(next http.Handler) http.Handler {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			v := recover()
@@ -458,7 +459,7 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 // Handler is the whole API chain, in Order. A nil stage is skipped; a nil
 // Proxy answers 503 no_capacity.
 func (s *Server) Handler() http.Handler {
-	// SOLUTION-BEGIN gw.01
+	// SOLUTION-BEGIN gw.08
 	var h http.Handler = s.deps.Proxy
 	if h == nil {
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -466,10 +467,17 @@ func (s *Server) Handler() http.Handler {
 		})
 	}
 	// Innermost first: meter wraps the proxy, then route, cache, ... authn.
-	for _, m := range []Middleware{s.deps.Ledger, s.deps.Router, s.deps.Cache, s.deps.Limiter, s.deps.Policy, s.deps.Keys} {
+	for _, m := range []Middleware{s.deps.Ledger, s.deps.Router, s.deps.Cache, s.deps.Limiter} {
 		if m != nil {
 			h = m(h)
 		}
+	}
+	// gw.08's policy wraps rate limits, after authentication and before route.
+	if s.deps.Policy != nil {
+		h = s.deps.Policy(h)
+	}
+	if s.deps.Keys != nil {
+		h = s.deps.Keys(h)
 	}
 	h = s.recoverer(h)
 	h = s.otel(h)

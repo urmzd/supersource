@@ -1,0 +1,24 @@
+# Component view: internal to the Rust engine container.
+http: HTTP and SSE API
+scheduler: Request scheduler\ncontinuous batching
+registry: Gateway registry client
+tokenizer: Rust tokenizer
+prefill: Prefill execution
+decode: Decode execution
+kv: KV block manager
+prefix: Prefix cache
+weights: Safetensors loader
+telemetry: Metrics and tracing
+
+http -> scheduler: request, cancel, stream
+scheduler -> registry: register, heartbeat
+scheduler -> tokenizer: encode and decode
+scheduler -> prefill: prompt batches
+scheduler -> decode: token steps
+prefill -> kv: allocate and write blocks
+decode -> kv: read and append blocks
+scheduler -> prefix: lookup and insert
+weights -> prefill: model parameters
+weights -> decode: model parameters
+http -> telemetry: request and stream outcomes
+scheduler -> telemetry: queue, batch, token metrics

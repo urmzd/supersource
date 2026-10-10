@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/c/include/tinyllm/matmul.h`](../../course/contracts/c/include/tinyllm/matmul.h) · rules: [`c/ABI.md`](../../course/contracts/c/ABI.md) |
 | **Tests** | `course/tests/M03.1/`: `test_matmul.c` (C, under ASan and UBSan) and `test_matmul_ctypes.py` (Python, through your `rt.01` loader, against numpy) (what they check: section 4) |
 | **Needs** | `rt.01` the error slot and the ctypes loader (or `--ref-deps`). Reading: `lang.03` (pointers and arrays in C) |
-| **Used by** | `L0.0` computes its bigram logits as `onehot(ids) @ weight` with it · `L10.0` your Rust engine calls it through `extern "C"` · later `L9.1` takes the file over with a tiled, packed, batch-invariant version behind the same signature |
+| **Used by** | `L0.0` computes its bigram logits as `onehot(ids) @ weight` with it · `L10.0` your Rust engine calls it through `extern "C"` · later `L9.1` takes the file over with a tiled, packed, batch-invariant version behind the same signature · later: `L0.5` |
 | **Milestone** | `MS-P1` (the tracer: every layer is yours and runs end to end) |
 | **Optional depth** | Hefferon, *Linear Algebra* (free), ch. 3, sections IV.1 and IV.2 (matrix multiplication); Strang, MIT 18.06 lecture 3; Goto and van de Geijn, "Anatomy of High-Performance Matrix Multiplication" (2008) for what `L9.1` does next |
 
@@ -179,6 +179,7 @@ load().tl_matmul_f32(f32_ptr(A), f32_ptr(B), f32_ptr(C), M, N, K,
 | expecting numpy's float32 answer bit for bit | your correct kernel "fails" by $10^{-7}$; the fix is the $\sqrt{K}$ bound, not a different loop | `test_matches_numpy_across_shapes` |
 
 ## 6. Where it's used next
+| Forward | `L0.5` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

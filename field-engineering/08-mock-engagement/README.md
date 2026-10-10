@@ -47,7 +47,15 @@ The engagement is the same for any platform; what changes is how much you can pr
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B13 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `field.01` | [Mock engagement: discovery](01-discovery.md) | practice | 11 |
+| 2 | `field.02` | [Mock engagement: qualification and sizing](02-qualification-and-sizing.md) | practice | 11 |
+| 3 | `field.03` | [Mock engagement: performance engagement](03-performance-engagement.md) | practice | 11 |
+| 4 | `field.04` | [Mock engagement: POC and evaluation](04-poc-and-evaluation.md) | practice | 11 |
+| 5 | `field.05` | [Mock engagement: migration plan](05-migration-plan.md) | practice | 11 |
+| 6 | `field.06` | [Commercials and security review](06-commercials-and-security.md) | practice | 11 |
+| 7 | `field.07` | [Escalation and handoff](07-escalation-and-handoff.md) | practice | 11 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

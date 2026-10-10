@@ -9,7 +9,7 @@ deps      = ["M01.1"]       # numerical_grad calls central_diff per coordinate
 reading   = []
 # M04.2's vjp_numeric is numerical_grad of u . f. L0.2 (F.gradcheck_all,
 # behind `{tinyllm} gradcheck --suite all` in MS-L0) joins with its batch.
-used_by   = ["M04.2"]
+used_by   = ["L0.2", "M04.2"]
 units     = ["python/tinyllm/num/gradcheck.py"]
 upgrades  = []
 milestone = "MS-P2"

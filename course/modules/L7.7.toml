@@ -15,7 +15,7 @@ reading   = []
 # serves SinkWindowCache. L8.2 (eviction policy) and L9.3 (the window and
 # sink_logits of the C kernel, checked against windowed_attention) join
 # with their batch.
-used_by   = ["L7.9"]
+used_by   = ["L7.9", "L9.3", "L9.4"]
 units     = ["python/tinyllm/modern/window.py"]
 upgrades  = []
 milestone = "MS-L7"

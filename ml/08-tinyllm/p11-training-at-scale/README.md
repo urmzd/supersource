@@ -17,13 +17,17 @@ What it takes to train the capstone on a laptop, and what changes on a cluster. 
 | Module | Topic | Kind | Pass |
 |---|---|---|---|
 | `L11.1` | bf16 mixed precision, fp16 loss scaling, gradient accumulation, activation checkpointing | build | 9 |
-| `L11.2` | Collectives over processes (ring all-reduce over shared memory) | build | 9, optional |
-| `L11.3` | DDP and ZeRO-1/2/3 | build | 9, optional |
+| `L11.2` | Collectives over processes (ring all-reduce over pipes) | side | 9, optional |
+| `L11.3` | DDP and ZeRO-1/2/3 | side | 9, optional |
 
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B11 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `L11.1` | [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](01-mixed-precision-accumulation-and-checkpointing.md) | build | 9 |
+| 2 | `L11.2` | [Collectives over processes: ring all-reduce](02-collectives-over-processes.md) | side | 9 |
+| 3 | `L11.3` | [Data parallelism and ZeRO stages 1 to 3](03-ddp-and-zero.md) | side | 9 |
 <!-- /ss:chapters -->
 
 ## Going further

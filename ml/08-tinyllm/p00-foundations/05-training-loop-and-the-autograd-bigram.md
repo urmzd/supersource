@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/train/loop.pyi`](../../../course/contracts/py/tinyllm/train/loop.pyi) · [`course/contracts/py/tinyllm/lm/bigram.pyi`](../../../course/contracts/py/tinyllm/lm/bigram.pyi) |
 | **Tests** | `course/tests/L0.5/` (what they check: section 4); `L0.0`'s tests keep running against `bigram.py` as your regression suite |
 | **Needs** | `L0.1` `no_grad` · `L0.2` `F.embedding` · `L0.3` the losses the tests train with · `L0.4` `Module`, `Linear` · `M06.3` PCG32 · `M10.2` SGD · `M10.3` AdamW · `M10.4` `clip_grad_norm_` · `rt.01` and `M03.1` (`BigramLM.logits` still runs your C matmul) · reading: `L0.0` (or `--ref-deps`) |
-| **Used by** | `L10.0` your engine serves the table this module trains (inherited from `L0.0` with `bigram.py`) · `L0.6` runs `L0.0`'s suite, `bigram.py` included, as its regression · later: `L2.2`, `L3.6`, `L6.1`, and the capstone train with this loop |
+| **Used by** | `L10.0` your engine serves the table this module trains (inherited from `L0.0` with `bigram.py`) · `L0.6` runs `L0.0`'s suite, `bigram.py` included, as its regression · later: `L2.2`, `L3.6`, `L6.1`, and the capstone train with this loop · later: `L5.5`, `L6.7` |
 | **Milestone** | `MS-L0` (step 2: the autograd bigram reaches the count MLE; step 3: the digits MLP) |
 | **Optional depth** | Karpathy, "A Recipe for Training Neural Networks" (2019, free); Goodfellow, Bengio, Courville, *Deep Learning*, ch. 8 |
 
@@ -149,6 +149,11 @@ The two learning tests compare against bars in `course/fixtures/ref-thresholds.t
 | 5. a new generator for every token, or a stream other than the engine's | Python and Rust disagree on the same seed; repeated draws of the same $u$ | `test_sample_draws_like_the_engine` (mutants `s20`, `s21`) |
 
 ## 6. Where it's used next
+| Forward | `L2.2` | Registered call site uses this module. |
+| Forward | `L3.6` | Registered call site uses this module. |
+| Forward | `L5.5` | Registered call site uses this module. |
+| Forward | `L6.1` | Registered call site uses this module. |
+| Forward | `L6.7` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

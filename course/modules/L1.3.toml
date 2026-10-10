@@ -10,7 +10,7 @@ reading   = []
 # L1.6's course tests load bert-base-uncased through from_hf_json to measure
 # it. L6.2 (masked LM) and L6.3 (ELECTRA) join used_by with B7: the mirror
 # rule only accepts call sites in the registry (DEVIATIONS L1-02).
-used_by   = ["L1.6"]
+used_by   = ["L1.6", "L6.2"]
 units     = ["python/tinyllm/tok/wordpiece.py"]
 upgrades  = []
 milestone = "MS-L1"

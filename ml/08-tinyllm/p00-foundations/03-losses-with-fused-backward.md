@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/autograd/losses.pyi`](../../../course/contracts/py/tinyllm/autograd/losses.pyi) |
 | **Tests** | `course/tests/L0.3/` (what they check: section 4), golden values from torch 2.14 in `course/fixtures/L0.3/losses_torch.npz`; your tests are graded by mutation, threshold 0.60 |
 | **Needs** | `L0.1` `from_op` · `M09.2` stable `log_softmax` · `M08.3` `cross_entropy_vjp` (the differential test) · `M11.1` cross-entropy $H(q, p)$ (the differential test) · reading: `craft.03` how your tests are graded (or `--ref-deps`) |
-| **Used by** | `L0.5` every training step of the course computes one of these |
+| **Used by** | `L0.5` every training step of the course computes one of these · later: `L11.1`, `L12.1`, `L2.2`, `L3.6`, `L4.1`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5` |
 | **Milestone** | `MS-L0` (the bigram and the digits MLP train on `cross_entropy`) |
 | **Optional depth** | Goodfellow, Bengio, Courville, *Deep Learning* (free online), sections 6.2.2 and 7.5; Szegedy et al., "Rethinking the Inception Architecture" (2016), section 7 (label smoothing) |
 
@@ -146,6 +146,16 @@ Write them in `python/tests/l0-3-losses/` (any `test_*.py` file there). The name
 | 5. smoothing over $V - 1$ classes, or summing $-\log p_j$ instead of averaging | disagrees with torch; the loss grows with the vocabulary size | `test_hand_example_label_smoothing` (mutants `s05`, `s06`) |
 
 ## 6. Where it's used next
+| Forward | `L12.1` | Registered module relationship. |
+| Forward | `L11.1` | Registered call site uses this module. |
+| Forward | `L2.2` | Registered call site uses this module. |
+| Forward | `L3.6` | Registered call site uses this module. |
+| Forward | `L4.1` | Registered call site uses this module. |
+| Forward | `L5.5` | Registered call site uses this module. |
+| Forward | `L6.1` | Registered call site uses this module. |
+| Forward | `L6.2` | Registered call site uses this module. |
+| Forward | `L6.3` | Registered call site uses this module. |
+| Forward | `L6.5` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

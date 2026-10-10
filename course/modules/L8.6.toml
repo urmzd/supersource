@@ -16,7 +16,7 @@ reading   = ["M11.1"]
 # Catalog call site: L10.8 (the Rust port, held to this module on shared
 # draft and target logits). Not registered yet, so verify check 9 fails until
 # it lists L8.6 in deps (DEVIATIONS B83-02).
-used_by   = []
+used_by   = ["L10.8"]
 units     = ["python/tinyllm/infer/spec.py"]
 upgrades  = []
 milestone = "MS-L8"

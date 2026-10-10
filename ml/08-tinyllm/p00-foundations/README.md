@@ -10,4 +10,10 @@ The model side of the tracer and, from Pass 2, the autograd engine every later m
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L0.0` | [Byte bigram: counts, logits through C, safetensors v0](00-byte-bigram.md) | build | 1 |
+| 2 | `L0.1` | [Tensor, broadcasting backward, and no_grad](01-tensor-and-broadcasting-backward.md) | build | 2 |
+| 3 | `L0.2` | [The op library and gradcheck_all](02-op-library-and-gradcheck.md) | build | 2 |
+| 4 | `L0.3` | [Losses with a fused backward](03-losses-with-fused-backward.md) | build | 2 |
+| 5 | `L0.4` | [Module system and basic layers](04-module-system-and-layers.md) | build | 2 |
+| 6 | `L0.5` | [Training loop and the autograd bigram](05-training-loop-and-the-autograd-bigram.md) | build | 2 |
+| 7 | `L0.6` | [Safetensors for every dtype, atomic checkpoints, and the token stream](06-safetensors-checkpoints-and-token-streams.md) | build | 2 |
 <!-- /ss:chapters -->

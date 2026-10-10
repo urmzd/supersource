@@ -5,13 +5,13 @@
 
 | | |
 |---|---|
-| **Module** | `L11.2` · build · Python · Pass 9 (optional) · 4 h |
+| **Module** | `L11.2` · side · Python · Pass 9 (optional) · 4 h |
 | **You build** | `python/tinyllm/dist/comm.py`: `chunk_bounds`, `Comm` (`send`, `recv`, `reduce_scatter`, `all_gather`, `all_reduce`, `broadcast`, `barrier`), `spawn` |
 | **Contract** | [`course/contracts/py/tinyllm/dist/comm.pyi`](../../../course/contracts/py/tinyllm/dist/comm.pyi) |
 | **Tests** | `course/tests/L11.2/` (what they check: section 4) · your own tests in `python/tests/l11-2-comm/`, rung R5, graded by mutation (threshold 0.80, every pitfall mutant required) |
 | **Needs** | nothing to build first · reading: `M05.1` counting bytes |
 | **Used by** | `L11.3` DDP and ZeRO run every collective through `Comm` |
-| **Milestone** | `MS-L11` (optional step: `--world 4 --zero 2` matches the single-process run) |
+| **Milestone** | none; this optional side module is not part of `MS-L11` |
 | **Optional depth** | Patarasuk and Yuan, ["Bandwidth Optimal All-reduce Algorithms for Clusters of Workstations"](https://doi.org/10.1016/j.jpdc.2008.09.002) (JPDC, 2009); Thakur, Rabenseifner, and Gropp, "Optimization of Collective Communication Operations in MPICH" (IJHPCA, 2005); the NCCL documentation on collective operations |
 
 ## Key Takeaways

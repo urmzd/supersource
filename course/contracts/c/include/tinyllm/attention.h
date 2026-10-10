@@ -16,7 +16,10 @@
  * order, whatever the batch size, the row's position in the batch, or how
  * the queries were split into calls with q_offset.
  *
- * modules: L9.3 (c/src/kernels/flash_attn.c), L9.4 (c/src/kernels/paged_attn.c) */
+ * modules: L9.3 (c/src/kernels/flash_attn.c), L9.4 (c/src/kernels/paged_attn.c)
+ * chapter: ml/08-tinyllm/p09-kernels/06-flash-attention-forward.md
+ * chapter: ml/08-tinyllm/p09-kernels/07-paged-attention-decode.md
+ */
 #ifndef TINYLLM_ATTENTION_H
 #define TINYLLM_ATTENTION_H
 

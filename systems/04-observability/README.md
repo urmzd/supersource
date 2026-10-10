@@ -105,4 +105,9 @@ Monitoring tells you WHEN something is wrong. Observability tells you WHY. In co
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `obs.00` | [One trace: gateway to engine in Jaeger (tracer)](00-one-trace.md) | practice | 1 |
+| 2 | `obs.01` | [Tracing for the serving path](01-tracing-for-the-serving-path.md) | build | 7 |
+| 3 | `obs.02` | [Metrics and log correlation](02-metrics-and-log-correlation.md) | practice | 7 |
+| 4 | `obs.03` | [SLOs and multi-window burn-rate alerts](03-slos-and-burn-rate-alerts.md) | practice | 7 |
+| 5 | `obs.04` | [Dashboards as code for the serving path](04-dashboards-as-code.md) | practice | 7 |
+| 6 | `obs.05` | [Observability for the control plane: workflow and activity spans, queue and DLQ panels](05-control-plane-observability.md) | practice | 8 |
 <!-- /ss:chapters -->

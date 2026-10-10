@@ -4,4 +4,4 @@
 # modules create crates (tl-ds, tl-tok, tl-py, tl-engine).
 [workspace]
 resolver = "2"
-members = ["crates/tl-sys", "crates/tl-serve", "crates/tl-ds", "crates/tl-tok", "crates/tl-py", "crates/tl-engine"]
+members = ["crates/tl-sys", "crates/tl-serve", "crates/tl-ds", "crates/tl-tok", "crates/tl-py", "crates/tl-engine", "crates/tl-kv-format"]

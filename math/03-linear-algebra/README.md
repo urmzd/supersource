@@ -210,4 +210,11 @@ and inner products let us measure angles and distances, enabling projection and 
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M03.1` | [Vectors, matrices, row-major layout, and a naive matmul in C](01-vectors-matrices-and-matmul-in-c.md) | build | 1 |
+| 2 | `M03.2` | [Gaussian elimination and LU with partial pivoting](02-gaussian-elimination-and-lu.md) | build | 2 |
+| 3 | `M03.3` | [Orthogonality, Householder QR, and orthogonal initialization](03-orthogonality-and-householder-qr.md) | build | 2 |
+| 4 | `M03.4` | [Eigenvalues, power iteration, and the spectral radius](04-eigenvalues-and-power-iteration.md) | build | 2 |
+| 5 | `M03.5` | [SVD, Eckart-Young low rank, and least squares](05-svd-low-rank-and-least-squares.md) | build | 3 |
+| 6 | `M03.6` | [Inner products, projections, cosine similarity, and top-k](06-inner-products-projections-cosine-and-top-k.md) | build | 3 |
+| 7 | `S-M03a` | [Linear algebra problem set, part a: elimination, LU, bases, rank, determinants, eigenvalues, QR](90-problem-set-a.md) | solve | 2 |
+| 8 | `S-M03b` | [Linear algebra problem set, part b: inner products, SVD and low rank, matmul accounting and the roofline](91-problem-set-b.md) | solve | 3 |
 <!-- /ss:chapters -->

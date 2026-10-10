@@ -170,3 +170,11 @@ These outlive every product in this topic:
 | Stripe | Sharded OLTP + idempotent writes | Sharded Postgres/Mongo |
 | Palantir | Knowledge graph + bitemporal | Entity resolution, point-in-time |
 | Twitter (historic) | Caching the timeline (fan-out on write) | Redis-backed timelines |
+
+## Chapters
+
+<!-- ss:chapters -->
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `gw.06` | [Response cache: LRU + TTL, singleflight, tenant-scoped keys](01-response-cache.md) | build | 7 |
+<!-- /ss:chapters -->

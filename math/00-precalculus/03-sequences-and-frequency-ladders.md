@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/series.pyi`](../../course/contracts/py/tinyllm/num/series.pyi) |
 | **Tests** | `course/tests/M00.3/test_series.py` (what they check: section 4) |
 | **Needs** | nothing to call. Reading: `M00.1` (powers, `log1p` and `expm1`), `lang.01` |
-| **Used by** | `M02.2` the EMA's weights and bias correction call `geometric` and `geometric_sum` · later `L7.3` RoPE `inv_freq` and `L7.4` ALiBi slopes and YaRN's per-frequency ramps · `M10.4` learning-rate schedules (reading) |
+| **Used by** | `M02.2` the EMA's weights and bias correction call `geometric` and `geometric_sum` · later `L7.3` RoPE `inv_freq` and `L7.4` ALiBi slopes and YaRN's per-frequency ramps · `M10.4` learning-rate schedules (reading) · later: `L5.4` |
 | **Milestone** | `MS-P2` (the Pass 2 gate) |
 | **Optional depth** | OpenStax, *Precalculus 2e* (free), ch. 11 (sequences and series); Press, Smith, and Lewis, "Train Short, Test Long: Attention with Linear Biases" (ALiBi, 2022), section 3; Su et al., "RoFormer" (2021), section 3.3 |
 
@@ -171,6 +171,7 @@ Everything is float64. Bad counts (negative, fractional, or `True`), an odd or n
 | 6. starting the sequence at $ar$ | `geometric` returns $ar, \ldots, ar^n$; ALiBi slopes shift by one rung | `test_geometric_terms` (mutant `s01`) |
 
 ## 6. Where it's used next
+| Forward | `L5.4` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

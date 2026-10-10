@@ -10,7 +10,7 @@
 | **Contract** | C: [`tinyllm/abi.h`](../../../course/contracts/c/include/tinyllm/abi.h), [`matmul.h`](../../../course/contracts/c/include/tinyllm/matmul.h), [`attention.h`](../../../course/contracts/c/include/tinyllm/attention.h), [`qmatmul.h`](../../../course/contracts/c/include/tinyllm/qmatmul.h), [`elementwise.h`](../../../course/contracts/c/include/tinyllm/elementwise.h), [`kv_pool.h`](../../../course/contracts/c/include/tinyllm/kv_pool.h), [`c/ABI.md`](../../../course/contracts/c/ABI.md) · files: [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../course/contracts/formats/config.schema.json), [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md) · determinism: [`spec/sampling.md`](../../../course/contracts/spec/sampling.md), [`spec/pcg32.md`](../../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/rust/l10_1.rs`, 24 tests (what they check: section 4); parity suites `ss parity sampler rng` (your Rust against your Python, through one golden file) |
 | **Needs** | `L10.0` tl-sys v0: `TlError`, the error slot, `check_abi`, `matmul_f32` ([chapter](00-your-first-endpoint.md)) · `rt.01` the ABI version, error slot, and allocator hook ([chapter](../p09-kernels/01-the-c-abi.md)) · `L9.1` the matmul · `L9.3` FlashAttention · `L9.5` the int4 product · `L9.6` RMSNorm, RoPE, SwiGLU, embedding, add · `rt.04` the KV block pool · reading: `lang.04` Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `L8.1` the Python sampler you port, `M06.3` PCG32, `L7.9` the Llama model you port, `L8.5` the int4 scheme, `M09.4` f16 rounding, `L9.7` the Python twin of this runner, `L1.5` tl-tok · or `--ref-deps` |
-| **Used by** | `L10.2` (the scheduler runs this runner), `L10.3` (chunked prefill feeds it), `L10.4` (the block manager hands it blocks), `L10.5` (the engine loop and the server) |
+| **Used by** | `L10.2` (the scheduler runs this runner), `L10.3` (chunked prefill feeds it), `L10.4` (the block manager hands it blocks), `L10.5` (the engine loop and the server) · later: `L10.6`, `L10.8`, `L10.9` |
 | **Milestone** | `MS-L10` (the engine's greedy stream equals your Python's; `ss parity sampler`) |
 | **Optional depth** | [The Rustonomicon, FFI](https://doc.rust-lang.org/nomicon/ffi.html) (free); [Rust reference, `Drop`](https://doc.rust-lang.org/reference/destructors.html) (free); [safetensors format](https://github.com/huggingface/safetensors) (free); [Hugging Face `modeling_llama.py`](https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py) (free); [Kwon et al. 2023, PagedAttention](https://arxiv.org/abs/2309.06180) (free) |
 
@@ -262,6 +262,9 @@ pub fn sample(logits: &[f32], p: &SamplingParams, prompt: &[u32], output: &[u32]
 | `silu` applied to the up projection | close-looking, wrong logits | `tiny_llama_logits_match_hf` (mutant `s22`) |
 
 ## 6. Where it's used next
+| Forward | `L10.6` | Registered call site uses this module. |
+| Forward | `L10.8` | Registered call site uses this module. |
+| Forward | `L10.9` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

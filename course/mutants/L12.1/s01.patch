@@ -1,0 +1,5 @@
+--- a/python/tinyllm/post/sft.py
++++ b/python/tinyllm/post/sft.py
+@@ -20,7 +20,7 @@ def assistant_loss_mask(messages, tokenizer):
+-        mask = [False] * len(ids)
++        mask = [True] * len(ids)

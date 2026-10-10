@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/optim/schedule.pyi`](../../course/contracts/py/tinyllm/optim/schedule.pyi) · the training spec's `schedule` and `grad_clip` fields: [`formats/train-spec.schema.json`](../../course/contracts/formats/train-spec.schema.json) |
 | **Tests** | `course/tests/M10.4/test_schedule.py` (what they check: section 4); HF and torch goldens in `course/fixtures/M10.4/schedule_hf.json` |
 | **Needs** | no code dependency. Reading: `M00.3` (sequences and the geometric sum), `M10.2` (the optimizer whose `lr` a schedule sets) |
-| **Used by** | `L0.5` sets `opt.lr` from a schedule and clips before every step · later `L3.6` (clipping for recurrent networks), `L5.5` (Noam), `C1` (WSD) |
+| **Used by** | `L0.5` sets `opt.lr` from a schedule and clips before every step · later `L3.6` (clipping for recurrent networks), `L5.5` (Noam), `C1` (WSD) · later: `L11.1`, `L6.1` |
 | **Milestone** | `MS-P2` (Pass 2 closes with every math module it teaches passing) |
 | **Optional depth** | Loshchilov and Hutter, "SGDR: Stochastic Gradient Descent with Warm Restarts" (2017); Vaswani et al., "Attention Is All You Need" (2017), section 5.3; Hägele et al., "Scaling Laws and Compute-Optimal Training Beyond Fixed Training Durations" (2024); Pascanu, Mikolov, and Bengio, "On the difficulty of training recurrent neural networks" (2013), section 3.2 |
 
@@ -153,6 +153,8 @@ def clip_grad_norm_(params, max_norm: float) -> float   # in place; returns the 
 | clipping an infinite norm | `max_norm / inf = 0` zeroes the update and the overflow goes unnoticed | `test_clip_nonfinite_norm_leaves_grads` (mutant `s15`) |
 
 ## 6. Where it's used next
+| Forward | `L11.1` | Registered call site uses this module. |
+| Forward | `L6.1` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

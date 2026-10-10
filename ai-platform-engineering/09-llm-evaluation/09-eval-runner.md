@@ -10,7 +10,7 @@
 | **Contract** | suites in [`course/contracts/formats/eval-case.schema.json`](../../course/contracts/formats/eval-case.schema.json), reports in [`course/contracts/formats/eval-result.schema.json`](../../course/contracts/formats/eval-result.schema.json); the Go API in section 4 |
 | **Tests** | `course/tests/go/ag_09/` (what they check: section 4) |
 | **Needs** | `ag.01` provider and deltas, `ag.02` tools (the tests give an agent a tool), `ag.03` the agent loop, `ag.05` durable agent runs, `load.01` the Go PCG32; reading: `M07.4` (confidence intervals and the bootstrap, re-implemented here in Go), [case study 05](../../case-studies/05-agent-eval-harness/) |
-| **Used by** | `ag.10` scorers · `ag.11` LLM judge · `ag.12` A/B experiments; your `{ctl} eval` verb drives it |
+| **Used by** | `ag.10` scorers · `ag.11` LLM judge · `ag.12` A/B experiments · `craft.23` eval tests; your `{ctl} eval` verb drives it |
 | **Milestone** | MS-agent |
 | **Optional depth** | Efron and Tibshirani, *An Introduction to the Bootstrap*, ch. 6 and 13; Miller, [*Adding Error Bars to Evals*](https://arxiv.org/abs/2411.00640) (free) |
 
@@ -239,6 +239,7 @@ Without `WithSubject`, `Run` scores the observations as given (their outputs alr
 | Forward | `ag.10` | scorers implement `Scorer` and read `Timing`, `GroundTruth`, and the `tool_calls` annotation |
 | Forward | `ag.11` | the judge is a `Scorer`; its unparsable replies are `Score.Error`, excluded and counted |
 | Forward | `ag.12` | `RunExperiment` runs two subjects through this runner and fills `Summary.AB` |
+| Forward | `craft.23` | eval results become regression-test evidence |
 
 If you skip this module, `ss check ag.10` reports `needs ag.09: build it, or pass --ref-deps`.
 

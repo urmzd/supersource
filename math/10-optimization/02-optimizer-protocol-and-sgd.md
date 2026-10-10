@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/optim/sgd.pyi`](../../course/contracts/py/tinyllm/optim/sgd.pyi) |
 | **Tests** | `course/tests/M10.2/` (what they check: section 4) |
 | **Needs** | `M10.1` gradient descent (the tests compare, or `--ref-deps`) |
-| **Used by** | `L0.5` trains the bigram · later: `L2.2` the neural n-gram model, `L3.6` the recurrent models; `M10.3` (AdamW) and `M10.4` (schedules, clipping) implement and drive the same protocol |
+| **Used by** | `L0.5` trains the bigram · later: `L2.2` the neural n-gram model, `L3.6` the recurrent models; `M10.3` (AdamW) and `M10.4` (schedules, clipping) implement and drive the same protocol · later: `L0.6`, `L11.1` |
 | **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
 | **Optional depth** | Goh, [*Why Momentum Really Works*](https://distill.pub/2017/momentum/) (Distill, 2017); Sutskever, Martens, Dahl, and Hinton, "On the importance of initialization and momentum in deep learning" (ICML 2013) |
 
@@ -162,6 +162,8 @@ class SGD:
 | 9. folding $\eta$ into the momentum buffer | identical while $\eta$ is constant; under a schedule the old rate lingers for about $1/(1-\beta)$ steps | `test_lr_change_takes_effect_on_the_next_step` (mutant `s11`) |
 
 ## 6. Where it's used next
+| Forward | `L0.6` | Registered call site uses this module. |
+| Forward | `L11.1` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

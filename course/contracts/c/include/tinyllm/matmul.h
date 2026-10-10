@@ -2,7 +2,9 @@
  * packed, batch-invariant version under the same symbol and signature).
  * Rules in c/ABI.md.
  *
- * chapter: math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md */
+ * chapter: math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md
+ * chapter: ml/08-tinyllm/p09-kernels/04-tiled-batch-invariant-matmul.md
+ */
 #ifndef TINYLLM_MATMUL_H
 #define TINYLLM_MATMUL_H
 

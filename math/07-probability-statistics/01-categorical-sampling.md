@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/prob/sampling.pyi`](../../course/contracts/py/tinyllm/prob/sampling.pyi) · the sampler's op order: [`spec/sampling.md`](../../course/contracts/spec/sampling.md) · the generator: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/M07.1/` (what they check: section 4) |
 | **Needs** | no code from earlier modules · reading: `M06.3` PCG32 (your `rng`), `M07.0` random variables and the uniform, `M00.1` logs |
-| **Used by** | later: `L8.1` the sampler's step 11 · `L2.3` word2vec negative sampling · `L6.2` BERT's 80/10/10 masking · `M07.4` and `M07.6` resampling · `load.01` re-implements the Poisson schedule in Go |
+| **Used by** | later: `L8.1` the sampler's step 11 · `L2.3` word2vec negative sampling · `L6.2` BERT's 80/10/10 masking · `M07.4` and `M07.6` resampling · `load.01` re-implements the Poisson schedule in Go · later: `L6.3` |
 | **Milestone** | `MS-P3` (tokens and data) |
 | **Optional depth** | Devroye, *Non-Uniform Random Variate Generation* (1986), ch. 2 and 3; Vose, "A Linear Algorithm for Generating Random Numbers with a Given Distribution" (1991) |
 
@@ -173,6 +173,8 @@ def poisson_arrivals(rate: float, horizon: float, rng: UniformSource) -> NDArray
 | 10. not checking that `probs` sums to 1 | an unnormalized row samples as if its tail were empty | `test_rejects_bad_arguments` (mutant `s14`) |
 
 ## 6. Where it's used next
+| Forward | `L6.3` | Registered call site uses this module. |
+| Forward | `M07.6` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

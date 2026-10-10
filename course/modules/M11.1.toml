@@ -9,7 +9,7 @@ deps      = ["M09.2"]   # entropy_from_logits calls log_softmax
 reading   = []
 # M08.3's course tests differentiate this cross_entropy; L0.3's loss is
 # checked against it. L8.1, L8.6, and L12.3 join with their batches.
-used_by   = ["M08.3", "L0.3"]
+used_by   = ["L0.3", "L12.2", "L12.3", "L12.4", "L8.1", "M08.3", "M11.4"]
 units     = ["python/tinyllm/info/entropy.py"]
 upgrades  = []
 milestone = "MS-P2"

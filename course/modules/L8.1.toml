@@ -18,7 +18,7 @@ reading   = ["M09.2", "M07.6"]
 # distribution of speculative decoding). L10.1 (the Rust
 # port held to the same fixture), and L12.3 join with their
 # batches (DEVIATIONS B81-03).
-used_by   = ["L8.2", "ds.04", "L8.7", "L8.6"]
+used_by   = ["L8.2", "ds.04", "L8.7", "L8.6", "L12.3"]
 units     = ["python/tinyllm/infer/sample.py"]
 upgrades  = []
 milestone = "MS-L8"

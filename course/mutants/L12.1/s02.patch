@@ -1,0 +1,5 @@
+--- a/python/tinyllm/post/sft.py
++++ b/python/tinyllm/post/sft.py
+@@ -43,7 +43,7 @@ def pack(examples, seq_len):
+-        docs.extend([doc_id] * len(tokens))
++        docs.extend([0] * len(tokens))

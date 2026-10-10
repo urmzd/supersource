@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/prob/stats.pyi`](../../course/contracts/py/tinyllm/prob/stats.pyi) · the generator behind `rng`: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/M07.4/` (what they check: section 4), golden values from scipy 1.17.1 in `course/fixtures/M07.4/scipy_golden.json` |
 | **Needs** | no code from earlier modules · reading: [`M07.1`](01-categorical-sampling.md) one uniform per draw, [`M07.0`](00-random-variables-and-the-normal.md) expectation, variance, the normal, [`S-M07b`](91-problem-set-b.md) the variance of a sum |
-| **Used by** | later: `L4.5` sequence metrics with bootstrap CIs · `L6.7` every evaluation metric carries a CI · `L8.5` quantization verdicts · `L10.7` · `ag.12` re-implements the bootstrap in Go · `M07.5` hypothesis tests build on it |
+| **Used by** | later: `L4.5` sequence metrics with bootstrap CIs · `L6.7` every evaluation metric carries a CI · `L8.5` quantization verdicts · `L10.7` · `ag.12` re-implements the bootstrap in Go · `M07.5` hypothesis tests build on it · later: `L12.3`, `ethics.04` |
 | **Milestone** | `MS-P4` (sequence models; the pass gate runs `ss check` on every math module of the pass) |
 | **Optional depth** | Wasserman, *All of Statistics*, ch. 5 to 8 (convergence, the bootstrap); Efron and Tibshirani, *An Introduction to the Bootstrap* (1993), ch. 13; Brown, Cai, DasGupta, "Interval Estimation for a Binomial Proportion" (2001) |
 
@@ -145,6 +145,8 @@ def bootstrap_ci(x, stat, n_boot: int, alpha: float, rng) -> tuple[float, float,
 | 6. drawing one resample and reusing it | every replicate identical: a zero-width interval | `test_bootstrap_matches_independent_resampling` (mutant `s06`) |
 
 ## 6. Where it's used next
+| Forward | `L12.3` | Registered module relationship. |
+| Forward | `ethics.04` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

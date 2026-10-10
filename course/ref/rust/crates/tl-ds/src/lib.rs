@@ -8,10 +8,11 @@
 //! | `bloom` | ds.08 | exact dedup in the corpus pipeline (data.03), through `tinyllm_rs` |
 //!
 //! ds.05 owns this crate root. The radix tree over token ids (`radix`, ds.07)
-//! joins as one more `pub mod` line when its module is authored. std only.
+//! is available to the engine's prefix cache. std only.
 
 pub mod bloom;
 pub mod heap;
+pub mod radix;
 pub mod robin;
 
 pub use bloom::Bloom;

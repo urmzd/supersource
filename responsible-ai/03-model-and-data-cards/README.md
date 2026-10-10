@@ -47,7 +47,9 @@ Documentation is how a model's limits travel with it. Without a card, every down
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B11 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ethics.03` | [Datasheet and model card](01-datasheet-and-model-card.md) | practice | 9 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

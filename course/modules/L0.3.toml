@@ -10,7 +10,7 @@ contract  = ["contracts/py/tinyllm/autograd/losses.pyi"]
 # cross_entropy (differential tests against the learner's own math).
 deps      = ["L0.1", "M09.2", "M08.3", "M11.1"]
 reading   = ["craft.03"]   # the testing ladder: your first graded tests (rung R2)
-used_by   = ["L0.5"]
+used_by   = ["L0.5", "L11.1", "L12.1", "L2.2", "L3.6", "L4.1", "L5.5", "L6.1", "L6.2", "L6.3", "L6.5"]
 units     = ["python/tinyllm/autograd/losses.py"]
 upgrades  = []
 milestone = "MS-L0"

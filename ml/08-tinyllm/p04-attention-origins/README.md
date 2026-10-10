@@ -25,7 +25,13 @@ Where attention came from: sequence-to-sequence translation. An encoder-decoder 
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B6 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `L4.1` | [Encoder-decoder with teacher forcing](01-encoder-decoder-teacher-forcing.md) | build | 4 |
+| 2 | `L4.2` | [Bahdanau additive attention](02-bahdanau-additive-attention.md) | build | 4 |
+| 3 | `L4.3` | [Luong attention and input feeding](03-luong-attention-input-feeding.md) | build | 4 |
+| 4 | `L4.4` | [Beam search, generic over a step function](04-beam-search.md) | build | 4 |
+| 5 | `L4.5` | [Sequence metrics: exact match, BLEU, chrF](05-sequence-metrics.md) | build | 4 |
 <!-- /ss:chapters -->
 
 ## Going further

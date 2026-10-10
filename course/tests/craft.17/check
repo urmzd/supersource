@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$PWD"
+missing=0
+if [ ! -e "$root/docs/THREAT_MODEL.md" ]; then echo "craft.17: missing docs/THREAT_MODEL.md" >&2; missing=1; fi
+exit "$missing"

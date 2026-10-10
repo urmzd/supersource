@@ -13,7 +13,7 @@ reading   = ["M11.1", "M09.2"]
 # L1.6 (tokenizer metrics) is in this batch. L2.1, L2.2, L3.6, L6.7, L8.5,
 # and C1 join used_by with their batches: the mirror rule only accepts call
 # sites in the registry.
-used_by   = ["L1.6"]
+used_by   = ["L1.6", "L2.1", "L2.2", "L6.7"]
 units     = ["python/tinyllm/info/ppl.py"]
 upgrades  = []
 milestone = "MS-P3"

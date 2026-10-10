@@ -2,7 +2,9 @@
  * Rules in c/ABI.md. The Rust sampler calls it through tl-sys for top_k
  * (spec/sampling.md step 4).
  *
- * module: ds.04 (c/src/ds/topk.c) */
+ * module: ds.04 (c/src/ds/topk.c)
+ * chapter: algorithms/16-systems-data-structures/04-binary-heap-top-k.md
+ */
 #ifndef TINYLLM_TOPK_H
 #define TINYLLM_TOPK_H
 

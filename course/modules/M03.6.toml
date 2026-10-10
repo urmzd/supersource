@@ -12,7 +12,7 @@ reading   = ["M03.1", "S-M03a"]
 # Call sites (DESIGN 4.1): L2.3 analogies (B5, another group) and L6.7
 # (word similarity); ag.07 re-implements it in Go (not a call site). They
 # join used_by when their rows list M03.6 in deps (B53-02).
-used_by   = []
+used_by   = ["L2.3"]
 units     = ["python/tinyllm/linalg/inner.py"]
 upgrades  = []
 milestone = "MS-P3"

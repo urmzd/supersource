@@ -53,6 +53,18 @@ Every system fails; what differs is how long it stays failed. Time to mitigate i
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ops.00` | [First drill: the engine crashloops](00-first-drill.md) | drill | 1 |
+| 2 | `ops.01` | [A decode worker dies mid-stream](01-kill-decode.md) | drill | 7 |
+| 3 | `ops.02` | [The durable server is SIGKILLed in a loop during a corpus build](02-durable-kill9.md) | drill | 8 |
+| 4 | `ops.03` | [A poison task lands in the dead-letter queue](03-poison-task.md) | drill | 8 |
+| 5 | `ops.04` | [Drill: KV v2 migration](04-kv-v2-migration.md) | drill | 11 |
+| 6 | `ops.05` | [Drill: API v2 migration](05-api-v2-migration.md) | drill | 11 |
+| 7 | `ops.06` | [Drill: breaking dependency upgrade](06-dependency-upgrade.md) | drill | 11 |
+| 8 | `ops.07` | [Drill: performance regression bisect](07-performance-regression.md) | drill | 11 |
+| 9 | `ops.08` | [Drill: data incident](08-data-incident.md) | drill | 11 |
+| 10 | `ops.09` | [Drill: noisy neighbor](09-noisy-neighbor.md) | drill | 11 |
+| 11 | `ops.10` | [Drill: runaway agent](10-runaway-agent.md) | drill | 11 |
+| 12 | `ops.11` | [Drill: event log disk full](11-eventlog-disk-full.md) | drill | 11 |
+| 13 | `ops.12` | [Drill: Raft partition (optional)](12-raft-partition.md) | drill | 11 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

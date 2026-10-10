@@ -94,6 +94,7 @@ func Exact() eval.Scorer {
 // Regex scores 1 when the output matches pattern (RE2, unanchored), else 0
 // ("regex"). An empty pattern takes each case's scorer_args.regex.pattern.
 func Regex(pattern string) (eval.Scorer, error) {
+	// SOLUTION-BEGIN ag.10
 	var fixed *regexp.Regexp
 	if pattern != "" {
 		re, err := regexp.Compile(pattern)
@@ -103,7 +104,6 @@ func Regex(pattern string) (eval.Scorer, error) {
 		fixed = re
 	}
 	return fn{"regex", func(_ context.Context, o eval.Observation) (eval.Score, error) {
-		// SOLUTION-BEGIN ag.10
 		re := fixed
 		if re == nil {
 			var args struct {
@@ -124,20 +124,20 @@ func Regex(pattern string) (eval.Scorer, error) {
 			return eval.Score{Value: 1}, nil
 		}
 		return eval.Score{Value: 0, Reason: "no match for " + re.String()}, nil
-		// SOLUTION-END
 	}}, nil
+	// SOLUTION-END
 }
 
 // Schema scores 1 when the output text is JSON that validates against
 // schema (ag.02's validator), else 0 with the violations as the reason
 // ("schema").
 func Schema(schema json.RawMessage) (eval.Scorer, error) {
+	// SOLUTION-BEGIN ag.10
 	s, err := tool.Compile(schema)
 	if err != nil {
 		return nil, err
 	}
 	return fn{"schema", func(_ context.Context, o eval.Observation) (eval.Score, error) {
-		// SOLUTION-BEGIN ag.10
 		errs := s.ValidateJSON([]byte(OutputText(o)))
 		if len(errs) == 0 {
 			return eval.Score{Value: 1}, nil
@@ -147,6 +147,6 @@ func Schema(schema json.RawMessage) (eval.Scorer, error) {
 			msgs[i] = e.Error()
 		}
 		return eval.Score{Value: 0, Reason: strings.Join(msgs, "; ")}, nil
-		// SOLUTION-END
 	}}, nil
+	// SOLUTION-END
 }

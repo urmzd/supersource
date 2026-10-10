@@ -5,13 +5,13 @@
 
 | | |
 |---|---|
-| **Module** | `L11.3` · build · Python · Pass 9 (optional) · 4 to 5 h |
+| **Module** | `L11.3` · side · Python · Pass 9 (optional) · 4 to 5 h |
 | **You build** | `python/tinyllm/dist/zero.py`: `DDP` (`forward`, `sync_grads`), `ZeroOptimizer` (`gather`, `step`, `zero_grad`, `memory_bytes`) |
 | **Contract** | [`course/contracts/py/tinyllm/dist/zero.pyi`](../../../course/contracts/py/tinyllm/dist/zero.pyi) |
 | **Tests** | `course/tests/L11.3/` (what they check: section 4) · your own tests in `python/tests/l11-3-zero/`, rung R5, graded by mutation (threshold 0.80, every pitfall mutant required) |
 | **Needs** | `L11.2` `Comm` and `chunk_bounds` · `L0.1` Tensor · `L0.4` Module and layers · `M10.2` SGD and `M10.3` AdamW (single-process references and wrapped optimizers) · reading: `M05.1` the memory plan, `L11.1` accumulation |
 | **Used by** | the capstone trainer's `--world 4 --zero 2` option (`C1`, joins the registry with the capstone) |
-| **Milestone** | `MS-L11` (optional step: `--world 4 --zero 2` matches the single-process run) |
+| **Milestone** | none; this optional side module is not part of `MS-L11` |
 | **Optional depth** | Li et al., [*PyTorch Distributed: Experiences on Accelerating Data Parallel Training*](https://arxiv.org/abs/2006.15704) (VLDB 2020); Rajbhandari et al., [*ZeRO: Memory Optimizations Toward Training Trillion Parameter Models*](https://arxiv.org/abs/1910.02054) (SC 2020); Zhao et al., [*PyTorch FSDP*](https://arxiv.org/abs/2304.11277) (VLDB 2023) |
 
 ## Key Takeaways

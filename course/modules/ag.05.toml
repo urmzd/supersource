@@ -19,7 +19,7 @@ deps      = ["ag.01", "ag.02", "ag.03", "ag.04"]
 reading   = ["ai-platform-engineering/05-durable-orchestration-and-workers", "ai-platform-engineering/13-agent-sdk"]
 # ag.09's DurableSubject runs suite subjects as durable runs; dep.07 (the
 # agent worker) joins with its batch.
-used_by   = ["ag.09"]
+used_by   = ["ag.09", "dep.07"]
 units     = ["go/agent/durableagent/journal.go", "go/agent/durableagent/run.go"]
 upgrades  = []
 milestone = "MS-agent"

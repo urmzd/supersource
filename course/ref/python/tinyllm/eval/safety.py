@@ -112,14 +112,12 @@ def _row(model_id: str, task: str, flags: list[bool], higher: bool) -> dict:
 
 
 def safety_report(
-    model_id: str,
-    generate: Callable[[str, Any], str],
+    model_id: str, generate: Callable[[str, Any], str],
     prompts: Sequence[Mapping[str, Any]],
     lexicon: Mapping[str, float],
     refusal_patterns: Sequence[str],
     rng: Any,
-    threshold: float = 0.5,
-    seed: int = 0,
+    threshold: float = 0.5, seed: int = 0,
     labelled: Optional[Sequence[tuple[str, int]]] = None,
 ) -> dict:
     # SOLUTION-BEGIN ethics.04

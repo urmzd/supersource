@@ -16,7 +16,7 @@ reading   = ["L2.1", "L0.0"]
 # Call site (DESIGN 4.3, D36): the L6.7 zoo loads the NPLM directory and
 # reports its bits per byte. L6.7 (B7) is not registered yet, so verify
 # check 9 fails until its row lists L2.2 in deps (DEVIATIONS B54-02).
-used_by   = []
+used_by   = ["L6.7"]
 units     = ["python/tinyllm/lm/nplm.py"]
 upgrades  = []
 milestone = "MS-L2"

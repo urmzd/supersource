@@ -48,7 +48,9 @@ You cannot honor terms you did not record. Licensing for training data is a prov
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B5 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ethics.01` | [Data licensing and the ledger](01-data-licensing-and-the-ledger.md) | practice | 3 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

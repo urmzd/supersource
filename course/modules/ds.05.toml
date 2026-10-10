@@ -12,7 +12,7 @@ reading   = ["lang.04", "S-M06a"]   # the Rust primer; load factor and expected 
 # L1.5 keeps its vocabulary (bytes -> id) and merge ranks ((left, right) ->
 # (rank, id)) in RobinHoodMap. ds.07 (radix tree) and ds.02 (Swiss table, C)
 # read the chapter later; they are not call sites.
-used_by   = ["L1.5"]
+used_by   = ["L1.5", "ds.07"]
 units     = [
   "rust/crates/tl-ds/src/robin.rs",
   "rust/crates/tl-ds/src/lib.rs",   # crate root (glue): declares robin, heap, bloom (2.15, Q7)

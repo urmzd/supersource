@@ -15,7 +15,7 @@ reading   = ["lang.09", "lang.05", "L10.0", "L8.2"]   # async Rust; SSE; the v0 
 # Catalog call sites (L10.6, L10.7, L10.9; gw.04, ag.01, load.01, L12.3
 # over HTTP) are not registered yet: verify check 9 fails until one lists
 # L10.5 in deps (DEVIATIONS B91-07).
-used_by   = []
+used_by   = ["L10.7", "L10.9", "L12.3"]
 units     = [
   "rust/crates/tl-engine/src/engine.rs",
   "rust/crates/tl-serve/src/server.rs",

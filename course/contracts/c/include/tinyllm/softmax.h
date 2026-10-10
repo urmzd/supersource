@@ -11,7 +11,9 @@
  * within cols * 2^-24. A row whose entries are all -inf gives all zeros
  * (an attention row with every key masked). NaN propagates.
  *
- * module: L9.2 (c/src/kernels/softmax.c) */
+ * module: L9.2 (c/src/kernels/softmax.c)
+ * chapter: ml/08-tinyllm/p09-kernels/05-softmax-three-pass-and-online.md
+ */
 #ifndef TINYLLM_SOFTMAX_H
 #define TINYLLM_SOFTMAX_H
 

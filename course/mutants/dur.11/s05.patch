@@ -1,11 +1,5 @@
 --- a/go/workflows/train_run.go
 +++ b/go/workflows/train_run.go
-@@ -122,7 +122,7 @@
- 		res.Corpus = &cb
- 	}
- 	for _, until := range Segments(spec.Steps, spec.EvalEvery) {
+@@ -134,1 +134,1 @@
 -		seg, err := withField(in.Spec, "steps", until)
 +		seg, err := withField(in.Spec, "steps", spec.Steps)
- 		if err != nil {
- 			return res, &SpecError{Reason: err.Error()}
- 		}

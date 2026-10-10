@@ -173,6 +173,7 @@ Write `python/tests/l8-1-sample/` against the contract only. The strongest oracl
 | 10. removed ids as $-10^9$ instead of $-\infty$ | masked tokens reappear after a later scaling | `test_masked_logits_are_never_sampled` (mutant `s22`) |
 
 ## 6. Where it's used next
+| Forward | `L12.3` | Registered module relationship. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

@@ -10,7 +10,7 @@ reading   = ["M01.1", "M00.1"]   # derivatives and exp/log; no code called
 # M08.1's course tests compare Dual derivatives with these closed forms.
 # L0.2 (op library), L3.2 (gates), L7.2 (SwiGLU), and L9.6 join with their
 # batches.
-used_by   = ["M08.1"]
+used_by   = ["L0.2", "M08.1"]
 units     = ["python/tinyllm/num/activations.py"]
 upgrades  = []
 milestone = "MS-P2"

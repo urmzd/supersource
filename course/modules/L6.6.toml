@@ -13,7 +13,7 @@ reading   = ["M03.4"]
 # L6.5's lora_classifier injects adapters into a classifier's backbone (the
 # MS-L6 `finetune classify --lora r=8` step). L12.1 (SFT, optional, B12)
 # and sq.multi-lora join with their batches.
-used_by   = ["L6.5"]
+used_by   = ["L6.5", "L12.1"]
 units     = ["python/tinyllm/obj/lora.py"]
 upgrades  = []
 milestone = "MS-L6"

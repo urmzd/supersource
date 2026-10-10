@@ -11,7 +11,7 @@ reading   = ["M00.1"]   # powers of two and logarithms
 # the bit converters. L7.9 bf16 loading, L11.1 mixed precision, and M09.4 fp8
 # join with their batches (mirror rule, DEVIATIONS M061-01); M09.2 lists
 # M09.1 in reading.
-used_by   = ["L0.6"]
+used_by   = ["L0.6", "L11.1", "M09.4"]
 units     = ["python/tinyllm/num/fp.py"]
 upgrades  = []
 milestone = "MS-P2"

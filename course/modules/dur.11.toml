@@ -14,7 +14,7 @@ deps      = ["dur.08", "data.09"]
 reading   = ["dur.09", "L0.6", "L6.7", "ai-platform-engineering/05-durable-orchestration-and-workers"]
 # dur.12: ModelRelease evaluates the candidate with EvalSuite. C1 runs its
 # capstone as a TrainRun through {ctl}, an entry point (reading there).
-used_by   = ["dur.12"]
+used_by   = ["dur.12", "ag.12"]   # ModelRelease evaluates; A/B experiments upgrade EvalSuite
 units     = ["go/workflows/train_run.go", "go/workflows/eval_suite.go"]
 upgrades  = []
 milestone = "MS-durable"
@@ -22,6 +22,6 @@ ci        = "pr"
 
 [tests]
 dir       = "course/tests/go/dur_11/"
-smoke     = ["TestHandExampleSegmentsAndEvals", "TestKillLoopResumesBitwise", "TestCancelStopsTheRun"]
+smoke     = ["TestHandExampleSegmentsAndEvals", "TestEvalIntervalUsesDurableSleepAndReplaysOnce", "TestKillLoopResumesBitwise", "TestCancelStopsTheRun"]
 timeout_s = 120
 determinism_runs = 2

@@ -27,7 +27,14 @@ From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B4 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `L1.1` | [Tokenizer protocol, char tokenizer](01-tokenizer-protocol-and-char.md) | build | 3 |
+| 2 | `L1.2` | [Byte-level BPE (GPT-2 compatible): pre-tokenizer, trainer, HF loader](02-byte-level-bpe.md) | build | 3 |
+| 3 | `L1.3` | [WordPiece (BERT basic tokenizer + greedy longest match)](03-wordpiece.md) | build | 3 |
+| 4 | `L1.4` | [Unigram LM tokenizer (EM, Viterbi, subword sampling)](04-unigram-lm.md) | build | 3 |
+| 5 | `L1.5` | [Rust fast BPE (tl-tok), byte tokenizer, streaming decoder, PyO3 binding](05-rust-fast-bpe.md) | build | 3 |
+| 6 | `L1.6` | [Tokenizer metrics](06-tokenizer-metrics.md) | build | 3 |
 <!-- /ss:chapters -->
 
 ## Going further

@@ -48,7 +48,9 @@ Privacy in an ML system is a data-flow property: personal data enters through th
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B5 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `ethics.02` | [Privacy and PII policy](01-privacy-and-pii-policy.md) | practice | 3 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

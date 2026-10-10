@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/stable.pyi`](../../course/contracts/py/tinyllm/num/stable.pyi) |
 | **Tests** | `course/tests/M09.2/` (what they check: section 4) |
 | **Needs** | no code dependency · reading: `M09.1` IEEE 754 (why `exp` overflows float32 at 88.7), `M02.1` Taylor series |
-| **Used by** | `M11.1` entropy from logits · `M08.3` the cross-entropy VJP · `L0.2` op library · `L0.3` fused cross-entropy · later: `L8.1` sampler, `L6.7` perplexity over $10^7$ tokens, `L9.2` the same math in C |
+| **Used by** | `M11.1` entropy from logits · `M08.3` the cross-entropy VJP · `L0.2` op library · `L0.3` fused cross-entropy · later: `L8.1` sampler, `L6.7` perplexity over $10^7$ tokens, `L9.2` the same math in C · later: `L4.4`, `L5.1`, `L7.7` |
 | **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
 | **Optional depth** | Higham, *Accuracy and Stability of Numerical Algorithms* (SIAM, 2nd ed.), ch. 1 and 4; Blanchard, Higham, and Higham, "Accurately computing the log-sum-exp and softmax functions" (IMA J. Numer. Anal., 2021) |
 
@@ -178,6 +178,9 @@ Float inputs keep their dtype; integer inputs are computed in float64. `axis` an
 | 9. upcasting float32 to float64 | the C kernel's float32 reference no longer matches | `test_dtype_preserved` (mutant `s13`) |
 
 ## 6. Where it's used next
+| Forward | `L4.4` | Registered call site uses this module. |
+| Forward | `L5.1` | Registered call site uses this module. |
+| Forward | `L7.7` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

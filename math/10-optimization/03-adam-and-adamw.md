@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/optim/adamw.pyi`](../../course/contracts/py/tinyllm/optim/adamw.pyi) · checkpoint keys: [`formats/checkpoint.md`](../../course/contracts/formats/checkpoint.md) |
 | **Tests** | `course/tests/M10.3/test_adamw.py` (what they check: section 4); golden trajectories from torch 2.14 in `course/fixtures/M10.3/adam_torch.json` |
 | **Needs** | no code dependency. Reading: `M10.2` (the `Optimizer` protocol and SGD with momentum), `M02.2` (the exponential moving average and its bias correction), `S-M10a` (the Adam derivation problems) |
-| **Used by** | `L0.5` trains every model with it from Part 0 on · `L0.6` saves and restores its state in checkpoints · later `L4.1`, `L5.5`, `L6.1`, `L7.9`, `C1`, and `L12.1` |
+| **Used by** | `L0.5` trains every model with it from Part 0 on · `L0.6` saves and restores its state in checkpoints · later `L4.1`, `L5.5`, `L6.1`, `L7.9`, `C1`, and `L12.1` · later: `L11.1`, `L3.6`, `L6.5` |
 | **Milestone** | `MS-P2` (Pass 2 closes with every math module it teaches passing) |
 | **Optional depth** | Kingma and Ba, "Adam: A Method for Stochastic Optimization" (2015), sections 2 and 3; Loshchilov and Hutter, "Decoupled Weight Decay Regularization" (2019), sections 2 and 3; the torch source `torch/optim/adam.py`, `_single_tensor_adam` |
 
@@ -167,6 +167,9 @@ A parameter is any object with `data` (a float ndarray) and `grad` (an ndarray o
 | decaying parameters whose grad is `None` | embeddings of tokens absent from the batch shrink anyway | `test_parameter_without_grad_is_untouched` (mutant `s07`) |
 
 ## 6. Where it's used next
+| Forward | `L11.1` | Registered call site uses this module. |
+| Forward | `L3.6` | Registered call site uses this module. |
+| Forward | `L6.5` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

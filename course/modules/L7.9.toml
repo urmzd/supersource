@@ -18,7 +18,7 @@ reading   = ["M09.1", "L1.2"]
 # Call sites (DESIGN 4.3): L8.1 to L8.6, L9.7 parity, L10.1 parity, C1. None
 # is registered yet, so verify check 9 fails until L8.2 lists L7.9 in deps
 # (DEVIATIONS B75-05).
-used_by   = []
+used_by   = ["L8.2", "L9.7"]
 units     = ["python/tinyllm/modern/llama.py", "python/tinyllm/io/hf.py"]
 upgrades  = []
 milestone = "MS-L7"

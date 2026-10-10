@@ -1,0 +1,11 @@
+[package]
+name = "tl-kv-format"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "kv-migrate"
+path = "src/main.rs"

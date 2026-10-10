@@ -14,7 +14,7 @@ reading   = ["M01.2", "M07.5"]
 # L6.5 fits the classifier heads and the linear policy head (D33) with
 # logistic_regression_fit and reports roc_auc and ece. L3.5 (probes) and
 # ethics.04 (safety report) join when they list M07.7 in deps.
-used_by   = ["L6.5"]
+used_by   = ["L6.5", "ethics.04"]
 units     = ["python/tinyllm/prob/metrics.py"]
 upgrades  = []
 milestone = "MS-P5"

@@ -1,0 +1,6 @@
+# chapter: ml/08-tinyllm/p12-post-training/04-distillation.md
+from __future__ import annotations
+import numpy as np
+
+def forward_kl(student_logits: np.ndarray, teacher_logits: np.ndarray, temperature: float = 1.0) -> float: ...
+def reverse_kl(student_logits: np.ndarray, teacher_logits: np.ndarray, temperature: float = 1.0) -> float: ...

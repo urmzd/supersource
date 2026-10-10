@@ -201,7 +201,9 @@ In the course you draw your own system the way this topic draws Streamflow: cont
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B13 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `craft.09` | [C4 diagrams in D2](01-c4-diagrams-in-d2.md) | practice | 11 |
 <!-- /ss:chapters -->
 
 ## Connections to Other Tracks

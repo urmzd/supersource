@@ -10,7 +10,7 @@ reading   = ["lang.01", "M00.1"]   # the catalog's Prereqs M00.1 is conceptual (
 # Call sites (DESIGN 4.1): L5.4 sinusoidal PE, L7.3 RoPE (B7), and M07.0
 # Box-Muller (B3). Not registered yet: verify check 9 fails until one lands
 # (DEVIATIONS M00-01).
-used_by   = []
+used_by   = ["L5.4", "L7.3"]
 units     = ["python/tinyllm/num/rotation.py"]
 upgrades  = []
 milestone = "MS-P2"

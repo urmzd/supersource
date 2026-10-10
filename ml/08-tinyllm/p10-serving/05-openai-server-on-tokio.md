@@ -225,6 +225,7 @@ Your `main.rs`: `--config <path>` loads `ServeConfig::load` (with `TL_ENGINE__<K
 | Running a step inside an async task | one long prefill stalls every connection on that runtime thread | `concurrent_streams_equal_serial` |
 
 ## 6. Where it's used next
+| Forward | `L12.3` | Registered module relationship. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

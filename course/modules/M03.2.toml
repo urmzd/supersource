@@ -9,7 +9,7 @@ deps      = []
 reading   = ["M03.1"]   # row-major matrices and the product; no M03.1 code is called
 # Call sites: M03.4 inverse iteration (one lu, a lu_solve per step). The
 # catalog's M07.7 IRLS and M10.5 join when they are registered.
-used_by   = ["M03.4"]
+used_by   = ["M03.4", "M07.7"]
 units     = ["python/tinyllm/linalg/lu.py"]
 upgrades  = []
 milestone = "MS-P2"

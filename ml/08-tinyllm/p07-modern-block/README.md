@@ -31,7 +31,17 @@ The ALiBi part of `L7.4` is optional (course decision D31).
 ## Chapters
 
 <!-- ss:chapters -->
-No chapters yet: they arrive with authoring batch B7 (course/DESIGN.md 9). `ss lint --fix-index` then fills this table from the registry.
+| # | Module | Chapter | Kind | Pass |
+|---|---|---|---|---|
+| 1 | `L7.1` | [Pre-LN, RMSNorm](01-pre-ln-rmsnorm.md) | build | 5 |
+| 2 | `L7.2` | [Gated MLPs: SwiGLU, GeGLU](02-gated-mlps.md) | build | 5 |
+| 3 | `L7.3` | [RoPE (half and interleaved layouts, partial rotary)](03-rope.md) | build | 5 |
+| 4 | `L7.4` | [Context extension: PI, NTK, YaRN, Llama-3 scaling; ALiBi (optional part)](04-context-extension.md) | build | 5 |
+| 5 | `L7.5` | [MQA/GQA attention with cache hook, window, learned sinks](05-gqa-attention.md) | build | 5 |
+| 6 | `L7.6` | [Multi-head latent attention (DeepSeek-V2/V3), weight absorption](06-multi-head-latent-attention.md) | build | 5 |
+| 7 | `L7.7` | [Sliding window, StreamingLLM sinks, learned sinks](07-sliding-window-and-sinks.md) | build | 5 |
+| 8 | `L7.8` | [Mixture of Experts: routing, sorted dispatch, Switch aux loss, aux-free bias](08-mixture-of-experts.md) | build | 5 |
+| 9 | `L7.9` | [Llama-family model, HF config, weight loading, downloader](09-llama-family-model.md) | build | 5 |
 <!-- /ss:chapters -->
 
 ## Going further

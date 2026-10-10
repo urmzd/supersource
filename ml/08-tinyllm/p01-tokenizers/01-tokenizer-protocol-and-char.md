@@ -187,6 +187,7 @@ def test_byte_tokenizer_utf8_and_replacement():
 | 8. `chr(i)` as the byte token string | byte 32 is `" "` instead of `Ġ`, and BPE's alphabet no longer matches | `test_byte_tokens_are_the_gpt2_byte_map` (mutant `s16`) |
 
 ## 6. Where it's used next
+| Forward | `L3.6` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

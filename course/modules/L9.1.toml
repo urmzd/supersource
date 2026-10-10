@@ -17,7 +17,7 @@ reading   = ["M03.1", "M09.3", "M05.1", "rt.02"]
 # Inherited with matmul.c from M03.1 (DESIGN 3.4 upgrade exemption): L0.0
 # and L10.0. L9.5 builds its float32 baseline with tl_matmul_f32; L9.7 runs
 # every projection through it. L10.1 joins when it lists L9.1 in deps.
-used_by   = ["L0.0", "L10.0", "L9.5", "L9.7"]
+used_by   = ["L10.1", "L9.5", "L9.7"]
 units     = []
 upgrades  = ["c/src/kernels/matmul.c"]
 milestone = "MS-L9"

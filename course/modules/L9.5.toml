@@ -15,7 +15,7 @@ deps      = ["rt.01", "rt.03", "M09.4", "L9.1", "L8.5"]
 reading   = ["M09.3"]
 # Call site: L10.1's quantized runner (*.q4.safetensors) joins used_by when
 # it lists L9.5 in deps (B9, DEVIATIONS B84-01).
-used_by   = []
+used_by   = ["L10.1"]
 units     = ["c/src/kernels/qmatmul.c"]
 upgrades  = []
 milestone = "MS-L9"

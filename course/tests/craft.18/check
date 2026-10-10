@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$PWD"
+missing=0
+if [ ! -e "$root/SBOM per image" ]; then echo "craft.18: missing SBOM per image" >&2; missing=1; fi
+if [ ! -e "$root/allowed-deps.toml" ]; then echo "craft.18: missing allowed-deps.toml" >&2; missing=1; fi
+exit "$missing"

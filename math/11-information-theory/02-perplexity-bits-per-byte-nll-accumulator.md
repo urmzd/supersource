@@ -146,6 +146,8 @@ Call `bits_per_byte` from your `M00.1` for `bpb`; with no bytes added, `bpb` is 
 | 8. accepting a counted NaN, or reporting on zero tokens | NaN or a `ZeroDivisionError` reaches the report | `test_rejects_bad_batches`, `test_result_needs_tokens_and_bpb_needs_bytes` (mutants `s11`, `s12`) |
 
 ## 6. Where it's used next
+| Forward | `L2.1` | Registered call site uses this module. |
+| Forward | `L2.2` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|

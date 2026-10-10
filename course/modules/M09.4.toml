@@ -16,7 +16,7 @@ reading   = ["S-M09a", "M06.3"]   # rounding by hand; the C build habits of the 
 # Call sites: L8.5 (fp8 and MX weights), L9.5 (f16 group scales of the
 # fused int4 matmul). L9.4 (f16 KV reads) and craft.13 (KV
 # format v2) join with their batches (DEVIATIONS B81-03).
-used_by   = ["L8.5", "L9.5"]
+used_by   = ["L8.5", "L9.4", "L9.5"]
 units     = ["c/src/numerics/lowp.c", "python/tinyllm/num/lowp.py"]
 upgrades  = []
 milestone = "MS-P6"

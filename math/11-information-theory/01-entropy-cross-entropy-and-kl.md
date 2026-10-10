@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/info/entropy.pyi`](../../course/contracts/py/tinyllm/info/entropy.pyi) |
 | **Tests** | `course/tests/M11.1/` (what they check: section 4) |
 | **Needs** | `M09.2` stable numerics (`log_softmax`, or `--ref-deps`) |
-| **Used by** | `M08.3` differentiates this cross-entropy · `L0.3` the training loss · later: `L8.1` per-step entropy logging, `L8.6` acceptance rate as $1 - \mathrm{TV}$, `L12.3` the KL penalty with `kl_k3`, `M11.2` perplexity |
+| **Used by** | `M08.3` differentiates this cross-entropy · `L0.3` the training loss · later: `L8.1` per-step entropy logging, `L8.6` acceptance rate as $1 - \mathrm{TV}$, `L12.3` the KL penalty with `kl_k3`, `M11.2` perplexity · later: `L12.2`, `L12.4`, `M11.4` |
 | **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
 | **Optional depth** | Cover and Thomas, *Elements of Information Theory* (2nd ed.), ch. 2; MacKay, *Information Theory, Inference, and Learning Algorithms*, ch. 2 and 4; Schulman, "Approximating KL Divergence" (2020 blog post) |
 
@@ -188,6 +188,9 @@ Each reduces over `axis` and drops it, like `np.sum`. Probabilities are not reno
 | 8. letting $-\infty - (-\infty)$ or $0 \cdot \infty$ through | NaN where the answer is 0 or $+\infty$ | `test_kl_from_logprobs_infinite_cases` (mutants `s06`, `s13`) |
 
 ## 6. Where it's used next
+| Forward | `L12.2` | Registered module relationship. |
+| Forward | `L12.4` | Registered module relationship. |
+| Forward | `M11.4` | Registered call site uses this module. |
 
 | Direction | Module | How it uses this |
 |---|---|---|
