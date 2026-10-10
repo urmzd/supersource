@@ -305,9 +305,20 @@ def run(
     # reference learner's tests run against the required mutants plus a
     # seeded sample, so the whole repo checks in CI time.
     rc, out = _ss(env, "check", "--all", "--ci", timeout=3600)
-    rep.fail("e2e", "ss check --all --ci", out) if rc != 0 else rep.ok(
-        "e2e", "ss check --all --ci"
-    )
+    if rc != 0:
+        # The status table's non-passing rows, which a tail would cut off.
+        bad = [
+            x.strip()
+            for x in out.splitlines()
+            if re.match(r"^\s+\S+\s+(fail|blocked|error|drift)\b", x)
+        ]
+        rep.fail(
+            "e2e",
+            "ss check --all --ci: " + (", ".join(bad) or "see the output"),
+            out,
+        )
+    else:
+        rep.ok("e2e", "ss check --all --ci")
 
     for msid in milestones.all_ids(course):
         ms = milestones.load(course, msid)
